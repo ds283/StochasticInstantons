@@ -1,2 +1,6 @@
 # ComputeTargets/__init__.py
-# Compute target classes will be added here in subsequent prompts.
+from ComputeTargets.InflatonTrajectory import (
+    InflatonTrajectory,
+    InflatonTrajectoryValue,
+    InflatonTrajectoryProxy,
+)

@@ -20,13 +20,22 @@ replicated_tables = [
     "delta_Nstar",
     "inflaton_mass",
     "quartic_coupling",
+    "phi_value",
+    "pi_value",
     "QuadraticPotential",
     "QuarticPotential",
     "IntegrationSolver",
+    "InflatonTrajectory",
 ]
 
-# Tables sharded by delta_Nstar. Populated in Prompt 3+.
-sharded_tables = {}
+# Tables sharded by delta_Nstar.
+# delta_Nstar is also listed here as metadata so ShardedPool can record which
+# field carries the shard key when routing higher-level sharded objects.
+# Routing for delta_Nstar itself goes via replicated_tables (above) because it
+# IS the shard key type.
+sharded_tables = {
+    "delta_Nstar": "shard_key",
+}
 
 # Configuration for pool.read_table() calls. Populated in Prompt 7.
 read_table_config = {}

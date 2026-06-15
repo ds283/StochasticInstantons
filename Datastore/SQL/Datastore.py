@@ -25,11 +25,15 @@ from ray.actor import ActorHandle
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from Datastore.SQL.ClientPool import SerialPoolManager, SerialLeaseManager
+from CosmologyConcepts.FieldValues import phi_value, pi_value
 from Datastore.SQL.ObjectFactories.DimensionfulQuantity import (
     sqla_dimensionful_quantity_factory,
 )
 from Datastore.SQL.ObjectFactories.DimensionlessQuantity import (
     sqla_dimensionless_quantity_factory,
+)
+from Datastore.SQL.ObjectFactories.InflatonTrajectory import (
+    sqla_InflatonTrajectory_factory,
 )
 from Datastore.SQL.ObjectFactories.QuadraticPotential import (
     sqla_QuadraticPotential_factory,
@@ -67,9 +71,12 @@ _factories = {
     "delta_Nstar": sqla_delta_Nstar_factory(),
     "inflaton_mass": sqla_dimensionful_quantity_factory(inflaton_mass),
     "quartic_coupling": sqla_dimensionless_quantity_factory(quartic_coupling),
+    "phi_value": sqla_dimensionful_quantity_factory(phi_value),
+    "pi_value": sqla_dimensionful_quantity_factory(pi_value),
     "QuadraticPotential": sqla_QuadraticPotential_factory(),
     "QuarticPotential": sqla_QuarticPotential_factory(),
     "IntegrationSolver": sqla_IntegrationSolver_factory(),
+    "InflatonTrajectory": sqla_InflatonTrajectory_factory(),
 }
 
 _FactoryMappingType = Mapping[str, SQLAFactoryBase]
