@@ -111,9 +111,9 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
             table.c.serial,
             table.c.N_total,
             table.c.msr_action,
-            table.c.validated,
             table.c.label,
         ).filter(
+            table.c.validated == True,
             table.c.trajectory_serial == trajectory.store_id,
             N_init_cond,
             N_final_cond,
@@ -131,27 +131,8 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
                     f"N_final={N_final_val:.4g}, "
                     f"dNstar={float(delta_Nstar_obj):.4g})"
                 )
-
-            insert_data = {
-                "trajectory_serial": trajectory.store_id,
-                "N_init": N_init_val,
-                "N_final": N_final_val,
-                "delta_Nstar_serial": delta_Nstar_obj.store_id,
-                "atol_serial": atol.store_id,
-                "rtol_serial": rtol.store_id,
-                "n_fields": 1,
-                "N_total": None,
-                "msr_action": None,
-                "label": label,
-                "validated": False,
-            }
-            if "serial" in payload:
-                insert_data["serial"] = payload["serial"]
-            store_id = inserter(conn, insert_data)
-            attribute_set = {"_new_insert": True}
-
-            obj = SlowRollInstanton(
-                store_id=store_id,
+            return SlowRollInstanton(
+                store_id=None,
                 trajectory=trajectory,
                 N_init=N_init,
                 N_final=N_final,
@@ -161,32 +142,27 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
                 rtol=rtol,
                 label=label,
             )
-        else:
-            store_id = row_data.serial
-            attribute_set = {"_deserialized": True}
 
-            obj = SlowRollInstanton(
-                store_id=store_id,
-                trajectory=trajectory,
-                N_init=N_init,
-                N_final=N_final,
-                delta_Nstar=delta_Nstar_obj,
-                N_sample=N_sample,
-                atol=atol,
-                rtol=rtol,
-                label=row_data.label,
-            )
-            if row_data.N_total is not None:
-                obj._N_total = row_data.N_total
-            if row_data.msr_action is not None:
-                obj._msr_action = row_data.msr_action
+        obj = SlowRollInstanton(
+            store_id=row_data.serial,
+            trajectory=trajectory,
+            N_init=N_init,
+            N_final=N_final,
+            delta_Nstar=delta_Nstar_obj,
+            N_sample=N_sample,
+            atol=atol,
+            rtol=rtol,
+            label=row_data.label,
+        )
+        if row_data.N_total is not None:
+            obj._N_total = row_data.N_total
+        if row_data.msr_action is not None:
+            obj._msr_action = row_data.msr_action
 
-            if row_data.validated and not do_not_populate:
-                self._populate(obj, row_data, tables, conn)
+        if not do_not_populate:
+            self._populate(obj, row_data, tables, conn)
 
-        for key, value in attribute_set.items():
-            setattr(obj, key, value)
-
+        setattr(obj, "_deserialized", True)
         return obj
 
     def _populate(self, obj, row, tables, conn):
@@ -224,16 +200,91 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
             )
 
     def store(self, obj, conn, table, inserter, tables, inserters):
-        raise NotImplementedError(
-            "SlowRollInstanton.store() is not yet implemented. "
-            "It will be implemented together with SlowRollInstanton.compute() in Prompt 6."
-        )
+        if obj.failure:
+            store_id = inserter(conn, {
+                "trajectory_serial": obj._trajectory.store_id,
+                "N_init": float(obj._N_init),
+                "N_final": float(obj._N_final),
+                "delta_Nstar_serial": obj._delta_Nstar.store_id,
+                "atol_serial": obj._atol.store_id,
+                "rtol_serial": obj._rtol.store_id,
+                "n_fields": obj.n_fields,
+                "N_total": None,
+                "msr_action": None,
+                "label": obj._label,
+                "validated": False,
+            })
+            obj._my_id = store_id
+            return obj
+
+        raw = obj._raw_sample
+        N_vals = raw["N_sample"]
+        phi_vals = raw["phi"]
+        P1_vals = raw["P1"]
+
+        store_id = inserter(conn, {
+            "trajectory_serial": obj._trajectory.store_id,
+            "N_init": float(obj._N_init),
+            "N_final": float(obj._N_final),
+            "delta_Nstar_serial": obj._delta_Nstar.store_id,
+            "atol_serial": obj._atol.store_id,
+            "rtol_serial": obj._rtol.store_id,
+            "n_fields": obj.n_fields,
+            "N_total": getattr(obj, "_N_total", None),
+            "msr_action": obj._msr_action,
+            "label": obj._label,
+            "validated": False,
+        })
+        obj._my_id = store_id
+
+        efold_table = tables["efold_value"]
+        value_inserter = inserters["SlowRollInstantonValue"]
+
+        for N_val, phi, P1 in zip(N_vals, phi_vals, P1_vals):
+            efold_row = conn.execute(
+                sqla.select(efold_table.c.serial).filter(
+                    sqla.func.abs(efold_table.c.N - N_val) < DEFAULT_FLOAT_PRECISION
+                )
+            ).one_or_none()
+            if efold_row is None:
+                efold_serial = inserters["efold_value"](conn, {"N": N_val})
+            else:
+                efold_serial = efold_row.serial
+
+            value_inserter(conn, {
+                "instanton_serial": store_id,
+                "N_serial": efold_serial,
+                "phi": phi,
+                "P1": P1,
+            })
+
+        return obj
 
     def validate(self, obj, conn, table, tables):
-        raise NotImplementedError(
-            "SlowRollInstanton.validate() is not yet implemented. "
-            "It will be implemented together with SlowRollInstanton.compute() in Prompt 6."
+        if not obj.available:
+            raise RuntimeError("Attempt to validate an object that has not been stored")
+
+        if obj.failure:
+            validated = True
+        else:
+            value_table = tables["SlowRollInstantonValue"]
+            expected = len(obj._raw_sample.get("N_sample", []))
+            actual = conn.execute(
+                sqla.select(sqla.func.count()).select_from(value_table).filter(
+                    value_table.c.instanton_serial == obj.store_id
+                )
+            ).scalar()
+            validated = (actual == expected)
+            if not validated:
+                print(f"!! WARNING: SlowRollInstanton {obj.store_id}: "
+                      f"expected {expected} value rows, found {actual}")
+
+        conn.execute(
+            sqla.update(table)
+            .where(table.c.serial == obj.store_id)
+            .values(validated=validated)
         )
+        return validated
 
     def validate_on_startup(self, conn, table, tables, prune_unvalidated):
         query = sqla.select(table.c.serial).filter(table.c.validated == False)

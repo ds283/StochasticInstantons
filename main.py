@@ -55,10 +55,7 @@ def _compute_and_store(pool, obj, label_str):
 
 
 def _lookup_or_create(pool, cls_name, shard_key=None, **payload):
-    """
-    Look up an existing record or create a stub.  Returns the object.
-    `_new_insert` attribute is True when a stub was just created.
-    """
+    """Look up an existing record. Returns the object; available=False means not yet computed."""
     kwargs = dict(payload)
     if shard_key is not None:
         kwargs["shard_key"] = shard_key
@@ -93,7 +90,7 @@ def run_pipeline(
         N_sample=N_sample, solver_labels={}, tags=[],
     )
 
-    if not getattr(traj_obj, "_new_insert", False):
+    if traj_obj.available:
         print(f"   -- trajectory already computed (store_id={traj_obj.store_id})")
     else:
         print(f"   -- trajectory not found, computing...")
@@ -129,7 +126,7 @@ def run_pipeline(
     fi_objs = ray.get(fi_refs)
 
     new_fi = [(dns, obj) for dns, obj in zip(delta_Nstar_array, fi_objs)
-              if getattr(obj, "_new_insert", False)]
+              if not obj.available]
     existing_fi = len(fi_objs) - len(new_fi)
     print(f"   -- {existing_fi} already computed, {len(new_fi)} to compute")
 
@@ -169,7 +166,7 @@ def run_pipeline(
     sri_objs = ray.get(sri_refs)
 
     new_sri = [(dns, obj) for dns, obj in zip(delta_Nstar_array, sri_objs)
-               if getattr(obj, "_new_insert", False)]
+               if not obj.available]
     existing_sri = len(sri_objs) - len(new_sri)
     print(f"   -- {existing_sri} already computed, {len(new_sri)} to compute")
 

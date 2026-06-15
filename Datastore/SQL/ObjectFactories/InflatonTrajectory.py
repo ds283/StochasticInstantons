@@ -20,6 +20,7 @@ import sqlalchemy as sqla
 
 from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
 from InflationConcepts.efold_value import efold_value
+from config.defaults import DEFAULT_EFOLD_PRECISION
 
 
 class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
@@ -91,15 +92,14 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         atol = payload["atol"]
         rtol = payload["rtol"]
         N_sample = payload.get("N_sample", None)
-        tags = payload.get("tags", [])
         do_not_populate = payload.get("_do_not_populate", False)
 
         query = sqla.select(
             table.c.serial,
             table.c.N_end,
-            table.c.validated,
             table.c.trajectory_json,
         ).filter(
+            table.c.validated == True,
             table.c.phi0_serial == phi0.store_id,
             table.c.pi0_serial == pi0.store_id,
             table.c.potential_serial == potential.store_id,
@@ -109,24 +109,8 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         row_data = conn.execute(query).one_or_none()
 
         if row_data is None:
-            insert_data = {
-                "phi0_serial": phi0.store_id,
-                "pi0_serial": pi0.store_id,
-                "potential_serial": potential.store_id,
-                "atol_serial": atol.store_id,
-                "rtol_serial": rtol.store_id,
-                "n_fields": 1,
-                "N_end": None,
-                "trajectory_json": None,
-                "validated": False,
-            }
-            if "serial" in payload:
-                insert_data["serial"] = payload["serial"]
-            store_id = inserter(conn, insert_data)
-            attribute_set = {"_new_insert": True}
-
-            obj = InflatonTrajectory(
-                store_id=store_id,
+            return InflatonTrajectory(
+                store_id=None,
                 phi0=phi0,
                 pi0=pi0,
                 potential=potential,
@@ -134,27 +118,22 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
                 atol=atol,
                 rtol=rtol,
             )
-        else:
-            store_id = row_data.serial
-            attribute_set = {"_deserialized": True}
 
-            obj = InflatonTrajectory(
-                store_id=store_id,
-                phi0=phi0,
-                pi0=pi0,
-                potential=potential,
-                N_sample=N_sample,
-                atol=atol,
-                rtol=rtol,
-            )
-            obj._N_end = row_data.N_end
+        obj = InflatonTrajectory(
+            store_id=row_data.serial,
+            phi0=phi0,
+            pi0=pi0,
+            potential=potential,
+            N_sample=N_sample,
+            atol=atol,
+            rtol=rtol,
+        )
+        obj._N_end = row_data.N_end
 
-            if row_data.validated and not do_not_populate:
-                self._populate(obj, row_data, tables, conn)
+        if not do_not_populate:
+            self._populate(obj, row_data, tables, conn)
 
-        for key, value in attribute_set.items():
-            setattr(obj, key, value)
-
+        setattr(obj, "_deserialized", True)
         return obj
 
     def _populate(self, obj, row, tables, conn):
@@ -184,34 +163,81 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             )
 
     def store(self, obj, conn, table, inserter, tables, inserters):
-        """Update the database record after compute() has populated the trajectory."""
-        trajectory_json = json.dumps([
-            {"N_serial": v.N.store_id, "phi": v.phi, "pi": v.pi}
-            for v in obj.values
-        ])
+        if obj.failure:
+            store_id = inserter(conn, {
+                "phi0_serial": obj._phi0.store_id,
+                "pi0_serial": obj._pi0.store_id,
+                "potential_serial": obj._potential.store_id,
+                "atol_serial": obj._atol.store_id,
+                "rtol_serial": obj._rtol.store_id,
+                "n_fields": obj.n_fields,
+                "N_end": None,
+                "trajectory_json": None,
+                "validated": False,
+            })
+            obj._my_id = store_id
+            return obj
+
+        raw = obj._raw_sample
+        N_vals = raw["N_sample"]
+        phi_vals = raw["phi"]
+        pi_vals = raw["pi"]
+
+        efold_table = tables["efold_value"]
+        json_rows = []
+        for N_val, phi_val, pi_val in zip(N_vals, phi_vals, pi_vals):
+            efold_row = conn.execute(
+                sqla.select(efold_table.c.serial).filter(
+                    sqla.func.abs(efold_table.c.N - N_val) < DEFAULT_EFOLD_PRECISION
+                )
+            ).one_or_none()
+            if efold_row is None:
+                efold_serial = inserters["efold_value"](conn, {"N": N_val})
+            else:
+                efold_serial = efold_row.serial
+            json_rows.append({"N_serial": efold_serial, "phi": phi_val, "pi": pi_val})
+
+        store_id = inserter(conn, {
+            "phi0_serial": obj._phi0.store_id,
+            "pi0_serial": obj._pi0.store_id,
+            "potential_serial": obj._potential.store_id,
+            "atol_serial": obj._atol.store_id,
+            "rtol_serial": obj._rtol.store_id,
+            "n_fields": obj.n_fields,
+            "N_end": obj._N_end,
+            "trajectory_json": json.dumps(json_rows),
+            "validated": False,
+        })
+        obj._my_id = store_id
+        return obj
+
+    def validate(self, obj, conn, table, tables):
+        if not obj.available:
+            raise RuntimeError("Attempt to validate an object that has not been stored")
+
+        if obj.failure:
+            validated = True
+        else:
+            row = conn.execute(
+                sqla.select(table.c.trajectory_json).filter(table.c.serial == obj.store_id)
+            ).one_or_none()
+            if row is None or row.trajectory_json is None:
+                validated = False
+            else:
+                stored_data = json.loads(row.trajectory_json)
+                expected = len(obj._raw_sample.get("N_sample", []))
+                actual = len(stored_data)
+                validated = (actual == expected)
+                if not validated:
+                    print(f"!! WARNING: InflatonTrajectory {obj.store_id}: "
+                          f"expected {expected} value rows, found {actual}")
 
         conn.execute(
             sqla.update(table)
             .where(table.c.serial == obj.store_id)
-            .values(
-                N_end=obj.N_end,
-                trajectory_json=trajectory_json,
-                validated=True,
-            )
+            .values(validated=validated)
         )
-        return obj
-
-    def validate(self, obj, conn, table, tables):
-        """Check that the record exists and has validated=True."""
-        row = conn.execute(
-            sqla.select(table.c.serial, table.c.validated).filter(
-                table.c.serial == obj.store_id
-            )
-        ).one_or_none()
-
-        if row is None:
-            return False
-        return bool(row.validated)
+        return validated
 
     def validate_on_startup(self, conn, table, tables, prune_unvalidated):
         query = sqla.select(table.c.serial).filter(table.c.validated == False)
