@@ -96,10 +96,11 @@ _TableMappingType = Mapping[str, sqla.Table]
 _InserterMappingType = Mapping[str, Callable]
 
 _drop_actions = {
-    "full-instanton": ["FullInstantonValue", "FullInstanton"],
-    "slow-roll-instanton": ["SlowRollInstantonValue", "SlowRollInstanton"],
+    "inflaton-trajectory":   ["InflatonTrajectoryValue", "InflatonTrajectory"],
+    "full-instanton":        ["FullInstantonValue", "FullInstanton"],
+    "slow-roll-instanton":   ["SlowRollInstantonValue", "SlowRollInstanton"],
 }
-_drop_order = ["full-instanton", "slow-roll-instanton"]
+_drop_order = ["slow-roll-instanton", "full-instanton", "inflaton-trajectory"]
 
 # read table configuration should be a Dict with the mapping
 # "method_name" -> {"class": class specifier, "tables_arg": bool}

@@ -1,276 +1,113 @@
-import argparse
-
 import configargparse
 
-from config.defaults import DEFAULT_ABS_TOLERANCE, DEFAULT_REL_TOLERANCE
 
-DEFAULT_LABEL = "ChamPBH-test"
-DEFAULT_TIMEOUT = 60
-DEFAULT_SHARDS = 20
-DEFAULT_RAY_ADDRESS = "auto"
-
-DEFAULT_Z_END = 0.1
-DEFAULT_T_INIT_GEV = 20000
-
-DEFAULT_LOG10_ONE_PLUS_Z_HIGH = 35
-DEFAULT_LOG10_ONE_PLUS_Z_LOW = 0
-DEFAULT_SAMPLES_PER_LOG10_Z = 250
-
-DEFAULT_BETA_LOW = 0.1
-DEFAULT_BETA_HIGH = 3.0
-DEFAULT_SAMPLES_PER_BETA = 5
-
-DEFAULT_LOG10_M_LOW_EV = 25
-DEFAULT_LOG10_M_HIGH_EV = 26.5
-DEFAULT_SAMPLES_PER_LOG10_M_EV = 6
-
-DEFAULT_LOG10_LAMBDA_LOW_EV = -2
-DEFAULT_LOG10_LAMBDA_HIGH_EV = 1
-DEFAULT_SAMPLES_PER_LOG10_LAMBDA_EV = 6
-
-allowed_drop_actions = ["scalar-model", "adiabatic-history", "bbn-data"]
-potential_types = ["Exponential", "InversePower", "Starobinsky", "Recliner"]
-
-
-def create_argument_parser() -> configargparse.ArgumentParser:
+def create_argument_parser():
     parser = configargparse.ArgumentParser(
-        config_file_parser_class=configargparse.YAMLConfigFileParser
+        description="StochasticInstanton: compute stochastic instantons "
+                    "in inflationary scalar field models",
+        default_config_files=["stochastic_instanton.yaml"],
     )
 
+    # Config file
     parser.add_argument(
-        "-c",
-        "--config",
-        is_config_file=True,
-        help="read options from the specified configuration file",
+        "--config", is_config_file=True, help="Path to YAML configuration file"
     )
-    parser.add_argument(
-        "--database",
-        required=True,
-        type=str,
-        default=None,
-        help="read/write work items using the specified database cache",
+
+    # Database
+    db = parser.add_argument_group("Database")
+    db.add_argument("--database", type=str, default=None,
+                    help="Path to primary SQLite database file (required)")
+    db.add_argument("--shards", type=int, default=20,
+                    help="Number of database shards (default: 20)")
+    db.add_argument("--db-timeout", type=int, default=60,
+                    help="SQLite timeout in seconds (default: 60)")
+    db.add_argument("--profile-db", type=str, default=None,
+                    help="Path to database profiling output file")
+    db.add_argument("--job-name", type=str, default=None,
+                    help="Optional label for this run, used in profiling output")
+    db.add_argument("--prune-unvalidated", action="store_true", default=False,
+                    help="Delete unvalidated records from previous incomplete runs")
+    db.add_argument("--drop", nargs="*", default=[],
+                    choices=["inflaton-trajectory", "full-instanton",
+                             "slow-roll-instanton"],
+                    help="Drop specified table groups before running")
+
+    # Ray
+    ray_grp = parser.add_argument_group("Ray")
+    ray_grp.add_argument("--ray-address", type=str, default="auto",
+                         help="Ray cluster address (default: 'auto')")
+
+    # ODE tolerances
+    tol = parser.add_argument_group("ODE tolerances")
+    tol.add_argument("--abs-tol", type=float, default=1e-8,
+                     help="Absolute ODE tolerance (default: 1e-8)")
+    tol.add_argument("--rel-tol", type=float, default=1e-8,
+                     help="Relative ODE tolerance (default: 1e-8)")
+
+    # Potential
+    pot = parser.add_argument_group("Potential")
+    pot.add_argument(
+        "--potential-type", type=str, default="Quadratic",
+        choices=["Quadratic", "Quartic"],
+        help="Inflationary potential type (default: Quadratic)",
     )
-    parser.add_argument(
-        "--inventory",
-        default=False,
-        action=argparse.BooleanOptionalAction,
-        help="show an inventory of the datastore content",
-    )
-    parser.add_argument(
-        "--show-all",
-        default=False,
-        action=argparse.BooleanOptionalAction,
-        help="do not truncate long lists of inventory items",
-    )
-    parser.add_argument(
-        "--job-name",
-        default=DEFAULT_LABEL,
-        help="specify a label for this job (used to identify integrations and other numerical products)",
-    )
-    parser.add_argument(
-        "--shards",
-        type=int,
-        default=DEFAULT_SHARDS,
-        help="specify number of shards to be used when creating a new datastore (if used)",
-    )
-    parser.add_argument(
-        "--db-timeout",
-        type=int,
-        default=DEFAULT_TIMEOUT,
-        help="specify connection timeout for database layer",
-    )
-    parser.add_argument(
-        "--profile-db",
-        type=str,
-        default=None,
-        help="write profiling and performance data to the specified database",
-    )
-    parser.add_argument(
-        "--potential-type",
-        type=str,
-        choices=potential_types,
-        help="specify potential type to use",
-    )
-    parser.add_argument(
-        "--samples-log10-z",
-        type=int,
-        default=DEFAULT_SAMPLES_PER_LOG10_Z,
-        help="specify number of z-sample points per log10(z)",
-    )
-    parser.add_argument(
-        "--abs-tol",
-        type=float,
-        default=DEFAULT_ABS_TOLERANCE,
-        help="specify absolute tolerance used during integration",
-    )
-    parser.add_argument(
-        "--rel-tol",
-        type=float,
-        default=DEFAULT_REL_TOLERANCE,
-        help="specify relative tolerance used during integration",
-    )
-    parser.add_argument(
-        "--T-init-GeV",
-        type=float,
-        default=DEFAULT_T_INIT_GEV,
-        help="set initial temperature in Jordan frame, specified in GeV",
-    )
-    parser.add_argument(
-        "--T-stop-GeV",
-        type=float,
-        default=None,
-        help="set stopping temperature in Jordan frame, specified in GeV",
-    )
-    parser.add_argument(
-        "--beta-low",
-        type=float,
-        default=DEFAULT_BETA_LOW,
-        help="minimum value of beta to sample",
-    )
-    parser.add_argument(
-        "--beta-high",
-        type=float,
-        default=DEFAULT_BETA_HIGH,
-        help="maximum value of beta to sample",
-    )
-    parser.add_argument(
-        "--samples-per-beta",
-        type=int,
-        default=DEFAULT_SAMPLES_PER_BETA,
-        help="number of samples per beta",
-    )
-    parser.add_argument(
-        "--beta-values",
-        type=float,
-        nargs="*",
-        action="extend",
-        default=[],
-        help="specify one or more beta values to sample",
-    )
-    parser.add_argument(
-        "--log10-M-low-eV",
-        type=float,
-        default=DEFAULT_LOG10_M_LOW_EV,
-        help="minimum value of log10(M/eV) to sample",
-    )
-    parser.add_argument(
-        "--log10-M-high-eV",
-        type=float,
-        default=DEFAULT_LOG10_M_HIGH_EV,
-        help="maximum value of log10(M/eV) to sample",
-    )
-    parser.add_argument(
-        "--samples-per-log10-M-eV",
-        type=int,
-        default=DEFAULT_SAMPLES_PER_LOG10_M_EV,
-        help="number of samples per log10(M/eV)",
-    )
-    parser.add_argument(
-        "--M-values-eV",
-        type=float,
-        nargs="*",
-        action="extend",
-        default=[],
-        help="specify one or more values of M/eV to sample",
-    )
-    parser.add_argument(
-        "--M-values-Mp",
-        type=float,
-        nargs="*",
-        action="extend",
-        default=[],
-        help="specify one or more values of M/Mp to sample",
-    )
-    parser.add_argument(
-        "--log10-Lambda-low-eV",
-        type=float,
-        default=DEFAULT_LOG10_LAMBDA_LOW_EV,
-        help="minimum value of log10(Lambda/eV) to sample",
-    )
-    parser.add_argument(
-        "--log10-Lambda-high-eV",
-        type=float,
-        default=DEFAULT_LOG10_LAMBDA_HIGH_EV,
-        help="maximum value of log10(Lambda/eV) to sample",
-    )
-    parser.add_argument(
-        "--Lambda-values-eV",
-        type=float,
-        nargs="*",
-        action="extend",
-        default=[],
-        help="specify one or more values of Lambda/eV to sample",
-    )
-    parser.add_argument(
-        "--Lambda-values-Mp",
-        type=float,
-        nargs="*",
-        action="extend",
-        default=[],
-        help="specify one or more values of Lambda/Mp to sample",
-    )
-    parser.add_argument(
-        "--log10-one-plus-z-high",
-        type=float,
-        default=DEFAULT_LOG10_ONE_PLUS_Z_HIGH,
-        help="maximum value of log10(1+z) to sample",
-    )
-    parser.add_argument(
-        "--log10-one-plus-z-low",
-        type=float,
-        default=DEFAULT_LOG10_ONE_PLUS_Z_LOW,
-        help="minimum value of log10(1+z) to sample",
-    )
-    parser.add_argument(
-        "--samples-per-log10-Lambda-eV",
-        type=int,
-        default=DEFAULT_SAMPLES_PER_LOG10_LAMBDA_EV,
-        help="number of samples per log10(Lambda/eV)",
-    )
-    parser.add_argument(
-        "--prune-unvalidated",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="prune unvalidated data from the datastore during startup",
-    )
-    parser.add_argument(
-        "--drop",
-        type=str,
-        nargs="+",
-        default=[],
-        choices=allowed_drop_actions,
-        help="drop one or more data categories",
-        action="extend",
-    )
-    parser.add_argument(
-        "--output",
-        default="data-out",
-        type=str,
-        help="specify folder for output files",
-    )
-    parser.add_argument(
-        "--Li7-axis-limits",
-        default=True,
-        action=argparse.BooleanOptionalAction,
-        help="limit the y-axis on Li7 plots to near the observationally-allowed region",
-    )
-    parser.add_argument(
-        "--D-axis-limits",
-        default=True,
-        action=argparse.BooleanOptionalAction,
-        help="limit the y-axis on D/H plots to near the observationally-allowed region",
-    )
-    parser.add_argument(
-        "--Yp-axis-limits",
-        default=True,
-        action=argparse.BooleanOptionalAction,
-        help="limit the y-axis on Y_p plots to near the observationally-allowed region",
-    )
-    parser.add_argument(
-        "--ray-address",
-        default=DEFAULT_RAY_ADDRESS,
-        type=str,
-        help="specify address of Ray cluster",
-    )
+
+    # Quadratic potential: scan over mass m in units of Mp
+    pot.add_argument("--log10-m-low-Mp", type=float, default=-6.0,
+                     help="Lower bound of log10(m/Mp) grid (default: -6.0)")
+    pot.add_argument("--log10-m-high-Mp", type=float, default=-5.0,
+                     help="Upper bound of log10(m/Mp) grid (default: -5.0)")
+    pot.add_argument("--samples-per-log10-m", type=float, default=10.0,
+                     help="Sample points per decade of m/Mp (default: 10)")
+    pot.add_argument("--m-values-Mp", nargs="*", type=float, default=[],
+                     help="Explicit list of m/Mp values (overrides grid)")
+
+    # Quartic potential: scan over coupling lambda (dimensionless)
+    pot.add_argument("--log10-lambda-low", type=float, default=-13.0,
+                     help="Lower bound of log10(lambda) grid (default: -13.0)")
+    pot.add_argument("--log10-lambda-high", type=float, default=-12.0,
+                     help="Upper bound of log10(lambda) grid (default: -12.0)")
+    pot.add_argument("--samples-per-log10-lambda", type=float, default=10.0,
+                     help="Sample points per decade of lambda (default: 10)")
+    pot.add_argument("--lambda-values", nargs="*", type=float, default=[],
+                     help="Explicit list of lambda values (overrides grid)")
+
+    # Initial conditions
+    ic = parser.add_argument_group("Initial conditions")
+    ic.add_argument("--phi0-Mp", type=float, default=15.0,
+                    help="Initial field value phi_0 in units of Mp (default: 15.0)")
+    ic.add_argument("--pi0-Mp", type=float, default=0.0,
+                    help="Initial field velocity pi_0 = dphi/dN in units of Mp "
+                         "(default: 0.0, i.e. start at rest)")
+
+    # Instanton parameters
+    inst = parser.add_argument_group("Instanton parameters")
+    inst.add_argument("--N-init", type=float, default=20.0,
+                      help="N_init: e-folds before end of inflation at instanton "
+                           "start (default: 20.0)")
+    inst.add_argument("--N-final", type=float, default=5.0,
+                      help="N_final: e-folds before end of inflation at instanton "
+                           "end (default: 5.0)")
+    inst.add_argument("--delta-Nstar-low", type=float, default=0.1,
+                      help="Lower bound of delta_Nstar grid (default: 0.1)")
+    inst.add_argument("--delta-Nstar-high", type=float, default=3.0,
+                      help="Upper bound of delta_Nstar grid (default: 3.0)")
+    inst.add_argument("--delta-Nstar-samples", type=int, default=10,
+                      help="Number of delta_Nstar sample points (default: 10)")
+    inst.add_argument("--delta-Nstar-values", nargs="*", type=float, default=[],
+                      help="Explicit list of delta_Nstar values (overrides grid)")
+
+    # Output sampling
+    samp = parser.add_argument_group("Output sampling")
+    samp.add_argument("--N-samples", type=int, default=500,
+                      help="Number of e-folding sample points per trajectory "
+                           "(default: 500)")
+
+    # Actions
+    act = parser.add_argument_group("Actions")
+    act.add_argument("--inventory", action="store_true", default=False,
+                     help="Print database inventory and exit")
+    act.add_argument("--show-all", action="store_true", default=False,
+                     help="Show all items in inventory (not just first/last 10)")
 
     return parser
