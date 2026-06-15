@@ -8,6 +8,74 @@ paths:
 Loaded when Claude works on files in `Datastore/SQL/ObjectFactories/`. These
 conventions apply to all factory classes in this directory.
 
+## CRITICAL: `build()` never INSERTs — `store()` does the INSERT
+
+This is the most important rule in this file. Violating it causes `RayWorkPool`
+to see every object as `available=True` on first lookup and skip `compute()`
+entirely — nothing ever gets computed.
+
+| Method | Responsibility |
+|--------|---------------|
+| `build()` | Query only. Return `store_id=None` (available=False) when not found. **Never call `inserter()`**. |
+| `store()` | Call `inserter()` to INSERT the main row. Set `obj._my_id = store_id`. Insert value rows. |
+| `validate()` | Verify row counts. Call `UPDATE … SET validated=True`. Return bool. |
+
+### `build()` — query only, no INSERT
+
+```python
+def build(self, payload, conn, table, inserter, tables, inserters):
+    ...
+    query = sqla.select(table.c.serial, ...).filter(
+        table.c.validated == True,        # only return completed records
+        table.c.foo_serial == foo.store_id,
+        ...
+    )
+    row = conn.execute(query).one_or_none()
+
+    if row is None:
+        # Not found — return UNPOPULATED object; RayWorkPool will call compute()
+        return Foo(store_id=None, ...)    # NO inserter() call here
+
+    # Found — deserialise and return
+    obj = Foo(store_id=row.serial, ...)
+    if not payload.get("_do_not_populate"):
+        self._populate(obj, row, tables, conn)
+    setattr(obj, "_deserialized", True)
+    return obj
+```
+
+`build()` must filter `validated == True`. This ensures that a partially-written
+or failed record from a previous run does not shadow a new compute attempt. Only
+a fully-validated record counts as "already done".
+
+### `store()` — INSERT main row, then value rows
+
+```python
+def store(self, obj, conn, table, inserter, tables, inserters):
+    if obj.failure:
+        store_id = inserter(conn, {"N_end": None, ..., "validated": False})
+        obj._my_id = store_id
+        return obj
+
+    raw = obj._raw_sample
+    store_id = inserter(conn, {"N_end": obj._N_end, ..., "validated": False})
+    obj._my_id = store_id          # makes obj.available == True from this point
+
+    # insert value rows ...
+    return obj
+```
+
+### `validate()` — set validated=True after checking counts
+
+```python
+def validate(self, obj, conn, table, tables):
+    if not obj.available:
+        raise RuntimeError("...")
+    validated = True if obj.failure else (actual_count == expected_count)
+    conn.execute(sqla.update(table).where(...).values(validated=validated))
+    return validated
+```
+
 ## Factory `build()` returns a plain Python instance
 
 ```python
