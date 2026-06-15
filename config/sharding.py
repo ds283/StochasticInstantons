@@ -1,39 +1,35 @@
-# config/sharding.py
-# Placeholder — will be populated in Prompt 3 once new concept types exist.
-# The names below must remain importable by main.py and ShardedPool.
+from InflationConcepts.delta_Nstar import delta_Nstar
 
-# ShardKeyType will be replaced with delta_Nstar in Prompt 3.
-# For now, use a plain float as a stand-in.
-ShardKeyType = float
+# delta_Nstar (ΔN★) is the shard key: each shard holds data for one value of ΔN★.
+ShardKeyType = delta_Nstar
 
 
 def get_shard_key_store_id(obj) -> int:
-    """Return the store_id of the shard key object. Placeholder."""
-    raise NotImplementedError(
-        "get_shard_key_store_id is not yet implemented. "
-        "This will be defined in Prompt 3 when delta_Nstar is introduced."
-    )
+    """Return the store_id of the delta_Nstar shard key embedded in obj."""
+    return obj.shard_key.store_id
 
 
-# Tables replicated across all shards (no shard-key dependency).
-# Will be populated in Prompt 3.
+# Tables replicated identically across all shards.
+# delta_Nstar must be in this list: ShardedPool._get_impl_replicated_table()
+# triggers _assign_shard_keys() when it sees ShardKeyType.__name__ here.
 replicated_tables = [
     "version",
     "store_tag",
     "tolerance",
-    "redshift",
-    "ExponentialPotential",
+    "efold_value",
+    "delta_Nstar",
+    "inflaton_mass",
+    "quartic_coupling",
+    "QuadraticPotential",
+    "QuarticPotential",
     "IntegrationSolver",
 ]
 
-# Tables sharded by ShardKeyType.
-# Will be populated in Prompt 3.
+# Tables sharded by delta_Nstar. Populated in Prompt 3+.
 sharded_tables = {}
 
-# Configuration for pool.read_table() calls used by plotting scripts.
-# Will be populated in Prompt 7.
+# Configuration for pool.read_table() calls. Populated in Prompt 7.
 read_table_config = {}
 
-# Configuration for pool.inventory() calls used by main.py --inventory.
-# Will be populated in Prompt 7.
+# Configuration for pool.inventory() calls. Populated in Prompt 7.
 inventory_config = {}

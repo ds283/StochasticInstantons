@@ -31,10 +31,15 @@ from Datastore.SQL.ObjectFactories.DimensionfulQuantity import (
 from Datastore.SQL.ObjectFactories.DimensionlessQuantity import (
     sqla_dimensionless_quantity_factory,
 )
-from Datastore.SQL.ObjectFactories.ExponentialPotential import (
-    sqla_ExponentialPotential_factory,
+from Datastore.SQL.ObjectFactories.QuadraticPotential import (
+    sqla_QuadraticPotential_factory,
+)
+from Datastore.SQL.ObjectFactories.QuarticPotential import (
+    sqla_QuarticPotential_factory,
 )
 from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+from Datastore.SQL.ObjectFactories.delta_Nstar import sqla_delta_Nstar_factory
+from Datastore.SQL.ObjectFactories.efold import sqla_efold_factory
 from Datastore.SQL.ObjectFactories.integration_metadata import (
     sqla_IntegrationSolver_factory,
 )
@@ -42,6 +47,8 @@ from Datastore.SQL.ObjectFactories.redshift import sqla_redshift_factory
 from Datastore.SQL.ObjectFactories.store_tag import sqla_store_tag_factory
 from Datastore.SQL.ObjectFactories.tolerance import sqla_tolerance_factory
 from Datastore.SQL.ObjectFactories.version import sqla_version_factory
+from InflationConcepts.inflaton_mass import inflaton_mass
+from InflationConcepts.quartic_coupling import quartic_coupling
 from Datastore.SQL.ProfileAgent import ProfileBatcher, ProfileBatchManager
 from utilities import WallclockTimer
 
@@ -56,7 +63,12 @@ _factories = {
     "store_tag": sqla_store_tag_factory(),
     "redshift": sqla_redshift_factory(),
     "tolerance": sqla_tolerance_factory(),
-    "ExponentialPotential": sqla_ExponentialPotential_factory(),
+    "efold_value": sqla_efold_factory(),
+    "delta_Nstar": sqla_delta_Nstar_factory(),
+    "inflaton_mass": sqla_dimensionful_quantity_factory(inflaton_mass),
+    "quartic_coupling": sqla_dimensionless_quantity_factory(quartic_coupling),
+    "QuadraticPotential": sqla_QuadraticPotential_factory(),
+    "QuarticPotential": sqla_QuarticPotential_factory(),
     "IntegrationSolver": sqla_IntegrationSolver_factory(),
 }
 

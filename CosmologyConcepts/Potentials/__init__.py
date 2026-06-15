@@ -1,2 +1,1 @@
 from CosmologyConcepts.Potentials.AbstractPotential import AbstractPotential
-from CosmologyConcepts.Potentials.ExponentialPotential import ExponentialPotential

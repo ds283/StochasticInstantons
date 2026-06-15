@@ -1,20 +1,4 @@
-# (c) University of Sussex 2026
-# Created by David Seery
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-INVERSE_POWER_POTENTIAL = 0
-EXPONENTIAL_POTENTIAL = 1
-REFLECTING_POTENTIAL = 2
-STAROBINSKY_POTENTIAL = 3
-RECLINER_POTENTIAL = 4
+# Integer type identifiers for inflationary potential classes.
+# Each concrete AbstractPotential subclass must have a unique ID here.
+QUADRATIC_POTENTIAL = 1
+QUARTIC_POTENTIAL   = 2

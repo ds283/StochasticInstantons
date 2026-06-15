@@ -1,63 +1,59 @@
-# (c) University of Sussex 2026
-# Created by David Seery
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from abc import ABC, abstractmethod
+from math import log
 
 from Datastore import DatastoreObject
 
 
 class AbstractPotential(DatastoreObject, ABC):
+    """
+    Abstract base class for inflationary scalar field potentials V(φ).
+
+    All quantities are in natural units with the reduced Planck mass Mp = 1
+    (i.e. 8πG = 1). Concrete subclasses must implement V(), dV_dphi(), and
+    d2V_dphi2(). Default implementations of log_V() and d_logV_dphi() are
+    provided but may be overridden for numerical stability.
+    """
+
     def __init__(self, store_id: int):
         DatastoreObject.__init__(self, store_id)
 
     @property
     @abstractmethod
-    def name(self):
+    def name(self) -> str:
+        """Human-readable name, e.g. 'QuadraticPotential(m=1.23e-6 Mp)'."""
         raise NotImplementedError
 
     @property
     @abstractmethod
     def type_id(self) -> int:
+        """Integer type identifier, unique per potential class."""
         raise NotImplementedError
 
-    @property
     @abstractmethod
-    def bounce_region_level1_boundary(self) -> float:
+    def V(self, phi: float) -> float:
+        """Potential energy V(φ)."""
         raise NotImplementedError
 
-    @property
     @abstractmethod
-    def bounce_region_level2_boundary(self) -> float:
+    def dV_dphi(self, phi: float) -> float:
+        """First derivative V′(φ)."""
         raise NotImplementedError
 
-    @property
     @abstractmethod
-    def bounce_region_level1_max_step(self) -> float:
+    def d2V_dphi2(self, phi: float) -> float:
+        """Second derivative V′′(φ)."""
         raise NotImplementedError
 
-    @property
-    @abstractmethod
-    def bounce_region_level2_max_step(self) -> float:
-        raise NotImplementedError
+    def log_V(self, phi: float) -> float:
+        """
+        log V(φ). Default implementation calls V(). Subclasses may override for
+        improved numerical stability when V spans many orders of magnitude.
+        """
+        return log(self.V(phi))
 
-    @property
-    @abstractmethod
-    def hard_reflection_point(self) -> float:
-        raise NotImplementedError
-
-    # in addition, each potential should implement functions
-    # log_V(), d_logV_dphi(), and d2_logV_dphi2()
-    # or V(), d_V_dphi(), and d2_V_dphi2()
-    # or both
+    def d_logV_dphi(self, phi: float) -> float:
+        """
+        (d/dφ) log V = V′(φ) / V(φ). Default implementation calls dV_dphi()
+        and V(). Subclasses may override.
+        """
+        return self.dV_dphi(phi) / self.V(phi)
