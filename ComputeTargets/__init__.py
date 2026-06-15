@@ -4,3 +4,13 @@ from ComputeTargets.InflatonTrajectory import (
     InflatonTrajectoryValue,
     InflatonTrajectoryProxy,
 )
+from ComputeTargets.FullInstanton import (
+    FullInstanton,
+    FullInstantonValue,
+    FullInstantonProxy,
+)
+from ComputeTargets.SlowRollInstanton import (
+    SlowRollInstanton,
+    SlowRollInstantonValue,
+    SlowRollInstantonProxy,
+)

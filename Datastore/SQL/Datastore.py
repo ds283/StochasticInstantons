@@ -32,8 +32,16 @@ from Datastore.SQL.ObjectFactories.DimensionfulQuantity import (
 from Datastore.SQL.ObjectFactories.DimensionlessQuantity import (
     sqla_dimensionless_quantity_factory,
 )
+from Datastore.SQL.ObjectFactories.FullInstanton import (
+    sqla_FullInstantonFactory,
+    sqla_FullInstantonValue_factory,
+)
 from Datastore.SQL.ObjectFactories.InflatonTrajectory import (
     sqla_InflatonTrajectory_factory,
+)
+from Datastore.SQL.ObjectFactories.SlowRollInstanton import (
+    sqla_SlowRollInstantonFactory,
+    sqla_SlowRollInstantonValue_factory,
 )
 from Datastore.SQL.ObjectFactories.QuadraticPotential import (
     sqla_QuadraticPotential_factory,
@@ -77,14 +85,21 @@ _factories = {
     "QuarticPotential": sqla_QuarticPotential_factory(),
     "IntegrationSolver": sqla_IntegrationSolver_factory(),
     "InflatonTrajectory": sqla_InflatonTrajectory_factory(),
+    "FullInstanton": sqla_FullInstantonFactory(),
+    "FullInstantonValue": sqla_FullInstantonValue_factory(),
+    "SlowRollInstanton": sqla_SlowRollInstantonFactory(),
+    "SlowRollInstantonValue": sqla_SlowRollInstantonValue_factory(),
 }
 
 _FactoryMappingType = Mapping[str, SQLAFactoryBase]
 _TableMappingType = Mapping[str, sqla.Table]
 _InserterMappingType = Mapping[str, Callable]
 
-_drop_actions = {}
-_drop_order = []
+_drop_actions = {
+    "full-instanton": ["FullInstantonValue", "FullInstanton"],
+    "slow-roll-instanton": ["SlowRollInstantonValue", "SlowRollInstanton"],
+}
+_drop_order = ["full-instanton", "slow-roll-instanton"]
 
 # read table configuration should be a Dict with the mapping
 # "method_name" -> {"class": class specifier, "tables_arg": bool}

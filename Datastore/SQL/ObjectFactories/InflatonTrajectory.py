@@ -108,9 +108,6 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         )
         row_data = conn.execute(query).one_or_none()
 
-        # Bypass the Ray actor wrapper so we can create a plain local instance.
-        LocalClass = InflatonTrajectory.__ray_actor_class__
-
         if row_data is None:
             insert_data = {
                 "phi0_serial": phi0.store_id,
@@ -128,7 +125,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             store_id = inserter(conn, insert_data)
             attribute_set = {"_new_insert": True}
 
-            obj = LocalClass(
+            obj = InflatonTrajectory(
                 store_id=store_id,
                 phi0=phi0,
                 pi0=pi0,
@@ -141,7 +138,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             store_id = row_data.serial
             attribute_set = {"_deserialized": True}
 
-            obj = LocalClass(
+            obj = InflatonTrajectory(
                 store_id=store_id,
                 phi0=phi0,
                 pi0=pi0,
@@ -234,7 +231,6 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         from CosmologyConcepts.FieldValues import phi_value, pi_value
         from MetadataConcepts.tolerance import tolerance
 
-        LocalClass = InflatonTrajectory.__ray_actor_class__
         phi_table = tables["phi_value"]
         pi_table = tables["pi_value"]
         atol_table = tables["tolerance"]
@@ -269,7 +265,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             ).one()
             pi0_obj = pi_value(store_id=pi_row.serial, value=pi_row.value_PlanckMass)
 
-            obj = LocalClass(
+            obj = InflatonTrajectory(
                 store_id=row.serial,
                 phi0=phi0_obj,
                 pi0=pi0_obj,

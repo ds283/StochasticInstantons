@@ -26,6 +26,38 @@ from MetadataConcepts.store_tag import store_tag
 from MetadataConcepts.tolerance import tolerance
 
 
+@ray.remote
+def _compute_inflaton_trajectory(
+    phi0_value: float,
+    pi0_value: float,
+    potential: AbstractPotential,
+    atol: float,
+    rtol: float,
+    label: Optional[str] = None,
+) -> dict:
+    """
+    Integrate the noiseless inflationary background trajectory from {φ₀, π₀}
+    at N = 0 until ε = π²/(2 Mp²) = 1 (end of inflation).
+    ODE system (Mp = 1 units):
+        dφ/dN = π
+        dπ/dN = -3π - V′(φ)/H²
+    where H² = (V(φ) + ½π²) / 3.
+    Terminal event: ε(N) = π²/2 - 1 = 0, direction = +1 (ε increasing through 1).
+    Solver fallback chain: RK45 → DOP853 → Radau → BDF → LSODA.
+    Returns a dict with keys:
+        "N_end":    float — e-folding number at end of inflation
+        "N_sample": list[float] — N values of the sampled trajectory
+        "phi":      list[float] — φ values at sample points
+        "pi":       list[float] — π values at sample points
+        "failure":  bool — True if integration failed
+    NOT YET IMPLEMENTED. Will be implemented in Prompt 6.
+    """
+    raise NotImplementedError(
+        "_compute_inflaton_trajectory is not yet implemented. "
+        "See the docstring for the algorithm specification."
+    )
+
+
 class InflatonTrajectoryValue(DatastoreObject):
     """
     Field values {φ, π} sampled at a single e-folding coordinate N on the
@@ -61,15 +93,13 @@ class InflatonTrajectoryValue(DatastoreObject):
         return self._pi
 
 
-@ray.remote
 class InflatonTrajectory(DatastoreObject):
     """
     Background inflationary trajectory from initial condition {φ₀, π₀} at N = 0
     to the end of inflation at N = N_end.
 
-    Decorated with @ray.remote so it can be dispatched as a compute actor.
-    When the datastore factory creates instances locally it uses
-    InflatonTrajectory.__ray_actor_class__(…) to bypass the actor wrapper.
+    Plain Python class on the driver. Numerical work is dispatched via the
+    _compute_inflaton_trajectory Ray remote function.
     """
 
     def __init__(
@@ -95,17 +125,21 @@ class InflatonTrajectory(DatastoreObject):
         self._tags: List[store_tag] = tags or []
         self._N_end: Optional[float] = None
         self._values: List[InflatonTrajectoryValue] = []
+        self._compute_ref: Optional[ObjectRef] = None
 
-    # available() and n_fields() are defined as regular methods rather than
-    # properties so they can be invoked via .remote() on a Ray actor handle.
-
+    @property
     def available(self) -> bool:
         """True if this trajectory has been persisted to the datastore."""
         return self._my_id is not None
 
+    @property
     def n_fields(self) -> int:
         """Number of scalar fields; always 1 for a single-field inflaton."""
         return 1
+
+    @property
+    def failure(self) -> bool:
+        return getattr(self, "_failure", False)
 
     @property
     def N_end(self) -> Optional[float]:
@@ -136,10 +170,6 @@ class InflatonTrajectory(DatastoreObject):
     def values(self) -> List[InflatonTrajectoryValue]:
         return self._values
 
-    @property
-    def failure(self) -> bool:
-        return getattr(self, "_failure", False)
-
     def phi_at(self, N: float) -> float:
         """Interpolate φ at arbitrary N using a cubic spline built from _values."""
         if not self._values:
@@ -164,31 +194,43 @@ class InflatonTrajectory(DatastoreObject):
             self._pi_spline = make_interp_spline(Ns, pis)
         return float(self._pi_spline(N))
 
-    def compute(self) -> bool:
+    def compute(self, label: Optional[str] = None) -> ObjectRef:
         """
-        Integrate the noiseless single-field inflationary equations from {φ₀, π₀}
-        at N = 0 until ε = 1 (end of inflation), where ε = π²/(2 Mp²).
-
-        The integration uses scipy.integrate.solve_ivp with the following ODE:
-
-            dφ/dN = π
-            dπ/dN = -3π - V′(φ)/H²
-
-        where H² = [V(φ) + ½ π²] / (3 Mp²)  (Friedmann equation, Mp = 1 convention).
-
-        A terminal event is registered for ε = 1 (i.e. π² = 2 Mp²), which halts
-        the integration when inflation ends.
-
-        Solver fallback chain: RK45 → DOP853 → Radau → BDF → LSODA.
-        If all solvers fail, sets self._failure = True and returns False.
-        On success, populates self._N_end and self._values, and returns True.
-
-        This method raises NotImplementedError and will be implemented in Prompt 5.
+        Dispatch the background trajectory integration as a Ray remote task.
+        Returns an ObjectRef. RayWorkPool will call store() once this resolves.
         """
-        raise NotImplementedError(
-            "InflatonTrajectory.compute() is not yet implemented. "
-            "See the docstring for the algorithm specification."
+        if self._compute_ref is not None:
+            raise RuntimeError("compute() already in progress")
+        self._compute_ref = _compute_inflaton_trajectory.remote(
+            phi0_value=float(self._phi0),
+            pi0_value=float(self._pi0),
+            potential=self._potential,
+            atol=self._atol.tol,
+            rtol=self._rtol.tol,
+            label=label,
         )
+        return self._compute_ref
+
+    def store(self):
+        """
+        Called on the driver by RayWorkPool after compute() resolves.
+        Reads the result dict and populates internal state.
+        """
+        if self._compute_ref is None:
+            raise RuntimeError("store() called but no compute() is in progress")
+        data = ray.get(self._compute_ref)
+        self._compute_ref = None
+        if data.get("failure", False):
+            self._failure = True
+            self._values = []
+            return
+        self._failure = False
+        self._N_end = data["N_end"]
+        self._raw_sample = {
+            "N_sample": data["N_sample"],
+            "phi":      data["phi"],
+            "pi":       data["pi"],
+        }
 
 
 class InflatonTrajectoryProxy:
@@ -202,14 +244,12 @@ class InflatonTrajectoryProxy:
 
     def __init__(self, model: InflatonTrajectory):
         self._ref: ObjectRef = ray.put(model)
-        # model.available() is a method (not a property) on the Ray actor class,
-        # so it must be called with parentheses.
-        self._store_id: Optional[int] = model.store_id if model.available() else None
+        self._store_id: Optional[int] = model.store_id if model.available else None
         self._N_end: Optional[float] = model.N_end
-        self._n_fields: int = model.n_fields()
+        self._n_fields: int = model.n_fields
 
     @property
-    def store_id(self) -> int:
+    def store_id(self) -> Optional[int]:
         return self._store_id
 
     @property

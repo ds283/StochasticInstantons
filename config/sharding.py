@@ -35,6 +35,10 @@ replicated_tables = [
 # IS the shard key type.
 sharded_tables = {
     "delta_Nstar": "shard_key",
+    "FullInstanton": "delta_Nstar",
+    "FullInstantonValue": "delta_Nstar",
+    "SlowRollInstanton": "delta_Nstar",
+    "SlowRollInstantonValue": "delta_Nstar",
 }
 
 # Configuration for pool.read_table() calls. Populated in Prompt 7.
