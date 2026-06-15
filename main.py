@@ -14,7 +14,7 @@ from ComputeTargets import (
     SlowRollInstanton,
 )
 from CosmologyConcepts import phi_value, pi_value
-from InflationConcepts import efold_value, efold_array, delta_Nstar, N_efolds
+from InflationConcepts import efold_value, efold_array, delta_Nstar, N_efolds, MasslessDecoupledDiffusion
 from Datastore.SQL.ProfileAgent import ProfileAgent
 from Datastore.SQL.ShardedPool import ShardedPool
 from MetadataConcepts import tolerance, store_tag
@@ -73,10 +73,13 @@ def run_pipeline(
     N_sample: efold_array,
     atol: tolerance,
     rtol: tolerance,
+    diffusion_model=None,
 ):
     potential = model_data["potential"]
     label = model_data["label"]
     print(f"\n>> RUNNING PIPELINE FOR MODEL: {label}")
+
+    dm = diffusion_model or MasslessDecoupledDiffusion()
 
     ## -----------------------------------------------------------------------
     ## STAGE 1: Background inflaton trajectory
@@ -88,6 +91,7 @@ def run_pipeline(
         phi0=phi0, pi0=pi0, potential=potential,
         atol=atol, rtol=rtol,
         N_sample=N_sample, solver_labels={}, tags=[],
+        diffusion_model=dm,
     )
 
     if traj_obj.available:
@@ -119,6 +123,7 @@ def run_pipeline(
             atol=atol,
             rtol=rtol,
             N_sample=N_sample,
+            diffusion_model=dm,
             tags=[],
         )
         for dns in delta_Nstar_array
@@ -159,6 +164,7 @@ def run_pipeline(
             atol=atol,
             rtol=rtol,
             N_sample=N_sample,
+            diffusion_model=dm,
             tags=[],
         )
         for dns in delta_Nstar_array
@@ -261,6 +267,8 @@ def execute(pool: ShardedPool, units: UnitsLike):
     ## -----------------------------------------------------------------------
     ## BUILD MODEL LIST AND RUN PIPELINE
     ## -----------------------------------------------------------------------
+    dm = MasslessDecoupledDiffusion()
+
     model_list = build_model_list(pool, units, args)
     print(f"\n** {len(model_list)} model(s) to process")
 
@@ -276,6 +284,7 @@ def execute(pool: ShardedPool, units: UnitsLike):
             N_sample=N_sample,
             atol=atol,
             rtol=rtol,
+            diffusion_model=dm,
         )
 
 

@@ -20,6 +20,7 @@ from ray import ObjectRef
 
 from CosmologyConcepts.Potentials.AbstractPotential import AbstractPotential
 from Datastore.object import DatastoreObject
+from InflationConcepts.DiffusionModel import AbstractDiffusionModel, MasslessDecoupledDiffusion
 from InflationConcepts.efold_value import efold_value, efold_array
 from InflationConcepts.delta_Nstar import delta_Nstar
 from InflationConcepts.N_efolds import N_efolds
@@ -29,39 +30,207 @@ from MetadataConcepts.tolerance import tolerance
 
 @ray.remote
 def _compute_full_instanton(
-    trajectory_ref: ObjectRef,
+    trajectory,             # InflatonTrajectoryProxy
     phi_init: float,
     phi_final: float,
     pi_SR_init: float,
     N_total: float,
-    potential: AbstractPotential,
+    N_sample: list,
     atol: float,
     rtol: float,
     label: Optional[str] = None,
 ) -> dict:
     """
-    Solve the full MSR instanton BVP in {φ₁, φ₂, P₁, P₂} state space over
-    the interval [0, N_total].
+    Solve the full MSR instanton BVP over [0, N_total] in {φ₁, φ₂, P₁, P₂}.
+
     Boundary conditions:
         φ₁(0) = phi_init,   φ₂(0) = pi_SR_init
-        φ₁(N_total) = phi_final,  P₂(N_total) = 0
-    Algorithm: adjoint/Picard iteration with outer λ-loop.
-    See FullInstanton.compute() docstring for full algorithm specification.
-    Returns a dict with keys:
-        "N_sample":   list[float]
-        "phi1":       list[float]
-        "phi2":       list[float]
-        "P1":         list[float]
-        "P2":         list[float]
-        "msr_action": float
-        "N_total":    float
-        "failure":    bool
-    NOT YET IMPLEMENTED. Will be implemented in Prompt 6.
+        φ₁(N_total) = phi_final,   P₂(N_total) = 0
+
+    Algorithm: adjoint/Picard iteration with outer Newton correction on the
+    Lagrange multiplier λ = P₁(N_total) to enforce the final φ₁ condition.
+
+    MSR action: S = ∫₀^{N_total} D₁₁(φ₁, φ₂) P₁² dN
+
+    Returns dict with keys:
+        "N_sample", "phi1", "phi2", "P1", "P2",
+        "msr_action", "N_total", "failure"
     """
-    raise NotImplementedError(
-        "_compute_full_instanton is not yet implemented. "
-        "See the docstring for the algorithm specification."
+    import numpy as np
+    from scipy.integrate import solve_ivp
+    from scipy.interpolate import make_interp_spline
+
+    traj      = trajectory.get()
+    potential = traj._potential
+    dm        = traj._diffusion_model
+
+    N_GRID     = max(300, len(N_sample) * 3)
+    N_grid     = np.linspace(0.0, N_total, N_GRID)
+    N_grid_rev = N_grid[::-1]
+
+    def _Dij(phi, pi):
+        return dm.D_matrix(phi, pi, potential)
+
+    # ── Initial background guess (P₁=P₂=0) ──────────────────────────────
+    def bg_rhs(N, y):
+        phi, pi = y
+        return [
+            pi,
+            -(3.0 - potential.epsilon(phi, pi)) * pi
+            - potential.dV_dphi(phi) / potential.H_sq(phi, pi),
+        ]
+
+    bg_sol = solve_ivp(
+        bg_rhs, (0.0, N_total), [phi_init, pi_SR_init],
+        method="RK45", t_eval=N_grid, atol=atol, rtol=rtol,
     )
+    if not bg_sol.success:
+        if label:
+            print(f"[{label}] background ODE failed for initial guess")
+        return {"failure": True, "N_total": N_total,
+                "N_sample": [], "phi1": [], "phi2": [],
+                "P1": [], "P2": [], "msr_action": None}
+
+    phi1_curr = bg_sol.y[0].copy()
+    phi2_curr = bg_sol.y[1].copy()
+
+    MAX_OUTER = 50
+    MAX_INNER = 30
+    OUTER_TOL = max(atol * 100.0, 1e-6)
+    INNER_TOL = atol * 10.0
+
+    def picard_inner(lam, phi1_in, phi2_in):
+        """Run Picard iteration for fixed λ = P₁(N_total). Returns arrays or Nones."""
+        p1_arr = phi1_in.copy()
+        p2_arr = phi2_in.copy()
+
+        for _ in range(MAX_INNER):
+            phi1_sp = make_interp_spline(N_grid, p1_arr, k=3)
+            phi2_sp = make_interp_spline(N_grid, p2_arr, k=3)
+
+            # Backward pass: terminal conds P₁(N_total)=λ, P₂(N_total)=0
+            def bwd_rhs(N, y):
+                P1, P2 = y
+                phi1 = float(phi1_sp(N))
+                phi2 = float(phi2_sp(N))
+                eps  = potential.epsilon(phi1, phi2)
+                Hsq  = potential.H_sq(phi1, phi2)
+                return [
+                    P2 * potential.d2V_dphi2(phi1) / Hsq,
+                    -P1 + (3.0 - eps) * P2,
+                ]
+
+            bp = solve_ivp(
+                bwd_rhs, (N_total, 0.0), [lam, 0.0],
+                method="RK45", t_eval=N_grid_rev,
+                atol=atol, rtol=rtol,
+            )
+            if not bp.success:
+                return None, None, None, None
+
+            P1_new = bp.y[0][::-1]
+            P2_new = bp.y[1][::-1]
+            P1_sp  = make_interp_spline(N_grid, P1_new, k=3)
+            P2_sp  = make_interp_spline(N_grid, P2_new, k=3)
+
+            # Forward pass with P forcing
+            def fwd_rhs(N, y):
+                phi1, phi2 = y
+                eps = potential.epsilon(phi1, phi2)
+                Hsq = potential.H_sq(phi1, phi2)
+                D11, D12, D22 = _Dij(phi1, phi2)
+                P1 = float(P1_sp(N))
+                P2 = float(P2_sp(N))
+                return [
+                    phi2 + 2.0*D11*P1 + 2.0*D12*P2,
+                    -(3.0-eps)*phi2 - potential.dV_dphi(phi1)/Hsq
+                    + 2.0*D12*P1 + 2.0*D22*P2,
+                ]
+
+            fp = solve_ivp(
+                fwd_rhs, (0.0, N_total), [phi_init, pi_SR_init],
+                method="RK45", t_eval=N_grid,
+                atol=atol, rtol=rtol,
+            )
+            if not fp.success:
+                return None, None, None, None
+
+            phi1_new = fp.y[0]
+            phi2_new = fp.y[1]
+            inner_res = np.max(np.abs(phi1_new - p1_arr))
+            p1_arr, p2_arr = phi1_new, phi2_new
+            if inner_res < INNER_TOL:
+                break
+
+        return p1_arr, p2_arr, P1_new, P2_new
+
+    # ── Outer Newton loop on λ ────────────────────────────────────────────
+    lam = 0.0
+    phi1_f = phi1_curr
+    phi2_f = phi2_curr
+    P1_f   = np.zeros_like(N_grid)
+    P2_f   = np.zeros_like(N_grid)
+    converged = False
+
+    for outer in range(MAX_OUTER):
+        p1, p2, P1, P2 = picard_inner(lam, phi1_f, phi2_f)
+        if p1 is None:
+            if label:
+                print(f"[{label}] Picard inner failed at outer iter {outer}")
+            break
+
+        residual = p1[-1] - phi_final
+        if label:
+            print(f"[{label}] outer {outer}: λ={lam:.4g}, "
+                  f"φ₁(T)={p1[-1]:.6g}, res={residual:.2e}")
+
+        phi1_f, phi2_f, P1_f, P2_f = p1, p2, P1, P2
+
+        if abs(residual) < OUTER_TOL:
+            converged = True
+            break
+
+        # Finite-difference Newton step
+        dlam  = max(abs(lam) * 1e-4, 1e-6)
+        p1_p, _, _, _ = picard_inner(lam + dlam, phi1_f, phi2_f)
+        if p1_p is not None:
+            dres_dlam = (p1_p[-1] - p1[-1]) / dlam
+            if abs(dres_dlam) > 1e-14:
+                lam -= residual / dres_dlam
+                continue
+        # Fallback nudge
+        lam += (phi_final - p1[-1]) * 0.1
+
+    if not converged:
+        if label:
+            print(f"[{label}] outer loop did not converge "
+                  f"after {MAX_OUTER} iterations")
+        return {"failure": True, "N_total": N_total,
+                "N_sample": [], "phi1": [], "phi2": [],
+                "P1": [], "P2": [], "msr_action": None}
+
+    # ── MSR action ────────────────────────────────────────────────────────
+    D11_arr    = np.array([_Dij(phi1_f[i], phi2_f[i])[0]
+                           for i in range(len(N_grid))])
+    msr_action = float(np.trapezoid(D11_arr * P1_f ** 2, N_grid))
+
+    # ── Output sample ─────────────────────────────────────────────────────
+    N_out = sorted([n for n in N_sample if 0.0 <= n <= N_total]) or [0.0, N_total]
+    N_a   = np.array(N_out)
+
+    def interp(arr):
+        return make_interp_spline(N_grid, arr, k=3)(N_a).tolist()
+
+    return {
+        "failure":    False,
+        "N_total":    N_total,
+        "N_sample":   N_out,
+        "phi1":       interp(phi1_f),
+        "phi2":       interp(phi2_f),
+        "P1":         interp(P1_f),
+        "P2":         interp(P2_f),
+        "msr_action": msr_action,
+    }
 
 
 class FullInstantonValue(DatastoreObject):
@@ -133,6 +302,7 @@ class FullInstanton(DatastoreObject):
         N_sample: Optional[efold_array],
         atol: tolerance,
         rtol: tolerance,
+        diffusion_model: Optional[AbstractDiffusionModel] = None,
         label: Optional[str] = None,
         tags: Optional[List[store_tag]] = None,
     ):
@@ -144,6 +314,7 @@ class FullInstanton(DatastoreObject):
         self._N_sample: Optional[efold_array] = N_sample
         self._atol: tolerance = atol
         self._rtol: tolerance = rtol
+        self._diffusion_model: AbstractDiffusionModel = diffusion_model or MasslessDecoupledDiffusion()
         self._label: Optional[str] = label
         self._tags: List[store_tag] = tags or []
         self._msr_action: Optional[float] = None
@@ -193,59 +364,34 @@ class FullInstanton(DatastoreObject):
         """
         Dispatch the MSR instanton BVP solve as a Ray remote task.
         Returns an ObjectRef. RayWorkPool will call store() once this resolves.
-
-        Algorithm (adjoint/Picard iteration with outer λ-loop):
-
-        1. Retrieve InflatonTrajectoryProxy.get() to access the background trajectory.
-           Extract φ_init = trajectory.phi_at(N_end - N_init) and
-                   φ_final = trajectory.phi_at(N_end - N_final).
-           Set slow-roll initial velocity π_SR = trajectory.pi_at(N_end - N_init).
-
-        2. Compute N_total = (N_init.value - N_final.value) + delta_Nstar.value.
-           Initial conditions: φ₁(0) = φ_init, φ₂(0) = π_SR.
-           Final conditions:   φ₁(N_total) = φ_final, P₂(N_total) = 0.
-
-        3. Build initial mesh guess: stretch background trajectory φ(N) onto [0, N_total].
-           Set P₁ = P₂ = 0 on this initial mesh (noiseless limit as starting point).
-           Set λ = 0 as initial Lagrange multiplier.
-
-        4. Outer loop (Newton/bisection on λ to achieve φ₁(N_total) = φ_final):
-           a. Inner Picard loop:
-              i.  Backward pass: integrate dP/dN backward from N_total → 0.
-                  Terminal conditions: P₂(N_total) = 0, P₁(N_total) = λ.
-              ii. Forward pass: integrate dφ/dN forward from 0 → N_total.
-                  Initial conditions: φ₁(0) = φ_init, φ₂(0) = π_SR.
-              iii. Check inner convergence; update φ trajectory and repeat.
-           b. Outer residual: r = φ₁(N_total) - φ_final.
-           c. Update λ; check outer convergence.
-
-        5. On convergence: compute MSR action.
-
-        6. Sample solution on N_sample grid; populate self._values.
-
-        This method is not yet implemented. It will be implemented in Prompt 6.
         """
         if self._compute_ref is not None:
             raise RuntimeError("compute() already in progress")
-        traj = self._trajectory.get()
+        if getattr(self, "_failure", None) is not None:
+            raise RuntimeError("already computed or failed")
+
         N_end = self._trajectory.N_end
         if N_end is None:
-            raise RuntimeError(
-                "InflatonTrajectory has not been computed yet (N_end is None)"
-            )
+            raise RuntimeError("InflatonTrajectory not yet computed (N_end is None)")
+
+        traj      = self._trajectory.get()
         phi_init  = traj.phi_at(N_end - float(self._N_init))
         phi_final = traj.phi_at(N_end - float(self._N_final))
         pi_SR     = traj.pi_at(N_end - float(self._N_init))
         N_total   = (float(self._N_init) - float(self._N_final)) + float(self._delta_Nstar)
+
+        atol = 10.0 ** self._atol.log10_tol
+        rtol = 10.0 ** self._rtol.log10_tol
+
         self._compute_ref = _compute_full_instanton.remote(
-            trajectory_ref=self._trajectory._ref,
+            trajectory=self._trajectory,
             phi_init=phi_init,
             phi_final=phi_final,
             pi_SR_init=pi_SR,
             N_total=N_total,
-            potential=traj._potential,
-            atol=self._atol.tol,
-            rtol=self._rtol.tol,
+            N_sample=self._N_sample.as_float_list() if self._N_sample else [],
+            atol=atol,
+            rtol=rtol,
             label=label,
         )
         return self._compute_ref

@@ -1,8 +1,10 @@
 from math import log
+from typing import Optional
 
 from CosmologyConcepts.Potentials.AbstractPotential import AbstractPotential
 from CosmologyConcepts.Potentials.model_ids import QUARTIC_POTENTIAL
 from InflationConcepts.quartic_coupling import quartic_coupling
+from Units.base import UnitsLike
 
 
 class QuarticPotential(AbstractPotential):
@@ -13,8 +15,8 @@ class QuarticPotential(AbstractPotential):
     quartic_coupling object.
     """
 
-    def __init__(self, store_id: int, lambda_: quartic_coupling):
-        super().__init__(store_id)
+    def __init__(self, store_id: int, lambda_: quartic_coupling, units: Optional[UnitsLike] = None):
+        super().__init__(store_id, units)
         self._lambda: quartic_coupling = lambda_
         self._lambda_float: float = float(lambda_)
 

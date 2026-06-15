@@ -46,7 +46,7 @@ class sqla_QuadraticPotential_factory(SQLAFactoryBase):
             store_id = row_data.serial
             attribute_set = {"_deserialized": True}
 
-        obj = QuadraticPotential(store_id=store_id, m=m)
+        obj = QuadraticPotential(store_id=store_id, m=m, units=payload.get("units", None))
         for key, value in attribute_set.items():
             setattr(obj, key, value)
         return obj

@@ -75,6 +75,7 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         from ComputeTargets.SlowRollInstanton import SlowRollInstanton
+        from InflationConcepts.DiffusionModel import MasslessDecoupledDiffusion
 
         trajectory = payload["trajectory"]  # InflatonTrajectoryProxy
         N_init = payload["N_init"]  # N_efolds
@@ -83,6 +84,7 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
         atol = payload["atol"]
         rtol = payload["rtol"]
         N_sample = payload.get("N_sample", None)
+        diffusion_model = payload.get("diffusion_model", MasslessDecoupledDiffusion())
         tags = payload.get("tags", [])
         do_not_populate = payload.get("_do_not_populate", False)
         label = payload.get("label", None)
@@ -140,6 +142,7 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
                 N_sample=N_sample,
                 atol=atol,
                 rtol=rtol,
+                diffusion_model=diffusion_model,
                 label=label,
             )
 
@@ -152,8 +155,11 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
             N_sample=N_sample,
             atol=atol,
             rtol=rtol,
+            diffusion_model=diffusion_model,
             label=row_data.label,
         )
+        obj._trajectory_serial = trajectory.store_id
+        obj._delta_Nstar_serial = delta_Nstar_obj.store_id
         if row_data.N_total is not None:
             obj._N_total = row_data.N_total
         if row_data.msr_action is not None:
@@ -298,22 +304,20 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
             return [f"Found {len(rows)} unvalidated SlowRollInstanton records (not pruned)"]
         return []
 
-    def read_table(self, conn, table, tables):
+    def read_table(self, conn, table, tables, units=None):
         from ComputeTargets.SlowRollInstanton import SlowRollInstanton
+        from InflationConcepts.delta_Nstar import delta_Nstar as DeltaNstar
+
+        delta_Nstar_table = tables.get("delta_Nstar")
 
         query = sqla.select(
             table.c.serial,
             table.c.trajectory_serial,
-            table.c.N_init,
-            table.c.N_final,
-            table.c.delta_Nstar_serial,
-            table.c.atol_serial,
-            table.c.rtol_serial,
             table.c.N_total,
             table.c.msr_action,
-            table.c.validated,
+            table.c.delta_Nstar_serial,
             table.c.label,
-        ).filter(table.c.validated == True)
+        ).filter(table.c.msr_action.isnot(None))
 
         rows = conn.execute(query).fetchall()
         results = []
@@ -330,10 +334,25 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
                 rtol=None,
                 label=row.label,
             )
+            obj._trajectory_serial = row.trajectory_serial
+            obj._delta_Nstar_serial = row.delta_Nstar_serial
+
             if row.N_total is not None:
                 obj._N_total = row.N_total
             if row.msr_action is not None:
                 obj._msr_action = row.msr_action
+
+            if delta_Nstar_table is not None:
+                dns_row = conn.execute(
+                    sqla.select(
+                        delta_Nstar_table.c.serial,
+                        delta_Nstar_table.c.value,
+                    ).filter(delta_Nstar_table.c.serial == row.delta_Nstar_serial)
+                ).one_or_none()
+                if dns_row is not None:
+                    obj._delta_Nstar = DeltaNstar(store_id=dns_row.serial, value=dns_row.value)
+
+            self._populate(obj, row, tables, conn)
             results.append(obj)
 
         return results

@@ -21,6 +21,7 @@ from ray import ObjectRef
 from CosmologyConcepts.FieldValues import phi_value, pi_value
 from CosmologyConcepts.Potentials.AbstractPotential import AbstractPotential
 from Datastore.object import DatastoreObject
+from InflationConcepts.DiffusionModel import AbstractDiffusionModel, MasslessDecoupledDiffusion
 from InflationConcepts.efold_value import efold_value, efold_array
 from MetadataConcepts.store_tag import store_tag
 from MetadataConcepts.tolerance import tolerance
@@ -31,31 +32,105 @@ def _compute_inflaton_trajectory(
     phi0_value: float,
     pi0_value: float,
     potential: AbstractPotential,
+    N_sample: list,
     atol: float,
     rtol: float,
     label: Optional[str] = None,
 ) -> dict:
     """
-    Integrate the noiseless inflationary background trajectory from {φ₀, π₀}
-    at N = 0 until ε = π²/(2 Mp²) = 1 (end of inflation).
-    ODE system (Mp = 1 units):
+    Integrate the noiseless inflationary background trajectory from
+    {φ₀, π₀} at N=0 until ε(φ, π) = 1 (end of inflation).
+
+    ODE system:
         dφ/dN = π
-        dπ/dN = -3π - V′(φ)/H²
-    where H² = (V(φ) + ½π²) / 3.
-    Terminal event: ε(N) = π²/2 - 1 = 0, direction = +1 (ε increasing through 1).
+        dπ/dN = -(3 - ε) π - V′(φ)/H²
+
+    Terminal event: potential.epsilon(φ, π) - 1 = 0, ε increasing (+1 direction).
     Solver fallback chain: RK45 → DOP853 → Radau → BDF → LSODA.
-    Returns a dict with keys:
-        "N_end":    float — e-folding number at end of inflation
-        "N_sample": list[float] — N values of the sampled trajectory
-        "phi":      list[float] — φ values at sample points
-        "pi":       list[float] — π values at sample points
-        "failure":  bool — True if integration failed
-    NOT YET IMPLEMENTED. Will be implemented in Prompt 6.
+
+    Returns dict with keys:
+        "N_end":    float — e-folding coordinate at end of inflation
+        "N_sample": list[float] — N values sampled within [0, N_end]
+        "phi":      list[float]
+        "pi":       list[float]
+        "failure":  bool
     """
-    raise NotImplementedError(
-        "_compute_inflaton_trajectory is not yet implemented. "
-        "See the docstring for the algorithm specification."
-    )
+    import numpy as np
+    from scipy.integrate import solve_ivp
+
+    # Guard: already past end of inflation?
+    if potential.epsilon(phi0_value, pi0_value) >= 1.0:
+        if label:
+            print(f"[{label}] epsilon >= 1 at initial conditions")
+        return {"failure": True, "N_end": None, "N_sample": [], "phi": [], "pi": []}
+
+    def rhs(N, y):
+        phi, pi = y
+        Hsq = potential.H_sq(phi, pi)
+        eps = potential.epsilon(phi, pi)
+        return [pi, -(3.0 - eps) * pi - potential.dV_dphi(phi) / Hsq]
+
+    def end_of_inflation(N, y):
+        return potential.epsilon(y[0], y[1]) - 1.0
+
+    end_of_inflation.terminal  = True
+    end_of_inflation.direction = +1
+
+    y0     = [phi0_value, pi0_value]
+    N_span = (0.0, 1000.0)
+
+    if label:
+        print(f"[{label}] integrating background trajectory: "
+              f"phi0={phi0_value:.6g}, pi0={pi0_value:.6g}")
+
+    SOLVERS = ["RK45", "DOP853", "Radau", "BDF", "LSODA"]
+    sol = None
+    for solver in SOLVERS:
+        try:
+            candidate = solve_ivp(
+                rhs, N_span, y0,
+                method=solver,
+                events=[end_of_inflation],
+                dense_output=True,
+                atol=atol, rtol=rtol,
+            )
+            if candidate.success or candidate.status == 1:
+                sol = candidate
+                if label:
+                    print(f"[{label}] solver {solver} succeeded "
+                          f"(status={candidate.status})")
+                break
+            if label:
+                print(f"[{label}] solver {solver} "
+                      f"status={candidate.status}: {candidate.message}")
+        except Exception as exc:
+            if label:
+                print(f"[{label}] solver {solver} raised: {exc}")
+
+    if sol is None:
+        return {"failure": True, "N_end": None, "N_sample": [], "phi": [], "pi": []}
+
+    if len(sol.t_events[0]) == 0:
+        if label:
+            print(f"[{label}] inflation did not end within N_span=1000")
+        return {"failure": True, "N_end": None, "N_sample": [], "phi": [], "pi": []}
+
+    N_end = float(sol.t_events[0][0])
+    if label:
+        print(f"[{label}] N_end = {N_end:.6g}")
+
+    N_out = sorted([n for n in N_sample if 0.0 <= n <= N_end])
+    if not N_out:
+        N_out = [0.0, N_end]
+
+    vals = sol.sol(np.array(N_out))
+    return {
+        "failure":  False,
+        "N_end":    N_end,
+        "N_sample": N_out,
+        "phi":      vals[0].tolist(),
+        "pi":       vals[1].tolist(),
+    }
 
 
 class InflatonTrajectoryValue(DatastoreObject):
@@ -111,6 +186,7 @@ class InflatonTrajectory(DatastoreObject):
         N_sample: Optional[efold_array],
         atol: tolerance,
         rtol: tolerance,
+        diffusion_model: Optional[AbstractDiffusionModel] = None,
         label: Optional[str] = None,
         tags: Optional[List[store_tag]] = None,
     ):
@@ -121,6 +197,7 @@ class InflatonTrajectory(DatastoreObject):
         self._N_sample: Optional[efold_array] = N_sample
         self._atol: tolerance = atol
         self._rtol: tolerance = rtol
+        self._diffusion_model: AbstractDiffusionModel = diffusion_model or MasslessDecoupledDiffusion()
         self._label: Optional[str] = label
         self._tags: List[store_tag] = tags or []
         self._N_end: Optional[float] = None
@@ -171,28 +248,46 @@ class InflatonTrajectory(DatastoreObject):
         return self._values
 
     def phi_at(self, N: float) -> float:
-        """Interpolate φ at arbitrary N using a cubic spline built from _values."""
-        if not self._values:
-            raise RuntimeError("InflatonTrajectory has not been computed yet")
-        if not hasattr(self, "_phi_spline"):
-            import numpy as np
-            from scipy.interpolate import make_interp_spline
-            Ns = np.array([v.N.N for v in self._values])
-            phis = np.array([v.phi for v in self._values])
-            self._phi_spline = make_interp_spline(Ns, phis)
-        return float(self._phi_spline(N))
+        """Interpolate φ at arbitrary N using a cubic spline built from _values or _raw_sample."""
+        if self._values:
+            if not hasattr(self, "_phi_spline"):
+                import numpy as np
+                from scipy.interpolate import make_interp_spline
+                Ns = np.array([v.N.N for v in self._values])
+                phis = np.array([v.phi for v in self._values])
+                self._phi_spline = make_interp_spline(Ns, phis)
+            return float(self._phi_spline(N))
+        raw = getattr(self, "_raw_sample", None)
+        if raw:
+            if not hasattr(self, "_phi_spline_raw"):
+                import numpy as np
+                from scipy.interpolate import make_interp_spline
+                self._phi_spline_raw = make_interp_spline(
+                    np.array(raw["N_sample"]), np.array(raw["phi"])
+                )
+            return float(self._phi_spline_raw(N))
+        raise RuntimeError("InflatonTrajectory has not been computed yet")
 
     def pi_at(self, N: float) -> float:
-        """Interpolate π at arbitrary N using a cubic spline built from _values."""
-        if not self._values:
-            raise RuntimeError("InflatonTrajectory has not been computed yet")
-        if not hasattr(self, "_pi_spline"):
-            import numpy as np
-            from scipy.interpolate import make_interp_spline
-            Ns = np.array([v.N.N for v in self._values])
-            pis = np.array([v.pi for v in self._values])
-            self._pi_spline = make_interp_spline(Ns, pis)
-        return float(self._pi_spline(N))
+        """Interpolate π at arbitrary N using a cubic spline built from _values or _raw_sample."""
+        if self._values:
+            if not hasattr(self, "_pi_spline"):
+                import numpy as np
+                from scipy.interpolate import make_interp_spline
+                Ns = np.array([v.N.N for v in self._values])
+                pis = np.array([v.pi for v in self._values])
+                self._pi_spline = make_interp_spline(Ns, pis)
+            return float(self._pi_spline(N))
+        raw = getattr(self, "_raw_sample", None)
+        if raw:
+            if not hasattr(self, "_pi_spline_raw"):
+                import numpy as np
+                from scipy.interpolate import make_interp_spline
+                self._pi_spline_raw = make_interp_spline(
+                    np.array(raw["N_sample"]), np.array(raw["pi"])
+                )
+            return float(self._pi_spline_raw(N))
+        raise RuntimeError("InflatonTrajectory has not been computed yet")
 
     def compute(self, label: Optional[str] = None) -> ObjectRef:
         """
@@ -201,12 +296,22 @@ class InflatonTrajectory(DatastoreObject):
         """
         if self._compute_ref is not None:
             raise RuntimeError("compute() already in progress")
+        if getattr(self, "_failure", None) is not None:
+            raise RuntimeError("already computed or failed")
+
+        N_sample_list = (
+            self._N_sample.as_float_list() if self._N_sample is not None else []
+        )
+        atol = 10.0 ** self._atol.log10_tol
+        rtol = 10.0 ** self._rtol.log10_tol
+
         self._compute_ref = _compute_inflaton_trajectory.remote(
             phi0_value=float(self._phi0),
             pi0_value=float(self._pi0),
             potential=self._potential,
-            atol=self._atol.tol,
-            rtol=self._rtol.tol,
+            N_sample=N_sample_list,
+            atol=atol,
+            rtol=rtol,
             label=label,
         )
         return self._compute_ref

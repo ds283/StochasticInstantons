@@ -5,3 +5,7 @@ from InflationConcepts.inflaton_mass import inflaton_mass
 from InflationConcepts.quartic_coupling import quartic_coupling
 from InflationConcepts.QuadraticPotential import QuadraticPotential
 from InflationConcepts.QuarticPotential import QuarticPotential
+from InflationConcepts.DiffusionModel import (
+    AbstractDiffusionModel,
+    MasslessDecoupledDiffusion,
+)

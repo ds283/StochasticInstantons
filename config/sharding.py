@@ -41,8 +41,33 @@ sharded_tables = {
     "SlowRollInstantonValue": "delta_Nstar",
 }
 
-# Configuration for pool.read_table() calls. Populated in Prompt 7.
-read_table_config = {}
+# Configuration for pool.read_table() calls.
+# Only replicated tables may appear here (ShardedPool enforces this).
+# tables_arg=True causes Datastore to pass its full tables dict as `tables` kwarg.
+read_table_config = {
+    "InflatonTrajectory": {"tables_arg": True},
+}
 
-# Configuration for pool.inventory() calls. Populated in Prompt 7.
-inventory_config = {}
+# Merge policies for pool.inventory() calls on sharded tables.
+# Each field in the factory's inventory() return value needs a merge policy:
+#   lists     → "extend"
+#   datetimes → "earliest" or "latest"
+_instanton_merge = {
+    "validated": {
+        "labels": "extend",
+        "versions": "extend",
+        "earliest_timestamp": "earliest",
+        "latest_timestamp": "latest",
+    },
+    "unvalidated": {
+        "labels": "extend",
+        "versions": "extend",
+        "earliest_timestamp": "earliest",
+        "latest_timestamp": "latest",
+    },
+}
+
+inventory_config = {
+    "FullInstanton": _instanton_merge,
+    "SlowRollInstanton": _instanton_merge,
+}
