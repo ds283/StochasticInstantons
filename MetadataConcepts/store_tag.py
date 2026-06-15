@@ -1,0 +1,38 @@
+# (c) University of Sussex 2026
+# Created by David Seery
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from Datastore import DatastoreObject
+
+
+class store_tag(DatastoreObject):
+    def __init__(self, store_id: int, label: str):
+        """
+        Construct a Datastore-backed object that is used to tag other objects held in the Datastore.
+        The initial use case is to identify integrations that have sufficiently dense z-sampling
+        to be used for particular purposes - we need a way to tell an integration of one type from
+        another.
+        """
+        if store_id is None:
+            raise ValueError("Store ID cannot be None")
+        DatastoreObject.__init__(self, store_id)
+
+        self._label = label
+
+    @property
+    def label(self) -> str:
+        return self._label
+
+    def __str__(self):
+        return self._label
