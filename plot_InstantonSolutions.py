@@ -26,6 +26,7 @@ from matplotlib import pyplot as plt
 from ComputeTargets import InflatonTrajectoryProxy
 from InflationConcepts import MasslessDecoupledDiffusion
 from Datastore.SQL.ShardedPool import ShardedPool
+from RayTools.RayWorkPool import RayWorkPool
 from Units import Planck_units
 from config.argument_parser import create_argument_parser
 from config.sharding import (
@@ -342,6 +343,13 @@ def _plot_msr_sweep_item(x_label, fi_points, sri_points, fixed_desc, potential_n
                           output_dir, fmt, swept_name)
 
 
+def _dispatch_plot_work(item):
+    """task_builder for RayWorkPool: item is a (remote_fn, args) pair already
+    fully prepared by the data-fetch stage; just submit it."""
+    remote_fn, args = item
+    return remote_fn.remote(*args)
+
+
 # ── Sweep-direction data fetching ────────────────────────────────────────────
 
 def _instanton_key_payload(traj_proxy, N_init, N_final, dns, atol, rtol):
@@ -366,7 +374,7 @@ def _qualifying_action(obj):
 
 def _sweep_Ninit_or_Nfinal(pool, traj_proxy, potential, out_dir, fmt,
                             swept_name, swept_array, fixed_other_array, dns_array,
-                            atol, rtol, max_combos, pending_refs):
+                            atol, rtol, max_combos, work_items):
     """swept_name in {"N_init", "N_final"}. delta_Nstar is one of the two
     fixed 'other' dimensions here, so every point on one curve already
     shares one shard — one object_get_vectorized() call per curve."""
@@ -405,10 +413,10 @@ def _sweep_Ninit_or_Nfinal(pool, traj_proxy, potential, out_dir, fmt,
             x_label = r"$N_{\rm final}$"
 
         if any(a is not None for _, a in fi_points) or any(a is not None for _, a in sri_points):
-            pending_refs.append(_plot_msr_sweep_item.remote(
+            work_items.append((_plot_msr_sweep_item, (
                 x_label, fi_points, sri_points, fixed_desc,
                 potential.name, str(out_dir), fmt, swept_name,
-            ))
+            )))
 
         for rep_v in _representative_points(swept_array):
             if swept_name == "N_init":
@@ -424,15 +432,15 @@ def _sweep_Ninit_or_Nfinal(pool, traj_proxy, potential, out_dir, fmt,
             sri_full = sri_full if (sri_full is not None and sri_full.available) else None
             if fi_full is None and sri_full is None:
                 continue
-            pending_refs.append(_plot_fields_item.remote(
+            work_items.append((_plot_fields_item, (
                 fi_full, sri_full, float(N_init_v), float(N_final_v), float(dns_val),
                 potential, str(out_dir), fmt,
-            ))
+            )))
 
 
 def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
                         dns_array, N_init_array, N_final_array,
-                        atol, rtol, max_combos, pending_refs):
+                        atol, rtol, max_combos, work_items):
     """Each curve point has a different delta_Nstar (a different shard), but
     across the selected (N_init, N_final) combos, points sharing one
     delta_Nstar value do share a shard — bin across combos by delta_Nstar
@@ -467,10 +475,10 @@ def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
 
         fixed_desc = f"Ninit={float(N_init_v):.3g}_Nfinal={float(N_final_v):.3g}"
         if any(a is not None for _, a in fi_points) or any(a is not None for _, a in sri_points):
-            pending_refs.append(_plot_msr_sweep_item.remote(
+            work_items.append((_plot_msr_sweep_item, (
                 r"$\delta N_\star$", fi_points, sri_points, fixed_desc,
                 potential.name, str(out_dir), fmt, "delta_Nstar",
-            ))
+            )))
 
         for rep_dns in _representative_points(dns_array):
             payload = _instanton_key_payload(traj_proxy, N_init_v, N_final_v, rep_dns, atol, rtol)
@@ -482,10 +490,10 @@ def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
             sri_full = sri_full if (sri_full is not None and sri_full.available) else None
             if fi_full is None and sri_full is None:
                 continue
-            pending_refs.append(_plot_fields_item.remote(
+            work_items.append((_plot_fields_item, (
                 fi_full, sri_full, float(N_init_v), float(N_final_v), float(rep_dns),
                 potential, str(out_dir), fmt,
-            ))
+            )))
 
 
 # ── Main pipeline ─────────────────────────────────────────────────────────────
@@ -535,7 +543,7 @@ def run_plots(pool, units, args):
 
     max_combos = args.max_combinations
 
-    pending_refs = []
+    work_items = []
     for traj in traj_list:
         potential = traj._potential
         traj_proxy = InflatonTrajectoryProxy(traj)
@@ -543,28 +551,46 @@ def run_plots(pool, units, args):
         traj_dir.mkdir(parents=True, exist_ok=True)
         print(f"\n>> Trajectory {traj.store_id} ({potential.name}) -> {traj_dir}/")
 
-        pending_refs.append(_plot_trajectory_item.remote(traj, potential, str(traj_dir), fmt))
+        work_items.append((_plot_trajectory_item, (traj, potential, str(traj_dir), fmt)))
 
         _sweep_Ninit_or_Nfinal(
             pool, traj_proxy, potential, traj_dir / "N-init", fmt,
             swept_name="N_init", swept_array=N_init_array,
             fixed_other_array=N_final_array, dns_array=dns_array,
-            atol=atol, rtol=rtol, max_combos=max_combos, pending_refs=pending_refs,
+            atol=atol, rtol=rtol, max_combos=max_combos, work_items=work_items,
         )
         _sweep_Ninit_or_Nfinal(
             pool, traj_proxy, potential, traj_dir / "N-final", fmt,
             swept_name="N_final", swept_array=N_final_array,
             fixed_other_array=N_init_array, dns_array=dns_array,
-            atol=atol, rtol=rtol, max_combos=max_combos, pending_refs=pending_refs,
+            atol=atol, rtol=rtol, max_combos=max_combos, work_items=work_items,
         )
         _sweep_delta_Nstar(
             pool, traj_proxy, potential, traj_dir / "delta-Nstar", fmt,
             dns_array=dns_array, N_init_array=N_init_array, N_final_array=N_final_array,
-            atol=atol, rtol=rtol, max_combos=max_combos, pending_refs=pending_refs,
+            atol=atol, rtol=rtol, max_combos=max_combos, work_items=work_items,
         )
 
-    print(f"\n>> Waiting for {len(pending_refs)} plot(s) to render...")
-    ray.get(pending_refs)
+    print(f"\n>> Dispatching {len(work_items)} plot(s) for rendering...")
+    work_queue = RayWorkPool(
+        pool,
+        work_items,
+        task_builder=_dispatch_plot_work,
+        compute_handler=None,
+        store_handler=None,
+        persist_handler=None,
+        available_handler=None,
+        validation_handler=None,
+        post_handler=None,
+        label_builder=None,
+        create_batch_size=10,
+        process_batch_size=10,
+        notify_batch_size=50,
+        notify_time_interval=120,
+        title="GENERATING InstantonSolutions PLOTS",
+        store_results=False,
+    )
+    work_queue.run()
 
     print(f"\n>> Plots written to {output_dir}/")
 
