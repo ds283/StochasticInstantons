@@ -76,6 +76,7 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
                 sqla.Column("N_total", sqla.Float(64), nullable=True),
                 sqla.Column("msr_action", sqla.Float(64), nullable=True),
                 sqla.Column("label", sqla.Text, nullable=True),
+                sqla.Column("diagnostics_json", sqla.Text, nullable=True),
                 sqla.Column(
                     "validated",
                     sqla.Boolean,
@@ -107,6 +108,7 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
             table.c.N_total,
             table.c.msr_action,
             table.c.label,
+            table.c.diagnostics_json,
         ).filter(
             table.c.validated == True,
             table.c.trajectory_serial == trajectory.store_id,
@@ -157,6 +159,9 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
             obj._N_total = row_data.N_total
         if row_data.msr_action is not None:
             obj._msr_action = row_data.msr_action
+        obj._diagnostics = (
+            json.loads(row_data.diagnostics_json) if row_data.diagnostics_json else None
+        )
 
         if not do_not_populate:
             self._populate(obj, row_data, tables, conn)
@@ -199,6 +204,8 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
             )
 
     def store(self, obj, conn, table, inserter, tables, inserters):
+        diagnostics_json = json.dumps(obj.diagnostics) if obj.diagnostics is not None else None
+
         if obj.failure:
             store_id = inserter(conn, {
                 "trajectory_serial": obj._trajectory.store_id,
@@ -211,6 +218,7 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
                 "N_total": None,
                 "msr_action": None,
                 "label": obj._label,
+                "diagnostics_json": diagnostics_json,
                 "validated": False,
             })
             obj._my_id = store_id
@@ -227,6 +235,7 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
             "N_total": getattr(obj, "_N_total", None),
             "msr_action": obj._msr_action,
             "label": obj._label,
+            "diagnostics_json": diagnostics_json,
             "validated": False,
         })
         obj._my_id = store_id
@@ -302,6 +311,7 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
             table.c.N_final_serial,
             table.c.delta_Nstar_serial,
             table.c.label,
+            table.c.diagnostics_json,
         ).filter(table.c.msr_action.isnot(None))
 
         rows = conn.execute(query).fetchall()
@@ -326,6 +336,9 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
                 obj._N_total = row.N_total
             if row.msr_action is not None:
                 obj._msr_action = row.msr_action
+            obj._diagnostics = (
+                json.loads(row.diagnostics_json) if row.diagnostics_json else None
+            )
 
             if delta_Nstar_table is not None:
                 dns_row = conn.execute(

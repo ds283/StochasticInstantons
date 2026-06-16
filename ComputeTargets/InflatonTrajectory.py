@@ -53,21 +53,35 @@ def _compute_inflaton_trajectory(
     This guarantees both 0 and N_end are members of the grid.
 
     Returns dict with keys:
-        "N_end":    float — e-folding coordinate at end of inflation
-        "N_sample": list[float] — N values sampled within [0, N_end]
-        "phi":      list[float]
-        "pi":       list[float]
-        "failure":  bool
+        "N_end":       float — e-folding coordinate at end of inflation
+        "N_sample":    list[float] — N values sampled within [0, N_end]
+        "phi":         list[float]
+        "pi":          list[float]
+        "failure":     bool
+        "diagnostics": dict — solver fallback chain and step-count metadata
     """
     import math
+    import time
     import numpy as np
     from scipy.integrate import solve_ivp
+
+    compute_start = time.perf_counter()
 
     # Guard: already past end of inflation?
     if potential.epsilon(phi0_value, pi0_value) >= 1.0:
         if label:
             print(f"[{label}] epsilon >= 1 at initial conditions")
-        return {"failure": True, "N_end": None, "N_sample": [], "phi": [], "pi": []}
+        return {
+            "failure": True, "N_end": None, "N_sample": [], "phi": [], "pi": [],
+            "diagnostics": {
+                "compute_time": time.perf_counter() - compute_start,
+                "solver_used": None,
+                "solver_attempts": [],
+                "RHS_evaluations": None,
+                "n_steps": None,
+                "termination_status": None,
+            },
+        }
 
     def rhs(N, y):
         phi, pi = y
@@ -90,6 +104,8 @@ def _compute_inflaton_trajectory(
 
     SOLVERS = ["RK45", "DOP853", "Radau", "BDF", "LSODA"]
     sol = None
+    solver_used = None
+    solver_attempts = []
     for solver in SOLVERS:
         try:
             candidate = solve_ivp(
@@ -101,24 +117,56 @@ def _compute_inflaton_trajectory(
             )
             if candidate.success or candidate.status == 1:
                 sol = candidate
+                solver_used = solver
+                solver_attempts.append({
+                    "solver": solver, "status": int(candidate.status),
+                    "message": candidate.message,
+                })
                 if label:
                     print(f"[{label}] solver {solver} succeeded "
                           f"(status={candidate.status})")
                 break
+            solver_attempts.append({
+                "solver": solver, "status": int(candidate.status),
+                "message": candidate.message,
+            })
             if label:
                 print(f"[{label}] solver {solver} "
                       f"status={candidate.status}: {candidate.message}")
         except Exception as exc:
+            solver_attempts.append({
+                "solver": solver, "status": None, "message": str(exc),
+            })
             if label:
                 print(f"[{label}] solver {solver} raised: {exc}")
 
     if sol is None:
-        return {"failure": True, "N_end": None, "N_sample": [], "phi": [], "pi": []}
+        return {
+            "failure": True, "N_end": None, "N_sample": [], "phi": [], "pi": [],
+            "diagnostics": {
+                "compute_time": time.perf_counter() - compute_start,
+                "solver_used": None,
+                "solver_attempts": solver_attempts,
+                "RHS_evaluations": None,
+                "n_steps": None,
+                "termination_status": None,
+            },
+        }
 
     if len(sol.t_events[0]) == 0:
         if label:
             print(f"[{label}] inflation did not end within N_span=1000")
-        return {"failure": True, "N_end": None, "N_sample": [], "phi": [], "pi": []}
+        return {
+            "failure": True, "N_end": None, "N_sample": [], "phi": [], "pi": [],
+            "diagnostics": {
+                "compute_time": time.perf_counter() - compute_start,
+                "solver_used": solver_used,
+                "solver_attempts": solver_attempts,
+                "RHS_evaluations": int(sol.nfev),
+                "n_steps": len(sol.t),
+                "termination_status": int(sol.status),
+            },
+        }
 
     N_end = float(sol.t_events[0][0])
     if label:
@@ -136,6 +184,14 @@ def _compute_inflaton_trajectory(
         "N_sample": N_out,
         "phi":      vals[0].tolist(),
         "pi":       vals[1].tolist(),
+        "diagnostics": {
+            "compute_time": time.perf_counter() - compute_start,
+            "solver_used": solver_used,
+            "solver_attempts": solver_attempts,
+            "RHS_evaluations": int(sol.nfev),
+            "n_steps": len(sol.t),
+            "termination_status": int(sol.status),
+        },
     }
 
 
@@ -228,6 +284,11 @@ class InflatonTrajectory(DatastoreObject):
     def N_end(self) -> Optional[float]:
         """E-folding coordinate at end of inflation; None until compute() succeeds."""
         return self._N_end
+
+    @property
+    def diagnostics(self) -> Optional[dict]:
+        """Solver fallback chain and step-count metadata; None until compute() resolves."""
+        return getattr(self, "_diagnostics", None)
 
     @property
     def phi0(self) -> phi_value:
@@ -325,6 +386,7 @@ class InflatonTrajectory(DatastoreObject):
             raise RuntimeError("store() called but no compute() is in progress")
         data = ray.get(self._compute_ref)
         self._compute_ref = None
+        self._diagnostics = data.get("diagnostics")
         if data.get("failure", False):
             self._failure = True
             self._values = []

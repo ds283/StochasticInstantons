@@ -55,11 +55,15 @@ def _compute_full_instanton(
 
     Returns dict with keys:
         "N_sample", "phi1", "phi2", "P1", "P2",
-        "msr_action", "N_total", "failure"
+        "msr_action", "N_total", "failure", "diagnostics"
     """
+    import time
     import numpy as np
     from scipy.integrate import solve_ivp
     from scipy.interpolate import make_interp_spline
+
+    compute_start = time.perf_counter()
+    ode_solve_count = 0
 
     traj      = trajectory.get()
     potential = traj._potential
@@ -85,12 +89,29 @@ def _compute_full_instanton(
         bg_rhs, (0.0, N_total), [phi_init, pi_SR_init],
         method="RK45", t_eval=N_grid, atol=atol, rtol=rtol,
     )
+    ode_solve_count += 1
     if not bg_sol.success:
         if label:
             print(f"[{label}] background ODE failed for initial guess")
-        return {"failure": True, "N_total": N_total,
-                "N_sample": [], "phi1": [], "phi2": [],
-                "P1": [], "P2": [], "msr_action": None}
+        return {
+            "failure": True, "N_total": N_total,
+            "N_sample": [], "phi1": [], "phi2": [],
+            "P1": [], "P2": [], "msr_action": None,
+            "diagnostics": {
+                "compute_time": time.perf_counter() - compute_start,
+                "converged": False,
+                "final_residual": None,
+                "total_ode_solves": ode_solve_count,
+                "outer_iterations": 0,
+                "newton_fallback_count": 0,
+                "final_lambda": None,
+                "picard_iterations_per_outer": [],
+                "min_picard_iterations": None,
+                "max_picard_iterations": None,
+                "mean_picard_iterations": None,
+                "mean_time_per_picard_iteration": None,
+            },
+        }
 
     phi1_curr = bg_sol.y[0].copy()
     phi2_curr = bg_sol.y[1].copy()
@@ -102,10 +123,13 @@ def _compute_full_instanton(
 
     def picard_inner(lam, phi1_in, phi2_in):
         """Run Picard iteration for fixed λ = P₁(N_total). Returns arrays or Nones."""
+        nonlocal ode_solve_count
         p1_arr = phi1_in.copy()
         p2_arr = phi2_in.copy()
+        n_inner_iters = 0
 
         for _ in range(MAX_INNER):
+            n_inner_iters += 1
             phi1_sp = make_interp_spline(N_grid, p1_arr, k=3)
             phi2_sp = make_interp_spline(N_grid, p2_arr, k=3)
 
@@ -126,8 +150,9 @@ def _compute_full_instanton(
                 method="RK45", t_eval=N_grid_rev,
                 atol=atol, rtol=rtol,
             )
+            ode_solve_count += 1
             if not bp.success:
-                return None, None, None, None
+                return None, None, None, None, n_inner_iters
 
             P1_new = bp.y[0][::-1]
             P2_new = bp.y[1][::-1]
@@ -153,8 +178,9 @@ def _compute_full_instanton(
                 method="RK45", t_eval=N_grid,
                 atol=atol, rtol=rtol,
             )
+            ode_solve_count += 1
             if not fp.success:
-                return None, None, None, None
+                return None, None, None, None, n_inner_iters
 
             phi1_new = fp.y[0]
             phi2_new = fp.y[1]
@@ -163,7 +189,7 @@ def _compute_full_instanton(
             if inner_res < INNER_TOL:
                 break
 
-        return p1_arr, p2_arr, P1_new, P2_new
+        return p1_arr, p2_arr, P1_new, P2_new, n_inner_iters
 
     # ── Outer Newton loop on λ ────────────────────────────────────────────
     lam = 0.0
@@ -172,15 +198,27 @@ def _compute_full_instanton(
     P1_f   = np.zeros_like(N_grid)
     P2_f   = np.zeros_like(N_grid)
     converged = False
+    final_residual = None
+    outer_iterations = 0
+    newton_fallback_count = 0
+    picard_iterations_per_outer = []
+    picard_time_total = 0.0
+    picard_iters_total = 0
 
     for outer in range(MAX_OUTER):
-        p1, p2, P1, P2 = picard_inner(lam, phi1_f, phi2_f)
+        outer_iterations = outer + 1
+        picard_start = time.perf_counter()
+        p1, p2, P1, P2, n_inner = picard_inner(lam, phi1_f, phi2_f)
+        picard_time_total += time.perf_counter() - picard_start
+        picard_iters_total += n_inner
+        picard_iterations_per_outer.append(n_inner)
         if p1 is None:
             if label:
                 print(f"[{label}] Picard inner failed at outer iter {outer}")
             break
 
         residual = p1[-1] - phi_final
+        final_residual = abs(residual)
         if label:
             print(f"[{label}] outer {outer}: λ={lam:.4g}, "
                   f"φ₁(T)={p1[-1]:.6g}, res={residual:.2e}")
@@ -193,22 +231,49 @@ def _compute_full_instanton(
 
         # Finite-difference Newton step
         dlam  = max(abs(lam) * 1e-4, 1e-6)
-        p1_p, _, _, _ = picard_inner(lam + dlam, phi1_f, phi2_f)
+        picard_start = time.perf_counter()
+        p1_p, _, _, _, n_inner_p = picard_inner(lam + dlam, phi1_f, phi2_f)
+        picard_time_total += time.perf_counter() - picard_start
+        picard_iters_total += n_inner_p
         if p1_p is not None:
             dres_dlam = (p1_p[-1] - p1[-1]) / dlam
             if abs(dres_dlam) > 1e-14:
                 lam -= residual / dres_dlam
                 continue
         # Fallback nudge
+        newton_fallback_count += 1
         lam += (phi_final - p1[-1]) * 0.1
+
+    diagnostics = {
+        "compute_time": time.perf_counter() - compute_start,
+        "converged": converged,
+        "final_residual": final_residual,
+        "total_ode_solves": ode_solve_count,
+        "outer_iterations": outer_iterations,
+        "newton_fallback_count": newton_fallback_count,
+        "final_lambda": lam if converged else None,
+        "picard_iterations_per_outer": picard_iterations_per_outer,
+        "min_picard_iterations": min(picard_iterations_per_outer) if picard_iterations_per_outer else None,
+        "max_picard_iterations": max(picard_iterations_per_outer) if picard_iterations_per_outer else None,
+        "mean_picard_iterations": (
+            sum(picard_iterations_per_outer) / len(picard_iterations_per_outer)
+            if picard_iterations_per_outer else None
+        ),
+        "mean_time_per_picard_iteration": (
+            picard_time_total / picard_iters_total if picard_iters_total else None
+        ),
+    }
 
     if not converged:
         if label:
             print(f"[{label}] outer loop did not converge "
                   f"after {MAX_OUTER} iterations")
-        return {"failure": True, "N_total": N_total,
-                "N_sample": [], "phi1": [], "phi2": [],
-                "P1": [], "P2": [], "msr_action": None}
+        return {
+            "failure": True, "N_total": N_total,
+            "N_sample": [], "phi1": [], "phi2": [],
+            "P1": [], "P2": [], "msr_action": None,
+            "diagnostics": diagnostics,
+        }
 
     # ── MSR action ────────────────────────────────────────────────────────
     D11_arr    = np.array([_Dij(phi1_f[i], phi2_f[i])[0]
@@ -231,6 +296,7 @@ def _compute_full_instanton(
         "P1":         interp(P1_f),
         "P2":         interp(P2_f),
         "msr_action": msr_action,
+        "diagnostics": diagnostics,
     }
 
 
@@ -357,6 +423,11 @@ class FullInstanton(DatastoreObject):
         return self._msr_action
 
     @property
+    def diagnostics(self) -> Optional[dict]:
+        """Outer Newton / inner Picard iteration diagnostics; None until compute() resolves."""
+        return getattr(self, "_diagnostics", None)
+
+    @property
     def values(self) -> List[FullInstantonValue]:
         """Sampled state-vector values; empty until compute() succeeds."""
         return self._values
@@ -411,6 +482,7 @@ class FullInstanton(DatastoreObject):
             raise RuntimeError("store() called but no compute() is in progress")
         data = ray.get(self._compute_ref)
         self._compute_ref = None
+        self._diagnostics = data.get("diagnostics")
         if data.get("failure", False):
             self._failure = True
             self._values = []

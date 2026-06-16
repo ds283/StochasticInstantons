@@ -55,12 +55,16 @@ def _compute_slow_roll_instanton(
     MSR action: S = ∫₀^{N_total} D₁₁(φ) P₁² dN
 
     Returns dict with keys:
-        "N_sample", "phi", "P1", "msr_action", "N_total", "failure"
+        "N_sample", "phi", "P1", "msr_action", "N_total", "failure", "diagnostics"
     """
+    import time
     import numpy as np
     from scipy.integrate import solve_ivp
     from scipy.optimize import brentq
     from scipy.interpolate import make_interp_spline
+
+    compute_start = time.perf_counter()
+    ode_solve_count = 0
 
     traj      = trajectory.get()
     potential = traj._potential
@@ -85,9 +89,11 @@ def _compute_slow_roll_instanton(
         return [dphi, dP1]
 
     def shoot(P1_0):
+        nonlocal ode_solve_count
         sol = solve_ivp(rhs, (0.0, N_total), [phi_init, P1_0],
                         method="RK45", t_eval=[N_total],
                         atol=atol, rtol=rtol)
+        ode_solve_count += 1
         if not sol.success:
             return np.nan
         return float(sol.y[0, -1]) - phi_final
@@ -103,36 +109,81 @@ def _compute_slow_roll_instanton(
 
     f_lo, f_hi = shoot(P1_lo), shoot(P1_hi)
 
+    bracket_expansions = 0
     for _ in range(12):
         if not (np.isnan(f_lo) or np.isnan(f_hi)) and f_lo * f_hi < 0:
             break
         P1_lo *= 2.0; P1_hi *= 2.0
         f_lo, f_hi = shoot(P1_lo), shoot(P1_hi)
+        bracket_expansions += 1
 
     if np.isnan(f_lo) or np.isnan(f_hi) or f_lo * f_hi >= 0:
         if label:
             print(f"[{label}] SR instanton: bracketing failed "
                   f"(f_lo={f_lo:.2e}, f_hi={f_hi:.2e})")
-        return {"failure": True, "N_total": N_total,
-                "N_sample": [], "phi": [], "P1": [], "msr_action": None}
+        return {
+            "failure": True, "N_total": N_total,
+            "N_sample": [], "phi": [], "P1": [], "msr_action": None,
+            "diagnostics": {
+                "compute_time": time.perf_counter() - compute_start,
+                "converged": False,
+                "final_residual": None,
+                "total_ode_solves": ode_solve_count,
+                "bracket_expansions": bracket_expansions,
+                "brentq_iterations": None,
+                "brentq_function_calls": None,
+                "final_P1_0": None,
+            },
+        }
 
     try:
-        P1_star = brentq(shoot, P1_lo, P1_hi,
-                         xtol=atol, rtol=rtol, maxiter=200)
+        P1_star, brentq_info = brentq(shoot, P1_lo, P1_hi,
+                         xtol=atol, rtol=rtol, maxiter=200, full_output=True)
     except ValueError as exc:
         if label:
             print(f"[{label}] SR instanton: brentq failed: {exc}")
-        return {"failure": True, "N_total": N_total,
-                "N_sample": [], "phi": [], "P1": [], "msr_action": None}
+        return {
+            "failure": True, "N_total": N_total,
+            "N_sample": [], "phi": [], "P1": [], "msr_action": None,
+            "diagnostics": {
+                "compute_time": time.perf_counter() - compute_start,
+                "converged": False,
+                "final_residual": None,
+                "total_ode_solves": ode_solve_count,
+                "bracket_expansions": bracket_expansions,
+                "brentq_iterations": None,
+                "brentq_function_calls": None,
+                "final_P1_0": None,
+            },
+        }
 
     if label:
         print(f"[{label}] SR instanton converged: P₁(0) = {P1_star:.4g}")
 
+    final_residual = abs(shoot(P1_star))
+
+    diagnostics = {
+        "compute_time": None,  # filled in below once the final solve completes
+        "converged": True,
+        "final_residual": final_residual,
+        "total_ode_solves": ode_solve_count,
+        "bracket_expansions": bracket_expansions,
+        "brentq_iterations": brentq_info.iterations,
+        "brentq_function_calls": brentq_info.function_calls,
+        "final_P1_0": float(P1_star),
+    }
+
     sol = solve_ivp(rhs, (0.0, N_total), [phi_init, P1_star],
                     method="RK45", t_eval=N_grid, atol=atol, rtol=rtol)
+    ode_solve_count += 1
+    diagnostics["total_ode_solves"] = ode_solve_count
+    diagnostics["compute_time"] = time.perf_counter() - compute_start
     if not sol.success:
-        return {"failure": True, "N_total": N_total,
-                "N_sample": [], "phi": [], "P1": [], "msr_action": None}
+        return {
+            "failure": True, "N_total": N_total,
+            "N_sample": [], "phi": [], "P1": [], "msr_action": None,
+            "diagnostics": diagnostics,
+        }
 
     phi_arr = sol.y[0]
     P1_arr  = sol.y[1]
@@ -152,6 +203,7 @@ def _compute_slow_roll_instanton(
         "phi":        phi_sp(N_a).tolist(),
         "P1":         P1_sp(N_a).tolist(),
         "msr_action": msr_action,
+        "diagnostics": diagnostics,
     }
 
 
@@ -270,6 +322,11 @@ class SlowRollInstanton(DatastoreObject):
         return self._msr_action
 
     @property
+    def diagnostics(self) -> Optional[dict]:
+        """Bracket/brentq root-finding diagnostics; None until compute() resolves."""
+        return getattr(self, "_diagnostics", None)
+
+    @property
     def values(self) -> List[SlowRollInstantonValue]:
         """Sampled {φ, P₁} values; empty until compute() succeeds."""
         return self._values
@@ -322,6 +379,7 @@ class SlowRollInstanton(DatastoreObject):
             raise RuntimeError("store() called but no compute() is in progress")
         data = ray.get(self._compute_ref)
         self._compute_ref = None
+        self._diagnostics = data.get("diagnostics")
         if data.get("failure", False):
             self._failure = True
             self._values = []

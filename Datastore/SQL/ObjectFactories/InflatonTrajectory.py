@@ -77,6 +77,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
                 ),
                 sqla.Column("n_fields", sqla.Integer, nullable=False, default=1),
                 sqla.Column("N_end", sqla.Float(64), nullable=True),
+                sqla.Column("diagnostics_json", sqla.Text, nullable=True),
                 sqla.Column(
                     "validated",
                     sqla.Boolean,
@@ -103,6 +104,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         query = sqla.select(
             table.c.serial,
             table.c.N_end,
+            table.c.diagnostics_json,
         ).filter(
             table.c.validated == True,
             table.c.phi0_serial == phi0.store_id,
@@ -137,6 +139,9 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             diffusion_model=diffusion_model,
         )
         obj._N_end = row_data.N_end
+        obj._diagnostics = (
+            json.loads(row_data.diagnostics_json) if row_data.diagnostics_json else None
+        )
 
         if not do_not_populate:
             self._populate(obj, row_data, tables, conn)
@@ -192,14 +197,16 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         if obj.available:
             base_payload["serial"] = obj.store_id
 
+        diagnostics_json = json.dumps(obj.diagnostics) if obj.diagnostics is not None else None
+
         if obj.failure:
-            store_id = inserter(conn, base_payload | {"N_end": None})
+            store_id = inserter(conn, base_payload | {"N_end": None, "diagnostics_json": diagnostics_json})
             obj._my_id = store_id
             return obj
 
         # _values has been fully populated by the store_handler (efold_value objects
         # already minted and assigned store_ids) before the factory is called.
-        store_id = inserter(conn, base_payload | {"N_end": obj._N_end})
+        store_id = inserter(conn, base_payload | {"N_end": obj._N_end, "diagnostics_json": diagnostics_json})
         obj._my_id = store_id
 
         value_inserter = inserters["InflatonTrajectoryValue"]
@@ -265,6 +272,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             table.c.potential_serial,
             table.c.potential_type,
             table.c.N_end,
+            table.c.diagnostics_json,
             table.c.validated,
         ).filter(table.c.validated == True)
 
@@ -304,6 +312,9 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
                 rtol=None,
             )
             obj._N_end = row.N_end
+            obj._diagnostics = (
+                json.loads(row.diagnostics_json) if row.diagnostics_json else None
+            )
 
             self._populate(obj, row, tables, conn)
 
