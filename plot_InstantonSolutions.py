@@ -261,7 +261,7 @@ def plot_instanton_fields(fi, sri, N_init_val, N_final_val, dns_val, potential, 
 
     fig.suptitle(
         f"Instanton fields — {potential.name}, "
-        f"Ninit={N_init_val:.3g}, Nfinal={N_final_val:.3g}, δN★={dns_val:.3g}"
+        rf"Ninit={N_init_val:.3g}, Nfinal={N_final_val:.3g}, $\delta N_\star$={dns_val:.3g}"
     )
     fig.tight_layout()
 
