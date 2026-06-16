@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import sys
-import argparse
 import itertools
 import math
 from pathlib import Path
@@ -28,6 +27,7 @@ from ComputeTargets import InflatonTrajectoryProxy
 from InflationConcepts import MasslessDecoupledDiffusion
 from Datastore.SQL.ShardedPool import ShardedPool
 from Units import Planck_units
+from config.argument_parser import create_argument_parser
 from config.sharding import (
     ShardKeyType,
     get_shard_key_store_id,
@@ -45,62 +45,30 @@ DEFAULT_MAX_COMBINATIONS = 10
 
 
 def create_plot_parser():
-    parser = argparse.ArgumentParser(
-        description="Generate plots from validated StochasticInstanton database records"
-    )
-    parser.add_argument(
-        "--database", type=str, required=False, default=None,
-        help="Path to the primary SQLite database file",
-    )
-    parser.add_argument(
+    """Reuses the shared compute-pipeline parser (config/argument_parser.py)
+    so plot_InstantonSolutions.py accepts the same --config YAML file as
+    main.py and rebuilds identical N_init/N_final grids — those grids aren't
+    recorded in a lookup table the way delta_Nstar is, so they can't be
+    auto-discovered and must be reconstructed from the same CLI/config
+    inputs main.py used. Unrelated compute-only flags (e.g. --shards,
+    --samples-per-N) are accepted but unused here."""
+    parser = create_argument_parser()
+
+    plot_grp = parser.add_argument_group("Plotting")
+    plot_grp.add_argument(
         "--output-dir", type=str, default="plots",
         help="Directory for output figures (default: 'plots/')",
     )
-    parser.add_argument(
+    plot_grp.add_argument(
         "--format", type=str, default="pdf",
         choices=["pdf", "png", "svg"],
         help="Output figure format (default: pdf)",
     )
-    parser.add_argument("--db-timeout", type=int, default=60)
-    parser.add_argument("--ray-address", type=str, default="auto")
-    parser.add_argument(
-        "--show-all", action="store_true", default=False,
-        help="Show all trajectories (default: first 5 only)",
-    )
-    parser.add_argument(
-        "--abs-tol", type=float, default=1e-8,
-        help="Absolute ODE tolerance (must match value used in main.py, default: 1e-8)",
-    )
-    parser.add_argument(
-        "--rel-tol", type=float, default=1e-8,
-        help="Relative ODE tolerance (must match value used in main.py, default: 1e-8)",
-    )
-
-    # N_init/N_final grids — must mirror the flags in config/argument_parser.py,
-    # since these aren't recorded in a lookup table the way delta_Nstar is and
-    # so can't be auto-discovered: this script has to rebuild the same grid
-    # main.py used.
-    parser.add_argument("--N-init-low", type=float, default=20.0,
-                        help="Lower bound of N_init grid (must match main.py, default: 20.0)")
-    parser.add_argument("--N-init-high", type=float, default=20.0,
-                        help="Upper bound of N_init grid (must match main.py, default: 20.0)")
-    parser.add_argument("--N-init-samples", type=int, default=1,
-                        help="Number of N_init sample points (must match main.py, default: 1)")
-    parser.add_argument("--N-init-values", nargs="*", type=float, default=[],
-                        help="Explicit list of N_init values (must match main.py)")
-    parser.add_argument("--N-final-low", type=float, default=5.0,
-                        help="Lower bound of N_final grid (must match main.py, default: 5.0)")
-    parser.add_argument("--N-final-high", type=float, default=5.0,
-                        help="Upper bound of N_final grid (must match main.py, default: 5.0)")
-    parser.add_argument("--N-final-samples", type=int, default=1,
-                        help="Number of N_final sample points (must match main.py, default: 1)")
-    parser.add_argument("--N-final-values", nargs="*", type=float, default=[],
-                        help="Explicit list of N_final values (must match main.py)")
-
-    parser.add_argument(
+    plot_grp.add_argument(
         "--max-combinations", type=int, default=DEFAULT_MAX_COMBINATIONS,
-        help="Maximum number of 'other parameter' combinations to show per "
-             f"sweep directory, evenly sampled across the grid (default: {DEFAULT_MAX_COMBINATIONS})",
+        help="Maximum number of 'other parameter' combinations (and "
+             "trajectories) to show per sweep directory, evenly sampled "
+             f"across the grid (default: {DEFAULT_MAX_COMBINATIONS})",
     )
     return parser
 
@@ -535,8 +503,8 @@ def run_plots(pool, units, args):
         print("No trajectories found. Run main.py first.")
         return
 
-    traj_list = trajectories if args.show_all else trajectories[:5]
-    traj_list = [t for t in traj_list if t._potential is not None]
+    traj_list = [t for t in trajectories if t._potential is not None]
+    traj_list = _evenly_sample(traj_list, args.max_combinations)
 
     print(">> Reading delta_Nstar values...")
     dns_array = sorted(ray.get(pool.read_table("delta_Nstar")), key=lambda d: float(d))
