@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import json
-from datetime import datetime
 
 import sqlalchemy as sqla
 
@@ -216,9 +215,9 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
                 validated = False
             else:
                 stored_data = json.loads(row.trajectory_json)
-                expected = len(obj._raw_sample.get("N_sample", []))
+                expected = len(obj._values)  # ← use _values, not _raw_sample
                 actual = len(stored_data)
-                validated = (actual == expected)
+                validated = (actual == expected) and actual > 0
                 if not validated:
                     print(f"!! WARNING: InflatonTrajectory {obj.store_id}: "
                           f"expected {expected} value rows, found {actual}")
