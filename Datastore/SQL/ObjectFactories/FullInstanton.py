@@ -229,13 +229,6 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
             obj._my_id = store_id
             return obj
 
-        raw = obj._raw_sample
-        N_vals = raw["N_sample"]
-        phi1_vals = raw["phi1"]
-        phi2_vals = raw["phi2"]
-        P1_vals = raw["P1"]
-        P2_vals = raw["P2"]
-
         store_id = inserter(conn, {
             "trajectory_serial": obj._trajectory.store_id,
             "N_init": float(obj._N_init),
@@ -251,27 +244,16 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
         })
         obj._my_id = store_id
 
-        efold_table = tables["efold_value"]
         value_inserter = inserters["FullInstantonValue"]
 
-        for N_val, phi1, phi2, P1, P2 in zip(N_vals, phi1_vals, phi2_vals, P1_vals, P2_vals):
-            efold_row = conn.execute(
-                sqla.select(efold_table.c.serial).filter(
-                    sqla.func.abs(efold_table.c.N - N_val) < DEFAULT_FLOAT_PRECISION
-                )
-            ).one_or_none()
-            if efold_row is None:
-                efold_serial = inserters["efold_value"](conn, {"N": N_val})
-            else:
-                efold_serial = efold_row.serial
-
+        json_rows = [
+            {"N_serial": v.N.store_id, "phi1": v.phi1, "phi2": v.phi2, "P1": v.P1, "P2": v.P2}
+            for v in obj._values
+        ]
+        for row in json_rows:
             value_inserter(conn, {
                 "instanton_serial": store_id,
-                "N_serial": efold_serial,
-                "phi1": phi1,
-                "phi2": phi2,
-                "P1": P1,
-                "P2": P2,
+                **row,
             })
 
         return obj
@@ -284,7 +266,7 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
             validated = True
         else:
             value_table = tables["FullInstantonValue"]
-            expected = len(obj._raw_sample.get("N_sample", []))
+            expected = len(obj._values)
             actual = conn.execute(
                 sqla.select(sqla.func.count()).select_from(value_table).filter(
                     value_table.c.instanton_serial == obj.store_id

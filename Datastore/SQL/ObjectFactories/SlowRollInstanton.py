@@ -223,11 +223,6 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
             obj._my_id = store_id
             return obj
 
-        raw = obj._raw_sample
-        N_vals = raw["N_sample"]
-        phi_vals = raw["phi"]
-        P1_vals = raw["P1"]
-
         store_id = inserter(conn, {
             "trajectory_serial": obj._trajectory.store_id,
             "N_init": float(obj._N_init),
@@ -243,25 +238,16 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
         })
         obj._my_id = store_id
 
-        efold_table = tables["efold_value"]
         value_inserter = inserters["SlowRollInstantonValue"]
 
-        for N_val, phi, P1 in zip(N_vals, phi_vals, P1_vals):
-            efold_row = conn.execute(
-                sqla.select(efold_table.c.serial).filter(
-                    sqla.func.abs(efold_table.c.N - N_val) < DEFAULT_FLOAT_PRECISION
-                )
-            ).one_or_none()
-            if efold_row is None:
-                efold_serial = inserters["efold_value"](conn, {"N": N_val})
-            else:
-                efold_serial = efold_row.serial
-
+        json_rows = [
+            {"N_serial": v.N.store_id, "phi": v.phi, "P1": v.P1}
+            for v in obj._values
+        ]
+        for row in json_rows:
             value_inserter(conn, {
                 "instanton_serial": store_id,
-                "N_serial": efold_serial,
-                "phi": phi,
-                "P1": P1,
+                **row,
             })
 
         return obj
@@ -274,7 +260,7 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
             validated = True
         else:
             value_table = tables["SlowRollInstantonValue"]
-            expected = len(obj._raw_sample.get("N_sample", []))
+            expected = len(obj._values)
             actual = conn.execute(
                 sqla.select(sqla.func.count()).select_from(value_table).filter(
                     value_table.c.instanton_serial == obj.store_id

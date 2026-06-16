@@ -1,4 +1,5 @@
 import itertools
+import math
 import sys
 from datetime import datetime
 from typing import List, Any, Optional
@@ -13,11 +14,11 @@ from ComputeTargets import (
     SlowRollInstanton,
 )
 from CosmologyConcepts import phi_value, pi_value
-from InflationConcepts import delta_Nstar, N_efolds, MasslessDecoupledDiffusion
+from InflationConcepts import delta_Nstar, N_efolds, MasslessDecoupledDiffusion, efold_array
 from Datastore.SQL.ProfileAgent import ProfileAgent
 from Datastore.SQL.ShardedPool import ShardedPool
 from MetadataConcepts import tolerance, store_tag
-from RayTools.RayWorkPool import RayWorkPool
+from RayTools.RayWorkPool import RayWorkPool, _default_store_handler
 from Units import Planck_units
 from Units.base import UnitsLike
 from config.argument_parser import create_argument_parser
@@ -82,6 +83,7 @@ def _run_instanton_queue(
     payload_builder,
     label_builder,
     title: str,
+    store_handler,
 ):
     """
     Two-pass RayWorkPool pattern for instanton compute targets.
@@ -130,6 +132,7 @@ def _run_instanton_queue(
         [item for item, _ in missing],
         task_builder=build_work_ref,
         compute_handler=lambda obj, **kwargs: obj.compute(**kwargs),
+        store_handler=store_handler,
         persist_handler=lambda obj, pool: pool.object_store(obj),
         validation_handler=lambda obj: pool.object_validate(obj),
         label_builder=label_builder,
@@ -204,14 +207,22 @@ def run_pipeline(
     ## -----------------------------------------------------------------------
 
     def fi_payload(dns: delta_Nstar) -> dict:
+        N_total = (float(N_init) - float(N_final)) + float(dns)
+        N_grid = np.linspace(
+            0.0, N_total, max(2, math.ceil(N_total * samples_per_N)), endpoint=True
+        ).tolist()
+        efold_objs = ray.get(
+            pool.object_get("efold_value", payload_data=[{"N": N} for N in N_grid])
+        )
+        N_sample = efold_array(efold_objs)
         return dict(
             trajectory=traj_proxy,
             N_init=N_init,
             N_final=N_final,
             delta_Nstar=dns,
+            N_sample=N_sample,
             atol=atol,
             rtol=rtol,
-            samples_per_N=samples_per_N,
             diffusion_model=dm,
             tags=[],
         )
@@ -222,6 +233,7 @@ def run_pipeline(
         task_list=delta_Nstar_array,
         payload_builder=fi_payload,
         label_builder=lambda obj: f"FullInstanton({label}, dNstar={float(obj.delta_Nstar_value):.4g})",
+        store_handler=_default_store_handler,
         title="STAGE 2: Full MSR instantons",
     )
 
@@ -230,14 +242,22 @@ def run_pipeline(
     ## -----------------------------------------------------------------------
 
     def sri_payload(dns: delta_Nstar) -> dict:
+        N_total = (float(N_init) - float(N_final)) + float(dns)
+        N_grid = np.linspace(
+            0.0, N_total, max(2, math.ceil(N_total * samples_per_N)), endpoint=True
+        ).tolist()
+        efold_objs = ray.get(
+            pool.object_get("efold_value", payload_data=[{"N": N} for N in N_grid])
+        )
+        N_sample = efold_array(efold_objs)
         return dict(
             trajectory=traj_proxy,
             N_init=N_init,
             N_final=N_final,
             delta_Nstar=dns,
+            N_sample=N_sample,
             atol=atol,
             rtol=rtol,
-            samples_per_N=samples_per_N,
             diffusion_model=dm,
             tags=[],
         )
@@ -248,6 +268,7 @@ def run_pipeline(
         task_list=delta_Nstar_array,
         payload_builder=sri_payload,
         label_builder=lambda obj: f"SlowRollInstanton({label}, dNstar={float(obj.delta_Nstar_value):.4g})",
+        store_handler=_default_store_handler,
         title="STAGE 3: Slow-roll instantons",
     )
 
@@ -257,8 +278,6 @@ def execute(pool: ShardedPool, units: UnitsLike):
     Set up parameter grids, register database objects, and call run_pipeline()
     for each model in the model list.
     """
-    import math
-
     ## -----------------------------------------------------------------------
     ## REGISTER TOLERANCES
     ## -----------------------------------------------------------------------

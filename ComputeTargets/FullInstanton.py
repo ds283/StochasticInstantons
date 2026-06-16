@@ -369,6 +369,11 @@ class FullInstanton(DatastoreObject):
             raise RuntimeError("compute() already in progress")
         if getattr(self, "_failure", None) is not None:
             raise RuntimeError("already computed or failed")
+        if self._N_sample is None:
+            raise RuntimeError(
+                "FullInstanton: compute() called but N_sample is not set. "
+                "This object can only represent a query."
+            )
 
         N_end = self._trajectory.N_end
         if N_end is None:
@@ -412,13 +417,12 @@ class FullInstanton(DatastoreObject):
         self._failure = False
         self._msr_action = data["msr_action"]
         self._N_total = data["N_total"]
-        self._raw_sample = {
-            "N_sample": data["N_sample"],
-            "phi1":     data["phi1"],
-            "phi2":     data["phi2"],
-            "P1":       data["P1"],
-            "P2":       data["P2"],
-        }
+        self._values = [
+            FullInstantonValue(store_id=None, N=N_obj, phi1=phi1, phi2=phi2, P1=P1, P2=P2)
+            for N_obj, phi1, phi2, P1, P2 in zip(
+                self._N_sample, data["phi1"], data["phi2"], data["P1"], data["P2"]
+            )
+        ]
 
 
 class FullInstantonProxy:
