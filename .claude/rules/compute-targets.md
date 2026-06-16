@@ -25,7 +25,13 @@ ComputeTargets/Foo.py
 │   ├── __init__  sets self._compute_ref = None
 │   ├── @property available / failure / n_fields / result accessors
 │   ├── compute() → ObjectRef
-│   └── store()   → None  (populates self._raw_sample)
+│   └── store()   → None
+│         Approach A (FullInstanton, SlowRollInstanton):
+│           grid pre-minted at construction; populates self._values directly
+│         Approach B (InflatonTrajectory):
+│           grid built internally by worker; populates self._raw_sample as
+│           a temporary handoff for the custom store_handler in main.py,
+│           which mints efold_value objects and then populates self._values
 │
 └── class FooProxy                      # lightweight reference; plain Python
     ├── __init__(model: Foo)  uses ray.put(model)
@@ -49,6 +55,8 @@ runs. `failure` is the separate signal that computation was attempted and failed
 
 ## Guards in `compute()`
 
+All compute targets must guard against being called in an incomplete state:
+
 ```python
 def compute(self, label=None) -> ObjectRef:
     if self._compute_ref is not None:
@@ -56,6 +64,27 @@ def compute(self, label=None) -> ObjectRef:
     if getattr(self, "_failure", None) is not None:
         raise RuntimeError("already computed (or failed)")
     ...
+```
+
+`InflatonTrajectory` additionally guards that `samples_per_N` is set, since
+it is `Optional` to allow query-only objects:
+
+```python
+    if self._samples_per_N is None:
+        raise RuntimeError(
+            "InflatonTrajectory: compute() called but samples_per_N is not set. "
+            "This object can only represent a query."
+        )
+```
+
+`FullInstanton` and `SlowRollInstanton` similarly guard that `N_sample` is set:
+
+```python
+    if self._N_sample is None:
+        raise RuntimeError(
+            "FullInstanton: compute() called but N_sample is not set. "
+            "This object can only represent a query."
+        )
 ```
 
 ## Proxy construction — always from a plain instance

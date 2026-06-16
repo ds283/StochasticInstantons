@@ -17,8 +17,14 @@ entirely — nothing ever gets computed.
 | Method | Responsibility |
 |--------|---------------|
 | `build()` | Query only. Return `store_id=None` (available=False) when not found. **Never call `inserter()`**. |
-| `store()` | Call `inserter()` to INSERT the main row. Set `obj._my_id = store_id`. Insert value rows. |
+| `store()` | Call `inserter()` to INSERT the main row. Set `obj._my_id = store_id`. Write `trajectory_json` from `obj._values`. |
 | `validate()` | Verify row counts. Call `UPDATE … SET validated=True`. Return bool. |
+
+Note: `RayWorkPool` has three distinct handler slots — `store_handler` (calls
+`obj.store()` on the compute target to resolve the Ray future and populate
+`obj._values`), then `persist_handler` (calls `pool.object_store(obj)`, which
+in turn calls this factory's `store()` method). The factory's `store()` is
+invoked only from `persist_handler`, after `obj._values` is fully populated.
 
 ### `build()` — query only, no INSERT
 
@@ -57,11 +63,19 @@ def store(self, obj, conn, table, inserter, tables, inserters):
         obj._my_id = store_id
         return obj
 
-    raw = obj._raw_sample
-    store_id = inserter(conn, {"N_end": obj._N_end, ..., "validated": False})
+    # obj._values is fully populated before this method is called.
+    # Read store_ids directly — no efold_value upsert needed here.
+    json_rows = [
+        {"N_serial": v.N.store_id, "phi": v.phi, ...}
+        for v in obj._values
+    ]
+    store_id = inserter(conn, {
+        "N_end": obj._N_end,
+        ...,
+        "trajectory_json": json.dumps(json_rows),
+        "validated": False,
+    })
     obj._my_id = store_id          # makes obj.available == True from this point
-
-    # insert value rows ...
     return obj
 ```
 
@@ -91,28 +105,55 @@ immediately after `build()` returns — no `.remote()`, no `ray.get()`. This
 is required because `ShardedPool.object_get()` returns the result of
 `factory.build()` directly to the caller.
 
-## Factory `store()` reads `_raw_sample`
+## Factory `store()` reads from `obj._values`
 
-When a compute target's `store()` has been called by `RayWorkPool`, the object
-carries a `_raw_sample` dict of plain lists. The factory's `store()` method
-(called later by `ShardedPool.object_store()`) reads this to insert value rows:
+By the time the factory's `store()` is called by `ShardedPool.object_store()`,
+`obj._values` has already been fully populated with typed `FooValue` objects
+whose `N` fields are `efold_value` instances with valid `store_id`s. This is
+guaranteed by the `store_handler` step in `RayWorkPool`, which runs before
+`persist_handler` (which calls `pool.object_store(obj)`).
+
+The factory reads `store_id`s directly from `obj._values` — no upsert or
+tolerance-match query against the `efold_value` table is needed:
 
 ```python
 def store(self, obj, conn, table, inserter, tables, inserters):
-    raw = obj._raw_sample          # set by Foo.store() on the driver
-    N_vals  = raw["N_sample"]      # list[float]
-    phi_vals = raw["phi"]          # list[float]
-    ...
-    # Look up or create efold_value records, insert FooValue rows
-    efold_table    = tables["efold"]
-    efold_inserter = inserters["efold"]
-    for N, phi in zip(N_vals, phi_vals):
-        # find or create the efold_value for this N
-        ...
+    if obj.failure:
+        store_id = inserter(conn, {"N_end": None, ..., "validated": False})
+        obj._my_id = store_id
+        return obj
+
+    json_rows = [
+        {"N_serial": v.N.store_id, "phi": v.phi, ...}
+        for v in obj._values
+    ]
+    store_id = inserter(conn, {
+        "N_end": obj._N_end,
+        ...,
+        "trajectory_json": json.dumps(json_rows),
+        "validated": False,
+    })
+    obj._my_id = store_id
+    return obj
 ```
 
-The factory's `store()` has database access; `Foo.store()` on the driver does
-not. Keep this separation clean.
+Do not read `_raw_sample` in the factory. If `_raw_sample` is present on the
+object when the factory runs, the store_handler has not completed correctly.
+
+### How `obj._values` gets populated — two approaches
+
+**Approach A (`FullInstanton`, `SlowRollInstanton`):** The sample grid is
+pre-minted on the controller before dispatch (because `N_total` is known in
+advance). `obj.store()` constructs `_values` directly from the returned float
+arrays and the pre-existing `efold_array`. The default `store_handler` is used.
+
+**Approach B (`InflatonTrajectory`):** The grid endpoint (`N_end`) is not known
+until the ODE completes. `obj.store()` leaves a temporary `_raw_sample` dict.
+A custom `store_handler` in `main.py` mints `efold_value` objects via the pool,
+assembles `_values`, and deletes `_raw_sample` before the factory runs.
+
+In both cases the factory sees a fully-populated `obj._values` and uses the
+same `v.N.store_id` pattern above.
 
 ## Foreign key naming — dual tolerance references
 

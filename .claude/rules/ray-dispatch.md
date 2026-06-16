@@ -123,19 +123,93 @@ obj = Foo.__ray_actor_class__(store_id=1, ...)
 If you find yourself needing `__ray_actor_class__`, the class has been
 incorrectly decorated with `@ray.remote`. Remove the decorator.
 
-## The `_raw_sample` bridge
+## Populating `_values` after computation — two approaches
 
 `store()` runs on the driver (no database access). The factory's `store()`
-runs inside a Datastore actor (has database access). The `_raw_sample` dict
-bridges these two steps:
+runs inside a Datastore actor (has database access). Before the factory runs,
+`obj._values` must be fully populated with typed `FooValue` objects whose `N`
+fields are `efold_value` instances with valid `store_id`s. This is the same
+state the object would be in after `factory._populate()` on a database load.
 
-- `obj.store()` reads `ray.get(self._compute_ref)` and saves
-  `self._raw_sample = {"N_sample": [...], "phi": [...], ...}` as plain lists
-- The factory's `store(obj, conn, ...)` reads `obj._raw_sample`, looks up or
-  creates `efold_value` records in the database, and inserts value rows
+There are two approaches depending on whether the sample grid endpoint is known
+before dispatch.
 
-Do not try to create `FooValue` objects inside `Foo.store()` — those need
-`efold_value` store IDs, which require a database connection.
+### Approach A — pre-minted grid (used by `FullInstanton`, `SlowRollInstanton`)
+
+The integration span `[0, N_total]` is known on the controller before the
+remote function is dispatched. The controller builds the grid, mints
+`efold_value` objects via `pool.object_get("efold_value", ...)`, constructs
+an `efold_array`, and passes it to the compute target at construction time.
+
+`store()` populates `self._values` directly from the returned float arrays
+and the pre-existing `efold_array`:
+
+```python
+def store(self):
+    data = ray.get(self._compute_ref)
+    self._compute_ref = None
+    if data.get("failure", False):
+        self._failure = True
+        self._values = []
+        return
+    self._failure = False
+    self._values = [
+        FooValue(store_id=None, N=N_obj, phi1=phi1, ...)
+        for N_obj, phi1, ... in zip(self._N_sample, data["phi1"], ...)
+    ]
+```
+
+No `_raw_sample` handoff is needed. The factory's `store()` reads
+`v.N.store_id` directly from `obj._values`. The default `store_handler`
+(`obj.store()`) is sufficient — no custom handler is needed.
+
+### Approach B — internally-built grid (used by `InflatonTrajectory`)
+
+The integration endpoint `N_end` is not known until the ODE completes, so the
+grid cannot be pre-minted. The remote function builds the grid internally from
+`samples_per_N` and returns float lists.
+
+`store()` stashes these as a temporary handoff in `self._raw_sample`:
+
+```python
+def store(self):
+    data = ray.get(self._compute_ref)
+    self._compute_ref = None
+    if data.get("failure", False):
+        self._failure = True
+        self._values = []
+        return
+    self._failure = False
+    self._N_end = data["N_end"]
+    # Temporary handoff for the store_handler; deleted after _values is built.
+    self._raw_sample = {"N_sample": data["N_sample"], "phi": data["phi"], ...}
+```
+
+A custom `store_handler` in `main.py` then mints `efold_value` objects via
+the pool and assembles `self._values`, after which `_raw_sample` is deleted:
+
+```python
+def foo_store_handler(obj, pool):
+    obj.store()                          # populates _raw_sample
+    if obj.failure:
+        return
+    raw = obj._raw_sample
+    efold_objects = ray.get(
+        pool.object_get("efold_value", payload_data=[{"N": N} for N in raw["N_sample"]])
+    )
+    obj._values = [
+        FooValue(store_id=None, N=N_obj, ...)
+        for N_obj, ... in zip(efold_objects, raw["phi"], ...)
+    ]
+    del obj._raw_sample
+```
+
+The factory's `store()` reads `v.N.store_id` directly from `obj._values`,
+which are fully populated by the time the factory runs.
+
+The custom handler must be wired in explicitly at the `RayWorkPool` call site
+in `main.py` — never hidden in a default. This makes the non-standard behaviour
+visible to anyone reading the pipeline.
 
 ## Verification
 
@@ -154,4 +228,12 @@ print('All plain Python classes: OK')
 # Confirm no private Ray bypass anywhere
 grep -rn "__ray_actor_class__" ComputeTargets/ Datastore/
 # must return no output
+
+# Confirm InflatonTrajectory uses samples_per_N, not N_sample
+grep -n "N_sample" ComputeTargets/InflatonTrajectory.py
+# must return no output (N_sample was replaced by samples_per_N)
+
+# Confirm FullInstanton and SlowRollInstanton use N_sample (efold_array, pre-minted)
+grep -n "samples_per_N" ComputeTargets/FullInstanton.py ComputeTargets/SlowRollInstanton.py
+# must return no output (these use Approach A, not samples_per_N)
 ```
