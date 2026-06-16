@@ -215,6 +215,50 @@ The custom handler must be wired in explicitly at the `RayWorkPool` call site
 in `main.py` — never hidden in a default. This makes the non-standard behaviour
 visible to anyone reading the pipeline.
 
+## Two-pass dispatch in `main.py` — preferred pattern for new queues
+
+`main.py` uses a deliberate two-pass design for each compute stage (see
+`_run_instanton_queue()`). Use this same pattern for any new compute queue
+(e.g. compaction functions):
+
+### Pass 1 — vectorized availability check
+
+Flatten the full parameter grid into a list. Bin items by shard key. Issue
+one `pool.object_get_vectorized()` call **per shard key**, not per item —
+this makes round-trips to Datastore actors O(num_shard_keys) rather than
+O(grid_size). Run this inside a `RayWorkPool` with large batch sizes
+(`create_batch_size=20`, `process_batch_size=20`); individual lookup results
+are tiny so the queue drains quickly. Collect all items where
+`obj.available == False` into a compute list.
+
+### Pass 2 — compute queue (missing items only)
+
+Feed only the missing items into a second `RayWorkPool` with a conservative
+`max_task_queue` (e.g. 20). `RayWorkPool`'s main loop guards task creation
+on `len(self._inflight) < self._max_task_queue`, so the Ray object store
+never gets flooded — no manual batch sizing is required.
+
+### Why not the grouper-batch approach used in ChamPBH/SecondaryGWKit?
+
+ChamPBH pre-slices the full grid with `grouper()`, runs a per-batch query to
+find missing items, then hands the resulting `ObjectRef`s directly to
+`RayWorkPool`. This overlaps queries with compute, but has two drawbacks that
+make it worse here:
+
+1. **Query round-trips scale with grid size.** Each batch needs its own actor
+   call, so total overhead is O(grid_size / batch_size) rather than
+   O(num_shard_keys).
+
+2. **Flooding risk requires manual tuning.** Without a `max_task_queue` cap,
+   the caller must choose a batch size small enough that the combined in-flight
+   object footprint never exhausts Ray's object store. This requires re-tuning
+   whenever object sizes change and is the source of disk-spill incidents in
+   those projects.
+
+The latency advantage (compute starts before all queries finish) is negligible
+because individual queries take microseconds and ODE integration takes seconds
+to minutes.
+
 ## Verification
 
 Before finishing any session that touches `ComputeTargets/`:
