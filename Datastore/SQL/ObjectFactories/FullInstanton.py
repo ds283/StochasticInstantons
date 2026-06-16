@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 from datetime import datetime
 
 import sqlalchemy as sqla
@@ -186,10 +187,7 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
         rows = conn.execute(
             sqla.select(
                 value_table.c.N_serial,
-                value_table.c.phi1,
-                value_table.c.phi2,
-                value_table.c.P1,
-                value_table.c.P2,
+                value_table.c.fields_json,
             ).filter(value_table.c.instanton_serial == obj.store_id)
         ).fetchall()
 
@@ -200,14 +198,15 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
                 )
             ).one()
             N_obj = efold_value(store_id=efold_row.serial, N=efold_row.N)
+            data = json.loads(r.fields_json)
             obj._values.append(
                 FullInstantonValue(
                     store_id=None,
                     N=N_obj,
-                    phi1=r.phi1,
-                    phi2=r.phi2,
-                    P1=r.P1,
-                    P2=r.P2,
+                    phi1=data["phi1"][0],
+                    phi2=data["phi2"][0],
+                    P1=data["P1"][0],
+                    P2=data["P2"][0],
                 )
             )
 
@@ -246,14 +245,16 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
 
         value_inserter = inserters["FullInstantonValue"]
 
-        json_rows = [
-            {"N_serial": v.N.store_id, "phi1": v.phi1, "phi2": v.phi2, "P1": v.P1, "P2": v.P2}
-            for v in obj._values
-        ]
-        for row in json_rows:
+        for v in obj._values:
             value_inserter(conn, {
                 "instanton_serial": store_id,
-                **row,
+                "N_serial": v.N.store_id,
+                "fields_json": json.dumps({
+                    "phi1": [v.phi1],
+                    "phi2": [v.phi2],
+                    "P1":   [v.P1],
+                    "P2":   [v.P2],
+                }),
             })
 
         return obj
@@ -431,10 +432,7 @@ class sqla_FullInstantonValue_factory(SQLAFactoryBase):
                     nullable=False,
                     primary_key=True,
                 ),
-                sqla.Column("phi1", sqla.Float(64), nullable=False),
-                sqla.Column("phi2", sqla.Float(64), nullable=False),
-                sqla.Column("P1", sqla.Float(64), nullable=False),
-                sqla.Column("P2", sqla.Float(64), nullable=False),
+                sqla.Column("fields_json", sqla.Text, nullable=False),
             ],
         }
 

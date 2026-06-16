@@ -70,7 +70,6 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
                 ),
                 sqla.Column("n_fields", sqla.Integer, nullable=False, default=1),
                 sqla.Column("N_end", sqla.Float(64), nullable=True),
-                sqla.Column("trajectory_json", sqla.Text, nullable=True),
                 sqla.Column(
                     "validated",
                     sqla.Boolean,
@@ -97,7 +96,6 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         query = sqla.select(
             table.c.serial,
             table.c.N_end,
-            table.c.trajectory_json,
         ).filter(
             table.c.validated == True,
             table.c.phi0_serial == phi0.store_id,
@@ -139,29 +137,33 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         return obj
 
     def _populate(self, obj, row, tables, conn):
-        """Deserialise trajectory_json into obj._values."""
-        if row.trajectory_json is None:
-            return
-
+        """Load InflatonTrajectoryValue records for a validated trajectory."""
         from ComputeTargets.InflatonTrajectory import InflatonTrajectoryValue
 
+        value_table = tables["InflatonTrajectoryValue"]
         efold_table = tables["efold_value"]
-        data = json.loads(row.trajectory_json)
 
-        for item in data:
-            N_serial = item["N_serial"]
-            phi = item["phi"]
-            pi_val = item["pi"]
+        rows = conn.execute(
+            sqla.select(value_table.c.N_serial, value_table.c.fields_json)
+            .filter(value_table.c.trajectory_serial == obj.store_id)
+            .order_by(value_table.c.N_serial)
+        ).fetchall()
 
+        for r in rows:
             efold_row = conn.execute(
                 sqla.select(efold_table.c.serial, efold_table.c.N).filter(
-                    efold_table.c.serial == N_serial
+                    efold_table.c.serial == r.N_serial
                 )
             ).one()
-
+            data = json.loads(r.fields_json)
             N_obj = efold_value(store_id=efold_row.serial, N=efold_row.N)
             obj._values.append(
-                InflatonTrajectoryValue(store_id=None, N=N_obj, phi=phi, pi=pi_val)
+                InflatonTrajectoryValue(
+                    store_id=None,
+                    N=N_obj,
+                    phi=data["phi"][0],
+                    pi=data["pi"][0],
+                )
             )
 
     def store(self, obj, conn, table, inserter, tables, inserters):
@@ -174,7 +176,6 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
                 "rtol_serial": obj._rtol.store_id,
                 "n_fields": obj.n_fields,
                 "N_end": None,
-                "trajectory_json": None,
                 "validated": False,
             })
             obj._my_id = store_id
@@ -182,11 +183,6 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
 
         # _values has been fully populated by the store_handler (efold_value objects
         # already minted and assigned store_ids) before the factory is called.
-        json_rows = [
-            {"N_serial": v.N.store_id, "phi": v.phi, "pi": v.pi}
-            for v in obj._values
-        ]
-
         store_id = inserter(conn, {
             "phi0_serial": obj._phi0.store_id,
             "pi0_serial": obj._pi0.store_id,
@@ -195,10 +191,18 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             "rtol_serial": obj._rtol.store_id,
             "n_fields": obj.n_fields,
             "N_end": obj._N_end,
-            "trajectory_json": json.dumps(json_rows),
             "validated": False,
         })
         obj._my_id = store_id
+
+        value_inserter = inserters["InflatonTrajectoryValue"]
+        for v in obj._values:
+            value_inserter(conn, {
+                "trajectory_serial": store_id,
+                "N_serial": v.N.store_id,
+                "fields_json": json.dumps({"phi": [v.phi], "pi": [v.pi]}),
+            })
+
         return obj
 
     def validate(self, obj, conn, table, tables):
@@ -208,19 +212,17 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         if obj.failure:
             validated = True
         else:
-            row = conn.execute(
-                sqla.select(table.c.trajectory_json).filter(table.c.serial == obj.store_id)
-            ).one_or_none()
-            if row is None or row.trajectory_json is None:
-                validated = False
-            else:
-                stored_data = json.loads(row.trajectory_json)
-                expected = len(obj._values)  # ← use _values, not _raw_sample
-                actual = len(stored_data)
-                validated = (actual == expected) and actual > 0
-                if not validated:
-                    print(f"!! WARNING: InflatonTrajectory {obj.store_id}: "
-                          f"expected {expected} value rows, found {actual}")
+            value_table = tables["InflatonTrajectoryValue"]
+            expected = len(obj._values)
+            actual = conn.execute(
+                sqla.select(sqla.func.count()).select_from(value_table).filter(
+                    value_table.c.trajectory_serial == obj.store_id
+                )
+            ).scalar()
+            validated = (actual == expected) and actual > 0
+            if not validated:
+                print(f"!! WARNING: InflatonTrajectory {obj.store_id}: "
+                      f"expected {expected} value rows, found {actual}")
 
         conn.execute(
             sqla.update(table)
@@ -254,7 +256,6 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             table.c.pi0_serial,
             table.c.potential_serial,
             table.c.N_end,
-            table.c.trajectory_json,
             table.c.validated,
         ).filter(table.c.validated == True)
 
@@ -330,8 +331,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             )
             obj._N_end = row.N_end
 
-            if row.trajectory_json:
-                self._populate(obj, row, tables, conn)
+            self._populate(obj, row, tables, conn)
 
             results.append(obj)
 
@@ -385,3 +385,54 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
                 "latest_timestamp": latest_unvalidated,
             },
         }
+
+
+class sqla_InflatonTrajectoryValue_factory(SQLAFactoryBase):
+    def __init__(self):
+        pass
+
+    def register(self):
+        return {
+            "serial": False,
+            "version": False,
+            "timestamp": False,
+            "columns": [
+                sqla.Column(
+                    "trajectory_serial",
+                    sqla.Integer,
+                    sqla.ForeignKey("InflatonTrajectory.serial"),
+                    index=True,
+                    nullable=False,
+                    primary_key=True,
+                ),
+                sqla.Column(
+                    "N_serial",
+                    sqla.Integer,
+                    sqla.ForeignKey("efold_value.serial"),
+                    index=True,
+                    nullable=False,
+                    primary_key=True,
+                ),
+                sqla.Column("fields_json", sqla.Text, nullable=False),
+            ],
+        }
+
+    def build(self, payload, conn, table, inserter, tables, inserters):
+        raise NotImplementedError(
+            "sqla_InflatonTrajectoryValue_factory.build() is not used directly; "
+            "values are inserted by sqla_InflatonTrajectory_factory.store()."
+        )
+
+    def store(self, obj, conn, table, inserter, tables, inserters):
+        raise NotImplementedError(
+            "sqla_InflatonTrajectoryValue_factory.store() is not used directly; "
+            "values are inserted by sqla_InflatonTrajectory_factory.store()."
+        )
+
+    def validate(self, obj, conn, table, tables):
+        raise NotImplementedError(
+            "sqla_InflatonTrajectoryValue_factory.validate() is not used directly."
+        )
+
+    def validate_on_startup(self, conn, table, tables, prune_unvalidated):
+        return []

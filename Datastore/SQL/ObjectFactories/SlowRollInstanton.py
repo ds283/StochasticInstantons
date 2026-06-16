@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+
 import sqlalchemy as sqla
 
 from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
@@ -184,8 +186,7 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
         rows = conn.execute(
             sqla.select(
                 value_table.c.N_serial,
-                value_table.c.phi,
-                value_table.c.P1,
+                value_table.c.fields_json,
             ).filter(value_table.c.instanton_serial == obj.store_id)
         ).fetchall()
 
@@ -196,12 +197,13 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
                 )
             ).one()
             N_obj = efold_value(store_id=efold_row.serial, N=efold_row.N)
+            data = json.loads(r.fields_json)
             obj._values.append(
                 SlowRollInstantonValue(
                     store_id=None,
                     N=N_obj,
-                    phi=r.phi,
-                    P1=r.P1,
+                    phi=data["phi"][0],
+                    P1=data["P1"][0],
                 )
             )
 
@@ -240,14 +242,14 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
 
         value_inserter = inserters["SlowRollInstantonValue"]
 
-        json_rows = [
-            {"N_serial": v.N.store_id, "phi": v.phi, "P1": v.P1}
-            for v in obj._values
-        ]
-        for row in json_rows:
+        for v in obj._values:
             value_inserter(conn, {
                 "instanton_serial": store_id,
-                **row,
+                "N_serial": v.N.store_id,
+                "fields_json": json.dumps({
+                    "phi": [v.phi],
+                    "P1":  [v.P1],
+                }),
             })
 
         return obj
@@ -425,8 +427,7 @@ class sqla_SlowRollInstantonValue_factory(SQLAFactoryBase):
                     nullable=False,
                     primary_key=True,
                 ),
-                sqla.Column("phi", sqla.Float(64), nullable=False),
-                sqla.Column("P1", sqla.Float(64), nullable=False),
+                sqla.Column("fields_json", sqla.Text, nullable=False),
             ],
         }
 

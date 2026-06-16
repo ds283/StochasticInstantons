@@ -26,6 +26,7 @@ replicated_tables = [
     "QuarticPotential",
     "IntegrationSolver",
     "InflatonTrajectory",
+    "InflatonTrajectoryValue",
 ]
 
 # Tables sharded by delta_Nstar.

@@ -38,6 +38,7 @@ from Datastore.SQL.ObjectFactories.FullInstanton import (
 )
 from Datastore.SQL.ObjectFactories.InflatonTrajectory import (
     sqla_InflatonTrajectory_factory,
+    sqla_InflatonTrajectoryValue_factory,
 )
 from Datastore.SQL.ObjectFactories.SlowRollInstanton import (
     sqla_SlowRollInstantonFactory,
@@ -85,6 +86,7 @@ _factories = {
     "QuarticPotential": sqla_QuarticPotential_factory(),
     "IntegrationSolver": sqla_IntegrationSolver_factory(),
     "InflatonTrajectory": sqla_InflatonTrajectory_factory(),
+    "InflatonTrajectoryValue": sqla_InflatonTrajectoryValue_factory(),
     "FullInstanton": sqla_FullInstantonFactory(),
     "FullInstantonValue": sqla_FullInstantonValue_factory(),
     "SlowRollInstanton": sqla_SlowRollInstantonFactory(),
