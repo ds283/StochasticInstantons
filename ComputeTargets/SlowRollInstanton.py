@@ -259,7 +259,7 @@ class SlowRollInstanton(DatastoreObject):
         return self._N_final
 
     @property
-    def delta_Nstar_value(self) -> delta_Nstar:
+    def delta_Nstar(self) -> delta_Nstar:
         """Return the delta_Nstar shard key."""
         return self._delta_Nstar
 
@@ -348,7 +348,7 @@ class SlowRollInstantonProxy:
         self._store_id: Optional[int] = model.store_id if model.available else None
         self._N_init: N_efolds = model.N_init_value
         self._N_final: N_efolds = model.N_final_value
-        self._delta_Nstar: delta_Nstar = model.delta_Nstar_value
+        self._delta_Nstar: delta_Nstar = model.delta_Nstar
 
     @property
     def store_id(self) -> Optional[int]:

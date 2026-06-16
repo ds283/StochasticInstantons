@@ -232,7 +232,7 @@ def run_pipeline(
         cls_name="FullInstanton",
         task_list=delta_Nstar_array,
         payload_builder=fi_payload,
-        label_builder=lambda obj: f"FullInstanton({label}, dNstar={float(obj.delta_Nstar_value):.4g})",
+        label_builder=lambda obj: f"FullInstanton({label}, dNstar={float(obj.delta_Nstar):.4g})",
         store_handler=_default_store_handler,
         title="STAGE 2: Full MSR instantons",
     )
@@ -267,7 +267,7 @@ def run_pipeline(
         cls_name="SlowRollInstanton",
         task_list=delta_Nstar_array,
         payload_builder=sri_payload,
-        label_builder=lambda obj: f"SlowRollInstanton({label}, dNstar={float(obj.delta_Nstar_value):.4g})",
+        label_builder=lambda obj: f"SlowRollInstanton({label}, dNstar={float(obj.delta_Nstar):.4g})",
         store_handler=_default_store_handler,
         title="STAGE 3: Slow-roll instantons",
     )
