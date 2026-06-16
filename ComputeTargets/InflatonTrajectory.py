@@ -22,7 +22,7 @@ from CosmologyConcepts.FieldValues import phi_value, pi_value
 from CosmologyConcepts.Potentials.AbstractPotential import AbstractPotential
 from Datastore.object import DatastoreObject
 from InflationConcepts.DiffusionModel import AbstractDiffusionModel, MasslessDecoupledDiffusion
-from InflationConcepts.efold_value import efold_value, efold_array
+from InflationConcepts.efold_value import efold_value
 from MetadataConcepts.store_tag import store_tag
 from MetadataConcepts.tolerance import tolerance
 
@@ -32,7 +32,7 @@ def _compute_inflaton_trajectory(
     phi0_value: float,
     pi0_value: float,
     potential: AbstractPotential,
-    N_sample: list,
+    samples_per_N: float,
     atol: float,
     rtol: float,
     label: Optional[str] = None,
@@ -48,6 +48,10 @@ def _compute_inflaton_trajectory(
     Terminal event: potential.epsilon(φ, π) - 1 = 0, ε increasing (+1 direction).
     Solver fallback chain: RK45 → DOP853 → Radau → BDF → LSODA.
 
+    The sample grid is built internally from `samples_per_N` once N_end is known,
+    as linspace(0, N_end, max(2, ceil(N_end * samples_per_N)), endpoint=True).
+    This guarantees both 0 and N_end are members of the grid.
+
     Returns dict with keys:
         "N_end":    float — e-folding coordinate at end of inflation
         "N_sample": list[float] — N values sampled within [0, N_end]
@@ -55,6 +59,7 @@ def _compute_inflaton_trajectory(
         "pi":       list[float]
         "failure":  bool
     """
+    import math
     import numpy as np
     from scipy.integrate import solve_ivp
 
@@ -119,9 +124,10 @@ def _compute_inflaton_trajectory(
     if label:
         print(f"[{label}] N_end = {N_end:.6g}")
 
-    N_out = sorted([n for n in N_sample if 0.0 <= n <= N_end])
-    if not N_out:
-        N_out = [0.0, N_end]
+    # Build sample grid now that N_end is known. linspace with endpoint=True
+    # guarantees both 0.0 and N_end are members of the grid.
+    n_points = max(2, math.ceil(N_end * samples_per_N))
+    N_out = np.linspace(0.0, N_end, n_points, endpoint=True).tolist()
 
     vals = sol.sol(np.array(N_out))
     return {
@@ -183,7 +189,7 @@ class InflatonTrajectory(DatastoreObject):
         phi0: phi_value,
         pi0: pi_value,
         potential: AbstractPotential,
-        N_sample: Optional[efold_array],
+        samples_per_N: Optional[float],
         atol: tolerance,
         rtol: tolerance,
         diffusion_model: Optional[AbstractDiffusionModel] = None,
@@ -194,7 +200,7 @@ class InflatonTrajectory(DatastoreObject):
         self._phi0: phi_value = phi0
         self._pi0: pi_value = pi0
         self._potential: AbstractPotential = potential
-        self._N_sample: Optional[efold_array] = N_sample
+        self._samples_per_N: Optional[float] = samples_per_N
         self._atol: tolerance = atol
         self._rtol: tolerance = rtol
         self._diffusion_model: AbstractDiffusionModel = diffusion_model or MasslessDecoupledDiffusion()
@@ -248,60 +254,50 @@ class InflatonTrajectory(DatastoreObject):
         return self._values
 
     def phi_at(self, N: float) -> float:
-        """Interpolate φ at arbitrary N using a cubic spline built from _values or _raw_sample."""
-        if self._values:
-            if not hasattr(self, "_phi_spline"):
-                import numpy as np
-                from scipy.interpolate import make_interp_spline
-                Ns = np.array([v.N.N for v in self._values])
-                phis = np.array([v.phi for v in self._values])
-                self._phi_spline = make_interp_spline(Ns, phis)
-            return float(self._phi_spline(N))
-        raw = getattr(self, "_raw_sample", None)
-        if raw:
-            if not hasattr(self, "_phi_spline_raw"):
-                import numpy as np
-                from scipy.interpolate import make_interp_spline
-                self._phi_spline_raw = make_interp_spline(
-                    np.array(raw["N_sample"]), np.array(raw["phi"])
-                )
-            return float(self._phi_spline_raw(N))
-        raise RuntimeError("InflatonTrajectory has not been computed yet")
+        """Interpolate φ at arbitrary N using a cubic spline built from _values."""
+        if not self._values:
+            raise RuntimeError(
+                "InflatonTrajectory: phi_at() called but _values is empty. "
+                "Has the trajectory been computed and fully populated?"
+            )
+        if not hasattr(self, "_phi_spline"):
+            import numpy as np
+            from scipy.interpolate import make_interp_spline
+            Ns = np.array([v.N.N for v in self._values])
+            phis = np.array([v.phi for v in self._values])
+            self._phi_spline = make_interp_spline(Ns, phis)
+        return float(self._phi_spline(N))
 
     def pi_at(self, N: float) -> float:
-        """Interpolate π at arbitrary N using a cubic spline built from _values or _raw_sample."""
-        if self._values:
-            if not hasattr(self, "_pi_spline"):
-                import numpy as np
-                from scipy.interpolate import make_interp_spline
-                Ns = np.array([v.N.N for v in self._values])
-                pis = np.array([v.pi for v in self._values])
-                self._pi_spline = make_interp_spline(Ns, pis)
-            return float(self._pi_spline(N))
-        raw = getattr(self, "_raw_sample", None)
-        if raw:
-            if not hasattr(self, "_pi_spline_raw"):
-                import numpy as np
-                from scipy.interpolate import make_interp_spline
-                self._pi_spline_raw = make_interp_spline(
-                    np.array(raw["N_sample"]), np.array(raw["pi"])
-                )
-            return float(self._pi_spline_raw(N))
-        raise RuntimeError("InflatonTrajectory has not been computed yet")
+        """Interpolate π at arbitrary N using a cubic spline built from _values."""
+        if not self._values:
+            raise RuntimeError(
+                "InflatonTrajectory: pi_at() called but _values is empty. "
+                "Has the trajectory been computed and fully populated?"
+            )
+        if not hasattr(self, "_pi_spline"):
+            import numpy as np
+            from scipy.interpolate import make_interp_spline
+            Ns = np.array([v.N.N for v in self._values])
+            pis = np.array([v.pi for v in self._values])
+            self._pi_spline = make_interp_spline(Ns, pis)
+        return float(self._pi_spline(N))
 
     def compute(self, label: Optional[str] = None) -> ObjectRef:
         """
         Dispatch the background trajectory integration as a Ray remote task.
-        Returns an ObjectRef. RayWorkPool will call store() once this resolves.
+        Returns an ObjectRef. RayWorkPool will call the store_handler once this resolves.
         """
         if self._compute_ref is not None:
             raise RuntimeError("compute() already in progress")
         if getattr(self, "_failure", None) is not None:
             raise RuntimeError("already computed or failed")
+        if self._samples_per_N is None:
+            raise RuntimeError(
+                "InflatonTrajectory: compute() called but samples_per_N is not set. "
+                "This object can only represent a query."
+            )
 
-        N_sample_list = (
-            self._N_sample.as_float_list() if self._N_sample is not None else []
-        )
         atol = 10.0 ** self._atol.log10_tol
         rtol = 10.0 ** self._rtol.log10_tol
 
@@ -309,7 +305,7 @@ class InflatonTrajectory(DatastoreObject):
             phi0_value=float(self._phi0),
             pi0_value=float(self._pi0),
             potential=self._potential,
-            N_sample=N_sample_list,
+            samples_per_N=self._samples_per_N,
             atol=atol,
             rtol=rtol,
             label=label,
@@ -318,8 +314,12 @@ class InflatonTrajectory(DatastoreObject):
 
     def store(self):
         """
-        Called on the driver by RayWorkPool after compute() resolves.
-        Reads the result dict and populates internal state.
+        Resolve the Ray future and stash the raw float arrays.
+
+        This is called by the store_handler in RayWorkPool. The store_handler
+        is responsible for the subsequent step: minting efold_value objects via
+        the pool and assembling self._values from them, so that the object is
+        in the same fully-populated state as after a database load.
         """
         if self._compute_ref is None:
             raise RuntimeError("store() called but no compute() is in progress")
@@ -331,6 +331,8 @@ class InflatonTrajectory(DatastoreObject):
             return
         self._failure = False
         self._N_end = data["N_end"]
+        # Stash raw floats as a handoff for the store_handler, which will
+        # convert these to typed efold_value objects and populate self._values.
         self._raw_sample = {
             "N_sample": data["N_sample"],
             "phi":      data["phi"],

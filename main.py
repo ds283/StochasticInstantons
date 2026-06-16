@@ -1,7 +1,6 @@
 import itertools
 import sys
 from datetime import datetime
-from math import fabs
 from typing import List, Any, Optional
 
 import numpy as np
@@ -14,7 +13,7 @@ from ComputeTargets import (
     SlowRollInstanton,
 )
 from CosmologyConcepts import phi_value, pi_value
-from InflationConcepts import efold_value, efold_array, delta_Nstar, N_efolds, MasslessDecoupledDiffusion
+from InflationConcepts import delta_Nstar, N_efolds, MasslessDecoupledDiffusion
 from Datastore.SQL.ProfileAgent import ProfileAgent
 from Datastore.SQL.ShardedPool import ShardedPool
 from MetadataConcepts import tolerance, store_tag
@@ -22,7 +21,6 @@ from RayTools.RayWorkPool import RayWorkPool
 from Units import Planck_units
 from Units.base import UnitsLike
 from config.argument_parser import create_argument_parser
-from config.defaults import DEFAULT_FLOAT_PRECISION
 from config.model_list import build_model_list
 from config.sharding import (
     replicated_tables,
@@ -45,22 +43,102 @@ if args.database is None:
 ray.init(address=args.ray_address)
 
 
-def _compute_and_store(pool, obj, label_str):
-    """Drive the compute → store → validate cycle for a single object. Returns the final object."""
-    compute_ref = obj.compute(label=label_str)
-    ray.get(compute_ref)   # wait for computation (raises NotImplementedError for stubs)
+def inflaton_trajectory_store_handler(obj, pool):
+    """
+    Custom store_handler for InflatonTrajectory.
+
+    Calls obj.store() to resolve the Ray future and populate _raw_sample,
+    then mints efold_value objects for each sample point via the pool, and
+    assembles obj._values so the object is in the same fully-populated state
+    as after a database load.
+    """
+    from ComputeTargets.InflatonTrajectory import InflatonTrajectoryValue
+
     obj.store()
-    stored_obj = ray.get(pool.object_store(obj))
-    ray.get(pool.object_validate(stored_obj))
-    return stored_obj
+
+    if obj.failure:
+        # Nothing further to do for a failed trajectory.
+        return
+
+    raw = obj._raw_sample
+    efold_objects = ray.get(
+        pool.object_get(
+            "efold_value",
+            payload_data=[{"N": N} for N in raw["N_sample"]],
+        )
+    )
+
+    obj._values = [
+        InflatonTrajectoryValue(store_id=None, N=N_obj, phi=phi, pi=pi)
+        for N_obj, phi, pi in zip(efold_objects, raw["phi"], raw["pi"])
+    ]
+    del obj._raw_sample
 
 
-def _lookup_or_create(pool, cls_name, shard_key=None, **payload):
-    """Look up an existing record. Returns the object; available=False means not yet computed."""
-    kwargs = dict(payload)
-    if shard_key is not None:
-        kwargs["shard_key"] = shard_key
-    return ray.get(pool.object_get(cls_name, **kwargs))
+def _run_instanton_queue(
+    pool: ShardedPool,
+    cls_name: str,
+    task_list: list,
+    payload_builder,
+    label_builder,
+    title: str,
+):
+    """
+    Two-pass RayWorkPool pattern for instanton compute targets.
+
+    Pass 1 (query): determine which objects are already in the database.
+    Pass 2 (work):  compute and persist the missing ones.
+
+    `payload_builder(item)` returns a dict of keyword arguments for pool.object_get().
+    `label_builder(obj)` returns a human-readable label string for the compute step.
+    """
+    ## Pass 1: query
+    query_queue = RayWorkPool(
+        pool,
+        task_list,
+        task_builder=lambda item: pool.object_get(
+            cls_name, _do_not_populate=True, **payload_builder(item)
+        ),
+        compute_handler=None,
+        store_handler=None,
+        persist_handler=None,
+        validation_handler=None,
+        title=f"{title} [query]",
+        store_results=True,
+        create_batch_size=20,
+        process_batch_size=20,
+    )
+    query_queue.run()
+
+    missing = [
+        (item, obj)
+        for item, obj in zip(task_list, query_queue.results)
+        if not obj.available
+    ]
+    print(f"   -- {len(task_list) - len(missing)} already computed, "
+          f"{len(missing)} to compute")
+
+    if not missing:
+        return
+
+    ## Pass 2: fetch full objects for missing items, then compute
+    def build_work_ref(item):
+        return pool.object_get(cls_name, **payload_builder(item))
+
+    work_queue = RayWorkPool(
+        pool,
+        [item for item, _ in missing],
+        task_builder=build_work_ref,
+        compute_handler=lambda obj, **kwargs: obj.compute(**kwargs),
+        persist_handler=lambda obj, pool: pool.object_store(obj),
+        validation_handler=lambda obj: pool.object_validate(obj),
+        label_builder=label_builder,
+        title=f"{title} [compute]",
+        store_results=False,
+        create_batch_size=5,
+        process_batch_size=3,
+    )
+    work_queue.run()
 
 
 def run_pipeline(
@@ -71,7 +149,7 @@ def run_pipeline(
     pi0: pi_value,
     N_init: N_efolds,
     N_final: N_efolds,
-    N_sample: efold_array,
+    samples_per_N: float,
     atol: tolerance,
     rtol: tolerance,
     diffusion_model=None,
@@ -85,110 +163,93 @@ def run_pipeline(
     ## -----------------------------------------------------------------------
     ## STAGE 1: Background inflaton trajectory
     ## -----------------------------------------------------------------------
-    print("\n** STAGE 1: Background inflaton trajectory")
+    # Single object — use a one-item RayWorkPool so the store_handler hook
+    # is available (needed in Step 2 once InflatonTrajectory.store() requires
+    # efold_value minting via the pool).
 
-    traj_obj = _lookup_or_create(
-        pool, "InflatonTrajectory",
+    traj_payload = dict(
         phi0=phi0, pi0=pi0, potential=potential,
         atol=atol, rtol=rtol,
-        N_sample=N_sample, solver_labels={}, tags=[],
+        samples_per_N=samples_per_N,
+        tags=[],
         diffusion_model=dm,
     )
 
-    if traj_obj.available:
-        print(f"   -- trajectory already computed (store_id={traj_obj.store_id})")
-    else:
-        print(f"   -- trajectory not found, computing...")
-        try:
-            traj_obj = _compute_and_store(pool, traj_obj, f"InflatonTrajectory({label})")
-            print(f"   -- trajectory stored (store_id={traj_obj.store_id})")
-        except Exception as e:
-            print(f"   !! trajectory computation failed for model {label}: {e}")
-            raise
+    traj_queue = RayWorkPool(
+        pool,
+        [traj_payload],
+        task_builder=lambda p: pool.object_get("InflatonTrajectory", **p),
+        compute_handler=lambda obj, **kwargs: obj.compute(**kwargs),
+        store_handler=inflaton_trajectory_store_handler,
+        persist_handler=lambda obj, pool: pool.object_store(obj),
+        validation_handler=lambda obj: pool.object_validate(obj),
+        label_builder=lambda obj: f"InflatonTrajectory({label})",
+        title="STAGE 1: Background inflaton trajectory",
+        store_results=True,
+        create_batch_size=1,
+        process_batch_size=1,
+    )
+    traj_queue.run()
+
+    traj_obj = traj_queue.results[0]
+    if not traj_obj.available:
+        raise RuntimeError(
+            f"InflatonTrajectory for model {label} is not available after compute queue"
+        )
 
     traj_proxy = InflatonTrajectoryProxy(traj_obj)
 
     ## -----------------------------------------------------------------------
     ## STAGE 2: Full MSR instantons
     ## -----------------------------------------------------------------------
-    print(f"\n** STAGE 2: Full MSR instantons ({len(delta_Nstar_array)} values of delta_Nstar)")
 
-    # Parallel lookup: submit all object_get calls simultaneously, then collect.
-    fi_refs = [
-        pool.object_get(
-            "FullInstanton",
+    def fi_payload(dns: delta_Nstar) -> dict:
+        return dict(
             trajectory=traj_proxy,
             N_init=N_init,
             N_final=N_final,
             delta_Nstar=dns,
             atol=atol,
             rtol=rtol,
-            N_sample=N_sample,
+            samples_per_N=samples_per_N,
             diffusion_model=dm,
             tags=[],
         )
-        for dns in delta_Nstar_array
-    ]
-    fi_objs = ray.get(fi_refs)
 
-    new_fi = [(dns, obj) for dns, obj in zip(delta_Nstar_array, fi_objs)
-              if not obj.available]
-    existing_fi = len(fi_objs) - len(new_fi)
-    print(f"   -- {existing_fi} already computed, {len(new_fi)} to compute")
-
-    # Submit all compute calls in parallel, then collect and store sequentially.
-    if new_fi:
-        compute_pairs = []
-        for dns, obj in new_fi:
-            lbl = f"FullInstanton({label}, dNstar={float(dns):.4g})"
-            compute_ref = obj.compute(label=lbl)
-            compute_pairs.append((obj, compute_ref, lbl))
-
-        for obj, compute_ref, lbl in compute_pairs:
-            ray.get(compute_ref)
-            obj.store()
-            ray.get(pool.object_store(obj))
-            print(f"   -- stored: {lbl}")
+    _run_instanton_queue(
+        pool=pool,
+        cls_name="FullInstanton",
+        task_list=delta_Nstar_array,
+        payload_builder=fi_payload,
+        label_builder=lambda obj: f"FullInstanton({label}, dNstar={float(obj.delta_Nstar_value):.4g})",
+        title="STAGE 2: Full MSR instantons",
+    )
 
     ## -----------------------------------------------------------------------
     ## STAGE 3: Slow-roll instantons
     ## -----------------------------------------------------------------------
-    print(f"\n** STAGE 3: Slow-roll instantons ({len(delta_Nstar_array)} values of delta_Nstar)")
 
-    sri_refs = [
-        pool.object_get(
-            "SlowRollInstanton",
+    def sri_payload(dns: delta_Nstar) -> dict:
+        return dict(
             trajectory=traj_proxy,
             N_init=N_init,
             N_final=N_final,
             delta_Nstar=dns,
             atol=atol,
             rtol=rtol,
-            N_sample=N_sample,
+            samples_per_N=samples_per_N,
             diffusion_model=dm,
             tags=[],
         )
-        for dns in delta_Nstar_array
-    ]
-    sri_objs = ray.get(sri_refs)
 
-    new_sri = [(dns, obj) for dns, obj in zip(delta_Nstar_array, sri_objs)
-               if not obj.available]
-    existing_sri = len(sri_objs) - len(new_sri)
-    print(f"   -- {existing_sri} already computed, {len(new_sri)} to compute")
-
-    if new_sri:
-        compute_pairs = []
-        for dns, obj in new_sri:
-            lbl = f"SlowRollInstanton({label}, dNstar={float(dns):.4g})"
-            compute_ref = obj.compute(label=lbl)
-            compute_pairs.append((obj, compute_ref, lbl))
-
-        for obj, compute_ref, lbl in compute_pairs:
-            ray.get(compute_ref)
-            obj.store()
-            ray.get(pool.object_store(obj))
-            print(f"   -- stored: {lbl}")
+    _run_instanton_queue(
+        pool=pool,
+        cls_name="SlowRollInstanton",
+        task_list=delta_Nstar_array,
+        payload_builder=sri_payload,
+        label_builder=lambda obj: f"SlowRollInstanton({label}, dNstar={float(obj.delta_Nstar_value):.4g})",
+        title="STAGE 3: Slow-roll instantons",
+    )
 
 
 def execute(pool: ShardedPool, units: UnitsLike):
@@ -245,25 +306,10 @@ def execute(pool: ShardedPool, units: UnitsLike):
     )
 
     ## -----------------------------------------------------------------------
-    ## BUILD efold SAMPLE GRID
+    ## SAMPLING DENSITY
     ## -----------------------------------------------------------------------
-    # The instanton runs from N=0 to N=N_trans + delta_Nstar_max.
-    # We build a dense uniform sample grid covering the largest possible interval.
-    N_trans = args.N_init - args.N_final
-    N_max   = N_trans + max(dns_sample)
-    N_grid_floats = np.linspace(0.0, N_max, args.N_samples, endpoint=True).tolist()
-
-    print(f"** Building efold sample grid: {args.N_samples} points "
-          f"from N=0 to N={N_max:.4g}")
-
-    efold_objects = ray.get(
-        pool.object_get(
-            "efold_value",
-            payload_data=[{"N": N} for N in N_grid_floats],
-        )
-    )
-
-    N_sample = efold_array(efold_objects)
+    samples_per_N = args.samples_per_N
+    print(f"\n** Trajectory sampling density: {samples_per_N:.4g} samples per e-fold")
 
     ## -----------------------------------------------------------------------
     ## BUILD MODEL LIST AND RUN PIPELINE
@@ -282,7 +328,7 @@ def execute(pool: ShardedPool, units: UnitsLike):
             pi0=pi0,
             N_init=N_init,
             N_final=N_final,
-            N_sample=N_sample,
+            samples_per_N=samples_per_N,
             atol=atol,
             rtol=rtol,
             diffusion_model=dm,

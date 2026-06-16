@@ -20,7 +20,6 @@ import sqlalchemy as sqla
 
 from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
 from InflationConcepts.efold_value import efold_value
-from config.defaults import DEFAULT_EFOLD_PRECISION
 
 
 class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
@@ -92,7 +91,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         potential = payload["potential"]
         atol = payload["atol"]
         rtol = payload["rtol"]
-        N_sample = payload.get("N_sample", None)
+        samples_per_N = payload.get("samples_per_N", None)
         diffusion_model = payload.get("diffusion_model", MasslessDecoupledDiffusion())
         do_not_populate = payload.get("_do_not_populate", False)
 
@@ -116,7 +115,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
                 phi0=phi0,
                 pi0=pi0,
                 potential=potential,
-                N_sample=N_sample,
+                samples_per_N=samples_per_N,
                 atol=atol,
                 rtol=rtol,
                 diffusion_model=diffusion_model,
@@ -127,7 +126,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             phi0=phi0,
             pi0=pi0,
             potential=potential,
-            N_sample=N_sample,
+            samples_per_N=samples_per_N,
             atol=atol,
             rtol=rtol,
             diffusion_model=diffusion_model,
@@ -182,24 +181,12 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             obj._my_id = store_id
             return obj
 
-        raw = obj._raw_sample
-        N_vals = raw["N_sample"]
-        phi_vals = raw["phi"]
-        pi_vals = raw["pi"]
-
-        efold_table = tables["efold_value"]
-        json_rows = []
-        for N_val, phi_val, pi_val in zip(N_vals, phi_vals, pi_vals):
-            efold_row = conn.execute(
-                sqla.select(efold_table.c.serial).filter(
-                    sqla.func.abs(efold_table.c.N - N_val) < DEFAULT_EFOLD_PRECISION
-                )
-            ).one_or_none()
-            if efold_row is None:
-                efold_serial = inserters["efold_value"](conn, {"N": N_val})
-            else:
-                efold_serial = efold_row.serial
-            json_rows.append({"N_serial": efold_serial, "phi": phi_val, "pi": pi_val})
+        # _values has been fully populated by the store_handler (efold_value objects
+        # already minted and assigned store_ids) before the factory is called.
+        json_rows = [
+            {"N_serial": v.N.store_id, "phi": v.phi, "pi": v.pi}
+            for v in obj._values
+        ]
 
         store_id = inserter(conn, {
             "phi0_serial": obj._phi0.store_id,
@@ -338,7 +325,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
                 phi0=phi0_obj,
                 pi0=pi0_obj,
                 potential=potential,
-                N_sample=None,
+                samples_per_N=None,
                 atol=None,
                 rtol=None,
             )
