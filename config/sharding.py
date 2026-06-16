@@ -32,12 +32,11 @@ replicated_tables = [
 ]
 
 # Tables sharded by delta_Nstar.
-# delta_Nstar is also listed here as metadata so ShardedPool can record which
-# field carries the shard key when routing higher-level sharded objects.
-# Routing for delta_Nstar itself goes via replicated_tables (above) because it
-# IS the shard key type.
+# delta_Nstar itself is NOT listed here: it is the shard key type, routed
+# entirely via replicated_tables (above). Listing it here as well makes
+# ShardedPool.read_table() reject it as "sharded" even though it is fully
+# replicated, since that check only tests membership in this dict.
 sharded_tables = {
-    "delta_Nstar": "shard_key",
     "FullInstanton": "delta_Nstar",
     "FullInstantonValue": "delta_Nstar",
     "SlowRollInstanton": "delta_Nstar",
