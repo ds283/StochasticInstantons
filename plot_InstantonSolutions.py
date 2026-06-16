@@ -134,9 +134,26 @@ def plot_background_trajectory(traj, potential, units, output_dir, fmt):
             Hsq = potential.H_sq(phi, 0.0)
             return [-potential.dV_dphi(phi) / (3.0 * Hsq)]
 
+        # The attractor ODE has a genuine pole where φ→0 (e.g. dφ/dN = -2/φ
+        # for a quadratic potential). solve_ivp has no way to detect this on
+        # its own: as the trajectory approaches the pole it keeps shrinking
+        # its step size to maintain accuracy and never terminates, spinning
+        # forever instead of raising. A terminal event stops the integration
+        # once the attractor approximation has broken down anyway, before
+        # the solver ever gets close enough to the singularity to stall.
+        phi_floor = max(1e-3 * abs(phi0_sr), 1e-8)
+
+        def sr_attractor_breakdown(N, y):
+            return abs(y[0]) - phi_floor
+
+        sr_attractor_breakdown.terminal = True
+
         N_span = (N_vals[0], N_vals[-1])
         N_eval = np.linspace(N_vals[0], N_vals[-1], max(len(N_vals), 300))
-        sr_sol = solve_ivp(sr_rhs, N_span, [phi0_sr], method="RK45", t_eval=N_eval)
+        sr_sol = solve_ivp(
+            sr_rhs, N_span, [phi0_sr], method="RK45", t_eval=N_eval,
+            events=sr_attractor_breakdown,
+        )
         if sr_sol.success:
             ax.plot(sr_sol.t, sr_sol.y[0] / Mp, "--", label="Slow-roll attractor")
     except Exception as exc:
