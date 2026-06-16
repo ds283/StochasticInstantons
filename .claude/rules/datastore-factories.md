@@ -14,11 +14,11 @@ This is the most important rule in this file. Violating it causes `RayWorkPool`
 to see every object as `available=True` on first lookup and skip `compute()`
 entirely — nothing ever gets computed.
 
-| Method | Responsibility |
-|--------|---------------|
-| `build()` | Query only. Return `store_id=None` (available=False) when not found. **Never call `inserter()`**. |
-| `store()` | Call `inserter()` to INSERT the main row. Set `obj._my_id = store_id`. Write `trajectory_json` from `obj._values`. |
-| `validate()` | Verify row counts. Call `UPDATE … SET validated=True`. Return bool. |
+| Method       | Responsibility                                                                                                     |
+|--------------|--------------------------------------------------------------------------------------------------------------------|
+| `build()`    | Query only. Return `store_id=None` (available=False) when not found. **Never call `inserter()`**.                  |
+| `store()`    | Call `inserter()` to INSERT the main row. Set `obj._my_id = store_id`. Write `trajectory_json` from `obj._values`. |
+| `validate()` | Verify row counts. Call `UPDATE … SET validated=True`. Return bool.                                                |
 
 Note: `RayWorkPool` has three distinct handler slots — `store_handler` (calls
 `obj.store()` on the compute target to resolve the Ray future and populate

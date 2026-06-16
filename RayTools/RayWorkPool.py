@@ -92,7 +92,7 @@ class RayWorkPool:
         task_builder,
         compute_handler=_default_compute_handler,
         store_handler=_default_store_handler,
-            persist_handler=_default_persist_handler,
+        persist_handler=_default_persist_handler,
         available_handler=None,
         validation_handler=None,
         post_handler=None,

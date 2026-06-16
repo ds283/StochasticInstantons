@@ -2,35 +2,41 @@ import itertools
 import math
 import sys
 from datetime import datetime
-from typing import List, Any, Optional
+from typing import Any, List, Optional
 
 import numpy as np
 import ray
 
 from ComputeTargets import (
+    FullInstanton,
     InflatonTrajectory,
     InflatonTrajectoryProxy,
-    FullInstanton,
     SlowRollInstanton,
 )
-from CosmologyConcepts import phi_value, pi_value
-from InflationConcepts import delta_Nstar, N_init, N_final, MasslessDecoupledDiffusion, efold_array
-from Datastore.SQL.ProfileAgent import ProfileAgent
-from Datastore.SQL.ShardedPool import ShardedPool
-from MetadataConcepts import tolerance, store_tag
-from RayTools.RayWorkPool import RayWorkPool, _default_store_handler
-from Units import Planck_units
-from Units.base import UnitsLike
 from config.argument_parser import create_argument_parser
 from config.model_list import build_model_list
 from config.sharding import (
+    ShardKeyType,
+    get_shard_key_store_id,
+    inventory_config,
+    read_table_config,
     replicated_tables,
     sharded_tables,
-    get_shard_key_store_id,
-    ShardKeyType,
-    read_table_config,
-    inventory_config,
 )
+from CosmologyConcepts import phi_value, pi_value
+from Datastore.SQL.ProfileAgent import ProfileAgent
+from Datastore.SQL.ShardedPool import ShardedPool
+from InflationConcepts import (
+    MasslessDecoupledDiffusion,
+    N_final,
+    N_init,
+    delta_Nstar,
+    efold_array,
+)
+from MetadataConcepts import store_tag, tolerance
+from RayTools.RayWorkPool import RayWorkPool, _default_store_handler
+from Units import Planck_units
+from Units.base import UnitsLike
 
 VERSION_LABEL = "2026.6.1"
 
@@ -126,15 +132,14 @@ def _run_instanton_queue(
             cls_name,
             key,
             payload_data=[
-                {**key_fields(item), "_do_not_populate": True}
-                for item in binned[key]
+                {**key_fields(item), "_do_not_populate": True} for item in binned[key]
             ],
         ),
         compute_handler=None,
         store_handler=None,
         persist_handler=None,
         validation_handler=None,
-        title=None, # title = None means this queue is silent on the console
+        title=None,  # title = None means this queue is silent on the console
         store_results=True,
         create_batch_size=20,
         process_batch_size=20,
@@ -147,8 +152,10 @@ def _run_instanton_queue(
         for item, obj in zip(binned[key], objs)
         if not obj.available
     ]
-    print(f"   -- {len(task_list) - len(missing)} already computed, "
-          f"{len(missing)} to compute")
+    print(
+        f"   -- {len(task_list) - len(missing)} already computed, "
+        f"{len(missing)} to compute"
+    )
 
     if not missing:
         return
@@ -203,8 +210,11 @@ def run_all_pipelines(
 
     traj_payloads = [
         dict(
-            phi0=phi0, pi0=pi0, potential=model_data["potential"],
-            atol=atol, rtol=rtol,
+            phi0=phi0,
+            pi0=pi0,
+            potential=model_data["potential"],
+            atol=atol,
+            rtol=rtol,
             samples_per_N=samples_per_N,
             tags=[],
             diffusion_model=dm,
@@ -241,9 +251,11 @@ def run_all_pipelines(
     ## Flatten (model, N_init, N_final, delta_Nstar) into a single grid
     ## -----------------------------------------------------------------------
 
-    grid = list(itertools.product(
-        range(len(model_list)), N_init_array, N_final_array, delta_Nstar_array
-    ))
+    grid = list(
+        itertools.product(
+            range(len(model_list)), N_init_array, N_final_array, delta_Nstar_array
+        )
+    )
 
     def key_fields(item) -> dict:
         """Cheap identifying fields only — no N_sample. Used for Pass-1
@@ -327,8 +339,10 @@ def _build_grid(low, high, samples, values, label):
         sample = sorted(values)
     else:
         sample = sorted(np.linspace(low, high, samples, endpoint=True).tolist())
-    print(f"\n** Building {label} grid: {len(sample)} values "
-          f"from {sample[0]:.4g} to {sample[-1]:.4g}")
+    print(
+        f"\n** Building {label} grid: {len(sample)} values "
+        f"from {sample[0]:.4g} to {sample[-1]:.4g}"
+    )
     return sample
 
 
@@ -340,31 +354,40 @@ def execute(pool: ShardedPool, units: UnitsLike):
     ## -----------------------------------------------------------------------
     ## REGISTER TOLERANCES
     ## -----------------------------------------------------------------------
-    atol, rtol = ray.get([
-        pool.object_get("tolerance", log10_tol=int(round(
-            math.log10(args.abs_tol)
-        ))),
-        pool.object_get("tolerance", log10_tol=int(round(
-            math.log10(args.rel_tol)
-        ))),
-    ])
+    atol, rtol = ray.get(
+        [
+            pool.object_get(
+                "tolerance", log10_tol=int(round(math.log10(args.abs_tol)))
+            ),
+            pool.object_get(
+                "tolerance", log10_tol=int(round(math.log10(args.rel_tol)))
+            ),
+        ]
+    )
 
     ## -----------------------------------------------------------------------
     ## REGISTER INITIAL CONDITIONS
     ## -----------------------------------------------------------------------
-    phi0, pi0 = ray.get([
-        pool.object_get("phi_value",
-                        value=args.phi0_Mp * units.PlanckMass, units=units),
-        pool.object_get("pi_value",
-                        value=args.pi0_Mp * units.PlanckMass, units=units),
-    ])
+    phi0, pi0 = ray.get(
+        [
+            pool.object_get(
+                "phi_value", value=args.phi0_Mp * units.PlanckMass, units=units
+            ),
+            pool.object_get(
+                "pi_value", value=args.pi0_Mp * units.PlanckMass, units=units
+            ),
+        ]
+    )
 
     ## -----------------------------------------------------------------------
     ## BUILD N_init, N_final, delta_Nstar GRIDS
     ## -----------------------------------------------------------------------
     N_init_sample = _build_grid(
-        args.N_init_low, args.N_init_high, args.N_init_samples,
-        args.N_init_values, "N_init",
+        args.N_init_low,
+        args.N_init_high,
+        args.N_init_samples,
+        args.N_init_values,
+        "N_init",
     )
     N_init_array = ray.get(
         pool.object_get(
@@ -374,8 +397,11 @@ def execute(pool: ShardedPool, units: UnitsLike):
     )
 
     N_final_sample = _build_grid(
-        args.N_final_low, args.N_final_high, args.N_final_samples,
-        args.N_final_values, "N_final",
+        args.N_final_low,
+        args.N_final_high,
+        args.N_final_samples,
+        args.N_final_values,
+        "N_final",
     )
     N_final_array = ray.get(
         pool.object_get(
@@ -385,8 +411,11 @@ def execute(pool: ShardedPool, units: UnitsLike):
     )
 
     dns_sample = _build_grid(
-        args.delta_Nstar_low, args.delta_Nstar_high, args.delta_Nstar_samples,
-        args.delta_Nstar_values, "delta_Nstar",
+        args.delta_Nstar_low,
+        args.delta_Nstar_high,
+        args.delta_Nstar_samples,
+        args.delta_Nstar_values,
+        "delta_Nstar",
     )
     dns_objects = ray.get(
         pool.object_get(
@@ -407,11 +436,15 @@ def execute(pool: ShardedPool, units: UnitsLike):
     dm = MasslessDecoupledDiffusion()
 
     model_list = build_model_list(pool, units, args)
-    total_combinations = len(model_list) * len(N_init_array) * len(N_final_array) * len(dns_objects)
-    print(f"\n** {len(model_list)} model(s) to process; "
-          f"{len(N_init_array)} x {len(N_final_array)} x {len(dns_objects)} "
-          f"N_init/N_final/delta_Nstar grid = {total_combinations} instanton "
-          f"parameter combinations per model")
+    total_combinations = (
+        len(model_list) * len(N_init_array) * len(N_final_array) * len(dns_objects)
+    )
+    print(
+        f"\n** {len(model_list)} model(s) to process; "
+        f"{len(N_init_array)} x {len(N_final_array)} x {len(dns_objects)} "
+        f"N_init/N_final/delta_Nstar grid = {total_combinations} instanton "
+        f"parameter combinations per model"
+    )
 
     run_all_pipelines(
         pool=pool,
@@ -437,16 +470,16 @@ def inventory(pool: ShardedPool, units: UnitsLike):
     _inventory_dimensionless(pool, "N_final", "N_final values")
     # phi0, pi0
     _inventory_dimensionful(pool, "phi_value", "phi_0 values", units)
-    _inventory_dimensionful(pool, "pi_value",  "pi_0 values",  units)
+    _inventory_dimensionful(pool, "pi_value", "pi_0 values", units)
     # inflaton_mass, quartic_coupling
-    _inventory_dimensionful(pool, "inflaton_mass",  "Inflaton mass values", units)
+    _inventory_dimensionful(pool, "inflaton_mass", "Inflaton mass values", units)
     _inventory_dimensionless(pool, "quartic_coupling", "Quartic coupling values")
     # efold values
     _inventory_efold(pool)
     # Compute targets
-    _inventory_object(pool, "InflatonTrajectory",  "Inflaton trajectories")
-    _inventory_object(pool, "FullInstanton",        "Full MSR instantons")
-    _inventory_object(pool, "SlowRollInstanton",    "Slow-roll instantons")
+    _inventory_object(pool, "InflatonTrajectory", "Inflaton trajectories")
+    _inventory_object(pool, "FullInstanton", "Full MSR instantons")
+    _inventory_object(pool, "SlowRollInstanton", "Slow-roll instantons")
 
 
 def _inventory_dimensionless(pool, type_name, label):
@@ -464,7 +497,7 @@ def _inventory_dimensionful(pool, type_name, label, units):
     try:
         data = pool.inventory(type_name, units)
         unit_name = data.get("unit", "?")
-        unit_val  = getattr(units, unit_name, 1.0)
+        unit_val = getattr(units, unit_name, 1.0)
         vals = sorted(data.get("values", []))
         _print_value_list(vals, fmt=lambda v: f"{v / unit_val:.6g} {unit_name}")
     except Exception as e:
@@ -492,11 +525,14 @@ def _inventory_object(pool, type_name, label):
             labels = sorted(group.get("labels", []))
             n = len(labels)
             ts_early = group.get("earliest_timestamp")
-            ts_late  = group.get("latest_timestamp")
+            ts_late = group.get("latest_timestamp")
             print(f"      @@ {group_name}: {n} record(s)", end="")
             if ts_early:
-                print(f" | {ts_early.strftime('%Y-%m-%d %H:%M')} – "
-                      f"{ts_late.strftime('%H:%M')}", end="")
+                print(
+                    f" | {ts_early.strftime('%Y-%m-%d %H:%M')} – "
+                    f"{ts_late.strftime('%H:%M')}",
+                    end="",
+                )
             print()
             _print_label_list(labels)
     except Exception as e:
@@ -510,7 +546,7 @@ def _print_value_list(vals, fmt):
     elif n <= 20:
         print(f"      {n} value(s): [ {', '.join(fmt(v) for v in vals)} ]")
     else:
-        low  = [fmt(v) for v in vals[:10]]
+        low = [fmt(v) for v in vals[:10]]
         high = [fmt(v) for v in vals[-10:]]
         print(f"      {n} values: [ {', '.join(low)}, ..., {', '.join(high)} ]")
 
