@@ -15,15 +15,17 @@
 
 import sys
 import argparse
+import math
 from pathlib import Path
 
 import numpy as np
 import ray
-import sqlalchemy as sqla
 import seaborn as sns
 from matplotlib import pyplot as plt
-from scipy.integrate import solve_ivp
 
+from ComputeTargets import InflatonTrajectoryProxy
+from InflationConcepts import N_efolds, MasslessDecoupledDiffusion
+from RayTools.RayWorkPool import RayWorkPool
 from Datastore.SQL.ShardedPool import ShardedPool
 from Units import Planck_units
 from config.sharding import (
@@ -61,78 +63,23 @@ def create_plot_parser():
         "--show-all", action="store_true", default=False,
         help="Show all trajectories (default: first 5 only)",
     )
+    parser.add_argument(
+        "--abs-tol", type=float, default=1e-8,
+        help="Absolute ODE tolerance (must match value used in main.py, default: 1e-8)",
+    )
+    parser.add_argument(
+        "--rel-tol", type=float, default=1e-8,
+        help="Relative ODE tolerance (must match value used in main.py, default: 1e-8)",
+    )
+    parser.add_argument(
+        "--N-init", type=float, required=True,
+        help="N_efolds value for instanton start (must match value used in main.py)",
+    )
+    parser.add_argument(
+        "--N-final", type=float, required=True,
+        help="N_efolds value for instanton end (must match value used in main.py)",
+    )
     return parser
-
-
-def _read_shard_count(db_path, default=1):
-    """Read the number of shards from the primary database, defaulting to 1."""
-    p = Path(db_path)
-    if not p.exists():
-        return default
-    try:
-        engine = sqla.create_engine(f"sqlite:///{db_path}", future=True)
-        meta = sqla.MetaData()
-        meta.reflect(bind=engine)
-        if "shards" not in meta.tables:
-            engine.dispose()
-            return default
-        with engine.connect() as conn:
-            count = conn.execute(
-                sqla.select(sqla.func.count()).select_from(meta.tables["shards"])
-            ).scalar()
-        engine.dispose()
-        return max(int(count), 1)
-    except Exception:
-        return default
-
-
-def _read_from_shards_direct(primary_db_path, factory_class, table_name, **factory_kwargs):
-    """
-    Read all records of a sharded table by querying each shard database directly
-    via SQLAlchemy.  This bypasses ShardedPool (which only supports read_table for
-    replicated tables) by opening the SQLite shard files directly.
-    """
-    primary_engine = sqla.create_engine(f"sqlite:///{primary_db_path}", future=True)
-    shard_paths = []
-
-    try:
-        primary_meta = sqla.MetaData()
-        primary_meta.reflect(bind=primary_engine)
-        if "shards" in primary_meta.tables:
-            with primary_engine.connect() as conn:
-                rows = conn.execute(
-                    sqla.select(primary_meta.tables["shards"].c.filename)
-                ).fetchall()
-                shard_paths = [r.filename for r in rows]
-    except Exception as exc:
-        print(f"   Warning: could not read shard list from primary DB: {exc}")
-    finally:
-        primary_engine.dispose()
-
-    factory = factory_class()
-    all_records = []
-
-    for shard_path in shard_paths:
-        if not Path(shard_path).exists():
-            print(f"   Warning: shard file not found: {shard_path}")
-            continue
-        shard_engine = sqla.create_engine(f"sqlite:///{shard_path}", future=True)
-        try:
-            shard_meta = sqla.MetaData()
-            shard_meta.reflect(bind=shard_engine)
-            tables_dict = dict(shard_meta.tables)
-            if table_name not in tables_dict:
-                continue
-            tbl = tables_dict[table_name]
-            with shard_engine.connect() as conn:
-                records = factory.read_table(conn, tbl, tables_dict, **factory_kwargs)
-            all_records.extend(records)
-        except Exception as exc:
-            print(f"   Warning: error reading {table_name} from {shard_path}: {exc}")
-        finally:
-            shard_engine.dispose()
-
-    return all_records
 
 
 # ── Figure functions ──────────────────────────────────────────────────────────
@@ -156,6 +103,8 @@ def plot_background_trajectory(traj, potential, units, output_dir, fmt):
 
     # Slow-roll attractor: dφ/dN = -V′(φ) / (3 H²_SR),  H²_SR = V(φ)/3Mp²
     try:
+        from scipy.integrate import solve_ivp
+
         phi0_sr = traj._values[0].phi
 
         def sr_rhs(N, y):
@@ -361,85 +310,150 @@ def plot_msr_action(trajectories, full_instantons, sr_instantons, potential, uni
     print(f"   Saved: {fname.name}")
 
 
+# ── Ray remote plot dispatch ────────────────────────────────────────────────
+
+@ray.remote
+def _plot_instanton_item(
+    traj,
+    fi,
+    sri,
+    dns_val: float,
+    emit_trajectory_plots: bool,
+    output_dir_str: str,
+    fmt: str,
+):
+    """
+    Runs inside a Ray worker. Handles all matplotlib work for one
+    (trajectory, delta_Nstar) work item, off the driver process.
+    emit_trajectory_plots=True additionally emits Figures 1 and 2.
+    """
+    sns.set_theme(style="ticks", context="paper")
+    output_dir = Path(output_dir_str)
+    units = Planck_units()
+
+    potential = traj._potential
+    if potential is None:
+        return
+
+    if emit_trajectory_plots:
+        plot_background_trajectory(traj, potential, units, output_dir, fmt)
+        plot_epsilon(traj, potential, units, output_dir, fmt)
+
+    plot_instanton_fields(traj, fi, sri, dns_val, potential, units, output_dir, fmt)
+
+
 # ── Main pipeline ─────────────────────────────────────────────────────────────
 
 def run_plots(pool, units, args):
-    from Datastore.SQL.ObjectFactories.FullInstanton import sqla_FullInstantonFactory
-    from Datastore.SQL.ObjectFactories.SlowRollInstanton import sqla_SlowRollInstantonFactory
-
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     fmt = args.format
 
-    print("\n>> Reading trajectories from database...")
+    print("\n>> Reading trajectories...")
     trajectories = ray.get(pool.read_table("InflatonTrajectory", units=units))
-    print(f"   Found {len(trajectories)} validated trajectory record(s)")
+    print(f"   Found {len(trajectories)} trajectory record(s)")
 
-    print(">> Reading full instantons from database...")
-    full_instantons = _read_from_shards_direct(
-        args.database, sqla_FullInstantonFactory, "FullInstanton"
-    )
-    print(f"   Found {len(full_instantons)} full instanton record(s)")
+    print(">> Reading delta_Nstar values...")
+    delta_Nstar_list = ray.get(pool.read_table("delta_Nstar"))
+    print(f"   Found {len(delta_Nstar_list)} delta_Nstar value(s)")
 
-    print(">> Reading slow-roll instantons from database...")
-    sr_instantons = _read_from_shards_direct(
-        args.database, sqla_SlowRollInstantonFactory, "SlowRollInstanton"
-    )
-    print(f"   Found {len(sr_instantons)} slow-roll instanton record(s)")
-
-    if len(trajectories) == 0:
-        print("No validated trajectories found. Run main.py first.")
+    if not trajectories:
+        print("No trajectories found. Run main.py first.")
         return
 
     traj_list = trajectories if args.show_all else trajectories[:5]
+    traj_list = [t for t in traj_list if t._potential is not None]
 
+    atol, rtol = ray.get([
+        pool.object_get("tolerance", log10_tol=int(round(math.log10(args.abs_tol)))),
+        pool.object_get("tolerance", log10_tol=int(round(math.log10(args.rel_tol)))),
+    ])
+    N_init = N_efolds(args.N_init)
+    N_final = N_efolds(args.N_final)
+    dm = MasslessDecoupledDiffusion()
+
+    work_items = [
+        {"traj": traj, "dns": dns, "emit_trajectory_plots": (i == 0)}
+        for traj in traj_list
+        for i, dns in enumerate(delta_Nstar_list)
+    ]
+
+    def _instanton_payload(traj_proxy, dns):
+        return dict(
+            trajectory=traj_proxy,
+            N_init=N_init,
+            N_final=N_final,
+            delta_Nstar=dns,
+            atol=atol,
+            rtol=rtol,
+            N_sample=None,
+            diffusion_model=dm,
+            tags=[],
+            _do_not_populate=False,
+        )
+
+    def task_builder(item):
+        traj = item["traj"]
+        dns = item["dns"]
+        traj_proxy = InflatonTrajectoryProxy(traj)
+
+        fi, sri = ray.get([
+            pool.object_get("FullInstanton", **_instanton_payload(traj_proxy, dns)),
+            pool.object_get("SlowRollInstanton", **_instanton_payload(traj_proxy, dns)),
+        ])
+
+        fi = fi if (fi is not None and fi.available) else None
+        sri = sri if (sri is not None and sri.available) else None
+        if fi is None and sri is None:
+            return None
+
+        return _plot_instanton_item.remote(
+            traj, fi, sri, float(dns),
+            item["emit_trajectory_plots"],
+            str(output_dir), fmt,
+        )
+
+    work_queue = RayWorkPool(
+        pool,
+        work_items,
+        task_builder=task_builder,
+        compute_handler=None,
+        store_handler=None,
+        persist_handler=None,
+        available_handler=None,
+        validation_handler=None,
+        post_handler=None,
+        label_builder=None,
+        create_batch_size=10,
+        process_batch_size=10,
+        notify_batch_size=50,
+        notify_time_interval=120,
+        title="GENERATING INSTANTON PLOTS",
+        store_results=False,
+    )
+    work_queue.run()
+
+    # plot_msr_action aggregates across all trajectories and delta_Nstar values,
+    # so it cannot be per-item work; run it on the driver once the queue is done.
+    all_fi_refs = []
+    all_sri_refs = []
     for traj in traj_list:
-        potential = traj._potential
-        if potential is None:
-            print(f"   Warning: trajectory store_id={traj.store_id} has no potential — skipping")
-            continue
-        print(f"\n>> Plotting trajectory: {potential.name}")
+        traj_proxy = InflatonTrajectoryProxy(traj)
+        for dns in delta_Nstar_list:
+            payload = _instanton_payload(traj_proxy, dns)
+            all_fi_refs.append(pool.object_get("FullInstanton", **payload))
+            all_sri_refs.append(pool.object_get("SlowRollInstanton", **payload))
 
-        plot_background_trajectory(traj, potential, units, output_dir, fmt)
-        plot_epsilon(traj, potential, units, output_dir, fmt)
+    all_fi = [x for x in ray.get(all_fi_refs) if x is not None and x.available]
+    all_sri = [x for x in ray.get(all_sri_refs) if x is not None and x.available]
 
-        fi_for_traj = [
-            fi for fi in full_instantons
-            if getattr(fi, "_trajectory_serial", None) == traj.store_id
-        ]
-        sri_for_traj = [
-            sri for sri in sr_instantons
-            if getattr(sri, "_trajectory_serial", None) == traj.store_id
-        ]
-
-        dns_map = {}
-        for fi in fi_for_traj:
-            dns_serial = getattr(fi, "_delta_Nstar_serial", None)
-            if dns_serial is not None:
-                dns_map.setdefault(dns_serial, {})["full"] = fi
-        for sri in sri_for_traj:
-            dns_serial = getattr(sri, "_delta_Nstar_serial", None)
-            if dns_serial is not None:
-                dns_map.setdefault(dns_serial, {})["sr"] = sri
-
-        for dns_serial, pair in sorted(dns_map.items()):
-            fi = pair.get("full")
-            sri = pair.get("sr")
-            dns_obj = (fi._delta_Nstar if fi is not None else None) or (
-                sri._delta_Nstar if sri is not None else None
-            )
-            if dns_obj is None:
-                continue
-            dns_val = float(dns_obj)
-            plot_instanton_fields(traj, fi, sri, dns_val, potential, units, output_dir, fmt)
-
-    if full_instantons or sr_instantons:
+    if all_fi or all_sri:
         rep_potential = next(
             (t._potential for t in trajectories if t._potential is not None), None
         )
         if rep_potential is not None:
             plot_msr_action(
-                trajectories, full_instantons, sr_instantons,
+                trajectories, all_fi, all_sri,
                 rep_potential, units, output_dir, fmt,
             )
 
@@ -459,10 +473,6 @@ if __name__ == "__main__":
     ray.init(address=args.ray_address, ignore_reinit_error=True)
     units = Planck_units()
 
-    sns.set_theme(style="ticks", context="paper")
-
-    shard_count = _read_shard_count(args.database)
-
     with ShardedPool(
         version_label=VERSION_LABEL,
         db_name=args.database,
@@ -471,7 +481,9 @@ if __name__ == "__main__":
         replicated_tables=replicated_tables,
         sharded_tables=sharded_tables,
         timeout=args.db_timeout,
-        shards=shard_count,
+        # ShardedPool reads the actual shard count from the existing primary
+        # database when it is opened, so this is only a fallback.
+        shards=1,
         profile_agent=None,
         job_name="plot_InstantonSolutions",
         prune_unvalidated=False,

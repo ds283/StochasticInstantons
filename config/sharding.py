@@ -46,6 +46,12 @@ sharded_tables = {
 # tables_arg=True causes Datastore to pass its full tables dict as `tables` kwarg.
 read_table_config = {
     "InflatonTrajectory": {"tables_arg": True},
+    "delta_Nstar": {"tables_arg": False},
+    "efold_value": {"tables_arg": False},
+    "inflaton_mass": {"tables_arg": False},
+    "quartic_coupling": {"tables_arg": False},
+    "phi_value": {"tables_arg": False},
+    "pi_value": {"tables_arg": False},
 }
 
 # Merge policies for pool.inventory() calls on sharded tables.
