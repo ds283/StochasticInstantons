@@ -15,8 +15,9 @@ Ray must be running. Start a local cluster with `ray start --head` before runnin
 
 ## Critical rules — read before touching any file
 
-Two rules have caused rework when violated. They are detailed in
-`.claude/rules/ray-dispatch.md` but summarised here for visibility:
+Three rules have caused rework when violated. They are detailed in
+`.claude/rules/ray-dispatch.md` and `.claude/rules/pool-read-apis.md` but
+summarised here for visibility:
 
 **1. Compute target classes are plain Python. Never `@ray.remote` a class.**
 `InflatonTrajectory`, `FullInstanton`, `SlowRollInstanton` — and any future compute
@@ -25,8 +26,15 @@ targets — must be plain `class Foo(DatastoreObject):` with no decorator. The
 See `.claude/rules/ray-dispatch.md` for the full pattern.
 
 **2. `sharded_tables` in `config/sharding.py` is a dict, never a list.**
-It maps `table_name → shard_key_field_name` (e.g. `{"delta_Nstar": "shard_key"}`).
+It maps `table_name → shard_key_field_name` (e.g. `{"FullInstanton": "delta_Nstar"}`).
 A list causes a silent `KeyError` deep inside `ShardedPool`.
+
+**3. `sharded_tables` and `replicated_tables` partition the tables — never both.**
+Every table name belongs in exactly one of the two collections in
+`config/sharding.py`. `delta_Nstar` is the shard key type, so it belongs only
+in `replicated_tables`; listing it in `sharded_tables` too made
+`ShardedPool.read_table()` wrongly reject it as sharded. See
+`.claude/rules/pool-read-apis.md` for the full incident and reasoning.
 
 ## Protected infrastructure
 

@@ -34,6 +34,30 @@ read_table_config = {
 adding this entry requires the user's explicit go-ahead — flag the missing
 entry and ask, rather than reaching for `pool.inventory()` as a workaround.
 
+## `sharded_tables` and `replicated_tables` partition the database's tables
+
+Every table name in `config/sharding.py` must appear in exactly one of
+`replicated_tables` or `sharded_tables` — never both, never neither. A table
+is replicated (copied identically to every shard) or it is sharded
+(partitioned across shards by a key field); it cannot be both.
+
+`delta_Nstar` previously appeared in both: it's the shard key type, so it
+belongs in `replicated_tables`, but it was *also* listed in `sharded_tables`
+(as `"delta_Nstar": "shard_key"`) on the theory that this was needed as
+"metadata". It wasn't — every dispatch site (`object_get`, `object_store`,
+`object_validate`) checks `replicated_tables` first and returns before ever
+consulting `sharded_tables`, so the entry was dead for routing purposes. But
+`ShardedPool.read_table()` checks raw membership in `sharded_tables` with no
+replicated-first carve-out, so the stray entry made it reject `delta_Nstar`
+as "sharded" and raise, even though it is fully replicated. Fixed by removing
+`delta_Nstar` from `sharded_tables`, keeping it only in `replicated_tables`.
+
+When adding a new table to `config/sharding.py`, add it to exactly one of the
+two collections. If a table seems to need to appear in both, that's a sign
+something else is being conflated with shard-key routing — read both
+collections' docstring comments and `object_get`/`object_store` in
+`ShardedPool.py` before adding it to either.
+
 ## `pool.read_table()` only ever works for replicated tables
 
 `ShardedPool.read_table()` explicitly raises if `cls_name` is in
