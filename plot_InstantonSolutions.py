@@ -95,13 +95,17 @@ def _evenly_sample(seq, k):
     return [seq[i] for i in idx]
 
 
-def _representative_points(seq):
-    """Return up to 3 elements of seq (first, middle, last), de-duplicated."""
-    n = len(seq)
+def _representative_indices(n):
+    """Return up to 3 indices into a length-n sequence (first, middle, last),
+    de-duplicated."""
     if n == 0:
         return []
-    idx = sorted(set([0, n // 2, n - 1]))
-    return [seq[i] for i in idx]
+    return sorted(set([0, n // 2, n - 1]))
+
+
+def _representative_points(seq):
+    """Return up to 3 elements of seq (first, middle, last), de-duplicated."""
+    return [seq[i] for i in _representative_indices(len(seq))]
 
 
 # ── Figure functions ──────────────────────────────────────────────────────────
@@ -332,8 +336,9 @@ def _safe_num(v: float) -> str:
 # ── Ray remote plot dispatch ────────────────────────────────────────────────
 
 @ray.remote
-def _plot_trajectory_item(traj, potential, output_dir_str, fmt):
+def _plot_trajectory_item(traj_proxy, potential, output_dir_str, fmt):
     """Runs inside a Ray worker: background trajectory + epsilon plots."""
+    traj = traj_proxy.get()
     sns.set_theme(style="ticks", context="paper")
     output_dir = Path(output_dir_str)
     units = Planck_units()
@@ -435,22 +440,27 @@ def _sweep_Ninit_or_Nfinal(pool, traj_proxy, potential, out_dir, fmt,
                 potential.name, str(out_dir), fmt, swept_name,
             )))
 
-        for rep_v in _representative_points(swept_array):
+        for rep_idx in _representative_indices(len(swept_array)):
+            rep_v = swept_array[rep_idx]
             if swept_name == "N_init":
                 N_init_v, N_final_v = rep_v, other_val
             else:
                 N_init_v, N_final_v = other_val, rep_v
-            payload = _instanton_key_payload(traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol)
-            fi_full, sri_full = ray.get([
-                pool.object_get("FullInstanton", **payload),
-                pool.object_get("SlowRollInstanton", **payload),
-            ])
-            fi_full = fi_full if (fi_full is not None and fi_full.available) else None
-            sri_full = sri_full if (sri_full is not None and sri_full.available) else None
-            if fi_full is None and sri_full is None:
+            # Availability is already known from the do-not-populate vectorized
+            # fetch above, so we can decide whether to plot without resolving
+            # the full object in the driver — the ObjectRef from object_get()
+            # below is passed straight to the worker unresolved, skipping a
+            # round trip of (de)serialisation through driver memory.
+            fi_obj, sri_obj = fi_list[rep_idx], sri_list[rep_idx]
+            fi_available = fi_obj is not None and fi_obj.available
+            sri_available = sri_obj is not None and sri_obj.available
+            if not fi_available and not sri_available:
                 continue
+            payload = _instanton_key_payload(traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol)
+            fi_ref = pool.object_get("FullInstanton", **payload) if fi_available else None
+            sri_ref = pool.object_get("SlowRollInstanton", **payload) if sri_available else None
             work_items.append((_plot_fields_item, (
-                fi_full, sri_full, float(N_init_v), float(N_final_v), float(dns_val),
+                fi_ref, sri_ref, float(N_init_v), float(N_final_v), float(dns_val),
                 potential, str(out_dir), fmt,
             )))
 
@@ -498,17 +508,21 @@ def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
             )))
 
         for rep_dns in _representative_points(dns_array):
-            payload = _instanton_key_payload(traj_proxy, N_init_v, N_final_v, rep_dns, atol, rtol)
-            fi_full, sri_full = ray.get([
-                pool.object_get("FullInstanton", **payload),
-                pool.object_get("SlowRollInstanton", **payload),
-            ])
-            fi_full = fi_full if (fi_full is not None and fi_full.available) else None
-            sri_full = sri_full if (sri_full is not None and sri_full.available) else None
-            if fi_full is None and sri_full is None:
+            # Availability is already known from the do-not-populate vectorized
+            # fetch above (fi_by_dns/sri_by_dns), so the ObjectRef from
+            # object_get() below can be passed straight to the worker
+            # unresolved, skipping a round trip of (de)serialisation through
+            # driver memory.
+            fi_obj, sri_obj = fi_by_dns[rep_dns][combo_idx], sri_by_dns[rep_dns][combo_idx]
+            fi_available = fi_obj is not None and fi_obj.available
+            sri_available = sri_obj is not None and sri_obj.available
+            if not fi_available and not sri_available:
                 continue
+            payload = _instanton_key_payload(traj_proxy, N_init_v, N_final_v, rep_dns, atol, rtol)
+            fi_ref = pool.object_get("FullInstanton", **payload) if fi_available else None
+            sri_ref = pool.object_get("SlowRollInstanton", **payload) if sri_available else None
             work_items.append((_plot_fields_item, (
-                fi_full, sri_full, float(N_init_v), float(N_final_v), float(rep_dns),
+                fi_ref, sri_ref, float(N_init_v), float(N_final_v), float(rep_dns),
                 potential, str(out_dir), fmt,
             )))
 
@@ -568,7 +582,7 @@ def run_plots(pool, units, args):
         traj_dir.mkdir(parents=True, exist_ok=True)
         print(f"\n>> Trajectory {traj.store_id} ({potential.name}) -> {traj_dir}/")
 
-        work_items.append((_plot_trajectory_item, (traj, potential, str(traj_dir), fmt)))
+        work_items.append((_plot_trajectory_item, (traj_proxy, potential, str(traj_dir), fmt)))
 
         _sweep_Ninit_or_Nfinal(
             pool, traj_proxy, potential, traj_dir / "N-init", fmt,
@@ -635,7 +649,7 @@ if __name__ == "__main__":
         timeout=args.db_timeout,
         # ShardedPool reads the actual shard count from the existing primary
         # database when it is opened, so this is only a fallback.
-        shards=1,
+        shards=args.shards,
         profile_agent=None,
         job_name="plot_InstantonSolutions",
         prune_unvalidated=False,

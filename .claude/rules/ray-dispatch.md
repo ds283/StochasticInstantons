@@ -92,6 +92,10 @@ class FooProxy:                      # plain class — NO @ray.remote
         return ray.get(self._ref)
 ```
 
+See `.claude/rules/proxy-pattern.md` for how `FooProxy` instances must be
+consumed — pass the proxy itself, never expose or reach past it for the raw
+`ObjectRef`.
+
 ## Why `RayWorkPool` requires plain classes
 
 `RayTools/RayWorkPool.py` accesses compute targets as plain Python objects:
