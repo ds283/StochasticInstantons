@@ -82,12 +82,24 @@ def create_argument_parser():
 
     # Instanton parameters
     inst = parser.add_argument_group("Instanton parameters")
-    inst.add_argument("--N-init", type=float, default=20.0,
-                      help="N_init: e-folds before end of inflation at instanton "
-                           "start (default: 20.0)")
-    inst.add_argument("--N-final", type=float, default=5.0,
-                      help="N_final: e-folds before end of inflation at instanton "
-                           "end (default: 5.0)")
+    inst.add_argument("--N-init-low", type=float, default=20.0,
+                      help="Lower bound of N_init grid: e-folds before end of "
+                           "inflation at instanton start (default: 20.0)")
+    inst.add_argument("--N-init-high", type=float, default=20.0,
+                      help="Upper bound of N_init grid (default: 20.0)")
+    inst.add_argument("--N-init-samples", type=int, default=1,
+                      help="Number of N_init sample points (default: 1)")
+    inst.add_argument("--N-init-values", nargs="*", type=float, default=[],
+                      help="Explicit list of N_init values (overrides grid)")
+    inst.add_argument("--N-final-low", type=float, default=5.0,
+                      help="Lower bound of N_final grid: e-folds before end of "
+                           "inflation at instanton end (default: 5.0)")
+    inst.add_argument("--N-final-high", type=float, default=5.0,
+                      help="Upper bound of N_final grid (default: 5.0)")
+    inst.add_argument("--N-final-samples", type=int, default=1,
+                      help="Number of N_final sample points (default: 1)")
+    inst.add_argument("--N-final-values", nargs="*", type=float, default=[],
+                      help="Explicit list of N_final values (overrides grid)")
     inst.add_argument("--delta-Nstar-low", type=float, default=0.1,
                       help="Lower bound of delta_Nstar grid (default: 0.1)")
     inst.add_argument("--delta-Nstar-high", type=float, default=3.0,

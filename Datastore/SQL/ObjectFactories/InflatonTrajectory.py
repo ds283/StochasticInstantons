@@ -167,32 +167,30 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             )
 
     def store(self, obj, conn, table, inserter, tables, inserters):
-        if obj.failure:
-            store_id = inserter(conn, {
-                "phi0_serial": obj._phi0.store_id,
-                "pi0_serial": obj._pi0.store_id,
-                "potential_serial": obj._potential.store_id,
-                "atol_serial": obj._atol.store_id,
-                "rtol_serial": obj._rtol.store_id,
-                "n_fields": obj.n_fields,
-                "N_end": None,
-                "validated": False,
-            })
-            obj._my_id = store_id
-            return obj
-
-        # _values has been fully populated by the store_handler (efold_value objects
-        # already minted and assigned store_ids) before the factory is called.
-        store_id = inserter(conn, {
+        # InflatonTrajectory is a replicated table. When ShardedPool pushes this
+        # object to shards other than the controlling shard, obj.available is
+        # already True; the existing serial must be threaded through explicitly
+        # so every shard's _insert() reuses it instead of leasing a fresh one.
+        base_payload = {
             "phi0_serial": obj._phi0.store_id,
             "pi0_serial": obj._pi0.store_id,
             "potential_serial": obj._potential.store_id,
             "atol_serial": obj._atol.store_id,
             "rtol_serial": obj._rtol.store_id,
             "n_fields": obj.n_fields,
-            "N_end": obj._N_end,
             "validated": False,
-        })
+        }
+        if obj.available:
+            base_payload["serial"] = obj.store_id
+
+        if obj.failure:
+            store_id = inserter(conn, base_payload | {"N_end": None})
+            obj._my_id = store_id
+            return obj
+
+        # _values has been fully populated by the store_handler (efold_value objects
+        # already minted and assigned store_ids) before the factory is called.
+        store_id = inserter(conn, base_payload | {"N_end": obj._N_end})
         obj._my_id = store_id
 
         value_inserter = inserters["InflatonTrajectoryValue"]
