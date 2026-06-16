@@ -33,6 +33,8 @@ _default_serial_batch_size = {
     "pi_value": 200,
     "efold_value": 500,
     "delta_Nstar": 10,
+    "N_init": 10,
+    "N_final": 10,
     "inflaton_mass": 10,
     "quartic_coupling": 10,
     "QuadraticPotential": 10,

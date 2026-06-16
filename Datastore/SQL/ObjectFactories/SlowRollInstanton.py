@@ -18,7 +18,6 @@ import json
 import sqlalchemy as sqla
 
 from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
-from config.defaults import DEFAULT_FLOAT_PRECISION
 
 
 class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
@@ -38,8 +37,20 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
                     index=True,
                     nullable=False,
                 ),
-                sqla.Column("N_init", sqla.Float(64), index=True, nullable=False),
-                sqla.Column("N_final", sqla.Float(64), index=True, nullable=False),
+                sqla.Column(
+                    "N_init_serial",
+                    sqla.Integer,
+                    sqla.ForeignKey("N_init.serial"),
+                    index=True,
+                    nullable=False,
+                ),
+                sqla.Column(
+                    "N_final_serial",
+                    sqla.Integer,
+                    sqla.ForeignKey("N_final.serial"),
+                    index=True,
+                    nullable=False,
+                ),
                 sqla.Column(
                     "delta_Nstar_serial",
                     sqla.Integer,
@@ -80,8 +91,8 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
         from InflationConcepts.DiffusionModel import MasslessDecoupledDiffusion
 
         trajectory = payload["trajectory"]  # InflatonTrajectoryProxy
-        N_init = payload["N_init"]  # N_efolds
-        N_final = payload["N_final"]  # N_efolds
+        N_init_obj = payload["N_init"]  # N_init
+        N_final_obj = payload["N_final"]  # N_final
         delta_Nstar_obj = payload["delta_Nstar"]  # delta_Nstar
         atol = payload["atol"]
         rtol = payload["rtol"]
@@ -91,26 +102,6 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
         do_not_populate = payload.get("_do_not_populate", False)
         label = payload.get("label", None)
 
-        N_init_val = float(N_init)
-        N_final_val = float(N_final)
-
-        # Fuzzy float comparison for N_init and N_final (defensive zero-check)
-        if N_init_val != 0.0:
-            N_init_cond = (
-                sqla.func.abs((table.c.N_init - N_init_val) / N_init_val)
-                < DEFAULT_FLOAT_PRECISION
-            )
-        else:
-            N_init_cond = sqla.func.abs(table.c.N_init - N_init_val) < DEFAULT_FLOAT_PRECISION
-
-        if N_final_val != 0.0:
-            N_final_cond = (
-                sqla.func.abs((table.c.N_final - N_final_val) / N_final_val)
-                < DEFAULT_FLOAT_PRECISION
-            )
-        else:
-            N_final_cond = sqla.func.abs(table.c.N_final - N_final_val) < DEFAULT_FLOAT_PRECISION
-
         query = sqla.select(
             table.c.serial,
             table.c.N_total,
@@ -119,8 +110,8 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
         ).filter(
             table.c.validated == True,
             table.c.trajectory_serial == trajectory.store_id,
-            N_init_cond,
-            N_final_cond,
+            table.c.N_init_serial == N_init_obj.store_id,
+            table.c.N_final_serial == N_final_obj.store_id,
             table.c.delta_Nstar_serial == delta_Nstar_obj.store_id,
             table.c.atol_serial == atol.store_id,
             table.c.rtol_serial == rtol.store_id,
@@ -131,15 +122,15 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
             if label is None:
                 label = (
                     f"SlowRollInstanton("
-                    f"N_init={N_init_val:.4g}, "
-                    f"N_final={N_final_val:.4g}, "
+                    f"N_init={float(N_init_obj):.4g}, "
+                    f"N_final={float(N_final_obj):.4g}, "
                     f"dNstar={float(delta_Nstar_obj):.4g})"
                 )
             return SlowRollInstanton(
                 store_id=None,
                 trajectory=trajectory,
-                N_init=N_init,
-                N_final=N_final,
+                N_init=N_init_obj,
+                N_final=N_final_obj,
                 delta_Nstar=delta_Nstar_obj,
                 N_sample=N_sample,
                 atol=atol,
@@ -151,8 +142,8 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
         obj = SlowRollInstanton(
             store_id=row_data.serial,
             trajectory=trajectory,
-            N_init=N_init,
-            N_final=N_final,
+            N_init=N_init_obj,
+            N_final=N_final_obj,
             delta_Nstar=delta_Nstar_obj,
             N_sample=N_sample,
             atol=atol,
@@ -211,8 +202,8 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
         if obj.failure:
             store_id = inserter(conn, {
                 "trajectory_serial": obj._trajectory.store_id,
-                "N_init": float(obj._N_init),
-                "N_final": float(obj._N_final),
+                "N_init_serial": obj._N_init.store_id,
+                "N_final_serial": obj._N_final.store_id,
                 "delta_Nstar_serial": obj._delta_Nstar.store_id,
                 "atol_serial": obj._atol.store_id,
                 "rtol_serial": obj._rtol.store_id,
@@ -227,8 +218,8 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
 
         store_id = inserter(conn, {
             "trajectory_serial": obj._trajectory.store_id,
-            "N_init": float(obj._N_init),
-            "N_final": float(obj._N_final),
+            "N_init_serial": obj._N_init.store_id,
+            "N_final_serial": obj._N_final.store_id,
             "delta_Nstar_serial": obj._delta_Nstar.store_id,
             "atol_serial": obj._atol.store_id,
             "rtol_serial": obj._rtol.store_id,
@@ -295,14 +286,20 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
     def read_table(self, conn, table, tables, units=None):
         from ComputeTargets.SlowRollInstanton import SlowRollInstanton
         from InflationConcepts.delta_Nstar import delta_Nstar as DeltaNstar
+        from InflationConcepts.N_init import N_init as NInit
+        from InflationConcepts.N_final import N_final as NFinal
 
         delta_Nstar_table = tables.get("delta_Nstar")
+        N_init_table = tables.get("N_init")
+        N_final_table = tables.get("N_final")
 
         query = sqla.select(
             table.c.serial,
             table.c.trajectory_serial,
             table.c.N_total,
             table.c.msr_action,
+            table.c.N_init_serial,
+            table.c.N_final_serial,
             table.c.delta_Nstar_serial,
             table.c.label,
         ).filter(table.c.msr_action.isnot(None))
@@ -340,6 +337,26 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
                 if dns_row is not None:
                     obj._delta_Nstar = DeltaNstar(store_id=dns_row.serial, value=dns_row.value)
 
+            if N_init_table is not None:
+                N_init_row = conn.execute(
+                    sqla.select(
+                        N_init_table.c.serial,
+                        N_init_table.c.value,
+                    ).filter(N_init_table.c.serial == row.N_init_serial)
+                ).one_or_none()
+                if N_init_row is not None:
+                    obj._N_init = NInit(store_id=N_init_row.serial, value=N_init_row.value)
+
+            if N_final_table is not None:
+                N_final_row = conn.execute(
+                    sqla.select(
+                        N_final_table.c.serial,
+                        N_final_table.c.value,
+                    ).filter(N_final_table.c.serial == row.N_final_serial)
+                ).one_or_none()
+                if N_final_row is not None:
+                    obj._N_final = NFinal(store_id=N_final_row.serial, value=N_final_row.value)
+
             self._populate(obj, row, tables, conn)
             results.append(obj)
 
@@ -349,8 +366,8 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
         query = sqla.select(
             table.c.serial,
             table.c.timestamp,
-            table.c.N_init,
-            table.c.N_final,
+            table.c.N_init_serial,
+            table.c.N_final_serial,
             table.c.delta_Nstar_serial,
             table.c.validated,
         )
@@ -366,8 +383,8 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
         for row in rows:
             label = (
                 f"SlowRollInstanton("
-                f"N_init={row.N_init:.4g}, "
-                f"N_final={row.N_final:.4g}, "
+                f"N_init_serial={row.N_init_serial}, "
+                f"N_final_serial={row.N_final_serial}, "
                 f"delta_Nstar_serial={row.delta_Nstar_serial})"
             )
             ts = row.timestamp

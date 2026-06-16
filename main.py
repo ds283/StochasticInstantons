@@ -14,7 +14,7 @@ from ComputeTargets import (
     SlowRollInstanton,
 )
 from CosmologyConcepts import phi_value, pi_value
-from InflationConcepts import delta_Nstar, N_efolds, MasslessDecoupledDiffusion, efold_array
+from InflationConcepts import delta_Nstar, N_init, N_final, MasslessDecoupledDiffusion, efold_array
 from Datastore.SQL.ProfileAgent import ProfileAgent
 from Datastore.SQL.ShardedPool import ShardedPool
 from MetadataConcepts import tolerance, store_tag
@@ -178,8 +178,8 @@ def _run_instanton_queue(
 def run_all_pipelines(
     pool: ShardedPool,
     model_list: List[dict],
-    N_init_array: List[N_efolds],
-    N_final_array: List[N_efolds],
+    N_init_array: List[N_init],
+    N_final_array: List[N_final],
     delta_Nstar_array: List[delta_Nstar],
     phi0: phi_value,
     pi0: pi_value,
@@ -366,13 +366,23 @@ def execute(pool: ShardedPool, units: UnitsLike):
         args.N_init_low, args.N_init_high, args.N_init_samples,
         args.N_init_values, "N_init",
     )
-    N_init_array = [N_efolds(v) for v in N_init_sample]
+    N_init_array = ray.get(
+        pool.object_get(
+            "N_init",
+            payload_data=[{"value": v} for v in N_init_sample],
+        )
+    )
 
     N_final_sample = _build_grid(
         args.N_final_low, args.N_final_high, args.N_final_samples,
         args.N_final_values, "N_final",
     )
-    N_final_array = [N_efolds(v) for v in N_final_sample]
+    N_final_array = ray.get(
+        pool.object_get(
+            "N_final",
+            payload_data=[{"value": v} for v in N_final_sample],
+        )
+    )
 
     dns_sample = _build_grid(
         args.delta_Nstar_low, args.delta_Nstar_high, args.delta_Nstar_samples,
@@ -422,6 +432,9 @@ def inventory(pool: ShardedPool, units: UnitsLike):
     print("\n@@ DATASTORE INVENTORY")
     # delta_Nstar values
     _inventory_dimensionless(pool, "delta_Nstar", "Delta N★ values")
+    # N_init, N_final values
+    _inventory_dimensionless(pool, "N_init", "N_init values")
+    _inventory_dimensionless(pool, "N_final", "N_final values")
     # phi0, pi0
     _inventory_dimensionful(pool, "phi_value", "phi_0 values", units)
     _inventory_dimensionful(pool, "pi_value",  "pi_0 values",  units)

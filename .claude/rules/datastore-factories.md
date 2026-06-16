@@ -173,17 +173,29 @@ sqla.Column(
 ),
 ```
 
-## `potential_serial` — no foreign key
+## `potential_serial` — no foreign key, disambiguated by `potential_type`
 
 Potentials (`QuadraticPotential`, `QuarticPotential`) live in separate tables.
-The `potential_serial` column on compute target tables is a plain indexed
+The `potential_serial` column on `InflatonTrajectory` is a plain indexed
 `Integer` with no `ForeignKey(...)`. This avoids a cross-table FK constraint
-that would be incorrect when either potential type could be referenced:
+that would be incorrect when either potential type could be referenced.
+Because two different potential tables can independently produce rows with
+the same `serial`, `potential_serial` alone is ambiguous; a sibling
+`potential_type` column carries the `type_id` (from
+`CosmologyConcepts/Potentials/model_ids.py`) needed to resolve it:
 
 ```python
 sqla.Column("potential_serial", sqla.Integer, index=True, nullable=False),
-# TODO: replace with FK to a unified potential_registry table
+sqla.Column("potential_type", sqla.Integer, index=True, nullable=False),
 ```
+
+`CosmologyConcepts/Potentials/registry.py` maps `type_id → PotentialTypeInfo`
+(class, table name, factory instance). `sqla_InflatonTrajectory_factory.read_table()`
+dispatches through this registry — `info.factory.load_by_serial(conn, tables, serial, units=units)`
+— instead of trying each potential table in turn. Adding a new potential type
+means giving it a `type_id`, a `type_id` column on its own factory, a
+`load_by_serial()` method on its factory, and one entry in
+`POTENTIAL_REGISTRY` — no changes to `InflatonTrajectory` itself.
 
 ## `validate_on_startup` pattern
 

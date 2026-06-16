@@ -54,6 +54,30 @@ class sqla_QuarticPotential_factory(SQLAFactoryBase):
             setattr(obj, key, value)
         return obj
 
+    def load_by_serial(self, conn, tables, serial, units=None):
+        """Deserialize a single QuarticPotential by its own table serial."""
+        table = tables["QuarticPotential"]
+        coupling_table = tables["quartic_coupling"]
+
+        row = conn.execute(
+            sqla.select(
+                table.c.serial,
+                coupling_table.c.serial.label("coupling_serial"),
+                coupling_table.c.value,
+            ).select_from(
+                table.join(coupling_table, table.c.coupling_id == coupling_table.c.serial)
+            ).filter(table.c.serial == serial)
+        ).one_or_none()
+
+        if row is None:
+            return None
+
+        return QuarticPotential(
+            store_id=row.serial,
+            lambda_=quartic_coupling(store_id=row.coupling_serial, value=row.value),
+            units=units,
+        )
+
     def read_table(self, conn, table, tables):
         coupling_table = tables["quartic_coupling"]
 

@@ -18,6 +18,8 @@ replicated_tables = [
     "tolerance",
     "efold_value",
     "delta_Nstar",
+    "N_init",
+    "N_final",
     "inflaton_mass",
     "quartic_coupling",
     "phi_value",

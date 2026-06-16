@@ -25,7 +25,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 
 from ComputeTargets import InflatonTrajectoryProxy
-from InflationConcepts import N_efolds, MasslessDecoupledDiffusion
+from InflationConcepts import MasslessDecoupledDiffusion
 from Datastore.SQL.ShardedPool import ShardedPool
 from Units import Planck_units
 from config.sharding import (
@@ -554,12 +554,16 @@ def run_plots(pool, units, args):
     N_init_sample = _build_grid(
         args.N_init_low, args.N_init_high, args.N_init_samples, args.N_init_values, "N_init"
     )
-    N_init_array = [N_efolds(v) for v in N_init_sample]
+    N_init_array = ray.get(
+        pool.object_get("N_init", payload_data=[{"value": v} for v in N_init_sample])
+    )
 
     N_final_sample = _build_grid(
         args.N_final_low, args.N_final_high, args.N_final_samples, args.N_final_values, "N_final"
     )
-    N_final_array = [N_efolds(v) for v in N_final_sample]
+    N_final_array = ray.get(
+        pool.object_get("N_final", payload_data=[{"value": v} for v in N_final_sample])
+    )
 
     max_combos = args.max_combinations
 

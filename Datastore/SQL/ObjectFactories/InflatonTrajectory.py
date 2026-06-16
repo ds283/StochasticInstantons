@@ -45,11 +45,18 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
                     index=True,
                     nullable=False,
                 ),
-                # TODO (future): add FK to potential registry table; for now a plain
-                # integer is used because AbstractPotential subclasses share no
-                # single concrete table.
+                # potential_serial has no FK because AbstractPotential subclasses
+                # live in separate tables (QuadraticPotential, QuarticPotential, ...).
+                # potential_type disambiguates which table potential_serial refers
+                # to; see CosmologyConcepts.Potentials.registry.POTENTIAL_REGISTRY.
                 sqla.Column(
                     "potential_serial",
+                    sqla.Integer,
+                    index=True,
+                    nullable=False,
+                ),
+                sqla.Column(
+                    "potential_type",
                     sqla.Integer,
                     index=True,
                     nullable=False,
@@ -101,6 +108,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             table.c.phi0_serial == phi0.store_id,
             table.c.pi0_serial == pi0.store_id,
             table.c.potential_serial == potential.store_id,
+            table.c.potential_type == potential.type_id,
             table.c.atol_serial == atol.store_id,
             table.c.rtol_serial == rtol.store_id,
         )
@@ -175,6 +183,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             "phi0_serial": obj._phi0.store_id,
             "pi0_serial": obj._pi0.store_id,
             "potential_serial": obj._potential.store_id,
+            "potential_type": obj._potential.type_id,
             "atol_serial": obj._atol.store_id,
             "rtol_serial": obj._rtol.store_id,
             "n_fields": obj.n_fields,
@@ -244,6 +253,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
     def read_table(self, conn, table, tables, potential_proxy=None, units=None):
         from ComputeTargets.InflatonTrajectory import InflatonTrajectory
         from CosmologyConcepts.FieldValues import phi_value, pi_value
+        from CosmologyConcepts.Potentials.registry import POTENTIAL_REGISTRY
 
         phi_table = tables["phi_value"]
         pi_table = tables["pi_value"]
@@ -253,6 +263,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             table.c.phi0_serial,
             table.c.pi0_serial,
             table.c.potential_serial,
+            table.c.potential_type,
             table.c.N_end,
             table.c.validated,
         ).filter(table.c.validated == True)
@@ -275,48 +286,13 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             ).one()
             pi0_obj = pi_value(store_id=pi_row.serial, value=pi_row.value_PlanckMass)
 
-            # Look up the potential — try QuadraticPotential first, then QuarticPotential
-            potential = None
-            if "QuadraticPotential" in tables and "inflaton_mass" in tables:
-                quad_table = tables["QuadraticPotential"]
-                mass_table = tables["inflaton_mass"]
-                quad_row = conn.execute(
-                    sqla.select(quad_table.c.serial, quad_table.c.mass_id).filter(
-                        quad_table.c.serial == row.potential_serial
-                    )
-                ).one_or_none()
-                if quad_row is not None:
-                    mass_row = conn.execute(
-                        sqla.select(
-                            mass_table.c.serial,
-                            mass_table.c["value_PlanckMass"],
-                        ).filter(mass_table.c.serial == quad_row.mass_id)
-                    ).one_or_none()
-                    if mass_row is not None:
-                        from InflationConcepts.inflaton_mass import inflaton_mass
-                        from InflationConcepts.QuadraticPotential import QuadraticPotential
-                        m = inflaton_mass(store_id=mass_row.serial, value=mass_row.value_PlanckMass)
-                        potential = QuadraticPotential(store_id=quad_row.serial, m=m, units=units)
-
-            if potential is None and "QuarticPotential" in tables and "quartic_coupling" in tables:
-                quart_table = tables["QuarticPotential"]
-                coupling_table = tables["quartic_coupling"]
-                quart_row = conn.execute(
-                    sqla.select(quart_table.c.serial, quart_table.c.coupling_id).filter(
-                        quart_table.c.serial == row.potential_serial
-                    )
-                ).one_or_none()
-                if quart_row is not None:
-                    coupling_row = conn.execute(
-                        sqla.select(coupling_table.c.serial, coupling_table.c.value).filter(
-                            coupling_table.c.serial == quart_row.coupling_id
-                        )
-                    ).one_or_none()
-                    if coupling_row is not None:
-                        from InflationConcepts.quartic_coupling import quartic_coupling
-                        from InflationConcepts.QuarticPotential import QuarticPotential
-                        lam = quartic_coupling(store_id=coupling_row.serial, value=coupling_row.value)
-                        potential = QuarticPotential(store_id=quart_row.serial, lambda_=lam, units=units)
+            # Look up the potential via the type registry, which knows which
+            # table/factory potential_serial refers to for this potential_type.
+            info = POTENTIAL_REGISTRY.get(row.potential_type)
+            potential = (
+                info.factory.load_by_serial(conn, tables, row.potential_serial, units=units)
+                if info is not None else None
+            )
 
             obj = InflatonTrajectory(
                 store_id=row.serial,

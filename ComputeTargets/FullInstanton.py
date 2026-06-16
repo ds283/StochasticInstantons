@@ -23,7 +23,8 @@ from Datastore.object import DatastoreObject
 from InflationConcepts.DiffusionModel import AbstractDiffusionModel, MasslessDecoupledDiffusion
 from InflationConcepts.efold_value import efold_value, efold_array
 from InflationConcepts.delta_Nstar import delta_Nstar
-from InflationConcepts.N_efolds import N_efolds
+from InflationConcepts.N_init import N_init
+from InflationConcepts.N_final import N_final
 from MetadataConcepts.store_tag import store_tag
 from MetadataConcepts.tolerance import tolerance
 
@@ -284,8 +285,8 @@ class FullInstanton(DatastoreObject):
     """
     The full MSR stochastic instanton in {φ₁, φ₂, P₁, P₂} state space.
 
-    Parameterised by a background InflatonTrajectoryProxy, two N_efolds values
-    (N_init, N_final — measured backwards from end of inflation), an excess
+    Parameterised by a background InflatonTrajectoryProxy, an N_init and an
+    N_final value (measured backwards from end of inflation), an excess
     transition time delta_Nstar, and ODE tolerances.
 
     Plain Python class on the driver. Numerical work is dispatched via the
@@ -296,8 +297,8 @@ class FullInstanton(DatastoreObject):
         self,
         store_id: Optional[int],
         trajectory,  # InflatonTrajectoryProxy
-        N_init: N_efolds,
-        N_final: N_efolds,
+        N_init: N_init,
+        N_final: N_final,
         delta_Nstar: delta_Nstar,
         N_sample: Optional[efold_array],
         atol: tolerance,
@@ -308,8 +309,8 @@ class FullInstanton(DatastoreObject):
     ):
         DatastoreObject.__init__(self, store_id)
         self._trajectory = trajectory
-        self._N_init: N_efolds = N_init
-        self._N_final: N_efolds = N_final
+        self._N_init: N_init = N_init
+        self._N_final: N_final = N_final
         self._delta_Nstar: delta_Nstar = delta_Nstar
         self._N_sample: Optional[efold_array] = N_sample
         self._atol: tolerance = atol
@@ -336,12 +337,12 @@ class FullInstanton(DatastoreObject):
         return getattr(self, "_failure", False)
 
     @property
-    def N_init_value(self) -> N_efolds:
+    def N_init_value(self) -> N_init:
         """Return the N_init parameter (e-folds before end of inflation at instanton start)."""
         return self._N_init
 
     @property
-    def N_final_value(self) -> N_efolds:
+    def N_final_value(self) -> N_final:
         """Return the N_final parameter (e-folds before end of inflation at instanton end)."""
         return self._N_final
 
@@ -437,8 +438,8 @@ class FullInstantonProxy:
     def __init__(self, model: FullInstanton):
         self._ref: ObjectRef = ray.put(model)
         self._store_id: Optional[int] = model.store_id if model.available else None
-        self._N_init: N_efolds = model.N_init_value
-        self._N_final: N_efolds = model.N_final_value
+        self._N_init: N_init = model.N_init_value
+        self._N_final: N_final = model.N_final_value
         self._delta_Nstar: delta_Nstar = model.delta_Nstar
 
     @property
@@ -450,11 +451,11 @@ class FullInstantonProxy:
         return self._store_id is not None
 
     @property
-    def N_init(self) -> N_efolds:
+    def N_init(self) -> N_init:
         return self._N_init
 
     @property
-    def N_final(self) -> N_efolds:
+    def N_final(self) -> N_final:
         return self._N_final
 
     @property

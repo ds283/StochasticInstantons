@@ -51,6 +51,30 @@ class sqla_QuadraticPotential_factory(SQLAFactoryBase):
             setattr(obj, key, value)
         return obj
 
+    def load_by_serial(self, conn, tables, serial, units=None):
+        """Deserialize a single QuadraticPotential by its own table serial."""
+        table = tables["QuadraticPotential"]
+        mass_table = tables["inflaton_mass"]
+
+        row = conn.execute(
+            sqla.select(
+                table.c.serial,
+                mass_table.c.serial.label("mass_serial"),
+                mass_table.c["value_PlanckMass"],
+            ).select_from(
+                table.join(mass_table, table.c.mass_id == mass_table.c.serial)
+            ).filter(table.c.serial == serial)
+        ).one_or_none()
+
+        if row is None:
+            return None
+
+        return QuadraticPotential(
+            store_id=row.serial,
+            m=inflaton_mass(store_id=row.mass_serial, value=row.value_PlanckMass),
+            units=units,
+        )
+
     def read_table(self, conn, table, tables):
         mass_table = tables["inflaton_mass"]
 
