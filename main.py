@@ -32,7 +32,8 @@ from config.sharding import (
     read_table_config,
     inventory_config,
 )
-VERSION_LABEL = "2026.3.0"
+
+VERSION_LABEL = "2026.6.1"
 
 parser = create_argument_parser()
 args = parser.parse_args()
