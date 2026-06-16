@@ -76,7 +76,11 @@ def _default_compute_handler(obj, **kwargs) -> ObjectRef:
     return obj.compute(**kwargs)
 
 
-def _default_store_handler(obj, pool) -> ObjectRef:
+def _default_store_handler(obj, pool) -> None:
+    obj.store()
+
+
+def _default_persist_handler(obj, pool) -> ObjectRef:
     return pool.object_store(obj)
 
 
@@ -88,6 +92,7 @@ class RayWorkPool:
         task_builder,
         compute_handler=_default_compute_handler,
         store_handler=_default_store_handler,
+            persist_handler=_default_persist_handler,
         available_handler=None,
         validation_handler=None,
         post_handler=None,
@@ -101,14 +106,14 @@ class RayWorkPool:
         title: str = None,
         store_results: bool = False,
     ):
-        if compute_handler is not None and store_handler is None:
+        if compute_handler is not None and persist_handler is None:
             raise RuntimeError(
-                "If a compute maker is supplied, a store maker must also be supplied to serialize the result of the computation"
+                "If a compute handler is supplied, a persist handler must also be supplied to serialize the result of the computation"
             )
 
-        if compute_handler is None and store_handler is not None:
+        if compute_handler is None and persist_handler is not None:
             raise RuntimeWarning(
-                "No compute maker was supplied, but a store maker was provided. This will have no effect because there will be no compute results to store"
+                "No compute handler was supplied, but a persist handler was provided. This will have no effect because there will be no compute results to store"
             )
 
         self._pool = pool
@@ -125,6 +130,7 @@ class RayWorkPool:
         self._task_builder = task_builder
         self._compute_handler = compute_handler
         self._store_handler = store_handler
+        self._persist_handler = persist_handler
         self._available_handler = available_handler
         self._validation_handler = validation_handler
         self._post_handler = post_handler
@@ -179,7 +185,7 @@ class RayWorkPool:
         if self._compute_handler is not None:
             msg += f", {self._num_compute_queue} compute"
 
-        if self._store_handler is not None:
+        if self._persist_handler is not None:
             msg += f", {self._num_store_queue} store"
 
         if self._available_handler is not None:
@@ -216,7 +222,7 @@ class RayWorkPool:
             if len(submsg) > 0:
                 msg += f" ({submsg})"
 
-        if self._store_handler is not None:
+        if self._persist_handler is not None:
             msg += f", {self._num_store_complete} store"
             submsg = _format_rates(
                 since_last_notify_in_seconds,
@@ -430,10 +436,14 @@ class RayWorkPool:
 
                 elif item_type == "compute":
                     # payload contains an index into the result set and (our local copy of) the object that has finished computation;
-                    # we want it to store the result of the computation internally, and then submit a store request to the Datastore service.
+                    # we want it to store the result of the computation internally, and then submit a persist request to the Datastore service.
                     # the results will then be serialized into the database
                     idx, obj = payload
-                    obj.store()
+
+                    # call the store handler to resolve the Ray future and populate the object;
+                    # the default simply calls obj.store(), but this can be overridden (e.g. to
+                    # mint associated datastore objects before the persist step)
+                    self._store_handler(obj, self._pool)
 
                     # remove the original 'compute' task from the work queue
                     self._inflight.pop(ref.hex, None)
@@ -442,8 +452,8 @@ class RayWorkPool:
                     self._num_compute_queue = max(self._num_compute_queue - 1, 0)
                     self._num_compute_complete += 1
 
-                    # is a compute handler was supplied, a store handler must have been also
-                    store_task: ObjectRef = self._store_handler(obj, self._pool)
+                    # a compute handler was supplied, so a persist handler must have been also
+                    store_task: ObjectRef = self._persist_handler(obj, self._pool)
 
                     # add this store task to the work queue
                     self._inflight[store_task.hex] = store_task
