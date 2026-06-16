@@ -99,9 +99,9 @@ def create_argument_parser():
 
     # Output sampling
     samp = parser.add_argument_group("Output sampling")
-    samp.add_argument("--N-samples", type=int, default=500,
-                      help="Number of e-folding sample points per trajectory "
-                           "(default: 500)")
+    samp.add_argument("--samples-per-N", type=float, default=25.0,
+                      help="Sampling density: number of trajectory sample "
+                           "points per e-fold (default: 25.0)")
 
     # Actions
     act = parser.add_argument_group("Actions")
