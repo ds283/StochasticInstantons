@@ -15,6 +15,7 @@
 
 import sys
 import argparse
+import itertools
 import math
 from pathlib import Path
 
@@ -25,7 +26,6 @@ from matplotlib import pyplot as plt
 
 from ComputeTargets import InflatonTrajectoryProxy
 from InflationConcepts import N_efolds, MasslessDecoupledDiffusion
-from RayTools.RayWorkPool import RayWorkPool
 from Datastore.SQL.ShardedPool import ShardedPool
 from Units import Planck_units
 from config.sharding import (
@@ -38,6 +38,10 @@ from config.sharding import (
 )
 
 VERSION_LABEL = "2026.3.0"
+
+# Cap on the number of "other parameter" combinations shown per sweep
+# directory, unless overridden via --max-combinations.
+DEFAULT_MAX_COMBINATIONS = 10
 
 
 def create_plot_parser():
@@ -71,15 +75,64 @@ def create_plot_parser():
         "--rel-tol", type=float, default=1e-8,
         help="Relative ODE tolerance (must match value used in main.py, default: 1e-8)",
     )
+
+    # N_init/N_final grids — must mirror the flags in config/argument_parser.py,
+    # since these aren't recorded in a lookup table the way delta_Nstar is and
+    # so can't be auto-discovered: this script has to rebuild the same grid
+    # main.py used.
+    parser.add_argument("--N-init-low", type=float, default=20.0,
+                        help="Lower bound of N_init grid (must match main.py, default: 20.0)")
+    parser.add_argument("--N-init-high", type=float, default=20.0,
+                        help="Upper bound of N_init grid (must match main.py, default: 20.0)")
+    parser.add_argument("--N-init-samples", type=int, default=1,
+                        help="Number of N_init sample points (must match main.py, default: 1)")
+    parser.add_argument("--N-init-values", nargs="*", type=float, default=[],
+                        help="Explicit list of N_init values (must match main.py)")
+    parser.add_argument("--N-final-low", type=float, default=5.0,
+                        help="Lower bound of N_final grid (must match main.py, default: 5.0)")
+    parser.add_argument("--N-final-high", type=float, default=5.0,
+                        help="Upper bound of N_final grid (must match main.py, default: 5.0)")
+    parser.add_argument("--N-final-samples", type=int, default=1,
+                        help="Number of N_final sample points (must match main.py, default: 1)")
+    parser.add_argument("--N-final-values", nargs="*", type=float, default=[],
+                        help="Explicit list of N_final values (must match main.py)")
+
     parser.add_argument(
-        "--N-init", type=float, required=True,
-        help="N_efolds value for instanton start (must match value used in main.py)",
-    )
-    parser.add_argument(
-        "--N-final", type=float, required=True,
-        help="N_efolds value for instanton end (must match value used in main.py)",
+        "--max-combinations", type=int, default=DEFAULT_MAX_COMBINATIONS,
+        help="Maximum number of 'other parameter' combinations to show per "
+             f"sweep directory, evenly sampled across the grid (default: {DEFAULT_MAX_COMBINATIONS})",
     )
     return parser
+
+
+# ── Grid + sampling helpers ────────────────────────────────────────────────────
+
+def _build_grid(low, high, samples, values, label):
+    if len(values) > 0:
+        sample = sorted(values)
+    else:
+        sample = sorted(np.linspace(low, high, samples, endpoint=True).tolist())
+    print(f"\n** Building {label} grid: {len(sample)} values "
+          f"from {sample[0]:.4g} to {sample[-1]:.4g}")
+    return sample
+
+
+def _evenly_sample(seq, k):
+    """Return up to k elements of seq, evenly spaced by index."""
+    n = len(seq)
+    if n <= k:
+        return list(seq)
+    idx = sorted(set(int(round(i)) for i in np.linspace(0, n - 1, k)))
+    return [seq[i] for i in idx]
+
+
+def _representative_points(seq):
+    """Return up to 3 elements of seq (first, middle, last), de-duplicated."""
+    n = len(seq)
+    if n == 0:
+        return []
+    idx = sorted(set([0, n // 2, n - 1]))
+    return [seq[i] for i in idx]
 
 
 # ── Figure functions ──────────────────────────────────────────────────────────
@@ -126,10 +179,10 @@ def plot_background_trajectory(traj, potential, units, output_dir, fmt):
     ax.legend()
     fig.tight_layout()
 
-    fname = output_dir / f"background_phi_{_safe_name(potential.name)}.{fmt}"
+    fname = output_dir / f"background_phi.{fmt}"
     fig.savefig(fname)
     plt.close(fig)
-    print(f"   Saved: {fname.name}")
+    print(f"   Saved: {fname}")
 
 
 def plot_epsilon(traj, potential, units, output_dir, fmt):
@@ -154,16 +207,18 @@ def plot_epsilon(traj, potential, units, output_dir, fmt):
     ax.legend()
     fig.tight_layout()
 
-    fname = output_dir / f"background_epsilon_{_safe_name(potential.name)}.{fmt}"
+    fname = output_dir / f"background_epsilon.{fmt}"
     fig.savefig(fname)
     plt.close(fig)
-    print(f"   Saved: {fname.name}")
+    print(f"   Saved: {fname}")
 
 
-def plot_instanton_fields(traj, fi, sri, delta_Nstar_val, potential, units, output_dir, fmt):
-    """Figure 3: 2×2 grid of instanton field components vs N."""
+def plot_instanton_fields(fi, sri, N_init_val, N_final_val, dns_val, potential, units, output_dir, fmt):
+    """Figure 3: 2×2 grid of instanton field components vs N, at one
+    (N_init, N_final, delta_Nstar) point."""
     if fi is None and sri is None:
-        print(f"   Warning: no instanton data for δN★={delta_Nstar_val:.3g} — skipping Figure 3")
+        print(f"   Warning: no instanton data for Ninit={N_init_val:.3g}, "
+              f"Nfinal={N_final_val:.3g}, δN★={dns_val:.3g} — skipping Figure 3")
         return
 
     Mp = units.PlanckMass
@@ -235,111 +290,234 @@ def plot_instanton_fields(traj, fi, sri, delta_Nstar_val, potential, units, outp
     ax_P2.set_title("Response field $P_2$")
     ax_P2.legend(fontsize="small")
 
-    fig.suptitle(f"Instanton fields — {potential.name}, δN★={delta_Nstar_val:.3g}")
+    fig.suptitle(
+        f"Instanton fields — {potential.name}, "
+        f"Ninit={N_init_val:.3g}, Nfinal={N_final_val:.3g}, δN★={dns_val:.3g}"
+    )
     fig.tight_layout()
 
-    dns_str = f"{delta_Nstar_val:.3g}".replace(".", "p")
     fname = (
         output_dir
-        / f"instanton_fields_{_safe_name(potential.name)}_dNstar{dns_str}.{fmt}"
+        / f"instanton_fields_Ninit={_safe_num(N_init_val)}_Nfinal={_safe_num(N_final_val)}"
+          f"_dNstar={_safe_num(dns_val)}.{fmt}"
     )
     fig.savefig(fname)
     plt.close(fig)
-    print(f"   Saved: {fname.name}")
+    print(f"   Saved: {fname}")
 
 
-def plot_msr_action(trajectories, full_instantons, sr_instantons, potential, units, output_dir, fmt):
-    """Figure 4: MSR action vs δN★, with one line per trajectory."""
-    if not full_instantons and not sr_instantons:
+def plot_msr_action_sweep(x_label, fi_points, sri_points, fixed_desc, potential_name,
+                           output_dir, fmt, swept_name):
+    """One trajectory's MSR action vs the swept dimension, at one fixed
+    combination of the other two dimensions (described by fixed_desc).
+    fi_points/sri_points: lists of (swept_value, msr_action) tuples."""
+    fi_points = [(x, a) for x, a in fi_points if a is not None]
+    sri_points = [(x, a) for x, a in sri_points if a is not None]
+    if not fi_points and not sri_points:
         return
 
-    # Build a map: trajectory_store_id → potential_name
-    traj_map = {t.store_id: t for t in trajectories if t._potential is not None}
-
-    # Group by trajectory_serial
-    fi_by_traj = {}
-    for fi in full_instantons:
-        traj_id = getattr(fi, "_trajectory_serial", None)
-        if traj_id is not None and fi._msr_action is not None:
-            fi_by_traj.setdefault(traj_id, []).append(fi)
-
-    sri_by_traj = {}
-    for sri in sr_instantons:
-        traj_id = getattr(sri, "_trajectory_serial", None)
-        if traj_id is not None and sri._msr_action is not None:
-            sri_by_traj.setdefault(traj_id, []).append(sri)
-
-    all_traj_ids = sorted(set(list(fi_by_traj.keys()) + list(sri_by_traj.keys())))
-    if not all_traj_ids:
-        return
-
-    palette = sns.color_palette("tab10", n_colors=max(len(all_traj_ids), 1))
     fig, ax = plt.subplots()
+    if fi_points:
+        fi_sorted = sorted(fi_points)
+        xs, ys = zip(*fi_sorted)
+        ax.semilogy(xs, ys, "o-", label="Full MSR")
+    if sri_points:
+        sri_sorted = sorted(sri_points)
+        xs, ys = zip(*sri_sorted)
+        ax.semilogy(xs, ys, "s--", label="Slow-roll")
 
-    for color, traj_id in zip(palette, all_traj_ids):
-        traj = traj_map.get(traj_id)
-        traj_label = traj._potential.name if traj is not None else f"traj#{traj_id}"
-
-        fi_list = sorted(
-            fi_by_traj.get(traj_id, []),
-            key=lambda x: float(x._delta_Nstar) if x._delta_Nstar is not None else 0.0,
-        )
-        if fi_list:
-            dns_vals = [float(fi._delta_Nstar) for fi in fi_list if fi._delta_Nstar is not None]
-            actions = [fi._msr_action for fi in fi_list if fi._delta_Nstar is not None]
-            ax.semilogy(dns_vals, actions, "o-", color=color, label=f"{traj_label} (full)")
-
-        sri_list = sorted(
-            sri_by_traj.get(traj_id, []),
-            key=lambda x: float(x._delta_Nstar) if x._delta_Nstar is not None else 0.0,
-        )
-        if sri_list:
-            dns_vals = [float(sri._delta_Nstar) for sri in sri_list if sri._delta_Nstar is not None]
-            actions = [sri._msr_action for sri in sri_list if sri._delta_Nstar is not None]
-            ax.semilogy(dns_vals, actions, "s--", color=color, label=f"{traj_label} (SR)")
-
-    ax.set_xlabel(r"$\delta N_\star$")
+    ax.set_xlabel(x_label)
     ax.set_ylabel(r"$S_{\rm MSR}$")
-    ax.set_title(f"MSR action vs δN★ — {potential.name}")
+    ax.set_title(f"MSR action vs {x_label} — {potential_name} ({fixed_desc})")
     ax.legend(fontsize="small")
     fig.tight_layout()
 
-    fname = output_dir / f"msr_action_{_safe_name(potential.name)}.{fmt}"
+    swept_file = {"N_init": "Ninit", "N_final": "Nfinal", "delta_Nstar": "dNstar"}[swept_name]
+    fname = output_dir / f"msr_action_vs_{swept_file}__{fixed_desc}.{fmt}"
     fig.savefig(fname)
     plt.close(fig)
-    print(f"   Saved: {fname.name}")
+    print(f"   Saved: {fname}")
+
+
+def _safe_num(v: float) -> str:
+    return f"{v:.4g}".replace(".", "p").replace("-", "m")
 
 
 # ── Ray remote plot dispatch ────────────────────────────────────────────────
 
 @ray.remote
-def _plot_instanton_item(
-    traj,
-    fi,
-    sri,
-    dns_val: float,
-    emit_trajectory_plots: bool,
-    output_dir_str: str,
-    fmt: str,
-):
-    """
-    Runs inside a Ray worker. Handles all matplotlib work for one
-    (trajectory, delta_Nstar) work item, off the driver process.
-    emit_trajectory_plots=True additionally emits Figures 1 and 2.
-    """
+def _plot_trajectory_item(traj, potential, output_dir_str, fmt):
+    """Runs inside a Ray worker: background trajectory + epsilon plots."""
     sns.set_theme(style="ticks", context="paper")
     output_dir = Path(output_dir_str)
     units = Planck_units()
+    plot_background_trajectory(traj, potential, units, output_dir, fmt)
+    plot_epsilon(traj, potential, units, output_dir, fmt)
 
-    potential = traj._potential
-    if potential is None:
-        return
 
-    if emit_trajectory_plots:
-        plot_background_trajectory(traj, potential, units, output_dir, fmt)
-        plot_epsilon(traj, potential, units, output_dir, fmt)
+@ray.remote
+def _plot_fields_item(fi, sri, N_init_val, N_final_val, dns_val, potential, output_dir_str, fmt):
+    """Runs inside a Ray worker: one field-trajectory comparison plot."""
+    sns.set_theme(style="ticks", context="paper")
+    output_dir = Path(output_dir_str)
+    units = Planck_units()
+    plot_instanton_fields(fi, sri, N_init_val, N_final_val, dns_val, potential, units, output_dir, fmt)
 
-    plot_instanton_fields(traj, fi, sri, dns_val, potential, units, output_dir, fmt)
+
+@ray.remote
+def _plot_msr_sweep_item(x_label, fi_points, sri_points, fixed_desc, potential_name,
+                          output_dir_str, fmt, swept_name):
+    """Runs inside a Ray worker: one MSR-action-vs-swept-parameter plot."""
+    sns.set_theme(style="ticks", context="paper")
+    output_dir = Path(output_dir_str)
+    plot_msr_action_sweep(x_label, fi_points, sri_points, fixed_desc, potential_name,
+                          output_dir, fmt, swept_name)
+
+
+# ── Sweep-direction data fetching ────────────────────────────────────────────
+
+def _instanton_key_payload(traj_proxy, N_init, N_final, dns, atol, rtol):
+    return dict(
+        trajectory=traj_proxy,
+        N_init=N_init,
+        N_final=N_final,
+        delta_Nstar=dns,
+        atol=atol,
+        rtol=rtol,
+        tags=[],
+    )
+
+
+def _qualifying_action(obj):
+    """Extract msr_action from a (possibly _do_not_populate=True) query
+    result, or None if the object doesn't exist / has no action recorded."""
+    if obj is None or not obj.available:
+        return None
+    return obj.msr_action
+
+
+def _sweep_Ninit_or_Nfinal(pool, traj_proxy, potential, out_dir, fmt,
+                            swept_name, swept_array, fixed_other_array, dns_array,
+                            atol, rtol, max_combos, pending_refs):
+    """swept_name in {"N_init", "N_final"}. delta_Nstar is one of the two
+    fixed 'other' dimensions here, so every point on one curve already
+    shares one shard — one object_get_vectorized() call per curve."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    combos = list(itertools.product(fixed_other_array, dns_array))
+    selected = _evenly_sample(combos, max_combos)
+
+    for other_val, dns_val in selected:
+        if swept_name == "N_init":
+            payload_data = [
+                {**_instanton_key_payload(traj_proxy, v, other_val, dns_val, atol, rtol),
+                 "_do_not_populate": True}
+                for v in swept_array
+            ]
+        else:
+            payload_data = [
+                {**_instanton_key_payload(traj_proxy, other_val, v, dns_val, atol, rtol),
+                 "_do_not_populate": True}
+                for v in swept_array
+            ]
+
+        fi_list, sri_list = ray.get([
+            pool.object_get_vectorized("FullInstanton", dns_val, payload_data=payload_data),
+            pool.object_get_vectorized("SlowRollInstanton", dns_val, payload_data=payload_data),
+        ])
+
+        swept_vals = [float(v) for v in swept_array]
+        fi_points = list(zip(swept_vals, (_qualifying_action(o) for o in fi_list)))
+        sri_points = list(zip(swept_vals, (_qualifying_action(o) for o in sri_list)))
+
+        if swept_name == "N_init":
+            fixed_desc = f"Nfinal={float(other_val):.3g}_dNstar={float(dns_val):.3g}"
+            x_label = r"$N_{\rm init}$"
+        else:
+            fixed_desc = f"Ninit={float(other_val):.3g}_dNstar={float(dns_val):.3g}"
+            x_label = r"$N_{\rm final}$"
+
+        if any(a is not None for _, a in fi_points) or any(a is not None for _, a in sri_points):
+            pending_refs.append(_plot_msr_sweep_item.remote(
+                x_label, fi_points, sri_points, fixed_desc,
+                potential.name, str(out_dir), fmt, swept_name,
+            ))
+
+        for rep_v in _representative_points(swept_array):
+            if swept_name == "N_init":
+                N_init_v, N_final_v = rep_v, other_val
+            else:
+                N_init_v, N_final_v = other_val, rep_v
+            payload = _instanton_key_payload(traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol)
+            fi_full, sri_full = ray.get([
+                pool.object_get("FullInstanton", **payload),
+                pool.object_get("SlowRollInstanton", **payload),
+            ])
+            fi_full = fi_full if (fi_full is not None and fi_full.available) else None
+            sri_full = sri_full if (sri_full is not None and sri_full.available) else None
+            if fi_full is None and sri_full is None:
+                continue
+            pending_refs.append(_plot_fields_item.remote(
+                fi_full, sri_full, float(N_init_v), float(N_final_v), float(dns_val),
+                potential, str(out_dir), fmt,
+            ))
+
+
+def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
+                        dns_array, N_init_array, N_final_array,
+                        atol, rtol, max_combos, pending_refs):
+    """Each curve point has a different delta_Nstar (a different shard), but
+    across the selected (N_init, N_final) combos, points sharing one
+    delta_Nstar value do share a shard — bin across combos by delta_Nstar
+    and issue one object_get_vectorized() call per distinct value."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    combos = list(itertools.product(N_init_array, N_final_array))
+    selected = _evenly_sample(combos, max_combos)
+
+    fi_refs = {}
+    sri_refs = {}
+    for dns_val in dns_array:
+        payload_data = [
+            {**_instanton_key_payload(traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol),
+             "_do_not_populate": True}
+            for (N_init_v, N_final_v) in selected
+        ]
+        fi_refs[dns_val] = pool.object_get_vectorized("FullInstanton", dns_val, payload_data=payload_data)
+        sri_refs[dns_val] = pool.object_get_vectorized("SlowRollInstanton", dns_val, payload_data=payload_data)
+
+    fi_by_dns = dict(zip(fi_refs.keys(), ray.get(list(fi_refs.values()))))
+    sri_by_dns = dict(zip(sri_refs.keys(), ray.get(list(sri_refs.values()))))
+
+    for combo_idx, (N_init_v, N_final_v) in enumerate(selected):
+        fi_points = [
+            (float(dns_val), _qualifying_action(fi_by_dns[dns_val][combo_idx]))
+            for dns_val in dns_array
+        ]
+        sri_points = [
+            (float(dns_val), _qualifying_action(sri_by_dns[dns_val][combo_idx]))
+            for dns_val in dns_array
+        ]
+
+        fixed_desc = f"Ninit={float(N_init_v):.3g}_Nfinal={float(N_final_v):.3g}"
+        if any(a is not None for _, a in fi_points) or any(a is not None for _, a in sri_points):
+            pending_refs.append(_plot_msr_sweep_item.remote(
+                r"$\delta N_\star$", fi_points, sri_points, fixed_desc,
+                potential.name, str(out_dir), fmt, "delta_Nstar",
+            ))
+
+        for rep_dns in _representative_points(dns_array):
+            payload = _instanton_key_payload(traj_proxy, N_init_v, N_final_v, rep_dns, atol, rtol)
+            fi_full, sri_full = ray.get([
+                pool.object_get("FullInstanton", **payload),
+                pool.object_get("SlowRollInstanton", **payload),
+            ])
+            fi_full = fi_full if (fi_full is not None and fi_full.available) else None
+            sri_full = sri_full if (sri_full is not None and sri_full.available) else None
+            if fi_full is None and sri_full is None:
+                continue
+            pending_refs.append(_plot_fields_item.remote(
+                fi_full, sri_full, float(N_init_v), float(N_final_v), float(rep_dns),
+                potential, str(out_dir), fmt,
+            ))
 
 
 # ── Main pipeline ─────────────────────────────────────────────────────────────
@@ -353,10 +531,6 @@ def run_plots(pool, units, args):
     trajectories = ray.get(pool.read_table("InflatonTrajectory", units=units))
     print(f"   Found {len(trajectories)} trajectory record(s)")
 
-    print(">> Reading delta_Nstar values...")
-    delta_Nstar_list = ray.get(pool.read_table("delta_Nstar"))
-    print(f"   Found {len(delta_Nstar_list)} delta_Nstar value(s)")
-
     if not trajectories:
         print("No trajectories found. Run main.py first.")
         return
@@ -364,98 +538,61 @@ def run_plots(pool, units, args):
     traj_list = trajectories if args.show_all else trajectories[:5]
     traj_list = [t for t in traj_list if t._potential is not None]
 
+    print(">> Reading delta_Nstar values...")
+    dns_array = sorted(ray.get(pool.read_table("delta_Nstar")), key=lambda d: float(d))
+    print(f"   Found {len(dns_array)} delta_Nstar value(s)")
+
+    if not dns_array:
+        print("No delta_Nstar values found. Run main.py first.")
+        return
+
     atol, rtol = ray.get([
         pool.object_get("tolerance", log10_tol=int(round(math.log10(args.abs_tol)))),
         pool.object_get("tolerance", log10_tol=int(round(math.log10(args.rel_tol)))),
     ])
-    N_init = N_efolds(args.N_init)
-    N_final = N_efolds(args.N_final)
-    dm = MasslessDecoupledDiffusion()
 
-    work_items = [
-        {"traj": traj, "dns": dns, "emit_trajectory_plots": (i == 0)}
-        for traj in traj_list
-        for i, dns in enumerate(delta_Nstar_list)
-    ]
-
-    def _instanton_payload(traj_proxy, dns):
-        return dict(
-            trajectory=traj_proxy,
-            N_init=N_init,
-            N_final=N_final,
-            delta_Nstar=dns,
-            atol=atol,
-            rtol=rtol,
-            N_sample=None,
-            diffusion_model=dm,
-            tags=[],
-            _do_not_populate=False,
-        )
-
-    def task_builder(item):
-        traj = item["traj"]
-        dns = item["dns"]
-        traj_proxy = InflatonTrajectoryProxy(traj)
-
-        fi, sri = ray.get([
-            pool.object_get("FullInstanton", **_instanton_payload(traj_proxy, dns)),
-            pool.object_get("SlowRollInstanton", **_instanton_payload(traj_proxy, dns)),
-        ])
-
-        fi = fi if (fi is not None and fi.available) else None
-        sri = sri if (sri is not None and sri.available) else None
-        if fi is None and sri is None:
-            return None
-
-        return _plot_instanton_item.remote(
-            traj, fi, sri, float(dns),
-            item["emit_trajectory_plots"],
-            str(output_dir), fmt,
-        )
-
-    work_queue = RayWorkPool(
-        pool,
-        work_items,
-        task_builder=task_builder,
-        compute_handler=None,
-        store_handler=None,
-        persist_handler=None,
-        available_handler=None,
-        validation_handler=None,
-        post_handler=None,
-        label_builder=None,
-        create_batch_size=10,
-        process_batch_size=10,
-        notify_batch_size=50,
-        notify_time_interval=120,
-        title="GENERATING INSTANTON PLOTS",
-        store_results=False,
+    N_init_sample = _build_grid(
+        args.N_init_low, args.N_init_high, args.N_init_samples, args.N_init_values, "N_init"
     )
-    work_queue.run()
+    N_init_array = [N_efolds(v) for v in N_init_sample]
 
-    # plot_msr_action aggregates across all trajectories and delta_Nstar values,
-    # so it cannot be per-item work; run it on the driver once the queue is done.
-    all_fi_refs = []
-    all_sri_refs = []
+    N_final_sample = _build_grid(
+        args.N_final_low, args.N_final_high, args.N_final_samples, args.N_final_values, "N_final"
+    )
+    N_final_array = [N_efolds(v) for v in N_final_sample]
+
+    max_combos = args.max_combinations
+
+    pending_refs = []
     for traj in traj_list:
+        potential = traj._potential
         traj_proxy = InflatonTrajectoryProxy(traj)
-        for dns in delta_Nstar_list:
-            payload = _instanton_payload(traj_proxy, dns)
-            all_fi_refs.append(pool.object_get("FullInstanton", **payload))
-            all_sri_refs.append(pool.object_get("SlowRollInstanton", **payload))
+        traj_dir = output_dir / f"{_safe_name(potential.name)}_traj{traj.store_id}"
+        traj_dir.mkdir(parents=True, exist_ok=True)
+        print(f"\n>> Trajectory {traj.store_id} ({potential.name}) -> {traj_dir}/")
 
-    all_fi = [x for x in ray.get(all_fi_refs) if x is not None and x.available]
-    all_sri = [x for x in ray.get(all_sri_refs) if x is not None and x.available]
+        pending_refs.append(_plot_trajectory_item.remote(traj, potential, str(traj_dir), fmt))
 
-    if all_fi or all_sri:
-        rep_potential = next(
-            (t._potential for t in trajectories if t._potential is not None), None
+        _sweep_Ninit_or_Nfinal(
+            pool, traj_proxy, potential, traj_dir / "N-init", fmt,
+            swept_name="N_init", swept_array=N_init_array,
+            fixed_other_array=N_final_array, dns_array=dns_array,
+            atol=atol, rtol=rtol, max_combos=max_combos, pending_refs=pending_refs,
         )
-        if rep_potential is not None:
-            plot_msr_action(
-                trajectories, all_fi, all_sri,
-                rep_potential, units, output_dir, fmt,
-            )
+        _sweep_Ninit_or_Nfinal(
+            pool, traj_proxy, potential, traj_dir / "N-final", fmt,
+            swept_name="N_final", swept_array=N_final_array,
+            fixed_other_array=N_init_array, dns_array=dns_array,
+            atol=atol, rtol=rtol, max_combos=max_combos, pending_refs=pending_refs,
+        )
+        _sweep_delta_Nstar(
+            pool, traj_proxy, potential, traj_dir / "delta-Nstar", fmt,
+            dns_array=dns_array, N_init_array=N_init_array, N_final_array=N_final_array,
+            atol=atol, rtol=rtol, max_combos=max_combos, pending_refs=pending_refs,
+        )
+
+    print(f"\n>> Waiting for {len(pending_refs)} plot(s) to render...")
+    ray.get(pending_refs)
 
     print(f"\n>> Plots written to {output_dir}/")
 
