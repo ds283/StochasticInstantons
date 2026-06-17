@@ -13,6 +13,11 @@ from ComputeTargets import (
     InflatonTrajectoryProxy,
     SlowRollInstanton,
 )
+from ComputeTargets.CompactionFunction import CompactionFunction, CompactionFunctionProxy
+from ComputeTargets.FullInstanton import FullInstantonProxy
+from ComputeTargets.SlowRollInstanton import SlowRollInstantonProxy
+from CosmologyModels.cosmo_params import CosmologicalParams
+from CosmologyModels.params import Planck2018
 from config.argument_parser import create_argument_parser
 from config.model_list import build_model_list
 from config.sharding import (
@@ -193,6 +198,7 @@ def run_all_pipelines(
     samples_per_N: float,
     atol: tolerance,
     rtol: tolerance,
+    cosmo,  # CosmologicalParams instance
     diffusion_model=None,
 ):
     """
@@ -333,6 +339,198 @@ def run_all_pipelines(
         title="STAGE 3: Slow-roll instantons",
     )
 
+    ## -----------------------------------------------------------------------
+    ## STAGE 4: Compaction functions — two-pass pattern with upstream lookup
+    ## -----------------------------------------------------------------------
+
+    print("\n** STAGE 4: COMPACTION FUNCTIONS")
+
+    C_THRESHOLD = 0.4
+    C_BAR_THRESHOLD = 0.4
+
+    ## Pass 1a: look up FullInstanton for ALL grid items, binned by shard key.
+    ## We need instanton store_ids before we can do the CF existence check, since
+    ## the CompactionFunction factory matches on full_instanton_serial and
+    ## slow_roll_instanton_serial as part of its identity query.
+    fi_binned_all = {}
+    for item in grid:
+        fi_binned_all.setdefault(shard_key_of(item), []).append(item)
+    fi_shard_keys_all = list(fi_binned_all.keys())
+
+    fi_lookup_all_queue = RayWorkPool(
+        pool,
+        fi_shard_keys_all,
+        task_builder=lambda key: pool.object_get_vectorized(
+            "FullInstanton",
+            key,
+            payload_data=[
+                {**key_fields(item), "_do_not_populate": True}
+                for item in fi_binned_all[key]
+            ],
+        ),
+        compute_handler=None,
+        store_handler=None,
+        persist_handler=None,
+        validation_handler=None,
+        title=None,
+        store_results=True,
+        create_batch_size=20,
+        process_batch_size=20,
+    )
+    fi_lookup_all_queue.run()
+
+    fi_results_all = {
+        id(item): obj
+        for key, objs in zip(fi_shard_keys_all, fi_lookup_all_queue.results)
+        for item, obj in zip(fi_binned_all[key], objs)
+    }
+
+    ## Pass 1b: look up SlowRollInstanton for ALL grid items
+    sr_lookup_all_queue = RayWorkPool(
+        pool,
+        fi_shard_keys_all,
+        task_builder=lambda key: pool.object_get_vectorized(
+            "SlowRollInstanton",
+            key,
+            payload_data=[
+                {**key_fields(item), "_do_not_populate": True}
+                for item in fi_binned_all[key]
+            ],
+        ),
+        compute_handler=None,
+        store_handler=None,
+        persist_handler=None,
+        validation_handler=None,
+        title=None,
+        store_results=True,
+        create_batch_size=20,
+        process_batch_size=20,
+    )
+    sr_lookup_all_queue.run()
+
+    sr_results_all = {
+        id(item): obj
+        for key, objs in zip(fi_shard_keys_all, sr_lookup_all_queue.results)
+        for item, obj in zip(fi_binned_all[key], objs)
+    }
+
+    ## Pass 1c: CF existence check using actual instanton store_ids.
+    ## Only check items where at least one instanton is available; the rest are
+    ## skipped entirely (no upstream data to compute a CF from).
+
+    def cf_key_fields(item) -> dict:
+        """Identifying fields for the CF existence check. Includes instanton proxies
+        so the factory can match on full_instanton_serial / slow_roll_instanton_serial."""
+        model_idx, N_init_obj, N_final_obj, dns = item
+        fi_obj = fi_results_all[id(item)]
+        sr_obj = sr_results_all[id(item)]
+        fi_proxy = FullInstantonProxy(fi_obj) if fi_obj.available else None
+        sr_proxy = SlowRollInstantonProxy(sr_obj) if sr_obj.available else None
+        return dict(
+            trajectory=traj_proxies[model_idx],
+            full_instanton=fi_proxy,
+            slow_roll_instanton=sr_proxy,
+            delta_Nstar=dns,
+            cosmo=cosmo,
+            C_threshold=C_THRESHOLD,
+            C_bar_threshold=C_BAR_THRESHOLD,
+            atol=atol,
+            rtol=rtol,
+            tags=[],
+        )
+
+    checkable = [
+        item for item in grid
+        if fi_results_all[id(item)].available or sr_results_all[id(item)].available
+    ]
+
+    cf_binned = {}
+    for item in checkable:
+        cf_binned.setdefault(shard_key_of(item), []).append(item)
+    cf_shard_keys = list(cf_binned.keys())
+
+    cf_query_queue = RayWorkPool(
+        pool,
+        cf_shard_keys,
+        task_builder=lambda key: pool.object_get_vectorized(
+            "CompactionFunction",
+            key,
+            payload_data=[
+                {**cf_key_fields(item), "_do_not_populate": True}
+                for item in cf_binned[key]
+            ],
+        ),
+        compute_handler=None,
+        store_handler=None,
+        persist_handler=None,
+        validation_handler=None,
+        title=None,
+        store_results=True,
+        create_batch_size=20,
+        process_batch_size=20,
+    )
+    cf_query_queue.run()
+
+    cf_missing = [
+        item
+        for key, objs in zip(cf_shard_keys, cf_query_queue.results)
+        for item, obj in zip(cf_binned[key], objs)
+        if not obj.available
+    ]
+
+    n_no_instanton = len(grid) - len(checkable)
+    print(
+        f"   -- {len(checkable) - len(cf_missing)} already computed, "
+        f"{len(cf_missing)} to compute"
+        + (f", {n_no_instanton} skipped (no instanton available)" if n_no_instanton > 0 else "")
+    )
+
+    if cf_missing:
+        def build_cf_work_ref(item):
+            model_idx, N_init_obj, N_final_obj, dns = item
+
+            fi_obj = fi_results_all[id(item)]
+            sr_obj = sr_results_all[id(item)]
+
+            fi_proxy = FullInstantonProxy(fi_obj) if fi_obj.available else None
+            sr_proxy = SlowRollInstantonProxy(sr_obj) if sr_obj.available else None
+
+            if fi_proxy is None and sr_proxy is None:
+                return None
+
+            return pool.object_get(
+                "CompactionFunction",
+                trajectory=traj_proxies[model_idx],
+                full_instanton=fi_proxy,
+                slow_roll_instanton=sr_proxy,
+                delta_Nstar=dns,
+                cosmo=cosmo,
+                C_threshold=C_THRESHOLD,
+                C_bar_threshold=C_BAR_THRESHOLD,
+                atol=atol,
+                rtol=rtol,
+                tags=[],
+            )
+
+        cf_work_queue = RayWorkPool(
+            pool,
+            cf_missing,
+            task_builder=build_cf_work_ref,
+            compute_handler=lambda obj, **kwargs: obj.compute(**kwargs),
+            store_handler=_default_store_handler,
+            persist_handler=lambda obj, pool: pool.object_store(obj),
+            validation_handler=lambda obj: pool.object_validate(obj),
+            label_builder=lambda obj: (
+                f"CompactionFunction(dNstar={float(obj.delta_Nstar):.4g})"
+            ),
+            title="STAGE 4: COMPACTION FUNCTIONS",
+            store_results=False,
+            create_batch_size=5,
+            process_batch_size=3,
+            max_task_queue=MAX_INFLIGHT_COMPUTE,
+        )
+        cf_work_queue.run()
+
 
 def _build_grid(low, high, samples, values, label):
     if len(values) > 0:
@@ -431,6 +629,14 @@ def execute(pool: ShardedPool, units: UnitsLike):
     print(f"\n** Trajectory sampling density: {samples_per_N:.4g} samples per e-fold")
 
     ## -----------------------------------------------------------------------
+    ## REGISTER COSMOLOGICAL PARAMETERS
+    ## -----------------------------------------------------------------------
+    cosmo = ray.get(
+        pool.object_get("CosmologicalParams", payload={"params": Planck2018()})
+    )
+    print(f"\n** Cosmological parameters: {cosmo.name} (store_id={cosmo.store_id})")
+
+    ## -----------------------------------------------------------------------
     ## BUILD MODEL LIST AND RUN PIPELINE
     ## -----------------------------------------------------------------------
     dm = MasslessDecoupledDiffusion()
@@ -457,6 +663,7 @@ def execute(pool: ShardedPool, units: UnitsLike):
         samples_per_N=samples_per_N,
         atol=atol,
         rtol=rtol,
+        cosmo=cosmo,
         diffusion_model=dm,
     )
 
@@ -480,6 +687,7 @@ def inventory(pool: ShardedPool, units: UnitsLike):
     _inventory_object(pool, "InflatonTrajectory", "Inflaton trajectories")
     _inventory_object(pool, "FullInstanton", "Full MSR instantons")
     _inventory_object(pool, "SlowRollInstanton", "Slow-roll instantons")
+    _inventory_object(pool, "CompactionFunction", "Compaction functions")
 
 
 def _inventory_dimensionless(pool, type_name, label):
