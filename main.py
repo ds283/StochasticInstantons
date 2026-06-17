@@ -632,7 +632,7 @@ def execute(pool: ShardedPool, units: UnitsLike):
     ## REGISTER COSMOLOGICAL PARAMETERS
     ## -----------------------------------------------------------------------
     cosmo = ray.get(
-        pool.object_get("CosmologicalParams", payload={"params": Planck2018()})
+        pool.object_get("CosmologicalParams", params=Planck2018())
     )
     print(f"\n** Cosmological parameters: {cosmo.name} (store_id={cosmo.store_id})")
 
