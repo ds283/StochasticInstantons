@@ -52,6 +52,7 @@ _default_serial_batch_size = {
     "ReclinerPotential": 50,
     "LambdaCDM": 5,
     "QCD_Cosmology": 5,
+    "CosmologicalParams": 5,
     "IntegrationSolver": 6,
     "ScalarModel": 20,
     "ScalarModelValue": 250,
