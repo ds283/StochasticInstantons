@@ -13,18 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, List
+from typing import List, Optional
 
 import ray
 from ray import ObjectRef
 
 from CosmologyConcepts.Potentials.AbstractPotential import AbstractPotential
 from Datastore.object import DatastoreObject
-from InflationConcepts.DiffusionModel import AbstractDiffusionModel, MasslessDecoupledDiffusion
-from InflationConcepts.efold_value import efold_value, efold_array
 from InflationConcepts.delta_Nstar import delta_Nstar
-from InflationConcepts.N_init import N_init
+from InflationConcepts.DiffusionModel import (
+    AbstractDiffusionModel,
+    MasslessDecoupledDiffusion,
+)
+from InflationConcepts.efold_value import efold_array, efold_value
 from InflationConcepts.N_final import N_final
+from InflationConcepts.N_init import N_init
 from MetadataConcepts.store_tag import store_tag
 from MetadataConcepts.tolerance import tolerance
 
@@ -58,6 +61,7 @@ def _compute_full_instanton(
         "msr_action", "N_total", "failure", "diagnostics"
     """
     import time
+
     import numpy as np
     from scipy.integrate import solve_ivp
     from scipy.interpolate import make_interp_spline
@@ -225,8 +229,12 @@ def _compute_full_instanton(
         residual = rho_T - rho_final
         final_residual = abs(residual)
         if label:
-            print(f"[{label}] outer {outer}: λ={lam:.4g}, "
-                  f"ρ(T)={rho_T:.6g}, res={residual:.2e}")
+            print(
+                f"[{label}] outer {outer}: λ={lam:.4g}, "
+                f"φ₁(T)={p1[-1]:.6g}, φ₂(T)={p2[-1]:.6g}, "
+                f"ρ(T)={rho_T:.6g}, "
+                f"res={residual:.2e}"
+            )
 
         phi1_f, phi2_f, P1_f, P2_f = p1, p2, P1, P2
 
@@ -235,19 +243,34 @@ def _compute_full_instanton(
             break
 
         # Finite-difference Newton step
-        dlam  = max(abs(lam) * 1e-4, 1e-6)
+        dlam = max(abs(lam) * 1e-4, 1e-6)
         picard_start = time.perf_counter()
         p1_p, p2_p, _, _, n_inner_p = picard_inner(lam + dlam, phi1_f, phi2_f)
         picard_time_total += time.perf_counter() - picard_start
         picard_iters_total += n_inner_p
+        picard_iterations_per_outer.append(n_inner_p)
         if p1_p is not None:
-            dres_dlam = (compute_rho(p1_p[-1], p2_p[-1]) - compute_rho(p1[-1], p2[-1])) / dlam
-            if abs(dres_dlam) > 1e-14:
+            phi1_final = p1[-1]
+            phi2_final = p2[-1]
+
+            # Sensitivities of endpoint fields to λ (finite difference)
+            dphi1_dlam = (p1_p[-1] - phi1_final) / dlam
+            dphi2_dlam = (p2_p[-1] - p2[-1]) / dlam
+
+            # Analytical Jacobian of ρ w.r.t. field values at endpoint
+            drho_dphi1 = potential.drho_dphi(phi1_final, phi2_final)
+            drho_dphi2 = potential.drho_dpi(phi1_final, phi2_final)
+
+            # Chain rule: dρ/dλ = (∂ρ/∂φ₁)(dφ₁/dλ) + (∂ρ/∂φ₂)(dφ₂/dλ)
+            dres_dlam = drho_dphi1 * dphi1_dlam + drho_dphi2 * dphi2_dlam
+
+            if abs(dres_dlam) > 1e-30:
                 lam -= residual / dres_dlam
                 continue
         # Fallback nudge
         newton_fallback_count += 1
-        lam += (rho_final - rho_T) * 0.1
+        sign = -1.0 if residual > 0.0 else 1.0
+        lam += sign * max(abs(lam) * 0.1, rho_final * 1e-8)
 
     diagnostics = {
         "compute_time": time.perf_counter() - compute_start,
@@ -274,7 +297,7 @@ def _compute_full_instanton(
     if not converged:
         if label:
             print(f"[{label}] outer loop did not converge "
-                  f"after {MAX_OUTER} iterations")
+                  f"after {MAX_OUTER} iterations (target tolerance was {OUTER_TOL})")
         return {
             "failure": True, "N_total": N_total,
             "N_sample": [], "phi1": [], "phi2": [],

@@ -87,3 +87,30 @@ class AbstractPotential(DatastoreObject, ABC):
         """
         Mp = self._units.PlanckMass
         return 0.5 * pi * pi / (Mp * Mp)
+
+    def drho_dphi(self, phi: float, pi: float) -> float:
+        """
+        Partial derivative of energy density ρ with respect to φ, at fixed π.
+
+        ρ = V(φ) / (1 - ε/3)   where ε = π²/(2Mp²)
+
+        ∂ρ/∂φ = V′(φ) / (1 - ε/3)
+
+        ε does not depend on φ for canonical inflation, so the denominator
+        is constant under this partial derivative.
+        """
+        return self.dV_dphi(phi) / (1.0 - self.epsilon(phi, pi) / 3.0)
+
+    def drho_dpi(self, phi: float, pi: float) -> float:
+        """
+        Partial derivative of energy density ρ with respect to π, at fixed φ.
+
+        ρ = V(φ) / (1 - π²/(6Mp²))
+
+        ∂ρ/∂π = V(φ) · π / (3Mp² · (1 - π²/(6Mp²))²)
+               = V(φ) · π / (3Mp² · (1 - ε/3)²)
+        """
+        Mp2 = self._units.PlanckMass ** 2
+        eps = self.epsilon(phi, pi)
+        denom = (1.0 - eps / 3.0) ** 2
+        return self.V(phi) * pi / (3.0 * Mp2 * denom)
