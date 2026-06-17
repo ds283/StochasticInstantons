@@ -37,7 +37,7 @@ def _compute_full_instanton(
     trajectory,             # InflatonTrajectoryProxy
     phi_init: float,
     pi_init: float,
-    rho_final: float,
+    phi_final: float,
     N_total: float,
     N_sample: list,
     atol: float,
@@ -49,10 +49,10 @@ def _compute_full_instanton(
 
     Boundary conditions:
         φ₁(0) = phi_init,   φ₂(0) = pi_init
-        ρ(N_total) = rho_final,   P₂(N_total) = 0
+        φ₁(N_total) = phi_final,   P₂(N_total) = 0
 
     Algorithm: adjoint/Picard iteration with outer Newton correction on the
-    Lagrange multiplier λ = P₁(N_total) to enforce the final ρ condition.
+    Lagrange multiplier λ = P₁(N_total) to enforce the final φ condition.
 
     MSR action: S = ∫₀^{N_total} D₁₁(φ₁, φ₂) P₁² dN
 
@@ -122,7 +122,7 @@ def _compute_full_instanton(
 
     MAX_OUTER = 50
     MAX_INNER = 30
-    OUTER_TOL = rho_final * max(atol * 100.0, 1e-6)
+    OUTER_TOL = max(atol * 100.0, 1e-6)
     INNER_TOL = atol * 10.0
 
     def compute_rho(phi1_val, phi2_val):
@@ -225,14 +225,14 @@ def _compute_full_instanton(
                 print(f"[{label}] Picard inner failed at outer iter {outer}")
             break
 
-        rho_T = compute_rho(p1[-1], p2[-1])
-        residual = rho_T - rho_final
+        residual = p1[-1] - phi_final
         final_residual = abs(residual)
         if label:
+            rho_T = compute_rho(p1[-1], p2[-1])
             print(
-                f"[{label}] outer {outer}: λ={lam:.4g}, "
-                f"φ₁(T)={p1[-1]:.6g}, φ₂(T)={p2[-1]:.6g}, "
-                f"ρ(T)={rho_T:.6g}, "
+                f"[{label}] outer {outer}: lambda={lam:.4g}, "
+                f"phi1(T)={p1[-1]:.6g}, phi2(T)={p2[-1]:.6g}, "
+                f"rho(T)={rho_T:.6g}, "
                 f"res={residual:.2e}"
             )
 
@@ -250,34 +250,18 @@ def _compute_full_instanton(
         picard_iters_total += n_inner_p
         picard_iterations_per_outer.append(n_inner_p)
         if p1_p is not None:
-            phi1_final = p1[-1]
-            phi2_final = p2[-1]
-
-            # Sensitivities of endpoint fields to λ (finite difference)
-            dphi1_dlam = (p1_p[-1] - phi1_final) / dlam
-            dphi2_dlam = (p2_p[-1] - p2[-1]) / dlam
-
-            # Analytical Jacobian of ρ w.r.t. field values at endpoint
-            drho_dphi1 = potential.drho_dphi(phi1_final, phi2_final)
-            drho_dphi2 = potential.drho_dpi(phi1_final, phi2_final)
-
-            # Chain rule: dρ/dλ = (∂ρ/∂φ₁)(dφ₁/dλ) + (∂ρ/∂φ₂)(dφ₂/dλ)
-            dres_dlam = drho_dphi1 * dphi1_dlam + drho_dphi2 * dphi2_dlam
-
-            if abs(dres_dlam) > 1e-30:
+            dres_dlam = (p1_p[-1] - p1[-1]) / dlam
+            if abs(dres_dlam) > 1e-14:
                 lam -= residual / dres_dlam
                 continue
         # Fallback nudge
         newton_fallback_count += 1
-        sign = -1.0 if residual > 0.0 else 1.0
-        lam += sign * max(abs(lam) * 0.1, rho_final * 1e-8)
+        lam += (phi_final - p1[-1]) * 0.1
 
     diagnostics = {
         "compute_time": time.perf_counter() - compute_start,
         "converged": converged,
         "final_residual": final_residual,
-        "final_rho": compute_rho(phi1_f[-1], phi2_f[-1]) if converged else None,
-        "rho_final_target": rho_final,
         "total_ode_solves": ode_solve_count,
         "outer_iterations": outer_iterations,
         "newton_fallback_count": newton_fallback_count,
@@ -483,7 +467,7 @@ class FullInstanton(DatastoreObject):
 
         traj      = self._trajectory.get()
         phi_init  = traj.phi_at(N_end - float(self._N_init))
-        rho_final = traj.rho_at(N_end - float(self._N_final))
+        phi_final = traj.phi_at(N_end - float(self._N_final))
         pi_init   = traj.pi_at(N_end - float(self._N_init))
         N_total   = (float(self._N_init) - float(self._N_final)) + float(self._delta_Nstar)
 
@@ -494,7 +478,7 @@ class FullInstanton(DatastoreObject):
             trajectory=self._trajectory,
             phi_init=phi_init,
             pi_init=pi_init,
-            rho_final=rho_final,
+            phi_final=phi_final,
             N_total=N_total,
             N_sample=self._N_sample.as_float_list() if self._N_sample else [],
             atol=atol,

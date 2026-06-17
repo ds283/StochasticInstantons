@@ -29,6 +29,7 @@ replicated_tables = [
     "IntegrationSolver",
     "InflatonTrajectory",
     "InflatonTrajectoryValue",
+    "CosmologicalParams",
 ]
 
 # Tables sharded by delta_Nstar.
@@ -41,6 +42,8 @@ sharded_tables = {
     "FullInstantonValue": "delta_Nstar",
     "SlowRollInstanton": "delta_Nstar",
     "SlowRollInstantonValue": "delta_Nstar",
+    "CompactionFunction": "delta_Nstar",
+    "CompactionFunctionSamples": "delta_Nstar",
 }
 
 # Configuration for pool.read_table() calls.
@@ -78,4 +81,5 @@ _instanton_merge = {
 inventory_config = {
     "FullInstanton": _instanton_merge,
     "SlowRollInstanton": _instanton_merge,
+    "CompactionFunction": _instanton_merge,
 }

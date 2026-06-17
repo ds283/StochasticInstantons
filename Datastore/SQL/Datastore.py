@@ -32,6 +32,12 @@ from Datastore.SQL.ObjectFactories.DimensionfulQuantity import (
 from Datastore.SQL.ObjectFactories.DimensionlessQuantity import (
     sqla_dimensionless_quantity_factory,
 )
+from CosmologyModels.cosmo_params import CosmologicalParams
+from Datastore.SQL.ObjectFactories.CosmologicalParams import sqla_cosmological_params_factory
+from Datastore.SQL.ObjectFactories.CompactionFunction import (
+    sqla_CompactionFunctionFactory,
+    sqla_CompactionFunctionSamplesFactory,
+)
 from Datastore.SQL.ObjectFactories.FullInstanton import (
     sqla_FullInstantonFactory,
     sqla_FullInstantonValue_factory,
@@ -91,10 +97,13 @@ _factories = {
     "IntegrationSolver": sqla_IntegrationSolver_factory(),
     "InflatonTrajectory": sqla_InflatonTrajectory_factory(),
     "InflatonTrajectoryValue": sqla_InflatonTrajectoryValue_factory(),
+    "CosmologicalParams": sqla_cosmological_params_factory(),
     "FullInstanton": sqla_FullInstantonFactory(),
     "FullInstantonValue": sqla_FullInstantonValue_factory(),
     "SlowRollInstanton": sqla_SlowRollInstantonFactory(),
     "SlowRollInstantonValue": sqla_SlowRollInstantonValue_factory(),
+    "CompactionFunction": sqla_CompactionFunctionFactory(),
+    "CompactionFunctionSamples": sqla_CompactionFunctionSamplesFactory(),
 }
 
 _FactoryMappingType = Mapping[str, SQLAFactoryBase]
