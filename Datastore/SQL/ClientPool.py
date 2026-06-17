@@ -53,6 +53,8 @@ _default_serial_batch_size = {
     "LambdaCDM": 5,
     "QCD_Cosmology": 5,
     "CosmologicalParams": 5,
+    "CompactionFunction": 20,
+    "CompactionFunctionSamples": 500,
     "IntegrationSolver": 6,
     "ScalarModel": 20,
     "ScalarModelValue": 250,
