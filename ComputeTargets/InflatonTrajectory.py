@@ -63,7 +63,6 @@ def _compute_inflaton_trajectory(
     import math
     import time
     import numpy as np
-    from scipy.integrate import solve_ivp
 
     compute_start = time.perf_counter()
 
@@ -83,62 +82,15 @@ def _compute_inflaton_trajectory(
             },
         }
 
-    def rhs(N, y):
-        phi, pi = y
-        Hsq = potential.H_sq(phi, pi)
-        eps = potential.epsilon(phi, pi)
-        return [pi, -(3.0 - eps) * pi - potential.dV_dphi(phi) / Hsq]
-
-    def end_of_inflation(N, y):
-        return potential.epsilon(y[0], y[1]) - 1.0
-
-    end_of_inflation.terminal  = True
-    end_of_inflation.direction = +1
-
-    y0     = [phi0_value, pi0_value]
-    N_span = (0.0, 1000.0)
-
     if label:
         print(f"[{label}] integrating background trajectory: "
               f"phi0={phi0_value:.6g}, pi0={pi0_value:.6g}")
 
-    SOLVERS = ["RK45", "DOP853", "Radau", "BDF", "LSODA"]
-    sol = None
-    solver_used = None
-    solver_attempts = []
-    for solver in SOLVERS:
-        try:
-            candidate = solve_ivp(
-                rhs, N_span, y0,
-                method=solver,
-                events=[end_of_inflation],
-                dense_output=True,
-                atol=atol, rtol=rtol,
-            )
-            if candidate.success or candidate.status == 1:
-                sol = candidate
-                solver_used = solver
-                solver_attempts.append({
-                    "solver": solver, "status": int(candidate.status),
-                    "message": candidate.message,
-                })
-                if label:
-                    print(f"[{label}] solver {solver} succeeded "
-                          f"(status={candidate.status})")
-                break
-            solver_attempts.append({
-                "solver": solver, "status": int(candidate.status),
-                "message": candidate.message,
-            })
-            if label:
-                print(f"[{label}] solver {solver} "
-                      f"status={candidate.status}: {candidate.message}")
-        except Exception as exc:
-            solver_attempts.append({
-                "solver": solver, "status": None, "message": str(exc),
-            })
-            if label:
-                print(f"[{label}] solver {solver} raised: {exc}")
+    from InflationConcepts.noiseless_equations import integrate_noiseless_trajectory
+
+    sol, solver_used, solver_attempts = integrate_noiseless_trajectory(
+        phi0_value, pi0_value, potential, atol, rtol, label=label
+    )
 
     if sol is None:
         return {
@@ -343,6 +295,13 @@ class InflatonTrajectory(DatastoreObject):
             pis = np.array([v.pi for v in self._values])
             self._pi_spline = make_interp_spline(Ns, pis)
         return float(self._pi_spline(N))
+
+    def rho_at(self, N: float) -> float:
+        """Interpolate energy density ρ = 3 Mp² H²(φ, π) at arbitrary N."""
+        phi = self.phi_at(N)
+        pi  = self.pi_at(N)
+        Mp  = self._potential._units.PlanckMass
+        return 3.0 * (Mp ** 2) * self._potential.H_sq(phi, pi)
 
     def compute(self, label: Optional[str] = None) -> ObjectRef:
         """

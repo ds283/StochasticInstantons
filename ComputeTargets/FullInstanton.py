@@ -33,8 +33,8 @@ from MetadataConcepts.tolerance import tolerance
 def _compute_full_instanton(
     trajectory,             # InflatonTrajectoryProxy
     phi_init: float,
-    phi_final: float,
-    pi_SR_init: float,
+    pi_init: float,
+    rho_final: float,
     N_total: float,
     N_sample: list,
     atol: float,
@@ -45,11 +45,11 @@ def _compute_full_instanton(
     Solve the full MSR instanton BVP over [0, N_total] in {φ₁, φ₂, P₁, P₂}.
 
     Boundary conditions:
-        φ₁(0) = phi_init,   φ₂(0) = pi_SR_init
-        φ₁(N_total) = phi_final,   P₂(N_total) = 0
+        φ₁(0) = phi_init,   φ₂(0) = pi_init
+        ρ(N_total) = rho_final,   P₂(N_total) = 0
 
     Algorithm: adjoint/Picard iteration with outer Newton correction on the
-    Lagrange multiplier λ = P₁(N_total) to enforce the final φ₁ condition.
+    Lagrange multiplier λ = P₁(N_total) to enforce the final ρ condition.
 
     MSR action: S = ∫₀^{N_total} D₁₁(φ₁, φ₂) P₁² dN
 
@@ -86,7 +86,7 @@ def _compute_full_instanton(
         ]
 
     bg_sol = solve_ivp(
-        bg_rhs, (0.0, N_total), [phi_init, pi_SR_init],
+        bg_rhs, (0.0, N_total), [phi_init, pi_init],
         method="RK45", t_eval=N_grid, atol=atol, rtol=rtol,
     )
     ode_solve_count += 1
@@ -118,8 +118,12 @@ def _compute_full_instanton(
 
     MAX_OUTER = 50
     MAX_INNER = 30
-    OUTER_TOL = max(atol * 100.0, 1e-6)
+    OUTER_TOL = rho_final * max(atol * 100.0, 1e-6)
     INNER_TOL = atol * 10.0
+
+    def compute_rho(phi1_val, phi2_val):
+        Mp = potential._units.PlanckMass
+        return 3.0 * (Mp ** 2) * potential.H_sq(phi1_val, phi2_val)
 
     def picard_inner(lam, phi1_in, phi2_in):
         """Run Picard iteration for fixed λ = P₁(N_total). Returns arrays or Nones."""
@@ -174,7 +178,7 @@ def _compute_full_instanton(
                 ]
 
             fp = solve_ivp(
-                fwd_rhs, (0.0, N_total), [phi_init, pi_SR_init],
+                fwd_rhs, (0.0, N_total), [phi_init, pi_init],
                 method="RK45", t_eval=N_grid,
                 atol=atol, rtol=rtol,
             )
@@ -217,11 +221,12 @@ def _compute_full_instanton(
                 print(f"[{label}] Picard inner failed at outer iter {outer}")
             break
 
-        residual = p1[-1] - phi_final
+        rho_T = compute_rho(p1[-1], p2[-1])
+        residual = rho_T - rho_final
         final_residual = abs(residual)
         if label:
             print(f"[{label}] outer {outer}: λ={lam:.4g}, "
-                  f"φ₁(T)={p1[-1]:.6g}, res={residual:.2e}")
+                  f"ρ(T)={rho_T:.6g}, res={residual:.2e}")
 
         phi1_f, phi2_f, P1_f, P2_f = p1, p2, P1, P2
 
@@ -232,22 +237,24 @@ def _compute_full_instanton(
         # Finite-difference Newton step
         dlam  = max(abs(lam) * 1e-4, 1e-6)
         picard_start = time.perf_counter()
-        p1_p, _, _, _, n_inner_p = picard_inner(lam + dlam, phi1_f, phi2_f)
+        p1_p, p2_p, _, _, n_inner_p = picard_inner(lam + dlam, phi1_f, phi2_f)
         picard_time_total += time.perf_counter() - picard_start
         picard_iters_total += n_inner_p
         if p1_p is not None:
-            dres_dlam = (p1_p[-1] - p1[-1]) / dlam
+            dres_dlam = (compute_rho(p1_p[-1], p2_p[-1]) - compute_rho(p1[-1], p2[-1])) / dlam
             if abs(dres_dlam) > 1e-14:
                 lam -= residual / dres_dlam
                 continue
         # Fallback nudge
         newton_fallback_count += 1
-        lam += (phi_final - p1[-1]) * 0.1
+        lam += (rho_final - rho_T) * 0.1
 
     diagnostics = {
         "compute_time": time.perf_counter() - compute_start,
         "converged": converged,
         "final_residual": final_residual,
+        "final_rho": compute_rho(phi1_f[-1], phi2_f[-1]) if converged else None,
+        "rho_final_target": rho_final,
         "total_ode_solves": ode_solve_count,
         "outer_iterations": outer_iterations,
         "newton_fallback_count": newton_fallback_count,
@@ -453,8 +460,8 @@ class FullInstanton(DatastoreObject):
 
         traj      = self._trajectory.get()
         phi_init  = traj.phi_at(N_end - float(self._N_init))
-        phi_final = traj.phi_at(N_end - float(self._N_final))
-        pi_SR     = traj.pi_at(N_end - float(self._N_init))
+        rho_final = traj.rho_at(N_end - float(self._N_final))
+        pi_init   = traj.pi_at(N_end - float(self._N_init))
         N_total   = (float(self._N_init) - float(self._N_final)) + float(self._delta_Nstar)
 
         atol = 10.0 ** self._atol.log10_tol
@@ -463,8 +470,8 @@ class FullInstanton(DatastoreObject):
         self._compute_ref = _compute_full_instanton.remote(
             trajectory=self._trajectory,
             phi_init=phi_init,
-            phi_final=phi_final,
-            pi_SR_init=pi_SR,
+            pi_init=pi_init,
+            rho_final=rho_final,
             N_total=N_total,
             N_sample=self._N_sample.as_float_list() if self._N_sample else [],
             atol=atol,
