@@ -154,24 +154,28 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         from ComputeTargets.InflatonTrajectory import InflatonTrajectoryValue
 
         value_table = tables["InflatonTrajectoryValue"]
-        efold_table = tables["efold_value"]
+        efold_table  = tables["efold_value"]
 
         units = obj._potential._units
 
+        # JOIN with efold_value and ORDER BY the actual N float, not by N_serial.
+        # Serials are assigned in global insertion order across all trajectories,
+        # so sorting by serial would give wrong ordering when efold_value objects
+        # are reused from a previous trajectory with a different N grid.
         rows = conn.execute(
-            sqla.select(value_table.c.N_serial, value_table.c.fields_json)
+            sqla.select(
+                value_table.c.N_serial,
+                value_table.c.fields_json,
+                efold_table.c.N,
+            )
+            .join(efold_table, value_table.c.N_serial == efold_table.c.serial)
             .filter(value_table.c.trajectory_serial == obj.store_id)
-            .order_by(value_table.c.N_serial)
+            .order_by(efold_table.c.N)
         ).fetchall()
 
         for r in rows:
-            efold_row = conn.execute(
-                sqla.select(efold_table.c.serial, efold_table.c.N).filter(
-                    efold_table.c.serial == r.N_serial
-                )
-            ).one()
-            data = json.loads(r.fields_json)
-            N_obj = efold_value(store_id=efold_row.serial, N=efold_row.N)
+            data  = json.loads(r.fields_json)
+            N_obj = efold_value(store_id=r.N_serial, N=r.N)
             obj._values.append(
                 InflatonTrajectoryValue(
                     store_id=None,
