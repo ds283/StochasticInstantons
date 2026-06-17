@@ -486,11 +486,77 @@ def run_all_pipelines(
     )
 
     if cf_missing:
+        ## Pass 2a: re-fetch FullInstantons WITH population for the missing CF items.
+        ## The Pass 1a objects were fetched with _do_not_populate=True, so their
+        ## _values lists are empty.  Wrapping one in a proxy and passing it to
+        ## _compute_compaction_function would cause "no sample values" immediately.
+        fi_binned_missing = {}
+        for item in cf_missing:
+            fi_binned_missing.setdefault(shard_key_of(item), []).append(item)
+        fi_shard_keys_missing = list(fi_binned_missing.keys())
+
+        fi_refetch_queue = RayWorkPool(
+            pool,
+            fi_shard_keys_missing,
+            task_builder=lambda key: pool.object_get_vectorized(
+                "FullInstanton",
+                key,
+                payload_data=[
+                    key_fields(item)
+                    for item in fi_binned_missing[key]
+                ],
+            ),
+            compute_handler=None,
+            store_handler=None,
+            persist_handler=None,
+            validation_handler=None,
+            title=None,
+            store_results=True,
+            create_batch_size=20,
+            process_batch_size=20,
+        )
+        fi_refetch_queue.run()
+
+        fi_results_compute = {
+            id(item): obj
+            for key, objs in zip(fi_shard_keys_missing, fi_refetch_queue.results)
+            for item, obj in zip(fi_binned_missing[key], objs)
+        }
+
+        ## Pass 2b: same for SlowRollInstanton
+        sr_refetch_queue = RayWorkPool(
+            pool,
+            fi_shard_keys_missing,
+            task_builder=lambda key: pool.object_get_vectorized(
+                "SlowRollInstanton",
+                key,
+                payload_data=[
+                    key_fields(item)
+                    for item in fi_binned_missing[key]
+                ],
+            ),
+            compute_handler=None,
+            store_handler=None,
+            persist_handler=None,
+            validation_handler=None,
+            title=None,
+            store_results=True,
+            create_batch_size=20,
+            process_batch_size=20,
+        )
+        sr_refetch_queue.run()
+
+        sr_results_compute = {
+            id(item): obj
+            for key, objs in zip(fi_shard_keys_missing, sr_refetch_queue.results)
+            for item, obj in zip(fi_binned_missing[key], objs)
+        }
+
         def build_cf_work_ref(item):
             model_idx, N_init_obj, N_final_obj, dns = item
 
-            fi_obj = fi_results_all[id(item)]
-            sr_obj = sr_results_all[id(item)]
+            fi_obj = fi_results_compute[id(item)]
+            sr_obj = sr_results_compute[id(item)]
 
             fi_proxy = FullInstantonProxy(fi_obj) if fi_obj.available else None
             sr_proxy = SlowRollInstantonProxy(sr_obj) if sr_obj.available else None
