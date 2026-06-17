@@ -52,7 +52,7 @@ def create_argument_parser():
         "--drop",
         nargs="*",
         default=[],
-        choices=["inflaton-trajectory", "full-instanton", "slow-roll-instanton"],
+        choices=["inflaton-trajectory", "full-instanton", "slow-roll-instanton", "compaction-function"],
         help="Drop specified table groups before running",
     )
 
