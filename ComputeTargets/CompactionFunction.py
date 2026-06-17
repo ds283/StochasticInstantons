@@ -34,11 +34,12 @@ def ln_k_phys_Mpc(
         cosmo,
 ) -> float:
     """
-    Log of the physical wavenumber k in Mpc^-1 for a mode that exits the Hubble
-    radius N_before_end e-folds before the end of inflation.
+    Log of the physical wavenumber k in working_units^-1 for a mode that exits
+    the Hubble radius N_before_end e-folds before the end of inflation.
 
     Implements Leach & Liddle (astro-ph/0305263) Eq. (2) with instantaneous
-    reheating.
+    reheating.  The result is shifted by -log(Mpc) relative to the Mpc^{-1}
+    convention so that r = 2π/exp(lnk) is in working units, not in Mpc.
 
     All dimensional arguments must be in the working unit system.
     """
@@ -52,6 +53,7 @@ def ln_k_phys_Mpc(
             + log(T_CMB / Mp)
             + 0.25 * log(PI ** 2 / 135.0)
             + 0.25 * log(V_k / (V_end_downflow * (1.0 - epsilon_k / 3.0)))
+            - log(Mpc)
     )
 
 
@@ -315,25 +317,27 @@ def _compute_compaction_function(
 class CompactionFunctionValue(DatastoreObject):
     """
     Compaction function values {r, zeta, C, C_bar} at a single comoving radius.
+    r is stored in the working unit system.
     """
 
     def __init__(
         self,
         store_id: Optional[int],
-        r_Mpc: float,
+        r: float,
         zeta: float,
         C: float,
         C_bar: float,
     ):
         DatastoreObject.__init__(self, store_id)
-        self._r_Mpc = r_Mpc
+        self._r = r
         self._zeta = zeta
         self._C = C
         self._C_bar = C_bar
 
     @property
-    def r_Mpc(self) -> float:
-        return self._r_Mpc
+    def r(self) -> float:
+        """Comoving radius in the working unit system."""
+        return self._r
 
     @property
     def zeta(self) -> float:
@@ -423,6 +427,65 @@ class CompactionFunction(DatastoreObject):
     def diagnostics(self) -> Optional[dict]:
         return getattr(self, "_diagnostics", None)
 
+    # Scalar summary properties for the full-instanton path.
+    # Set either by store() (after fresh compute) or by the factory build() (after DB load).
+    @property
+    def r_max_C_full(self) -> Optional[float]:
+        return getattr(self, "_r_max_C_full", None)
+
+    @property
+    def r_max_C_bar_full(self) -> Optional[float]:
+        return getattr(self, "_r_max_C_bar_full", None)
+
+    @property
+    def M_C_full(self) -> Optional[float]:
+        return getattr(self, "_M_C_full", None)
+
+    @property
+    def M_C_bar_full(self) -> Optional[float]:
+        return getattr(self, "_M_C_bar_full", None)
+
+    @property
+    def C_max_full(self) -> Optional[float]:
+        return getattr(self, "_C_max_full", None)
+
+    @property
+    def V_end_downflow_full(self) -> Optional[float]:
+        return getattr(self, "_V_end_downflow_full", None)
+
+    @property
+    def N_end_downflow_full(self) -> Optional[float]:
+        return getattr(self, "_N_end_downflow_full", None)
+
+    # Scalar summary properties for the slow-roll path.
+    @property
+    def r_max_C_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_r_max_C_slow_roll", None)
+
+    @property
+    def r_max_C_bar_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_r_max_C_bar_slow_roll", None)
+
+    @property
+    def M_C_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_M_C_slow_roll", None)
+
+    @property
+    def M_C_bar_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_M_C_bar_slow_roll", None)
+
+    @property
+    def C_max_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_C_max_slow_roll", None)
+
+    @property
+    def V_end_downflow_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_V_end_downflow_slow_roll", None)
+
+    @property
+    def N_end_downflow_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_N_end_downflow_slow_roll", None)
+
     def compute(self, label: Optional[str] = None) -> ObjectRef:
         """
         Dispatch the compaction function computation as a Ray remote task.
@@ -485,19 +548,33 @@ class CompactionFunction(DatastoreObject):
         if not full_failed:
             self._full_result = full
             self._full_values = [
-                CompactionFunctionValue(store_id=None, r_Mpc=r, zeta=z, C=c, C_bar=cb)
+                CompactionFunctionValue(store_id=None, r=r, zeta=z, C=c, C_bar=cb)
                 for r, z, c, cb in zip(full["r"], full["zeta"], full["C"], full["C_bar"])
             ]
+            self._r_max_C_full        = full.get("r_max_C")
+            self._r_max_C_bar_full    = full.get("r_max_C_bar")
+            self._M_C_full            = full.get("M_C")
+            self._M_C_bar_full        = full.get("M_C_bar")
+            self._C_max_full          = full.get("C_max")
+            self._V_end_downflow_full = full.get("V_end_downflow")
+            self._N_end_downflow_full = full.get("N_end_downflow")
         else:
             self._full_result = None
 
         if not slow_roll_failed:
             self._slow_roll_result = slow_roll
             self._slow_roll_values = [
-                CompactionFunctionValue(store_id=None, r_Mpc=r, zeta=z, C=c, C_bar=cb)
+                CompactionFunctionValue(store_id=None, r=r, zeta=z, C=c, C_bar=cb)
                 for r, z, c, cb in zip(slow_roll["r"], slow_roll["zeta"],
                                         slow_roll["C"], slow_roll["C_bar"])
             ]
+            self._r_max_C_slow_roll        = slow_roll.get("r_max_C")
+            self._r_max_C_bar_slow_roll    = slow_roll.get("r_max_C_bar")
+            self._M_C_slow_roll            = slow_roll.get("M_C")
+            self._M_C_bar_slow_roll        = slow_roll.get("M_C_bar")
+            self._C_max_slow_roll          = slow_roll.get("C_max")
+            self._V_end_downflow_slow_roll = slow_roll.get("V_end_downflow")
+            self._N_end_downflow_slow_roll = slow_roll.get("N_end_downflow")
         else:
             self._slow_roll_result = None
 

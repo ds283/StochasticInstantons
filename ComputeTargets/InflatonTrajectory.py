@@ -375,6 +375,7 @@ class InflatonTrajectoryProxy:
         self._store_id: Optional[int] = model.store_id if model.available else None
         self._N_end: Optional[float] = model.N_end
         self._n_fields: int = model.n_fields
+        self._units = model._potential._units
 
     @property
     def store_id(self) -> Optional[int]:
@@ -392,6 +393,11 @@ class InflatonTrajectoryProxy:
     @property
     def n_fields(self) -> int:
         return self._n_fields
+
+    @property
+    def units(self):
+        """Unit system in which the trajectory was computed."""
+        return self._units
 
     def get(self) -> InflatonTrajectory:
         """

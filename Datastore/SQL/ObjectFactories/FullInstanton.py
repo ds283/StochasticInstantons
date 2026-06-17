@@ -165,12 +165,12 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
         )
 
         if not do_not_populate:
-            self._populate(obj, row_data, tables, conn)
+            self._populate(obj, row_data, tables, conn, units=payload["trajectory"].units)
 
         setattr(obj, "_deserialized", True)
         return obj
 
-    def _populate(self, obj, row, tables, conn):
+    def _populate(self, obj, row, tables, conn, units=None):
         """Load FullInstantonValue records for a validated instanton."""
         from ComputeTargets.FullInstanton import FullInstantonValue
         from InflationConcepts.efold_value import efold_value
@@ -199,10 +199,10 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
                 FullInstantonValue(
                     store_id=None,
                     N=N_obj,
-                    phi1=data["phi1"][0],
-                    phi2=data["phi2"][0],
-                    P1=data["P1"][0],
-                    P2=data["P2"][0],
+                    phi1=data["phi1_PlanckMass"][0] * units.PlanckMass,
+                    phi2=data["phi2_PlanckMass"][0] * units.PlanckMass,
+                    P1=  data["P1_invPlanckMass"][0] / units.PlanckMass,
+                    P2=  data["P2_invPlanckMass"][0] / units.PlanckMass,
                 )
             )
 
@@ -243,6 +243,7 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
         })
         obj._my_id = store_id
 
+        units = obj._trajectory.units
         value_inserter = inserters["FullInstantonValue"]
 
         for v in obj._values:
@@ -250,10 +251,10 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
                 "instanton_serial": store_id,
                 "N_serial": v.N.store_id,
                 "fields_json": json.dumps({
-                    "phi1": [v.phi1],
-                    "phi2": [v.phi2],
-                    "P1":   [v.P1],
-                    "P2":   [v.P2],
+                    "phi1_PlanckMass":  [v.phi1 / units.PlanckMass],
+                    "phi2_PlanckMass":  [v.phi2 / units.PlanckMass],
+                    "P1_invPlanckMass": [v.P1 * units.PlanckMass],
+                    "P2_invPlanckMass": [v.P2 * units.PlanckMass],
                 }),
             })
 
@@ -375,7 +376,7 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
                 if N_final_row is not None:
                     obj._N_final = NFinal(store_id=N_final_row.serial, value=N_final_row.value)
 
-            self._populate(obj, row, tables, conn)
+            self._populate(obj, row, tables, conn, units=units)
             results.append(obj)
 
         return results

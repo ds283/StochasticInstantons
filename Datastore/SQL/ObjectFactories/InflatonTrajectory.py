@@ -156,6 +156,8 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         value_table = tables["InflatonTrajectoryValue"]
         efold_table = tables["efold_value"]
 
+        units = obj._potential._units
+
         rows = conn.execute(
             sqla.select(value_table.c.N_serial, value_table.c.fields_json)
             .filter(value_table.c.trajectory_serial == obj.store_id)
@@ -174,8 +176,8 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
                 InflatonTrajectoryValue(
                     store_id=None,
                     N=N_obj,
-                    phi=data["phi"][0],
-                    pi=data["pi"][0],
+                    phi=data["phi_PlanckMass"][0] * units.PlanckMass,
+                    pi= data["pi_PlanckMass"][0]  * units.PlanckMass,
                 )
             )
 
@@ -209,12 +211,16 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         store_id = inserter(conn, base_payload | {"N_end": obj._N_end, "diagnostics_json": diagnostics_json})
         obj._my_id = store_id
 
+        units = obj._potential._units
         value_inserter = inserters["InflatonTrajectoryValue"]
         for v in obj._values:
             value_inserter(conn, {
                 "trajectory_serial": store_id,
                 "N_serial": v.N.store_id,
-                "fields_json": json.dumps({"phi": [v.phi], "pi": [v.pi]}),
+                "fields_json": json.dumps({
+                    "phi_PlanckMass": [v.phi / units.PlanckMass],
+                    "pi_PlanckMass":  [v.pi  / units.PlanckMass],
+                }),
             })
 
         return obj
