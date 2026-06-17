@@ -44,3 +44,6 @@ class Planck_units(UnitsLike):
 
     # c should be unity for consistency, since we have assumed c = hbar = k_B = 1 in writing some of the equations above
     c = 299792458 * Metre / Second
+
+    # solar mass
+    SolarMass = 4.5803e38 * PlanckMass
