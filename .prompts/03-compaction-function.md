@@ -2,8 +2,8 @@
 
 This prompt assumes the following state of the repository:
 
-- `prompt_full_instanton_refactor.md` has been applied
-- `prompt_full_instanton_newton_fix.md` has been applied
+- `./.prompts/02-fullinstanton-bcs.md` has been applied
+- `./.prompts/02a-implement-jacobian.md` has been applied
 - The iteration is not converging with the `ρ`-final boundary condition
 
 It makes three groups of changes:
