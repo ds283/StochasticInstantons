@@ -615,8 +615,7 @@ def _build_grid(low, high, samples, values, label):
             + [f"{v:.5g}" for v in sample[-10:]]
         )
     print(
-        f"   -- Building {label} grid: {n} value{'' if n == 1 else 's'}"
-        f" = [ {', '.join(formatted)} ]"
+        f"   -- {label}: {n} value{'' if n == 1 else 's'} = [ {', '.join(formatted)} ]"
     )
     return sample
 
@@ -657,6 +656,8 @@ def execute(pool: ShardedPool, units: UnitsLike):
     ## -----------------------------------------------------------------------
     ## BUILD N_init, N_final, delta_Nstar GRIDS
     ## -----------------------------------------------------------------------
+    print("\n** BUILDING PARAMETER SAMPLING GRIDS")
+    print(f'   -- using potential type "{args.potential_type}"')
     N_init_sample = _build_grid(
         args.N_init_low,
         args.N_init_high,
@@ -703,30 +704,30 @@ def execute(pool: ShardedPool, units: UnitsLike):
     ## SAMPLING DENSITY
     ## -----------------------------------------------------------------------
     samples_per_N = args.samples_per_N
-    print(f"\n** Trajectory sampling density: {samples_per_N:.4g} samples per e-fold")
-
-    ## -----------------------------------------------------------------------
-    ## REGISTER COSMOLOGICAL PARAMETERS
-    ## -----------------------------------------------------------------------
-    cosmo = ray.get(pool.object_get("CosmologicalParams", params=Planck2018()))
-    print(f"\n** Cosmological parameters: {cosmo.name} (store_id={cosmo.store_id})")
-
-    ## -----------------------------------------------------------------------
-    ## BUILD MODEL LIST AND RUN PIPELINE
-    ## -----------------------------------------------------------------------
-    dm = MasslessDecoupledDiffusion()
+    print(f"   -- time sampling: {samples_per_N:.4g} samples per e-fold")
 
     model_list = build_model_list(pool, units, args)
     n_models = len(model_list)
     per_model_combinations = len(N_init_array) * len(N_final_array) * len(dns_objects)
     total_combinations = n_models * per_model_combinations
     print(
-        f"\n** {n_models} model{'s' if n_models != 1 else ''} and "
+        f"\n   ** {n_models} model{'s' if n_models != 1 else ''} and "
         f"{len(N_init_array)} x {len(N_final_array)} x {len(dns_objects)} "
         f"N_init/N_final/delta_Nstar grid = {per_model_combinations} "
         f"parameter combination{'s' if per_model_combinations != 1 else ''} per model = "
         f"{total_combinations} instanton combinations"
     )
+
+    ## -----------------------------------------------------------------------
+    ## REGISTER COSMOLOGICAL PARAMETERS
+    ## -----------------------------------------------------------------------
+    cosmo = ray.get(pool.object_get("CosmologicalParams", params=Planck2018()))
+    print(f"\n** COSMOLOGICAL PARAMETERS: {cosmo.name} (store_id={cosmo.store_id})")
+
+    ## -----------------------------------------------------------------------
+    ## BUILD MODEL LIST AND RUN PIPELINE
+    ## -----------------------------------------------------------------------
+    dm = MasslessDecoupledDiffusion()
 
     run_all_pipelines(
         pool=pool,

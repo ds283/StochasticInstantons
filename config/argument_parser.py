@@ -45,14 +45,19 @@ def create_argument_parser():
     db.add_argument(
         "--prune-unvalidated",
         action="store_true",
-        default=False,
+        default=True,
         help="Delete unvalidated records from previous incomplete runs",
     )
     db.add_argument(
         "--drop",
         nargs="*",
         default=[],
-        choices=["inflaton-trajectory", "full-instanton", "slow-roll-instanton", "compaction-function"],
+        choices=[
+            "inflaton-trajectory",
+            "full-instanton",
+            "slow-roll-instanton",
+            "compaction-function",
+        ],
         help="Drop specified table groups before running",
     )
 
