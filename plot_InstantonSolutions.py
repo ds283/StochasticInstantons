@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import itertools
 import math
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -26,21 +26,21 @@ from matplotlib import pyplot as plt
 from ComputeTargets import InflatonTrajectoryProxy
 from ComputeTargets.FullInstanton import FullInstantonProxy
 from ComputeTargets.SlowRollInstanton import SlowRollInstantonProxy
-from CosmologyModels.cosmo_params import CosmologicalParams
-from CosmologyModels.params import Planck2018
-from InflationConcepts import MasslessDecoupledDiffusion
-from Datastore.SQL.ShardedPool import ShardedPool
-from RayTools.RayWorkPool import RayWorkPool
-from Units import Planck_units
 from config.argument_parser import create_argument_parser
 from config.sharding import (
     ShardKeyType,
     get_shard_key_store_id,
+    inventory_config,
+    read_table_config,
     replicated_tables,
     sharded_tables,
-    read_table_config,
-    inventory_config,
 )
+from CosmologyModels.cosmo_params import CosmologicalParams
+from CosmologyModels.params import Planck2018
+from Datastore.SQL.ShardedPool import ShardedPool
+from InflationConcepts import MasslessDecoupledDiffusion
+from RayTools.RayWorkPool import RayWorkPool
+from Units import Planck_units
 
 VERSION_LABEL = "2026.3.0"
 
@@ -176,7 +176,7 @@ def plot_background_trajectory(traj, potential, units, output_dir, fmt):
     fname = output_dir / f"background_phi.{fmt}"
     fig.savefig(fname)
     plt.close(fig)
-    print(f"   Saved: {fname}")
+    # print(f"   Saved: {fname}")
 
 
 def plot_epsilon(traj, potential, units, output_dir, fmt):
@@ -204,7 +204,7 @@ def plot_epsilon(traj, potential, units, output_dir, fmt):
     fname = output_dir / f"background_epsilon.{fmt}"
     fig.savefig(fname)
     plt.close(fig)
-    print(f"   Saved: {fname}")
+    # print(f"   Saved: {fname}")
 
 
 def plot_instanton_fields(fi, sri, N_init_val, N_final_val, dns_val, potential, units, output_dir, fmt):
@@ -297,7 +297,7 @@ def plot_instanton_fields(fi, sri, N_init_val, N_final_val, dns_val, potential, 
     )
     fig.savefig(fname)
     plt.close(fig)
-    print(f"   Saved: {fname}")
+    # print(f"   Saved: {fname}")
 
 
 def plot_msr_action_sweep(x_label, fi_points, sri_points, fixed_desc, potential_name,
@@ -330,7 +330,7 @@ def plot_msr_action_sweep(x_label, fi_points, sri_points, fixed_desc, potential_
     fname = output_dir / f"msr_action_vs_{swept_file}__{fixed_desc}.{fmt}"
     fig.savefig(fname)
     plt.close(fig)
-    print(f"   Saved: {fname}")
+    # print(f"   Saved: {fname}")
 
 
 def _safe_num(v: float) -> str:
@@ -386,7 +386,7 @@ def plot_zeta_and_compaction(cf, units, N_init_val, N_final_val, dns_val,
     )
     fig.savefig(fname)
     plt.close(fig)
-    print(f"   Saved: {fname}")
+    # print(f"   Saved: {fname}")
 
 
 def plot_compaction_summary(x_label, fi_cf_points, sri_cf_points, fixed_desc,
@@ -452,7 +452,7 @@ def plot_compaction_summary(x_label, fi_cf_points, sri_cf_points, fixed_desc,
     fname = output_dir / f"compaction_summary_vs_{swept_file}__{fixed_desc}.{fmt}"
     fig.savefig(fname)
     plt.close(fig)
-    print(f"   Saved: {fname}")
+    # print(f"   Saved: {fname}")
 
 
 # ── Ray remote plot dispatch ────────────────────────────────────────────────
