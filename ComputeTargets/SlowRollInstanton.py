@@ -39,6 +39,7 @@ def _compute_slow_roll_instanton(
     atol: float,
     rtol: float,
     label: Optional[str] = None,
+    verbose: bool = False,
 ) -> dict:
     """
     Solve the slow-roll instanton BVP over [0, N_total] in {φ, P₁}.
@@ -65,6 +66,8 @@ def _compute_slow_roll_instanton(
 
     compute_start = time.perf_counter()
     ode_solve_count = 0
+
+    _lbl = label if label else f"phi_i={phi_init:.4g} phi_f={phi_final:.4g} N={N_total:.3g}"
 
     traj      = trajectory.get()
     potential = traj._potential
@@ -98,8 +101,8 @@ def _compute_slow_roll_instanton(
             return np.nan
         return float(sol.y[0, -1]) - phi_final
 
-    if label:
-        print(f"[{label}] SR instanton: phi_init={phi_init:.6g}, "
+    if verbose:
+        print(f"[{_lbl}] SR instanton: phi_init={phi_init:.6g}, "
               f"phi_final={phi_final:.6g}, N_total={N_total:.4g}")
 
     # Physically motivated initial bracket
@@ -118,8 +121,8 @@ def _compute_slow_roll_instanton(
         bracket_expansions += 1
 
     if np.isnan(f_lo) or np.isnan(f_hi) or f_lo * f_hi >= 0:
-        if label:
-            print(f"[{label}] SR instanton: bracketing failed "
+        if verbose:
+            print(f"[{_lbl}] SR instanton: bracketing failed "
                   f"(f_lo={f_lo:.2e}, f_hi={f_hi:.2e})")
         return {
             "failure": True, "N_total": N_total,
@@ -140,8 +143,8 @@ def _compute_slow_roll_instanton(
         P1_star, brentq_info = brentq(shoot, P1_lo, P1_hi,
                          xtol=atol, rtol=rtol, maxiter=200, full_output=True)
     except ValueError as exc:
-        if label:
-            print(f"[{label}] SR instanton: brentq failed: {exc}")
+        if verbose:
+            print(f"[{_lbl}] SR instanton: brentq failed: {exc}")
         return {
             "failure": True, "N_total": N_total,
             "N_sample": [], "phi": [], "P1": [], "msr_action": None,
@@ -157,8 +160,8 @@ def _compute_slow_roll_instanton(
             },
         }
 
-    if label:
-        print(f"[{label}] SR instanton converged: P₁(0) = {P1_star:.4g}")
+    if verbose:
+        print(f"[{_lbl}] SR instanton converged: P₁(0) = {P1_star:.4g}")
 
     final_residual = abs(shoot(P1_star))
 
@@ -331,7 +334,7 @@ class SlowRollInstanton(DatastoreObject):
         """Sampled {φ, P₁} values; empty until compute() succeeds."""
         return self._values
 
-    def compute(self, label: Optional[str] = None) -> ObjectRef:
+    def compute(self, label: Optional[str] = None, verbose: bool = False) -> ObjectRef:
         """
         Dispatch the slow-roll instanton BVP solve as a Ray remote task.
         Returns an ObjectRef. RayWorkPool will call store() once this resolves.
@@ -367,6 +370,7 @@ class SlowRollInstanton(DatastoreObject):
             atol=atol,
             rtol=rtol,
             label=label,
+            verbose=verbose,
         )
         return self._compute_ref
 

@@ -43,6 +43,7 @@ def _compute_full_instanton(
     atol: float,
     rtol: float,
     label: Optional[str] = None,
+    verbose: bool = False,
 ) -> dict:
     """
     Solve the full MSR instanton BVP over [0, N_total] in {φ₁, φ₂, P₁, P₂}.
@@ -68,6 +69,8 @@ def _compute_full_instanton(
 
     compute_start = time.perf_counter()
     ode_solve_count = 0
+
+    _lbl = label if label else f"phi_i={phi_init:.4g} phi_f={phi_final:.4g} N={N_total:.3g}"
 
     traj      = trajectory.get()
     potential = traj._potential
@@ -95,8 +98,8 @@ def _compute_full_instanton(
     )
     ode_solve_count += 1
     if not bg_sol.success:
-        if label:
-            print(f"[{label}] background ODE failed for initial guess")
+        if verbose:
+            print(f"[{_lbl}] background ODE failed for initial guess")
         return {
             "failure": True, "N_total": N_total,
             "N_sample": [], "phi1": [], "phi2": [],
@@ -221,16 +224,16 @@ def _compute_full_instanton(
         picard_iters_total += n_inner
         picard_iterations_per_outer.append(n_inner)
         if p1 is None:
-            if label:
-                print(f"[{label}] Picard inner failed at outer iter {outer}")
+            if verbose:
+                print(f"[{_lbl}] Picard inner failed at outer iter {outer}")
             break
 
         residual = p1[-1] - phi_final
         final_residual = abs(residual)
-        if label:
+        if verbose:
             rho_T = compute_rho(p1[-1], p2[-1])
             print(
-                f"[{label}] outer {outer}: lambda={lam:.4g}, "
+                f"[{_lbl}] outer {outer}: lambda={lam:.4g}, "
                 f"phi1(T)={p1[-1]:.6g}, phi2(T)={p2[-1]:.6g}, "
                 f"rho(T)={rho_T:.6g}, "
                 f"res={residual:.2e}"
@@ -279,8 +282,8 @@ def _compute_full_instanton(
     }
 
     if not converged:
-        if label:
-            print(f"[{label}] outer loop did not converge "
+        if verbose:
+            print(f"[{_lbl}] outer loop did not converge "
                   f"after {MAX_OUTER} iterations (target tolerance was {OUTER_TOL})")
         return {
             "failure": True, "N_total": N_total,
@@ -446,7 +449,7 @@ class FullInstanton(DatastoreObject):
         """Sampled state-vector values; empty until compute() succeeds."""
         return self._values
 
-    def compute(self, label: Optional[str] = None) -> ObjectRef:
+    def compute(self, label: Optional[str] = None, verbose: bool = False) -> ObjectRef:
         """
         Dispatch the MSR instanton BVP solve as a Ray remote task.
         Returns an ObjectRef. RayWorkPool will call store() once this resolves.
@@ -484,6 +487,7 @@ class FullInstanton(DatastoreObject):
             atol=atol,
             rtol=rtol,
             label=label,
+            verbose=verbose,
         )
         return self._compute_ref
 
