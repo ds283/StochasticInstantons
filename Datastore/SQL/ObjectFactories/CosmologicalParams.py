@@ -47,7 +47,7 @@ class sqla_cosmological_params_factory(SQLAFactoryBase):
         row = conn.execute(query).one_or_none()
 
         if row is None:
-            store_id = inserter(conn, {
+            insert_data = {
                 "name": name,
                 "omega_cc": params.omega_cc,
                 "omega_m": params.omega_m,
@@ -55,7 +55,10 @@ class sqla_cosmological_params_factory(SQLAFactoryBase):
                 "f_baryon": params.f_baryon,
                 "T_CMB_Kelvin": params.T_CMB_Kelvin,
                 "Neff": params.Neff,
-            })
+            }
+            if "serial" in payload:
+                insert_data["serial"] = payload["serial"]
+            store_id = inserter(conn, insert_data)
             obj = CosmologicalParams(store_id=store_id, params=params)
             obj._new_insert = True
         else:
