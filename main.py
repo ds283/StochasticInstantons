@@ -20,7 +20,7 @@ from ComputeTargets.CompactionFunction import (
 from ComputeTargets.FullInstanton import FullInstantonProxy
 from ComputeTargets.SlowRollInstanton import SlowRollInstantonProxy
 from config.argument_parser import create_argument_parser
-from config.model_list import build_model_list
+from config.pipeline_setup import build_pipeline_inputs
 from config.sharding import (
     ShardKeyType,
     get_shard_key_store_id,
@@ -600,25 +600,6 @@ def run_all_pipelines(
         cf_work_queue.run()
 
 
-def _build_grid(low, high, samples, values, label):
-    if len(values) > 0:
-        sample = sorted(values)
-    else:
-        sample = sorted(np.linspace(low, high, samples, endpoint=True).tolist())
-    n = len(sample)
-    if n <= 20:
-        formatted = [f"{v:.5g}" for v in sample]
-    else:
-        formatted = (
-            [f"{v:.5g}" for v in sample[:10]]
-            + ["..."]
-            + [f"{v:.5g}" for v in sample[-10:]]
-        )
-    print(
-        f"   -- {label}: {n} value{'' if n == 1 else 's'} = [ {', '.join(formatted)} ]"
-    )
-    return sample
-
 
 def execute(pool: ShardedPool, units: UnitsLike):
     """
@@ -626,79 +607,17 @@ def execute(pool: ShardedPool, units: UnitsLike):
     work queues across every model.
     """
     ## -----------------------------------------------------------------------
-    ## REGISTER TOLERANCES
-    ## -----------------------------------------------------------------------
-    atol, rtol = ray.get(
-        [
-            pool.object_get(
-                "tolerance", log10_tol=int(round(math.log10(args.abs_tol)))
-            ),
-            pool.object_get(
-                "tolerance", log10_tol=int(round(math.log10(args.rel_tol)))
-            ),
-        ]
-    )
-
-    ## -----------------------------------------------------------------------
-    ## REGISTER INITIAL CONDITIONS
-    ## -----------------------------------------------------------------------
-    phi0, pi0 = ray.get(
-        [
-            pool.object_get(
-                "phi_value", value=args.phi0_Mp * units.PlanckMass, units=units
-            ),
-            pool.object_get(
-                "pi_value", value=args.pi0_Mp * units.PlanckMass, units=units
-            ),
-        ]
-    )
-
-    ## -----------------------------------------------------------------------
-    ## BUILD N_init, N_final, delta_Nstar GRIDS
+    ## BUILD PARAMETER GRIDS AND REGISTER DATABASE OBJECTS
     ## -----------------------------------------------------------------------
     print("\n** BUILDING PARAMETER SAMPLING GRIDS")
     print(f'   -- using potential type "{args.potential_type}"')
-    N_init_sample = _build_grid(
-        args.N_init_low,
-        args.N_init_high,
-        args.N_init_samples,
-        args.N_init_values,
-        "N_init",
-    )
-    N_init_array = ray.get(
-        pool.object_get(
-            "N_init",
-            payload_data=[{"value": v} for v in N_init_sample],
-        )
-    )
-
-    N_final_sample = _build_grid(
-        args.N_final_low,
-        args.N_final_high,
-        args.N_final_samples,
-        args.N_final_values,
-        "N_final",
-    )
-    N_final_array = ray.get(
-        pool.object_get(
-            "N_final",
-            payload_data=[{"value": v} for v in N_final_sample],
-        )
-    )
-
-    dns_sample = _build_grid(
-        args.delta_Nstar_low,
-        args.delta_Nstar_high,
-        args.delta_Nstar_samples,
-        args.delta_Nstar_values,
-        "delta_Nstar",
-    )
-    dns_objects = ray.get(
-        pool.object_get(
-            "delta_Nstar",
-            payload_data=[{"value": v} for v in dns_sample],
-        )
-    )
+    inputs = build_pipeline_inputs(pool, units, args)
+    atol, rtol     = inputs["atol"],         inputs["rtol"]
+    phi0, pi0      = inputs["phi0"],         inputs["pi0"]
+    N_init_array   = inputs["N_init_array"]
+    N_final_array  = inputs["N_final_array"]
+    dns_objects    = inputs["dns_array"]
+    model_list     = inputs["model_list"]
 
     ## -----------------------------------------------------------------------
     ## SAMPLING DENSITY
@@ -706,7 +625,6 @@ def execute(pool: ShardedPool, units: UnitsLike):
     samples_per_N = args.samples_per_N
     print(f"   -- time sampling: {samples_per_N:.4g} samples per e-fold")
 
-    model_list = build_model_list(pool, units, args)
     n_models = len(model_list)
     per_model_combinations = len(N_init_array) * len(N_final_array) * len(dns_objects)
     total_combinations = n_models * per_model_combinations

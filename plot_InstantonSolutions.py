@@ -27,6 +27,7 @@ from ComputeTargets import InflatonTrajectoryProxy
 from ComputeTargets.FullInstanton import FullInstantonProxy
 from ComputeTargets.SlowRollInstanton import SlowRollInstantonProxy
 from config.argument_parser import create_argument_parser
+from config.pipeline_setup import build_pipeline_inputs
 from config.sharding import (
     ShardKeyType,
     get_shard_key_store_id,
@@ -79,16 +80,6 @@ def create_plot_parser():
 
 
 # ── Grid + sampling helpers ────────────────────────────────────────────────────
-
-def _build_grid(low, high, samples, values, label):
-    if len(values) > 0:
-        sample = sorted(values)
-    else:
-        sample = sorted(np.linspace(low, high, samples, endpoint=True).tolist())
-    print(f"\n** Building {label} grid: {len(sample)} values "
-          f"from {sample[0]:.4g} to {sample[-1]:.4g}")
-    return sample
-
 
 def _evenly_sample(seq, k):
     """Return up to k elements of seq, evenly spaced by index."""
@@ -843,47 +834,40 @@ def run_plots(pool, units, args):
     output_dir.mkdir(parents=True, exist_ok=True)
     fmt = args.format
 
-    print("\n>> Reading trajectories...")
-    trajectories = ray.get(pool.read_table("InflatonTrajectory", units=units))
-    print(f"   Found {len(trajectories)} trajectory record(s)")
+    print("\n>> Building pipeline inputs...")
+    inputs = build_pipeline_inputs(pool, units, args)
+    atol, rtol    = inputs["atol"],         inputs["rtol"]
+    N_init_array  = inputs["N_init_array"]
+    N_final_array = inputs["N_final_array"]
+    dns_array     = inputs["dns_array"]
 
-    if not trajectories:
+    selected_models = _evenly_sample(inputs["model_list"], args.max_combinations)
+    print(f"\n>> Fetching {len(selected_models)} trajectory record(s)...")
+    traj_list = ray.get(
+        pool.object_get(
+            "InflatonTrajectory",
+            payload_data=[
+                {"phi0": inputs["phi0"], "pi0": inputs["pi0"],
+                 "potential": m["potential"], "atol": atol, "rtol": rtol,
+                 "samples_per_N": None}
+                for m in selected_models
+            ],
+        )
+    )
+    traj_list = [t for t in traj_list if t.available and t._potential is not None]
+    print(f"   {len(traj_list)} trajectory record(s) found in database")
+
+    if not traj_list:
         print("No trajectories found. Run main.py first.")
         return
-
-    traj_list = [t for t in trajectories if t._potential is not None]
-    traj_list = _evenly_sample(traj_list, args.max_combinations)
-
-    print(">> Reading delta_Nstar values...")
-    dns_array = sorted(ray.get(pool.read_table("delta_Nstar")), key=lambda d: float(d))
-    print(f"   Found {len(dns_array)} delta_Nstar value(s)")
 
     if not dns_array:
         print("No delta_Nstar values found. Run main.py first.")
         return
 
-    atol, rtol = ray.get([
-        pool.object_get("tolerance", log10_tol=int(round(math.log10(args.abs_tol)))),
-        pool.object_get("tolerance", log10_tol=int(round(math.log10(args.rel_tol)))),
-    ])
-
-    print(">> Reading cosmological parameters...")
+    print("\n>> Reading cosmological parameters...")
     cosmo = ray.get(pool.object_get("CosmologicalParams", params=Planck2018()))
     print(f"   Cosmological parameters: {cosmo.name} (store_id={cosmo.store_id})")
-
-    N_init_sample = _build_grid(
-        args.N_init_low, args.N_init_high, args.N_init_samples, args.N_init_values, "N_init"
-    )
-    N_init_array = ray.get(
-        pool.object_get("N_init", payload_data=[{"value": v} for v in N_init_sample])
-    )
-
-    N_final_sample = _build_grid(
-        args.N_final_low, args.N_final_high, args.N_final_samples, args.N_final_values, "N_final"
-    )
-    N_final_array = ray.get(
-        pool.object_get("N_final", payload_data=[{"value": v} for v in N_final_sample])
-    )
 
     max_combos = args.max_combinations
 
