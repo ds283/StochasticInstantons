@@ -13,11 +13,12 @@ from ComputeTargets import (
     InflatonTrajectoryProxy,
     SlowRollInstanton,
 )
-from ComputeTargets.CompactionFunction import CompactionFunction, CompactionFunctionProxy
+from ComputeTargets.CompactionFunction import (
+    CompactionFunction,
+    CompactionFunctionProxy,
+)
 from ComputeTargets.FullInstanton import FullInstantonProxy
 from ComputeTargets.SlowRollInstanton import SlowRollInstantonProxy
-from CosmologyModels.cosmo_params import CosmologicalParams
-from CosmologyModels.params import Planck2018
 from config.argument_parser import create_argument_parser
 from config.model_list import build_model_list
 from config.sharding import (
@@ -29,6 +30,8 @@ from config.sharding import (
     sharded_tables,
 )
 from CosmologyConcepts import phi_value, pi_value
+from CosmologyModels.cosmo_params import CosmologicalParams
+from CosmologyModels.params import Planck2018
 from Datastore.SQL.ProfileAgent import ProfileAgent
 from Datastore.SQL.ShardedPool import ShardedPool
 from InflationConcepts import (
@@ -440,7 +443,8 @@ def run_all_pipelines(
         )
 
     checkable = [
-        item for item in grid
+        item
+        for item in grid
         if fi_results_all[id(item)].available or sr_results_all[id(item)].available
     ]
 
@@ -482,7 +486,11 @@ def run_all_pipelines(
     print(
         f"   -- {len(checkable) - len(cf_missing)} already computed, "
         f"{len(cf_missing)} to compute"
-        + (f", {n_no_instanton} skipped (no instanton available)" if n_no_instanton > 0 else "")
+        + (
+            f", {n_no_instanton} skipped (no instanton available)"
+            if n_no_instanton > 0
+            else ""
+        )
     )
 
     if cf_missing:
@@ -501,10 +509,7 @@ def run_all_pipelines(
             task_builder=lambda key: pool.object_get_vectorized(
                 "FullInstanton",
                 key,
-                payload_data=[
-                    key_fields(item)
-                    for item in fi_binned_missing[key]
-                ],
+                payload_data=[key_fields(item) for item in fi_binned_missing[key]],
             ),
             compute_handler=None,
             store_handler=None,
@@ -530,10 +535,7 @@ def run_all_pipelines(
             task_builder=lambda key: pool.object_get_vectorized(
                 "SlowRollInstanton",
                 key,
-                payload_data=[
-                    key_fields(item)
-                    for item in fi_binned_missing[key]
-                ],
+                payload_data=[key_fields(item) for item in fi_binned_missing[key]],
             ),
             compute_handler=None,
             store_handler=None,
@@ -603,9 +605,18 @@ def _build_grid(low, high, samples, values, label):
         sample = sorted(values)
     else:
         sample = sorted(np.linspace(low, high, samples, endpoint=True).tolist())
+    n = len(sample)
+    if n <= 20:
+        formatted = [f"{v:.5g}" for v in sample]
+    else:
+        formatted = (
+            [f"{v:.5g}" for v in sample[:10]]
+            + ["..."]
+            + [f"{v:.5g}" for v in sample[-10:]]
+        )
     print(
-        f"\n** Building {label} grid: {len(sample)} values "
-        f"from {sample[0]:.4g} to {sample[-1]:.4g}"
+        f"   -- Building {label} grid: {n} value{'' if n == 1 else 's'}"
+        f" = [ {', '.join(formatted)} ]"
     )
     return sample
 
@@ -697,9 +708,7 @@ def execute(pool: ShardedPool, units: UnitsLike):
     ## -----------------------------------------------------------------------
     ## REGISTER COSMOLOGICAL PARAMETERS
     ## -----------------------------------------------------------------------
-    cosmo = ray.get(
-        pool.object_get("CosmologicalParams", params=Planck2018())
-    )
+    cosmo = ray.get(pool.object_get("CosmologicalParams", params=Planck2018()))
     print(f"\n** Cosmological parameters: {cosmo.name} (store_id={cosmo.store_id})")
 
     ## -----------------------------------------------------------------------
@@ -708,14 +717,15 @@ def execute(pool: ShardedPool, units: UnitsLike):
     dm = MasslessDecoupledDiffusion()
 
     model_list = build_model_list(pool, units, args)
-    total_combinations = (
-        len(model_list) * len(N_init_array) * len(N_final_array) * len(dns_objects)
-    )
+    n_models = len(model_list)
+    per_model_combinations = len(N_init_array) * len(N_final_array) * len(dns_objects)
+    total_combinations = n_models * per_model_combinations
     print(
-        f"\n** {len(model_list)} model(s) to process; "
+        f"\n** {n_models} model{'s' if n_models != 1 else ''} and "
         f"{len(N_init_array)} x {len(N_final_array)} x {len(dns_objects)} "
-        f"N_init/N_final/delta_Nstar grid = {total_combinations} instanton "
-        f"parameter combinations per model"
+        f"N_init/N_final/delta_Nstar grid = {per_model_combinations} "
+        f"parameter combination{'s' if per_model_combinations != 1 else ''} per model = "
+        f"{total_combinations} instanton combinations"
     )
 
     run_all_pipelines(
