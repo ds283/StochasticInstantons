@@ -711,7 +711,7 @@ def execute(pool: ShardedPool, units: UnitsLike):
     per_model_combinations = len(N_init_array) * len(N_final_array) * len(dns_objects)
     total_combinations = n_models * per_model_combinations
     print(
-        f"\n   ** {n_models} model{'s' if n_models != 1 else ''} and "
+        f"\n   >> {n_models} model{'s' if n_models != 1 else ''} and "
         f"{len(N_init_array)} x {len(N_final_array)} x {len(dns_objects)} "
         f"N_init/N_final/delta_Nstar grid = {per_model_combinations} "
         f"parameter combination{'s' if per_model_combinations != 1 else ''} per model = "
