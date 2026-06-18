@@ -226,6 +226,7 @@ def _compute_instanton_path(instanton_obj, is_slow_roll: bool, traj, potential, 
     # ── Step F: PBH mass ──────────────────────────────────────────────────
     k_star = 0.05  # Mpc^-1
     C_max = float(np.nanmax(C_v))
+    C_bar_max = float(np.nanmax(C_bar_v))
 
     M_C = None
     if r_max_C is not None:
@@ -246,6 +247,7 @@ def _compute_instanton_path(instanton_obj, is_slow_roll: bool, traj, potential, 
         "M_C": M_C,
         "M_C_bar": M_C_bar,
         "C_max": C_max,
+        "C_bar_max": C_bar_max,
         "V_end_downflow": V_end_downflow,
         "N_end_downflow": N_end_downflow,
         "diagnostics": {
@@ -479,6 +481,14 @@ class CompactionFunction(DatastoreObject):
         return getattr(self, "_C_max_slow_roll", None)
 
     @property
+    def C_bar_max_full(self) -> Optional[float]:
+        return getattr(self, "_C_bar_max_full", None)
+
+    @property
+    def C_bar_max_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_C_bar_max_slow_roll", None)
+
+    @property
     def V_end_downflow_slow_roll(self) -> Optional[float]:
         return getattr(self, "_V_end_downflow_slow_roll", None)
 
@@ -556,6 +566,7 @@ class CompactionFunction(DatastoreObject):
             self._M_C_full            = full.get("M_C")
             self._M_C_bar_full        = full.get("M_C_bar")
             self._C_max_full          = full.get("C_max")
+            self._C_bar_max_full      = full.get("C_bar_max")
             self._V_end_downflow_full = full.get("V_end_downflow")
             self._N_end_downflow_full = full.get("N_end_downflow")
         else:
@@ -573,6 +584,7 @@ class CompactionFunction(DatastoreObject):
             self._M_C_slow_roll            = slow_roll.get("M_C")
             self._M_C_bar_slow_roll        = slow_roll.get("M_C_bar")
             self._C_max_slow_roll          = slow_roll.get("C_max")
+            self._C_bar_max_slow_roll      = slow_roll.get("C_bar_max")
             self._V_end_downflow_slow_roll = slow_roll.get("V_end_downflow")
             self._N_end_downflow_slow_roll = slow_roll.get("N_end_downflow")
         else:

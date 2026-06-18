@@ -389,6 +389,72 @@ def plot_zeta_and_compaction(cf, units, N_init_val, N_final_val, dns_val,
     print(f"   Saved: {fname}")
 
 
+def plot_compaction_summary(x_label, fi_cf_points, sri_cf_points, fixed_desc,
+                             potential_name, output_dir, fmt, swept_name):
+    """Two-panel summary: left = max C and max C̄ vs swept parameter;
+    right = PBH mass in solar masses (log y-scale) vs swept parameter."""
+    swept_file = {"N_init": "Ninit", "N_final": "Nfinal", "delta_Nstar": "dNstar"}[swept_name]
+
+    # Unpack and filter to only points with at least some data
+    def _unzip(points, idx):
+        return [p[0] for p in points if p[idx] is not None], \
+               [p[idx] for p in points if p[idx] is not None]
+
+    fi_xC, fi_yC         = _unzip(fi_cf_points, 1)
+    fi_xCb, fi_yCb       = _unzip(fi_cf_points, 2)
+    fi_xM, fi_yM         = _unzip(fi_cf_points, 3)
+    fi_xMb, fi_yMb       = _unzip(fi_cf_points, 4)
+    sri_xC, sri_yC       = _unzip(sri_cf_points, 1)
+    sri_xCb, sri_yCb     = _unzip(sri_cf_points, 2)
+    sri_xM, sri_yM       = _unzip(sri_cf_points, 3)
+    sri_xMb, sri_yMb     = _unzip(sri_cf_points, 4)
+
+    has_C_data = any(len(v) > 0 for v in (fi_xC, fi_xCb, sri_xC, sri_xCb))
+    has_M_data = any(len(v) > 0 for v in (fi_xM, fi_xMb, sri_xM, sri_xMb))
+    if not has_C_data and not has_M_data:
+        return
+
+    fig, (ax_C, ax_M) = plt.subplots(1, 2, figsize=(10, 4))
+
+    if fi_xC:
+        ax_C.plot(fi_xC, fi_yC, "o-", label=r"$\max C$ (full)")
+    if fi_xCb:
+        ax_C.plot(fi_xCb, fi_yCb, "o--", label=r"$\max \bar{C}$ (full)")
+    if sri_xC:
+        ax_C.plot(sri_xC, sri_yC, "s-", label=r"$\max C$ (SR)")
+    if sri_xCb:
+        ax_C.plot(sri_xCb, sri_yCb, "s--", label=r"$\max \bar{C}$ (SR)")
+    ax_C.axhline(y=0.4, color="gray", linestyle=":", linewidth=0.8, label="Threshold")
+    ax_C.set_xlabel(x_label)
+    ax_C.set_ylabel(r"$\max C,\;\max \bar{C}$")
+    ax_C.set_title("Compaction function maxima")
+    ax_C.legend(fontsize="small")
+
+    if fi_xM:
+        ax_M.semilogy(fi_xM, fi_yM, "o-", label=r"$M_C$ (full)")
+    if fi_xMb:
+        ax_M.semilogy(fi_xMb, fi_yMb, "o--", label=r"$M_{\bar{C}}$ (full)")
+    if sri_xM:
+        ax_M.semilogy(sri_xM, sri_yM, "s-", label=r"$M_C$ (SR)")
+    if sri_xMb:
+        ax_M.semilogy(sri_xMb, sri_yMb, "s--", label=r"$M_{\bar{C}}$ (SR)")
+    ax_M.set_xlabel(x_label)
+    ax_M.set_ylabel(r"$M_{\rm PBH}\,/\,M_\odot$")
+    ax_M.set_title("PBH mass")
+    if has_M_data:
+        ax_M.legend(fontsize="small")
+
+    fig.suptitle(
+        rf"Compaction summary — {potential_name} ({fixed_desc})"
+    )
+    fig.tight_layout()
+
+    fname = output_dir / f"compaction_summary_vs_{swept_file}__{fixed_desc}.{fmt}"
+    fig.savefig(fname)
+    plt.close(fig)
+    print(f"   Saved: {fname}")
+
+
 # ── Ray remote plot dispatch ────────────────────────────────────────────────
 
 @ray.remote
@@ -432,6 +498,16 @@ def _plot_compaction_item(cf, N_init_val, N_final_val, dns_val, potential_name,
     units = Planck_units()
     plot_zeta_and_compaction(cf, units, N_init_val, N_final_val, dns_val,
                               potential_name, output_dir, fmt)
+
+
+@ray.remote
+def _plot_compaction_summary_item(x_label, fi_cf_points, sri_cf_points, fixed_desc,
+                                   potential_name, output_dir_str, fmt, swept_name):
+    """Runs inside a Ray worker: two-panel compaction summary sweep plot."""
+    sns.set_theme(style="ticks", context="paper")
+    output_dir = Path(output_dir_str)
+    plot_compaction_summary(x_label, fi_cf_points, sri_cf_points, fixed_desc,
+                             potential_name, output_dir, fmt, swept_name)
 
 
 def _dispatch_plot_work(item):
@@ -478,9 +554,58 @@ def _qualifying_action(obj):
     return obj.msr_action
 
 
+def _extract_cf_summary(cf, SolarMass):
+    """Return (C_max_full, C_bar_max_full, M_C_full_solar, M_C_bar_full_solar,
+               C_max_sr,   C_bar_max_sr,   M_C_sr_solar,   M_C_bar_sr_solar)
+    from a CompactionFunction object, or an all-None 8-tuple when unavailable."""
+    none8 = (None,) * 8
+    if cf is None or not cf.available or cf.failure:
+        return none8
+    def _m(v): return v / SolarMass if v is not None else None
+    return (
+        cf.C_max_full,
+        cf.C_bar_max_full,
+        _m(cf.M_C_full),
+        _m(cf.M_C_bar_full),
+        cf.C_max_slow_roll,
+        cf.C_bar_max_slow_roll,
+        _m(cf.M_C_slow_roll),
+        _m(cf.M_C_bar_slow_roll),
+    )
+
+
+def _cf_vectorized_fetch(pool, traj_proxy, fi_list, sri_list, dns_val, cosmo, atol, rtol):
+    """Return an index-aligned list of CompactionFunction objects (or None) for every
+    element in fi_list/sri_list.  Only submits a vectorized fetch for positions where
+    at least one instanton is available; positions where neither is available get None."""
+    n = len(fi_list)
+    valid_indices = []
+    payload_data = []
+    for i, (fi_obj, sri_obj) in enumerate(zip(fi_list, sri_list)):
+        fi_avail = fi_obj is not None and fi_obj.available
+        sri_avail = sri_obj is not None and sri_obj.available
+        if fi_avail or sri_avail:
+            fi_proxy = FullInstantonProxy(fi_obj) if fi_avail else None
+            sri_proxy = SlowRollInstantonProxy(sri_obj) if sri_avail else None
+            payload_data.append({
+                **_cf_key_payload(traj_proxy, fi_proxy, sri_proxy, dns_val, cosmo, atol, rtol),
+                "_do_not_populate": True,
+            })
+            valid_indices.append(i)
+
+    result = [None] * n
+    if payload_data:
+        fetched = ray.get(
+            pool.object_get_vectorized("CompactionFunction", dns_val, payload_data=payload_data)
+        )
+        for i, cf in zip(valid_indices, fetched):
+            result[i] = cf
+    return result
+
+
 def _sweep_Ninit_or_Nfinal(pool, traj_proxy, potential, out_dir, fmt,
                             swept_name, swept_array, fixed_other_array, dns_array,
-                            atol, rtol, max_combos, work_items, cosmo):
+                            atol, rtol, max_combos, work_items, cosmo, units):
     """swept_name in {"N_init", "N_final"}. delta_Nstar is one of the two
     fixed 'other' dimensions here, so every point on one curve already
     shares one shard — one object_get_vectorized() call per curve."""
@@ -524,6 +649,23 @@ def _sweep_Ninit_or_Nfinal(pool, traj_proxy, potential, out_dir, fmt,
                 potential.name, str(out_dir), fmt, swept_name,
             )))
 
+        # Compaction summary sweep: fetch CF scalars for all sweep points.
+        cf_list = _cf_vectorized_fetch(pool, traj_proxy, fi_list, sri_list,
+                                        dns_val, cosmo, atol, rtol)
+        SolarMass = units.SolarMass
+        fi_cf_points = []
+        sri_cf_points = []
+        for sv, cf in zip(swept_vals, cf_list):
+            s = _extract_cf_summary(cf, SolarMass)
+            fi_cf_points.append((sv, s[0], s[1], s[2], s[3]))
+            sri_cf_points.append((sv, s[4], s[5], s[6], s[7]))
+        if any(p[1] is not None or p[3] is not None
+               for p in fi_cf_points + sri_cf_points):
+            work_items.append((_plot_compaction_summary_item, (
+                x_label, fi_cf_points, sri_cf_points, fixed_desc,
+                potential.name, str(out_dir), fmt, swept_name,
+            )))
+
         for rep_idx in _representative_indices(len(swept_array)):
             rep_v = swept_array[rep_idx]
             if swept_name == "N_init":
@@ -562,7 +704,7 @@ def _sweep_Ninit_or_Nfinal(pool, traj_proxy, potential, out_dir, fmt,
 
 def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
                         dns_array, N_init_array, N_final_array,
-                        atol, rtol, max_combos, work_items, cosmo):
+                        atol, rtol, max_combos, work_items, cosmo, units):
     """Each curve point has a different delta_Nstar (a different shard), but
     across the selected (N_init, N_final) combos, points sharing one
     delta_Nstar value do share a shard — bin across combos by delta_Nstar
@@ -585,6 +727,51 @@ def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
     fi_by_dns = dict(zip(fi_refs.keys(), ray.get(list(fi_refs.values()))))
     sri_by_dns = dict(zip(sri_refs.keys(), ray.get(list(sri_refs.values()))))
 
+    # Vectorized CF fetch for the compaction summary sweep: one batch per dns_val.
+    cf_refs = {}
+    cf_valid_indices_by_dns = {}
+    for dns_val in dns_array:
+        fi_list_d = fi_by_dns[dns_val]
+        sri_list_d = sri_by_dns[dns_val]
+        valid_indices = []
+        cf_payload_data = []
+        for i, (fi_obj, sri_obj) in enumerate(zip(fi_list_d, sri_list_d)):
+            fi_avail = fi_obj is not None and fi_obj.available
+            sri_avail = sri_obj is not None and sri_obj.available
+            if fi_avail or sri_avail:
+                fi_proxy = FullInstantonProxy(fi_obj) if fi_avail else None
+                sri_proxy = SlowRollInstantonProxy(sri_obj) if sri_avail else None
+                cf_payload_data.append({
+                    **_cf_key_payload(traj_proxy, fi_proxy, sri_proxy, dns_val, cosmo, atol, rtol),
+                    "_do_not_populate": True,
+                })
+                valid_indices.append(i)
+        if cf_payload_data:
+            cf_refs[dns_val] = pool.object_get_vectorized(
+                "CompactionFunction", dns_val, payload_data=cf_payload_data
+            )
+        cf_valid_indices_by_dns[dns_val] = valid_indices
+
+    # Resolve all CF refs in one ray.get call.
+    dns_with_refs = [(dns, ref) for dns, ref in cf_refs.items()]
+    if dns_with_refs:
+        dns_keys, refs = zip(*dns_with_refs)
+        fetched_lists = ray.get(list(refs))
+        cf_by_dns_raw = dict(zip(dns_keys, fetched_lists))
+    else:
+        cf_by_dns_raw = {}
+
+    # Reconstruct index-aligned cf_by_dns.
+    cf_by_dns = {}
+    for dns_val in dns_array:
+        full_list = [None] * len(selected)
+        for i, cf in zip(cf_valid_indices_by_dns.get(dns_val, []),
+                         cf_by_dns_raw.get(dns_val, [])):
+            full_list[i] = cf
+        cf_by_dns[dns_val] = full_list
+
+    SolarMass = units.SolarMass
+
     for combo_idx, (N_init_v, N_final_v) in enumerate(selected):
         fi_points = [
             (float(dns_val), _qualifying_action(fi_by_dns[dns_val][combo_idx]))
@@ -599,6 +786,22 @@ def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
         if any(a is not None for _, a in fi_points) or any(a is not None for _, a in sri_points):
             work_items.append((_plot_msr_sweep_item, (
                 r"$\delta N_\star$", fi_points, sri_points, fixed_desc,
+                potential.name, str(out_dir), fmt, "delta_Nstar",
+            )))
+
+        # Compaction summary sweep for this (N_init, N_final) combo.
+        fi_cf_points = []
+        sri_cf_points = []
+        for dns_val in dns_array:
+            cf = cf_by_dns[dns_val][combo_idx]
+            s = _extract_cf_summary(cf, SolarMass)
+            dns_float = float(dns_val)
+            fi_cf_points.append((dns_float, s[0], s[1], s[2], s[3]))
+            sri_cf_points.append((dns_float, s[4], s[5], s[6], s[7]))
+        if any(p[1] is not None or p[3] is not None
+               for p in fi_cf_points + sri_cf_points):
+            work_items.append((_plot_compaction_summary_item, (
+                r"$\delta N_\star$", fi_cf_points, sri_cf_points, fixed_desc,
                 potential.name, str(out_dir), fmt, "delta_Nstar",
             )))
 
@@ -699,20 +902,20 @@ def run_plots(pool, units, args):
             swept_name="N_init", swept_array=N_init_array,
             fixed_other_array=N_final_array, dns_array=dns_array,
             atol=atol, rtol=rtol, max_combos=max_combos, work_items=work_items,
-            cosmo=cosmo,
+            cosmo=cosmo, units=units,
         )
         _sweep_Ninit_or_Nfinal(
             pool, traj_proxy, potential, traj_dir / "N-final", fmt,
             swept_name="N_final", swept_array=N_final_array,
             fixed_other_array=N_init_array, dns_array=dns_array,
             atol=atol, rtol=rtol, max_combos=max_combos, work_items=work_items,
-            cosmo=cosmo,
+            cosmo=cosmo, units=units,
         )
         _sweep_delta_Nstar(
             pool, traj_proxy, potential, traj_dir / "delta-Nstar", fmt,
             dns_array=dns_array, N_init_array=N_init_array, N_final_array=N_final_array,
             atol=atol, rtol=rtol, max_combos=max_combos, work_items=work_items,
-            cosmo=cosmo,
+            cosmo=cosmo, units=units,
         )
 
     print(f"\n>> Dispatching {len(work_items)} plot(s) for rendering...")

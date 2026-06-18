@@ -88,6 +88,7 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
                 sqla.Column("M_C_full_SolarMass", sqla.Float(64), nullable=True),
                 sqla.Column("M_C_bar_full_SolarMass", sqla.Float(64), nullable=True),
                 sqla.Column("C_max_full", sqla.Float(64), nullable=True),
+                sqla.Column("C_bar_max_full", sqla.Float(64), nullable=True),
                 sqla.Column("V_end_downflow_full_PlanckMass4", sqla.Float(64), nullable=True),
                 sqla.Column("N_end_downflow_full", sqla.Float(64), nullable=True),
                 sqla.Column("failure_full", sqla.Integer, nullable=False, default=1),
@@ -97,6 +98,7 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
                 sqla.Column("M_C_slow_roll_SolarMass", sqla.Float(64), nullable=True),
                 sqla.Column("M_C_bar_slow_roll_SolarMass", sqla.Float(64), nullable=True),
                 sqla.Column("C_max_slow_roll", sqla.Float(64), nullable=True),
+                sqla.Column("C_bar_max_slow_roll", sqla.Float(64), nullable=True),
                 sqla.Column("V_end_downflow_slow_roll_PlanckMass4", sqla.Float(64), nullable=True),
                 sqla.Column("N_end_downflow_slow_roll", sqla.Float(64), nullable=True),
                 sqla.Column("failure_slow_roll", sqla.Integer, nullable=False, default=1),
@@ -138,6 +140,7 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
             table.c.M_C_full_SolarMass,
             table.c.M_C_bar_full_SolarMass,
             table.c.C_max_full,
+            table.c.C_bar_max_full,
             table.c.V_end_downflow_full_PlanckMass4,
             table.c.N_end_downflow_full,
             table.c.r_max_C_slow_roll_Mpc,
@@ -145,6 +148,7 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
             table.c.M_C_slow_roll_SolarMass,
             table.c.M_C_bar_slow_roll_SolarMass,
             table.c.C_max_slow_roll,
+            table.c.C_bar_max_slow_roll,
             table.c.V_end_downflow_slow_roll_PlanckMass4,
             table.c.N_end_downflow_slow_roll,
             table.c.metadata,
@@ -222,6 +226,7 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
         obj._M_C_full                 = _restore_M(row.M_C_full_SolarMass)
         obj._M_C_bar_full             = _restore_M(row.M_C_bar_full_SolarMass)
         obj._C_max_full               = row.C_max_full
+        obj._C_bar_max_full           = row.C_bar_max_full
         obj._V_end_downflow_full      = _restore_V(row.V_end_downflow_full_PlanckMass4)
         obj._N_end_downflow_full      = row.N_end_downflow_full
         obj._r_max_C_slow_roll        = _restore_r(row.r_max_C_slow_roll_Mpc)
@@ -229,6 +234,7 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
         obj._M_C_slow_roll            = _restore_M(row.M_C_slow_roll_SolarMass)
         obj._M_C_bar_slow_roll        = _restore_M(row.M_C_bar_slow_roll_SolarMass)
         obj._C_max_slow_roll          = row.C_max_slow_roll
+        obj._C_bar_max_slow_roll      = row.C_bar_max_slow_roll
         obj._V_end_downflow_slow_roll = _restore_V(row.V_end_downflow_slow_roll_PlanckMass4)
         obj._N_end_downflow_slow_roll = row.N_end_downflow_slow_roll
 
@@ -320,6 +326,7 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
             "M_C_full_SolarMass":                 _M(full_result, "M_C"),
             "M_C_bar_full_SolarMass":             _M(full_result, "M_C_bar"),
             "C_max_full":                          _plain(full_result, "C_max"),
+            "C_bar_max_full":                      _plain(full_result, "C_bar_max"),
             "V_end_downflow_full_PlanckMass4":    _V(full_result, "V_end_downflow"),
             "N_end_downflow_full":                 _plain(full_result, "N_end_downflow"),
             "failure_full": 1 if (full_result is None or full_result.get("failure", True)) else 0,
@@ -328,6 +335,7 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
             "M_C_slow_roll_SolarMass":            _M(sr_result, "M_C"),
             "M_C_bar_slow_roll_SolarMass":        _M(sr_result, "M_C_bar"),
             "C_max_slow_roll":                     _plain(sr_result, "C_max"),
+            "C_bar_max_slow_roll":                 _plain(sr_result, "C_bar_max"),
             "V_end_downflow_slow_roll_PlanckMass4": _V(sr_result, "V_end_downflow"),
             "N_end_downflow_slow_roll":            _plain(sr_result, "N_end_downflow"),
             "failure_slow_roll": 1 if (sr_result is None or sr_result.get("failure", True)) else 0,
@@ -390,6 +398,12 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
         return validated
 
     def validate_on_startup(self, conn, table, tables, prune_unvalidated):
+        # Migrate existing databases that pre-date the C_bar_max columns.
+        existing_cols = {c["name"] for c in sqla.inspect(conn).get_columns(table.name)}
+        for col_name in ("C_bar_max_full", "C_bar_max_slow_roll"):
+            if col_name not in existing_cols:
+                conn.execute(sqla.text(f'ALTER TABLE "{table.name}" ADD COLUMN "{col_name}" REAL'))
+
         query = sqla.select(table.c.serial).filter(table.c.validated == False)
         rows = conn.execute(query).fetchall()
 
