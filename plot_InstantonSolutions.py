@@ -24,6 +24,10 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 
 from ComputeTargets import InflatonTrajectoryProxy
+from ComputeTargets.FullInstanton import FullInstantonProxy
+from ComputeTargets.SlowRollInstanton import SlowRollInstantonProxy
+from CosmologyModels.cosmo_params import CosmologicalParams
+from CosmologyModels.params import Planck2018
 from InflationConcepts import MasslessDecoupledDiffusion
 from Datastore.SQL.ShardedPool import ShardedPool
 from RayTools.RayWorkPool import RayWorkPool
@@ -333,6 +337,58 @@ def _safe_num(v: float) -> str:
     return f"{v:.4g}".replace(".", "p").replace("-", "m")
 
 
+def plot_zeta_and_compaction(cf, units, N_init_val, N_final_val, dns_val,
+                              potential_name, output_dir, fmt):
+    """Two-panel figure: zeta(r) and C(r)/C_bar(r) vs r in Mpc on a log x-axis."""
+    full_vals = cf.full_values
+    sr_vals = cf.slow_roll_values
+    if not full_vals and not sr_vals:
+        return
+
+    Mpc = units.Mpc
+    fig, (ax_zeta, ax_C) = plt.subplots(1, 2, figsize=(10, 4))
+
+    if full_vals:
+        r_full = [v.r / Mpc for v in full_vals]
+        ax_zeta.plot(r_full, [v.zeta for v in full_vals], label="Full")
+        ax_C.plot(r_full, [v.C for v in full_vals], label=r"$C$ (full)")
+        ax_C.plot(r_full, [v.C_bar for v in full_vals], "--", label=r"$\bar{C}$ (full)")
+
+    if sr_vals:
+        r_sr = [v.r / Mpc for v in sr_vals]
+        ax_zeta.plot(r_sr, [v.zeta for v in sr_vals], "--", label="Slow-roll")
+        ax_C.plot(r_sr, [v.C for v in sr_vals], label=r"$C$ (SR)")
+        ax_C.plot(r_sr, [v.C_bar for v in sr_vals], "--", label=r"$\bar{C}$ (SR)")
+
+    for ax in (ax_zeta, ax_C):
+        ax.set_xscale("log")
+        ax.set_xlabel(r"$r$ / Mpc")
+
+    ax_zeta.set_ylabel(r"$\zeta(r)$")
+    ax_zeta.set_title(r"Density contrast $\zeta(r)$")
+    ax_zeta.legend(fontsize="small")
+
+    ax_C.set_ylabel(r"$C(r)$")
+    ax_C.set_title("Compaction function")
+    ax_C.legend(fontsize="small")
+
+    fig.suptitle(
+        rf"Compaction — {potential_name}, "
+        rf"$N_{{\rm init}}$={N_init_val:.3g}, $N_{{\rm final}}$={N_final_val:.3g}, "
+        rf"$\delta N_\star$={dns_val:.3g}"
+    )
+    fig.tight_layout()
+
+    fname = (
+        output_dir
+        / f"compaction_Ninit={_safe_num(N_init_val)}_Nfinal={_safe_num(N_final_val)}"
+          f"_dNstar={_safe_num(dns_val)}.{fmt}"
+    )
+    fig.savefig(fname)
+    plt.close(fig)
+    print(f"   Saved: {fname}")
+
+
 # ── Ray remote plot dispatch ────────────────────────────────────────────────
 
 @ray.remote
@@ -365,6 +421,19 @@ def _plot_msr_sweep_item(x_label, fi_points, sri_points, fixed_desc, potential_n
                           output_dir, fmt, swept_name)
 
 
+@ray.remote
+def _plot_compaction_item(cf, N_init_val, N_final_val, dns_val, potential_name,
+                           output_dir_str, fmt):
+    """Runs inside a Ray worker: zeta(r) and C(r)/C_bar(r) profile plots."""
+    if cf is None or not cf.available or cf.failure:
+        return
+    sns.set_theme(style="ticks", context="paper")
+    output_dir = Path(output_dir_str)
+    units = Planck_units()
+    plot_zeta_and_compaction(cf, units, N_init_val, N_final_val, dns_val,
+                              potential_name, output_dir, fmt)
+
+
 def _dispatch_plot_work(item):
     """task_builder for RayWorkPool: item is a (remote_fn, args) pair already
     fully prepared by the data-fetch stage; just submit it."""
@@ -386,6 +455,21 @@ def _instanton_key_payload(traj_proxy, N_init, N_final, dns, atol, rtol):
     )
 
 
+def _cf_key_payload(traj_proxy, fi_proxy, sri_proxy, dns, cosmo, atol, rtol):
+    return dict(
+        trajectory=traj_proxy,
+        full_instanton=fi_proxy,
+        slow_roll_instanton=sri_proxy,
+        delta_Nstar=dns,
+        cosmo=cosmo,
+        C_threshold=0.4,
+        C_bar_threshold=0.4,
+        atol=atol,
+        rtol=rtol,
+        tags=[],
+    )
+
+
 def _qualifying_action(obj):
     """Extract msr_action from a (possibly _do_not_populate=True) query
     result, or None if the object doesn't exist / has no action recorded."""
@@ -396,7 +480,7 @@ def _qualifying_action(obj):
 
 def _sweep_Ninit_or_Nfinal(pool, traj_proxy, potential, out_dir, fmt,
                             swept_name, swept_array, fixed_other_array, dns_array,
-                            atol, rtol, max_combos, work_items):
+                            atol, rtol, max_combos, work_items, cosmo):
     """swept_name in {"N_init", "N_final"}. delta_Nstar is one of the two
     fixed 'other' dimensions here, so every point on one curve already
     shares one shard — one object_get_vectorized() call per curve."""
@@ -463,11 +547,22 @@ def _sweep_Ninit_or_Nfinal(pool, traj_proxy, potential, out_dir, fmt,
                 fi_ref, sri_ref, float(N_init_v), float(N_final_v), float(dns_val),
                 potential, str(out_dir), fmt,
             )))
+            fi_proxy_for_cf = FullInstantonProxy(fi_obj) if fi_available else None
+            sri_proxy_for_cf = SlowRollInstantonProxy(sri_obj) if sri_available else None
+            cf_ref = pool.object_get(
+                "CompactionFunction",
+                **_cf_key_payload(traj_proxy, fi_proxy_for_cf, sri_proxy_for_cf,
+                                   dns_val, cosmo, atol, rtol),
+            )
+            work_items.append((_plot_compaction_item, (
+                cf_ref, float(N_init_v), float(N_final_v), float(dns_val),
+                potential.name, str(out_dir), fmt,
+            )))
 
 
 def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
                         dns_array, N_init_array, N_final_array,
-                        atol, rtol, max_combos, work_items):
+                        atol, rtol, max_combos, work_items, cosmo):
     """Each curve point has a different delta_Nstar (a different shard), but
     across the selected (N_init, N_final) combos, points sharing one
     delta_Nstar value do share a shard — bin across combos by delta_Nstar
@@ -525,6 +620,17 @@ def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
                 fi_ref, sri_ref, float(N_init_v), float(N_final_v), float(rep_dns),
                 potential, str(out_dir), fmt,
             )))
+            fi_proxy_for_cf = FullInstantonProxy(fi_obj) if fi_available else None
+            sri_proxy_for_cf = SlowRollInstantonProxy(sri_obj) if sri_available else None
+            cf_ref = pool.object_get(
+                "CompactionFunction",
+                **_cf_key_payload(traj_proxy, fi_proxy_for_cf, sri_proxy_for_cf,
+                                   rep_dns, cosmo, atol, rtol),
+            )
+            work_items.append((_plot_compaction_item, (
+                cf_ref, float(N_init_v), float(N_final_v), float(rep_dns),
+                potential.name, str(out_dir), fmt,
+            )))
 
 
 # ── Main pipeline ─────────────────────────────────────────────────────────────
@@ -558,6 +664,10 @@ def run_plots(pool, units, args):
         pool.object_get("tolerance", log10_tol=int(round(math.log10(args.rel_tol)))),
     ])
 
+    print(">> Reading cosmological parameters...")
+    cosmo = ray.get(pool.object_get("CosmologicalParams", params=Planck2018()))
+    print(f"   Cosmological parameters: {cosmo.name} (store_id={cosmo.store_id})")
+
     N_init_sample = _build_grid(
         args.N_init_low, args.N_init_high, args.N_init_samples, args.N_init_values, "N_init"
     )
@@ -589,17 +699,20 @@ def run_plots(pool, units, args):
             swept_name="N_init", swept_array=N_init_array,
             fixed_other_array=N_final_array, dns_array=dns_array,
             atol=atol, rtol=rtol, max_combos=max_combos, work_items=work_items,
+            cosmo=cosmo,
         )
         _sweep_Ninit_or_Nfinal(
             pool, traj_proxy, potential, traj_dir / "N-final", fmt,
             swept_name="N_final", swept_array=N_final_array,
             fixed_other_array=N_init_array, dns_array=dns_array,
             atol=atol, rtol=rtol, max_combos=max_combos, work_items=work_items,
+            cosmo=cosmo,
         )
         _sweep_delta_Nstar(
             pool, traj_proxy, potential, traj_dir / "delta-Nstar", fmt,
             dns_array=dns_array, N_init_array=N_init_array, N_final_array=N_final_array,
             atol=atol, rtol=rtol, max_combos=max_combos, work_items=work_items,
+            cosmo=cosmo,
         )
 
     print(f"\n>> Dispatching {len(work_items)} plot(s) for rendering...")
