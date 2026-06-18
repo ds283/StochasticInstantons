@@ -48,11 +48,12 @@ from Units.base import UnitsLike
 
 VERSION_LABEL = "2026.6.1"
 
-# Cap on the number of in-flight FullInstanton/SlowRollInstanton compute tasks.
-# Each instanton solve has a non-trivial memory footprint, so this is kept
-# tight (current target machine: 10-core MacBook Pro). Raise this when moving
-# to a larger machine (e.g. an HPC cluster).
-MAX_INFLIGHT_COMPUTE = 20
+# Total pipeline depth: caps inflight items across ALL stages (lookup, compute,
+# store, validation combined). Non-compute stages typically consume 10-20 slots,
+# so this must be well above the desired compute parallelism. On a 10-core
+# MacBook Pro, 50 keeps ~10 compute tasks queued in Ray while leaving headroom
+# for the other stages. Raise further when moving to a larger machine.
+MAX_INFLIGHT_PIPELINE = 50
 
 parser = create_argument_parser()
 args = parser.parse_args()
@@ -118,7 +119,7 @@ def _run_instanton_queue(
     grid added on top of delta_Nstar.
 
     Pass 2 (work): compute and persist the missing ones, one Ray task per
-    item, with concurrency capped at MAX_INFLIGHT_COMPUTE.
+    item, with pipeline depth capped at MAX_INFLIGHT_PIPELINE.
 
     `key_fields(item)` returns the cheap kwargs dict identifying the object
     (no N_sample) for Pass 1. `full_payload(item)` returns the full kwargs
@@ -185,7 +186,7 @@ def _run_instanton_queue(
         store_results=False,
         create_batch_size=5,
         process_batch_size=3,
-        max_task_queue=MAX_INFLIGHT_COMPUTE,
+        max_task_queue=MAX_INFLIGHT_PIPELINE,
     )
     work_queue.run()
 
@@ -595,7 +596,7 @@ def run_all_pipelines(
             store_results=False,
             create_batch_size=5,
             process_batch_size=3,
-            max_task_queue=MAX_INFLIGHT_COMPUTE,
+            max_task_queue=MAX_INFLIGHT_PIPELINE,
         )
         cf_work_queue.run()
 
