@@ -288,9 +288,18 @@ def run_all_pipelines(
     def full_payload(item) -> dict:
         model_idx, N_init, N_final, dns = item
         N_total = (float(N_init) - float(N_final)) + float(dns)
-        N_grid = np.linspace(
-            0.0, N_total, max(2, math.ceil(N_total * samples_per_N)), endpoint=True
-        ).tolist()
+        # Build a shared rational grid: points at multiples of δ = 1/samples_per_N
+        # so that grid points are reused across all instantons (keeps the efold_value
+        # table small). Then append the exact endpoint N_total so that
+        # CompactionFunction's downflow integration starts from the true instanton
+        # endpoint rather than a grid point that may be up to δ/2 away.
+        step = 1.0 / samples_per_N
+        n_steps = math.floor(N_total * samples_per_N)
+        shared_points = [i * step for i in range(n_steps + 1)]
+        if abs(n_steps * step - N_total) > 1e-12 * max(N_total, 1.0):
+            N_grid = shared_points + [N_total]
+        else:
+            N_grid = shared_points
         efold_objs = ray.get(
             pool.object_get("efold_value", payload_data=[{"N": N} for N in N_grid])
         )
