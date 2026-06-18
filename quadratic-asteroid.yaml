@@ -7,8 +7,10 @@ log10-m-high-Mp: -5.0
 phi0-Mp: 15.0
 pi0-Mp: 0.0
 N-init-values: 20.0
-N-final-values: 17.0
+N-final-low: 19.0
+N-final-high: 16.0
+N-final-samples: 50
 delta-Nstar-low: 0.1
 delta-Nstar-high: 3.0
-delta-Nstar-samples: 10
+delta-Nstar-samples: 50
 samples-per-N: 100
