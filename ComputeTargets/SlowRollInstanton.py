@@ -13,25 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, List
+from typing import List, Optional
 
 import ray
 from ray import ObjectRef
 
 from CosmologyConcepts.Potentials.AbstractPotential import AbstractPotential
 from Datastore.object import DatastoreObject
-from InflationConcepts.DiffusionModel import AbstractDiffusionModel, MasslessDecoupledDiffusion
-from InflationConcepts.efold_value import efold_value, efold_array
 from InflationConcepts.delta_Nstar import delta_Nstar
-from InflationConcepts.N_init import N_init
+from InflationConcepts.DiffusionModel import (
+    AbstractDiffusionModel,
+    MasslessDecoupledDiffusion,
+)
+from InflationConcepts.efold_value import efold_array, efold_value
 from InflationConcepts.N_final import N_final
+from InflationConcepts.N_init import N_init
 from MetadataConcepts.store_tag import store_tag
 from MetadataConcepts.tolerance import tolerance
 
 
 @ray.remote
 def _compute_slow_roll_instanton(
-    trajectory,             # InflatonTrajectoryProxy
+    trajectory,  # InflatonTrajectoryProxy
     phi_init: float,
     phi_final: float,
     N_total: float,
@@ -59,19 +62,25 @@ def _compute_slow_roll_instanton(
         "N_sample", "phi", "P1", "msr_action", "N_total", "failure", "diagnostics"
     """
     import time
+
     import numpy as np
     from scipy.integrate import solve_ivp
     from scipy.optimize import brentq
+
     from Interpolation.spline_wrapper import SplineWrapper
 
     compute_start = time.perf_counter()
     ode_solve_count = 0
 
-    _lbl = label if label else f"phi_i={phi_init:.4g} phi_f={phi_final:.4g} N={N_total:.3g}"
+    _lbl = (
+        label
+        if label
+        else f"phi_i={phi_init:.4g} phi_f={phi_final:.4g} N={N_total:.3g}"
+    )
 
-    traj      = trajectory.get()
+    traj = trajectory.get()
     potential = traj._potential
-    dm        = traj._diffusion_model
+    dm = traj._diffusion_model
 
     N_GRID = max(300, len(N_sample) * 3)
     N_grid = np.linspace(0.0, N_total, N_GRID)
@@ -88,44 +97,139 @@ def _compute_slow_roll_instanton(
         Hsq = H_sq_sr(phi)
         D11 = D11_sr(phi)
         dphi = -potential.dV_dphi(phi) / (3.0 * Hsq) + 2.0 * D11 * P1
-        dP1  = (potential.d2V_dphi2(phi) / (3.0 * Hsq)) * P1
+        dP1 = (potential.d2V_dphi2(phi) / (3.0 * Hsq)) * P1
         return [dphi, dP1]
 
     def shoot(P1_0):
         nonlocal ode_solve_count
-        sol = solve_ivp(rhs, (0.0, N_total), [phi_init, P1_0],
-                        method="RK45", t_eval=[N_total],
-                        atol=atol, rtol=rtol)
+        sol = solve_ivp(
+            rhs,
+            (0.0, N_total),
+            [phi_init, P1_0],
+            method="RK45",
+            t_eval=[N_total],
+            atol=atol,
+            rtol=rtol,
+        )
         ode_solve_count += 1
         if not sol.success:
             return np.nan
         return float(sol.y[0, -1]) - phi_final
 
     if verbose:
-        print(f"[{_lbl}] SR instanton: phi_init={phi_init:.6g}, "
-              f"phi_final={phi_final:.6g}, N_total={N_total:.4g}")
+        print(
+            f"[{_lbl}] SR instanton: phi_init={phi_init:.6g}, "
+            f"phi_final={phi_final:.6g}, N_total={N_total:.4g}"
+        )
 
-    # Physically motivated initial bracket
-    D11_0    = D11_sr(phi_init)
-    P1_scale = abs(phi_final - phi_init) / max(2.0 * D11_0 * N_total, 1e-30)
-    P1_lo, P1_hi = -10.0 * P1_scale, 10.0 * P1_scale
+    # Guard: slow-roll requires H_sq_sr = V(φ)/3 > 0.  When V ≈ 0 (near the
+    # potential minimum) the ODE RHS is singular and bracketing cannot succeed.
+    Hsq_init = H_sq_sr(phi_init)
+    D11_0 = D11_sr(phi_init)
 
-    f_lo, f_hi = shoot(P1_lo), shoot(P1_hi)
+    if not (Hsq_init > 0):
+        print(
+            f"[{_lbl}] SR instanton: H_sq_sr(phi_init) = {Hsq_init:.4g} ≤ 0 "
+            f"(slow-roll approximation fails; phi_init={phi_init:.6g})"
+        )
+        return {
+            "failure": True,
+            "N_total": N_total,
+            "N_sample": [],
+            "phi": [],
+            "P1": [],
+            "msr_action": None,
+            "diagnostics": {
+                "compute_time": time.perf_counter() - compute_start,
+                "converged": False,
+                "final_residual": None,
+                "total_ode_solves": ode_solve_count,
+                "bracket_expansions": 0,
+                "brentq_iterations": None,
+                "brentq_function_calls": None,
+                "final_P1_0": None,
+            },
+        }
+
+    # Compute the unforced (P1=0) residual first.  The naive scale
+    # |phi_final - phi_init| / (2 D11 N) vastly overestimates the required P1:
+    # in slow-roll, most of that displacement comes from the unforced drift,
+    # not from the P1 forcing.  Using the actual residual f_0 = phi(N_total;
+    # P1=0) - phi_final gives a bracket that is ~100x smaller and stays within
+    # the ODE-stable range.
+    f_0 = shoot(0.0)
+
+    if np.isnan(f_0):
+        print(
+            f"[{_lbl}] SR instanton: unforced (P1=0) ODE failed "
+            f"(phi_init={phi_init:.6g}, H_sq_sr={Hsq_init:.4g})"
+        )
+        return {
+            "failure": True,
+            "N_total": N_total,
+            "N_sample": [],
+            "phi": [],
+            "P1": [],
+            "msr_action": None,
+            "diagnostics": {
+                "compute_time": time.perf_counter() - compute_start,
+                "converged": False,
+                "final_residual": None,
+                "total_ode_solves": ode_solve_count,
+                "bracket_expansions": 0,
+                "brentq_iterations": None,
+                "brentq_function_calls": None,
+                "final_P1_0": None,
+            },
+        }
+
+    P1_scale = abs(f_0) / max(2.0 * D11_0 * N_total, 1e-30)
+
+    if f_0 <= 0.0:
+        # Unforced trajectory undershoots phi_final: positive P1 needed.
+        P1_lo, P1_hi = 0.0, 10.0 * P1_scale
+        f_lo, f_hi = f_0, shoot(P1_hi)
+    else:
+        # Unforced trajectory overshoots phi_final: negative P1 needed.
+        P1_lo, P1_hi = -10.0 * P1_scale, 0.0
+        f_lo, f_hi = shoot(P1_lo), f_0
 
     bracket_expansions = 0
-    for _ in range(12):
+    for _ in range(20):
         if not (np.isnan(f_lo) or np.isnan(f_hi)) and f_lo * f_hi < 0:
             break
-        P1_lo *= 2.0; P1_hi *= 2.0
-        f_lo, f_hi = shoot(P1_lo), shoot(P1_hi)
+        if np.isnan(f_hi) and not np.isnan(f_lo):
+            # P1_hi drives ODE out of range; bisect inward
+            P1_hi = (P1_lo + P1_hi) / 2.0
+            f_hi = shoot(P1_hi)
+        elif np.isnan(f_lo) and not np.isnan(f_hi):
+            # P1_lo drives ODE out of range; bisect inward
+            P1_lo = (P1_lo + P1_hi) / 2.0
+            f_lo = shoot(P1_lo)
+        elif f_0 <= 0.0:
+            # Need larger positive P1: expand P1_hi
+            P1_hi *= 2.0
+            f_hi = shoot(P1_hi)
+        else:
+            # Need more negative P1: expand P1_lo
+            P1_lo *= 2.0
+            f_lo = shoot(P1_lo)
         bracket_expansions += 1
 
     if np.isnan(f_lo) or np.isnan(f_hi) or f_lo * f_hi >= 0:
-        print(f"[{_lbl}] SR instanton: bracketing failed "
-              f"(f_lo={f_lo:.2e}, f_hi={f_hi:.2e})")
+        print(
+            f"[{_lbl}] SR instanton: bracketing failed "
+            f"(f_lo={f_lo:.2e}, f_hi={f_hi:.2e}, "
+            f"phi_init={phi_init:.6g}, phi_final={phi_final:.6g}, "
+            f"H_sq_sr={Hsq_init:.4g})"
+        )
         return {
-            "failure": True, "N_total": N_total,
-            "N_sample": [], "phi": [], "P1": [], "msr_action": None,
+            "failure": True,
+            "N_total": N_total,
+            "N_sample": [],
+            "phi": [],
+            "P1": [],
+            "msr_action": None,
             "diagnostics": {
                 "compute_time": time.perf_counter() - compute_start,
                 "converged": False,
@@ -139,13 +243,18 @@ def _compute_slow_roll_instanton(
         }
 
     try:
-        P1_star, brentq_info = brentq(shoot, P1_lo, P1_hi,
-                         xtol=atol, rtol=rtol, maxiter=200, full_output=True)
+        P1_star, brentq_info = brentq(
+            shoot, P1_lo, P1_hi, xtol=atol, rtol=rtol, maxiter=200, full_output=True
+        )
     except ValueError as exc:
         print(f"[{_lbl}] SR instanton: brentq failed: {exc}")
         return {
-            "failure": True, "N_total": N_total,
-            "N_sample": [], "phi": [], "P1": [], "msr_action": None,
+            "failure": True,
+            "N_total": N_total,
+            "N_sample": [],
+            "phi": [],
+            "P1": [],
+            "msr_action": None,
             "diagnostics": {
                 "compute_time": time.perf_counter() - compute_start,
                 "converged": False,
@@ -174,36 +283,47 @@ def _compute_slow_roll_instanton(
         "final_P1_0": float(P1_star),
     }
 
-    sol = solve_ivp(rhs, (0.0, N_total), [phi_init, P1_star],
-                    method="RK45", t_eval=N_grid, atol=atol, rtol=rtol)
+    sol = solve_ivp(
+        rhs,
+        (0.0, N_total),
+        [phi_init, P1_star],
+        method="RK45",
+        t_eval=N_grid,
+        atol=atol,
+        rtol=rtol,
+    )
     ode_solve_count += 1
     diagnostics["total_ode_solves"] = ode_solve_count
     diagnostics["compute_time"] = time.perf_counter() - compute_start
     if not sol.success:
         print(f"[{_lbl}] SR instanton: final ODE solve failed: {sol.message}")
         return {
-            "failure": True, "N_total": N_total,
-            "N_sample": [], "phi": [], "P1": [], "msr_action": None,
+            "failure": True,
+            "N_total": N_total,
+            "N_sample": [],
+            "phi": [],
+            "P1": [],
+            "msr_action": None,
             "diagnostics": diagnostics,
         }
 
     phi_arr = sol.y[0]
-    P1_arr  = sol.y[1]
+    P1_arr = sol.y[1]
 
-    D11_arr    = np.array([D11_sr(phi_arr[i]) for i in range(len(N_grid))])
-    msr_action = float(np.trapezoid(D11_arr * P1_arr ** 2, N_grid))
+    D11_arr = np.array([D11_sr(phi_arr[i]) for i in range(len(N_grid))])
+    msr_action = float(np.trapezoid(D11_arr * P1_arr**2, N_grid))
 
-    N_out  = sorted([n for n in N_sample if 0.0 <= n <= N_total]) or [0.0, N_total]
-    N_a    = np.array(N_out)
+    N_out = sorted([n for n in N_sample if 0.0 <= n <= N_total]) or [0.0, N_total]
+    N_a = np.array(N_out)
     phi_sp = SplineWrapper(N_grid, phi_arr, k=3)
-    P1_sp  = SplineWrapper(N_grid, P1_arr, y_transform='sinh', k=3)
+    P1_sp = SplineWrapper(N_grid, P1_arr, y_transform="sinh", k=3)
 
     return {
-        "failure":    False,
-        "N_total":    N_total,
-        "N_sample":   N_out,
-        "phi":        phi_sp(N_a).tolist(),
-        "P1":         P1_sp(N_a).tolist(),
+        "failure": False,
+        "N_total": N_total,
+        "N_sample": N_out,
+        "phi": phi_sp(N_a).tolist(),
+        "P1": P1_sp(N_a).tolist(),
         "msr_action": msr_action,
         "diagnostics": diagnostics,
     }
@@ -282,7 +402,9 @@ class SlowRollInstanton(DatastoreObject):
         self._N_sample: Optional[efold_array] = N_sample
         self._atol: tolerance = atol
         self._rtol: tolerance = rtol
-        self._diffusion_model: AbstractDiffusionModel = diffusion_model or MasslessDecoupledDiffusion()
+        self._diffusion_model: AbstractDiffusionModel = (
+            diffusion_model or MasslessDecoupledDiffusion()
+        )
         self._label: Optional[str] = label
         self._tags: List[store_tag] = tags or []
         self._msr_action: Optional[float] = None
@@ -352,13 +474,15 @@ class SlowRollInstanton(DatastoreObject):
         if N_end is None:
             raise RuntimeError("InflatonTrajectory not yet computed (N_end is None)")
 
-        traj      = self._trajectory.get()
-        phi_init  = traj.phi_at(N_end - float(self._N_init))
+        traj = self._trajectory.get()
+        phi_init = traj.phi_at(N_end - float(self._N_init))
         phi_final = traj.phi_at(N_end - float(self._N_final))
-        N_total   = (float(self._N_init) - float(self._N_final)) + float(self._delta_Nstar)
+        N_total = (float(self._N_init) - float(self._N_final)) + float(
+            self._delta_Nstar
+        )
 
-        atol = 10.0 ** self._atol.log10_tol
-        rtol = 10.0 ** self._rtol.log10_tol
+        atol = 10.0**self._atol.log10_tol
+        rtol = 10.0**self._rtol.log10_tol
 
         self._compute_ref = _compute_slow_roll_instanton.remote(
             trajectory=self._trajectory,
