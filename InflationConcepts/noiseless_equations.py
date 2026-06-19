@@ -45,6 +45,7 @@ def integrate_noiseless_trajectory(
         atol: float,
         rtol: float,
         label: Optional[str] = None,
+        verbose: bool = False,
 ) -> tuple[object, str, list]:
     """
     Integrate the noiseless equations from (phi0, pi0) at N=0 until ε=1.
@@ -86,7 +87,7 @@ def integrate_noiseless_trajectory(
                     "solver": solver, "status": int(candidate.status),
                     "message": candidate.message,
                 })
-                if label:
+                if verbose:
                     print(f"[{label}] solver {solver} succeeded "
                           f"(status={candidate.status})")
                 break
@@ -94,14 +95,14 @@ def integrate_noiseless_trajectory(
                 "solver": solver, "status": int(candidate.status),
                 "message": candidate.message,
             })
-            if label:
+            if verbose:
                 print(f"[{label}] solver {solver} "
                       f"status={candidate.status}: {candidate.message}")
         except Exception as exc:
             solver_attempts.append({
                 "solver": solver, "status": None, "message": str(exc),
             })
-            if label:
+            if verbose:
                 print(f"[{label}] solver {solver} raised: {exc}")
 
     return sol, solver_used, solver_attempts

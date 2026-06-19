@@ -118,7 +118,7 @@ def _compute_instanton_path(
 
     # ── Step A: downflow from instanton endpoint ──────────────────────────
     sol_down, _, _ = integrate_noiseless_trajectory(
-        float(phi1_arr[-1]), float(phi2_arr[-1]), potential, atol, rtol, label=label
+        float(phi1_arr[-1]), float(phi2_arr[-1]), potential, atol, rtol, label=label, verbose=verbose
     )
     if sol_down is None or len(sol_down.t_events[0]) == 0:
         return {
