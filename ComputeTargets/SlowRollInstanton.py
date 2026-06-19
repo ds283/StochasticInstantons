@@ -121,9 +121,8 @@ def _compute_slow_roll_instanton(
         bracket_expansions += 1
 
     if np.isnan(f_lo) or np.isnan(f_hi) or f_lo * f_hi >= 0:
-        if verbose:
-            print(f"[{_lbl}] SR instanton: bracketing failed "
-                  f"(f_lo={f_lo:.2e}, f_hi={f_hi:.2e})")
+        print(f"[{_lbl}] SR instanton: bracketing failed "
+              f"(f_lo={f_lo:.2e}, f_hi={f_hi:.2e})")
         return {
             "failure": True, "N_total": N_total,
             "N_sample": [], "phi": [], "P1": [], "msr_action": None,
@@ -143,8 +142,7 @@ def _compute_slow_roll_instanton(
         P1_star, brentq_info = brentq(shoot, P1_lo, P1_hi,
                          xtol=atol, rtol=rtol, maxiter=200, full_output=True)
     except ValueError as exc:
-        if verbose:
-            print(f"[{_lbl}] SR instanton: brentq failed: {exc}")
+        print(f"[{_lbl}] SR instanton: brentq failed: {exc}")
         return {
             "failure": True, "N_total": N_total,
             "N_sample": [], "phi": [], "P1": [], "msr_action": None,
@@ -182,6 +180,7 @@ def _compute_slow_roll_instanton(
     diagnostics["total_ode_solves"] = ode_solve_count
     diagnostics["compute_time"] = time.perf_counter() - compute_start
     if not sol.success:
+        print(f"[{_lbl}] SR instanton: final ODE solve failed: {sol.message}")
         return {
             "failure": True, "N_total": N_total,
             "N_sample": [], "phi": [], "P1": [], "msr_action": None,

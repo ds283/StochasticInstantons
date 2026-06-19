@@ -161,10 +161,10 @@ def _run_instanton_queue(
         for item, obj in zip(binned[key], objs)
         if not obj.available
     ]
-    print(
-        f"   -- {len(task_list) - len(missing)} already computed, "
-        f"{len(missing)} to compute"
-    )
+    # print(
+    #     f"   -- {len(task_list) - len(missing)} already computed, "
+    #     f"{len(missing)} to compute"
+    # )
 
     if not missing:
         return
@@ -241,7 +241,7 @@ def run_all_pipelines(
         persist_handler=lambda obj, pool: pool.object_store(obj),
         validation_handler=lambda obj: pool.object_validate(obj),
         label_builder=lambda obj: "InflatonTrajectory",
-        title="STAGE 1: BACKGROUND INFLATONARY TRAJECTORIES",
+        title="STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES",
         store_results=True,
         create_batch_size=len(traj_payloads),
         process_batch_size=len(traj_payloads),
@@ -329,7 +329,7 @@ def run_all_pipelines(
             f"Nfinal={float(obj.N_final_value):.4g})"
         ),
         store_handler=_default_store_handler,
-        title="STAGE 2: Full MSR instantons",
+        title="STAGE 2: FULL MSR INSTANTONS",
     )
 
     ## -----------------------------------------------------------------------
@@ -349,7 +349,7 @@ def run_all_pipelines(
             f"Nfinal={float(obj.N_final_value):.4g})"
         ),
         store_handler=_default_store_handler,
-        title="STAGE 3: Slow-roll instantons",
+        title="STAGE 3: SLOW-ROLL INSTANTONS",
     )
 
     ## -----------------------------------------------------------------------
@@ -493,15 +493,15 @@ def run_all_pipelines(
     ]
 
     n_no_instanton = len(grid) - len(checkable)
-    print(
-        f"   -- {len(checkable) - len(cf_missing)} already computed, "
-        f"{len(cf_missing)} to compute"
-        + (
-            f", {n_no_instanton} skipped (no instanton available)"
-            if n_no_instanton > 0
-            else ""
-        )
-    )
+    # print(
+    #     f"   -- {len(checkable) - len(cf_missing)} already computed, "
+    #     f"{len(cf_missing)} to compute"
+    #     + (
+    #         f", {n_no_instanton} skipped (no instanton available)"
+    #         if n_no_instanton > 0
+    #         else ""
+    #     )
+    # )
 
     if cf_missing:
         ## Pass 2a: re-fetch FullInstantons WITH population for the missing CF items.
@@ -601,14 +601,13 @@ def run_all_pipelines(
             label_builder=lambda obj: (
                 f"CompactionFunction(dNstar={float(obj.delta_Nstar):.4g})"
             ),
-            title="STAGE 4: COMPACTION FUNCTIONS",
+            title="STAGE 4: COMPACTION FUNCTIONS AND MASSES",
             store_results=False,
             create_batch_size=5,
             process_batch_size=3,
             max_task_queue=MAX_INFLIGHT_PIPELINE,
         )
         cf_work_queue.run()
-
 
 
 def execute(pool: ShardedPool, units: UnitsLike):
@@ -622,12 +621,12 @@ def execute(pool: ShardedPool, units: UnitsLike):
     print("\n** BUILDING PARAMETER SAMPLING GRIDS")
     print(f'   -- using potential type "{args.potential_type}"')
     inputs = build_pipeline_inputs(pool, units, args)
-    atol, rtol     = inputs["atol"],         inputs["rtol"]
-    phi0, pi0      = inputs["phi0"],         inputs["pi0"]
-    N_init_array   = inputs["N_init_array"]
-    N_final_array  = inputs["N_final_array"]
-    dns_objects    = inputs["dns_array"]
-    model_list     = inputs["model_list"]
+    atol, rtol = inputs["atol"], inputs["rtol"]
+    phi0, pi0 = inputs["phi0"], inputs["pi0"]
+    N_init_array = inputs["N_init_array"]
+    N_final_array = inputs["N_final_array"]
+    dns_objects = inputs["dns_array"]
+    model_list = inputs["model_list"]
 
     ## -----------------------------------------------------------------------
     ## SAMPLING DENSITY

@@ -98,8 +98,7 @@ def _compute_full_instanton(
     )
     ode_solve_count += 1
     if not bg_sol.success:
-        if verbose:
-            print(f"[{_lbl}] background ODE failed for initial guess")
+        print(f"[{_lbl}] background ODE failed for initial guess")
         return {
             "failure": True, "N_total": N_total,
             "N_sample": [], "phi1": [], "phi2": [],
@@ -224,8 +223,7 @@ def _compute_full_instanton(
         picard_iters_total += n_inner
         picard_iterations_per_outer.append(n_inner)
         if p1 is None:
-            if verbose:
-                print(f"[{_lbl}] Picard inner failed at outer iter {outer}")
+            print(f"[{_lbl}] Picard inner failed at outer iter {outer}")
             break
 
         residual = p1[-1] - phi_final
@@ -282,9 +280,8 @@ def _compute_full_instanton(
     }
 
     if not converged:
-        if verbose:
-            print(f"[{_lbl}] outer loop did not converge "
-                  f"after {MAX_OUTER} iterations (target tolerance was {OUTER_TOL})")
+        print(f"[{_lbl}] outer loop did not converge "
+              f"after {MAX_OUTER} iterations (target tolerance was {OUTER_TOL})")
         return {
             "failure": True, "N_total": N_total,
             "N_sample": [], "phi1": [], "phi2": [],
