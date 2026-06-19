@@ -65,7 +65,7 @@ def _compute_full_instanton(
 
     import numpy as np
     from scipy.integrate import solve_ivp
-    from scipy.interpolate import make_interp_spline
+    from Interpolation.spline_wrapper import SplineWrapper
 
     compute_start = time.perf_counter()
     ode_solve_count = 0
@@ -141,8 +141,8 @@ def _compute_full_instanton(
 
         for _ in range(MAX_INNER):
             n_inner_iters += 1
-            phi1_sp = make_interp_spline(N_grid, p1_arr, k=3)
-            phi2_sp = make_interp_spline(N_grid, p2_arr, k=3)
+            phi1_sp = SplineWrapper(N_grid, p1_arr, k=3)
+            phi2_sp = SplineWrapper(N_grid, p2_arr, k=3)
 
             # Backward pass: terminal conds P₁(N_total)=λ, P₂(N_total)=0
             def bwd_rhs(N, y):
@@ -167,8 +167,8 @@ def _compute_full_instanton(
 
             P1_new = bp.y[0][::-1]
             P2_new = bp.y[1][::-1]
-            P1_sp  = make_interp_spline(N_grid, P1_new, k=3)
-            P2_sp  = make_interp_spline(N_grid, P2_new, k=3)
+            P1_sp  = SplineWrapper(N_grid, P1_new, y_transform='sinh', k=3)
+            P2_sp  = SplineWrapper(N_grid, P2_new, y_transform='sinh', k=3)
 
             # Forward pass with P forcing
             def fwd_rhs(N, y):
@@ -301,17 +301,20 @@ def _compute_full_instanton(
     N_out = sorted([n for n in N_sample if 0.0 <= n <= N_total]) or [0.0, N_total]
     N_a   = np.array(N_out)
 
-    def interp(arr):
-        return make_interp_spline(N_grid, arr, k=3)(N_a).tolist()
+    def interp_phi(arr):
+        return SplineWrapper(N_grid, arr, k=3)(N_a).tolist()
+
+    def interp_P(arr):
+        return SplineWrapper(N_grid, arr, y_transform='sinh', k=3)(N_a).tolist()
 
     return {
         "failure":    False,
         "N_total":    N_total,
         "N_sample":   N_out,
-        "phi1":       interp(phi1_f),
-        "phi2":       interp(phi2_f),
-        "P1":         interp(P1_f),
-        "P2":         interp(P2_f),
+        "phi1":       interp_phi(phi1_f),
+        "phi2":       interp_phi(phi2_f),
+        "P1":         interp_P(P1_f),
+        "P2":         interp_P(P2_f),
         "msr_action": msr_action,
         "diagnostics": diagnostics,
     }

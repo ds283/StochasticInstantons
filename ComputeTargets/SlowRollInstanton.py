@@ -62,7 +62,7 @@ def _compute_slow_roll_instanton(
     import numpy as np
     from scipy.integrate import solve_ivp
     from scipy.optimize import brentq
-    from scipy.interpolate import make_interp_spline
+    from Interpolation.spline_wrapper import SplineWrapper
 
     compute_start = time.perf_counter()
     ode_solve_count = 0
@@ -196,8 +196,8 @@ def _compute_slow_roll_instanton(
 
     N_out  = sorted([n for n in N_sample if 0.0 <= n <= N_total]) or [0.0, N_total]
     N_a    = np.array(N_out)
-    phi_sp = make_interp_spline(N_grid, phi_arr, k=3)
-    P1_sp  = make_interp_spline(N_grid, P1_arr,  k=3)
+    phi_sp = SplineWrapper(N_grid, phi_arr, k=3)
+    P1_sp  = SplineWrapper(N_grid, P1_arr, y_transform='sinh', k=3)
 
     return {
         "failure":    False,

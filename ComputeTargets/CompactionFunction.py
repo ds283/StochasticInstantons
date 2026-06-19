@@ -79,8 +79,8 @@ def _compute_instanton_path(
     r_max_C_bar, M_C, M_C_bar, C_max, V_end_downflow, N_end_downflow, diagnostics.
     """
     import numpy as np
-    from scipy.interpolate import CubicSpline
     from scipy.optimize import brentq
+    from Interpolation.spline_wrapper import SplineWrapper
 
     from InflationConcepts.noiseless_equations import integrate_noiseless_trajectory
 
@@ -206,7 +206,7 @@ def _compute_instanton_path(
         }
 
     # ── Step D: zeta(r), C(r), C_bar(r) ─────────────────────────────────
-    zeta_spline = CubicSpline(r_v, zeta_v)
+    zeta_spline = SplineWrapper(r_v, zeta_v, x_transform='log', k=3)
     zeta_prime = zeta_spline.derivative()
 
     C_v = np.array(
@@ -238,16 +238,10 @@ def _compute_instanton_path(
             r_dense[j] - r_dense[j - 1]
         )
 
-    # Interpolate cumulative integral to sample points
-    from scipy.interpolate import interp1d
-
-    cumulative_at_r = interp1d(
-        r_dense,
-        cumulative,
-        kind="linear",
-        bounds_error=False,
-        fill_value=(cumulative[0], cumulative[-1]),
-    )
+    # Interpolate cumulative integral to sample points.
+    # r_v is a subset of [r_dense[0], r_dense[-1]] by construction so no
+    # extrapolation occurs.
+    cumulative_at_r = SplineWrapper(r_dense, cumulative, x_transform='log', k=3)
 
     C_bar_v = np.array(
         [

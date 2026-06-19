@@ -275,10 +275,10 @@ class InflatonTrajectory(DatastoreObject):
             )
         if not hasattr(self, "_phi_spline"):
             import numpy as np
-            from scipy.interpolate import make_interp_spline
+            from Interpolation.spline_wrapper import SplineWrapper
             Ns = np.array([v.N.N for v in self._values])
             phis = np.array([v.phi for v in self._values])
-            self._phi_spline = make_interp_spline(Ns, phis)
+            self._phi_spline = SplineWrapper(Ns, phis, k=3)
         return float(self._phi_spline(N))
 
     def pi_at(self, N: float) -> float:
@@ -290,10 +290,10 @@ class InflatonTrajectory(DatastoreObject):
             )
         if not hasattr(self, "_pi_spline"):
             import numpy as np
-            from scipy.interpolate import make_interp_spline
+            from Interpolation.spline_wrapper import SplineWrapper
             Ns = np.array([v.N.N for v in self._values])
             pis = np.array([v.pi for v in self._values])
-            self._pi_spline = make_interp_spline(Ns, pis)
+            self._pi_spline = SplineWrapper(Ns, pis, y_transform='sinh', k=3)
         return float(self._pi_spline(N))
 
     def rho_at(self, N: float) -> float:
