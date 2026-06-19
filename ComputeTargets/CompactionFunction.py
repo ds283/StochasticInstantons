@@ -99,6 +99,7 @@ def _compute_instanton_path(
 
     values = instanton_obj.values
     if not values:
+        print(f"[{label or 'CompactionFunction'}] no sample values from instanton")
         return {"failure": True, "diagnostics": {"reason": "no sample values"}}
 
     # Build per-sample arrays
@@ -121,6 +122,7 @@ def _compute_instanton_path(
         float(phi1_arr[-1]), float(phi2_arr[-1]), potential, atol, rtol, label=label, verbose=verbose
     )
     if sol_down is None or len(sol_down.t_events[0]) == 0:
+        print(f"[{label or 'CompactionFunction'}] downflow integration failed (trajectory did not reach end of inflation)")
         return {
             "failure": True,
             "diagnostics": {"reason": "downflow integration failed"},
@@ -190,6 +192,7 @@ def _compute_instanton_path(
     # Keep only valid points and sort by r ascending
     valid_mask &= np.isfinite(r_arr)
     if not np.any(valid_mask):
+        print(f"[{label or 'CompactionFunction'}] no valid scale assignments")
         return {
             "failure": True,
             "diagnostics": {"reason": "no valid scale assignments"},
@@ -200,6 +203,7 @@ def _compute_instanton_path(
     zeta_v = zeta_arr[valid_mask][sort_idx]
 
     if len(r_v) < 2:
+        print(f"[{label or 'CompactionFunction'}] fewer than 2 valid sample points (got {len(r_v)})")
         return {
             "failure": True,
             "diagnostics": {"reason": "fewer than 2 valid sample points"},
