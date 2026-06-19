@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from math import log, exp, pi as PI
+from math import exp, log
+from math import pi as PI
 from typing import List, Optional
 
 import ray
@@ -69,6 +70,7 @@ def _compute_instanton_path(instanton_obj, is_slow_roll: bool, traj, potential, 
     import numpy as np
     from scipy.interpolate import CubicSpline
     from scipy.optimize import brentq
+
     from InflationConcepts.noiseless_equations import integrate_noiseless_trajectory
 
     Mp = units.PlanckMass
@@ -230,11 +232,11 @@ def _compute_instanton_path(instanton_obj, is_slow_roll: bool, traj, potential, 
 
     M_C = None
     if r_max_C is not None:
-        M_C = (1.0 + C_max) * 5.6e15 * (k_star * r_max_C) ** 2
+        M_C = (1.0 + C_max) * 5.6e15 * (k_star * r_max_C) ** 2 * units.SolarMass
 
     M_C_bar = None
     if r_max_C_bar is not None:
-        M_C_bar = (1.0 + C_max) * 5.6e15 * (k_star * r_max_C_bar) ** 2
+        M_C_bar = (1.0 + C_max) * 5.6e15 * (k_star * r_max_C_bar) ** 2 * units.SolarMass
 
     return {
         "failure": False,
