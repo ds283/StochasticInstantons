@@ -27,12 +27,12 @@ from MetadataConcepts.tolerance import tolerance
 
 
 def ln_k_phys_Mpc(
-        N_before_end: float,
-        V_k: float,
-        epsilon_k: float,
-        V_end_downflow: float,
-        units,
-        cosmo,
+    N_before_end: float,
+    V_k: float,
+    epsilon_k: float,
+    V_end_downflow: float,
+    units,
+    cosmo,
 ) -> float:
     """
     Log of the physical wavenumber k in working_units^-1 for a mode that exits
@@ -49,18 +49,28 @@ def ln_k_phys_Mpc(
     T_CMB = cosmo.T_CMB_Kelvin * units.Kelvin
 
     return (
-            - N_before_end
-            + log(Mpc * Mp)
-            + log(T_CMB / Mp)
-            + 0.25 * log(PI ** 2 / 135.0)
-            + 0.25 * log(V_k / (V_end_downflow * (1.0 - epsilon_k / 3.0)))
-            - log(Mpc)
+        -N_before_end
+        + log(Mpc * Mp)
+        + log(T_CMB / Mp)
+        + 0.25 * log(PI**2 / 135.0)
+        + 0.25 * log(V_k / (V_end_downflow * (1.0 - epsilon_k / 3.0)))
+        - log(Mpc)
     )
 
 
-def _compute_instanton_path(instanton_obj, is_slow_roll: bool, traj, potential, units, cosmo,
-                             C_threshold: float, C_bar_threshold: float,
-                             atol: float, rtol: float, label: Optional[str] = None) -> dict:
+def _compute_instanton_path(
+    instanton_obj,
+    is_slow_roll: bool,
+    traj,
+    potential,
+    units,
+    cosmo,
+    C_threshold: float,
+    C_bar_threshold: float,
+    atol: float,
+    rtol: float,
+    label: Optional[str] = None,
+) -> dict:
     """
     Compute zeta(r), C(r), C_bar(r) for a single instanton path.
 
@@ -76,8 +86,14 @@ def _compute_instanton_path(instanton_obj, is_slow_roll: bool, traj, potential, 
     Mp = units.PlanckMass
     N_end_traj = traj.N_end
     N_init_val = float(instanton_obj.N_init_value)
-    N_total = float(instanton_obj._N_total) if hasattr(instanton_obj, '_N_total') else (
-        float(instanton_obj._N_init) - float(instanton_obj._N_final) + float(instanton_obj._delta_Nstar)
+    N_total = (
+        float(instanton_obj._N_total)
+        if hasattr(instanton_obj, "_N_total")
+        else (
+            float(instanton_obj._N_init)
+            - float(instanton_obj._N_final)
+            + float(instanton_obj._delta_Nstar)
+        )
     )
 
     values = instanton_obj.values
@@ -89,10 +105,12 @@ def _compute_instanton_path(instanton_obj, is_slow_roll: bool, traj, potential, 
 
     if is_slow_roll:
         phi1_arr = np.array([v.phi for v in values])
-        phi2_arr = np.array([
-            -potential.dV_dphi(v.phi) / (3.0 * potential.H_sq(v.phi, 0.0))
-            for v in values
-        ])
+        phi2_arr = np.array(
+            [
+                -potential.dV_dphi(v.phi) / (3.0 * potential.H_sq(v.phi, 0.0))
+                for v in values
+            ]
+        )
     else:
         phi1_arr = np.array([v.phi1 for v in values])
         phi2_arr = np.array([v.phi2 for v in values])
@@ -102,25 +120,35 @@ def _compute_instanton_path(instanton_obj, is_slow_roll: bool, traj, potential, 
         float(phi1_arr[-1]), float(phi2_arr[-1]), potential, atol, rtol, label=label
     )
     if sol_down is None or len(sol_down.t_events[0]) == 0:
-        return {"failure": True, "diagnostics": {"reason": "downflow integration failed"}}
+        return {
+            "failure": True,
+            "diagnostics": {"reason": "downflow integration failed"},
+        }
 
     N_end_downflow = float(sol_down.t_events[0][0])
     phi_end_downflow = float(sol_down.y_events[0][0][0])
     V_end_downflow = potential.V(phi_end_downflow)
 
     # ── Step B: zeta at each sample point ────────────────────────────────
-    rho_start = 3.0 * Mp ** 2 * potential.H_sq(traj.phi_at(0.0), traj.pi_at(0.0))
-    rho_end = 3.0 * Mp ** 2 * potential.H_sq(traj.phi_at(N_end_traj), traj.pi_at(N_end_traj))
+    rho_start = 3.0 * Mp**2 * potential.H_sq(traj.phi_at(0.0), traj.pi_at(0.0))
+    rho_end = (
+        3.0 * Mp**2 * potential.H_sq(traj.phi_at(N_end_traj), traj.pi_at(N_end_traj))
+    )
 
-    zeta_arr = np.full(len(values), float('nan'))
+    zeta_arr = np.full(len(values), float("nan"))
     for i, (phi1_i, phi2_i, N_inst_i) in enumerate(zip(phi1_arr, phi2_arr, N_inst_arr)):
-        rho_i = 3.0 * Mp ** 2 * potential.H_sq(float(phi1_i), float(phi2_i))
+        rho_i = 3.0 * Mp**2 * potential.H_sq(float(phi1_i), float(phi2_i))
         if not (rho_end <= rho_i <= rho_start):
             continue
         try:
             N_bg_i = brentq(
-                lambda N: 3.0 * Mp ** 2 * potential.H_sq(traj.phi_at(N), traj.pi_at(N)) - rho_i,
-                0.0, N_end_traj, xtol=atol, rtol=rtol,
+                lambda N: (
+                    3.0 * Mp**2 * potential.H_sq(traj.phi_at(N), traj.pi_at(N)) - rho_i
+                ),
+                0.0,
+                N_end_traj,
+                xtol=atol,
+                rtol=rtol,
             )
         except ValueError:
             continue
@@ -135,8 +163,8 @@ def _compute_instanton_path(instanton_obj, is_slow_roll: bool, traj, potential, 
     for i in range(1, len(N_be_mono)):
         N_be_mono[i] = min(N_be_mono[i], N_be_mono[i - 1])
 
-    ln_k_arr = np.full(len(values), float('nan'))
-    r_arr = np.full(len(values), float('nan'))
+    ln_k_arr = np.full(len(values), float("nan"))
+    r_arr = np.full(len(values), float("nan"))
     valid_mask = ~np.isnan(zeta_arr)
 
     for i in range(len(values)):
@@ -148,33 +176,44 @@ def _compute_instanton_path(instanton_obj, is_slow_roll: bool, traj, potential, 
                 potential.V(float(phi1_arr[i])),
                 potential.epsilon(float(phi1_arr[i]), float(phi2_arr[i])),
                 V_end_downflow,
-                units, cosmo,
+                units,
+                cosmo,
             )
             ln_k_arr[i] = lnk
-            r_arr[i] = 2.0 * PI / exp(lnk)
+            r_arr[i] = (
+                2.0 * PI / exp(lnk)
+            )  # has correct units since 1/Mpc is embedded by ln_k_phys_Mpc()
         except (ValueError, ZeroDivisionError):
             valid_mask[i] = False
 
     # Keep only valid points and sort by r ascending
     valid_mask &= np.isfinite(r_arr)
     if not np.any(valid_mask):
-        return {"failure": True, "diagnostics": {"reason": "no valid scale assignments"}}
+        return {
+            "failure": True,
+            "diagnostics": {"reason": "no valid scale assignments"},
+        }
 
     sort_idx = np.argsort(r_arr[valid_mask])
     r_v = r_arr[valid_mask][sort_idx]
     zeta_v = zeta_arr[valid_mask][sort_idx]
 
     if len(r_v) < 2:
-        return {"failure": True, "diagnostics": {"reason": "fewer than 2 valid sample points"}}
+        return {
+            "failure": True,
+            "diagnostics": {"reason": "fewer than 2 valid sample points"},
+        }
 
     # ── Step D: zeta(r), C(r), C_bar(r) ─────────────────────────────────
     zeta_spline = CubicSpline(r_v, zeta_v)
     zeta_prime = zeta_spline.derivative()
 
-    C_v = np.array([
-        (2.0 / 3.0) * (1.0 - (1.0 + r_v[i] * float(zeta_prime(r_v[i]))) ** 2)
-        for i in range(len(r_v))
-    ])
+    C_v = np.array(
+        [
+            (2.0 / 3.0) * (1.0 - (1.0 + r_v[i] * float(zeta_prime(r_v[i]))) ** 2)
+            for i in range(len(r_v))
+        ]
+    )
 
     type_II = bool(np.any(C_v < -1.0))
 
@@ -185,24 +224,36 @@ def _compute_instanton_path(instanton_obj, is_slow_roll: bool, traj, potential, 
     zeta_prime_dense = zeta_prime(r_dense)
 
     rz_dense = r_dense * zeta_prime_dense
-    integrand = r_dense ** 2 * np.exp(3.0 * zeta_dense) * (
-            2.0 * rz_dense + 3.0 * rz_dense ** 2 + rz_dense ** 3
+    integrand = (
+        r_dense**2
+        * np.exp(3.0 * zeta_dense)
+        * (2.0 * rz_dense + 3.0 * rz_dense**2 + rz_dense**3)
     )
 
     # Accumulate integral to each sample r_i using trapezoid
     cumulative = np.zeros(N_dense)
     for j in range(1, N_dense):
-        cumulative[j] = cumulative[j - 1] + 0.5 * (integrand[j - 1] + integrand[j]) * (r_dense[j] - r_dense[j - 1])
+        cumulative[j] = cumulative[j - 1] + 0.5 * (integrand[j - 1] + integrand[j]) * (
+            r_dense[j] - r_dense[j - 1]
+        )
 
     # Interpolate cumulative integral to sample points
     from scipy.interpolate import interp1d
-    cumulative_at_r = interp1d(r_dense, cumulative, kind='linear', bounds_error=False,
-                               fill_value=(cumulative[0], cumulative[-1]))
 
-    C_bar_v = np.array([
-        -2.0 * float(cumulative_at_r(r_v[i])) / (r_v[i] ** 3 * exp(3.0 * zeta_v[i]))
-        for i in range(len(r_v))
-    ])
+    cumulative_at_r = interp1d(
+        r_dense,
+        cumulative,
+        kind="linear",
+        bounds_error=False,
+        fill_value=(cumulative[0], cumulative[-1]),
+    )
+
+    C_bar_v = np.array(
+        [
+            -2.0 * float(cumulative_at_r(r_v[i])) / (r_v[i] ** 3 * exp(3.0 * zeta_v[i]))
+            for i in range(len(r_v))
+        ]
+    )
 
     C_bar_last = float(C_bar_v[-1])
     r_last = float(r_v[-1])
@@ -226,7 +277,7 @@ def _compute_instanton_path(instanton_obj, is_slow_roll: bool, traj, potential, 
                 break
 
     # ── Step F: PBH mass ──────────────────────────────────────────────────
-    k_star = 0.05  # Mpc^-1
+    k_star = 0.05 / units.Mpc
     C_max = float(np.nanmax(C_v))
     C_bar_max = float(np.nanmax(C_bar_v))
 
@@ -262,17 +313,17 @@ def _compute_instanton_path(instanton_obj, is_slow_roll: bool, traj, potential, 
 
 @ray.remote
 def _compute_compaction_function(
-        full_instanton_proxy,
-        slow_roll_instanton_proxy,
-        trajectory_proxy,
-        cosmo_class_name: str,
-        cosmo_store_id: int,
-        cosmo_T_CMB_Kelvin: float,
-        C_threshold: float,
-        C_bar_threshold: float,
-        atol: float,
-        rtol: float,
-        label: Optional[str] = None,
+    full_instanton_proxy,
+    slow_roll_instanton_proxy,
+    trajectory_proxy,
+    cosmo_class_name: str,
+    cosmo_store_id: int,
+    cosmo_T_CMB_Kelvin: float,
+    C_threshold: float,
+    C_bar_threshold: float,
+    atol: float,
+    rtol: float,
+    label: Optional[str] = None,
 ) -> dict:
     """
     Compute the compaction function C(r) and C_bar(r) from the full and/or
@@ -297,8 +348,17 @@ def _compute_compaction_function(
         if label:
             print(f"[{label}] computing compaction function from full instanton")
         full_result = _compute_instanton_path(
-            fi, False, traj, potential, units, cosmo,
-            C_threshold, C_bar_threshold, atol, rtol, label=label,
+            fi,
+            False,
+            traj,
+            potential,
+            units,
+            cosmo,
+            C_threshold,
+            C_bar_threshold,
+            atol,
+            rtol,
+            label=label,
         )
 
     slow_roll_result = None
@@ -307,8 +367,17 @@ def _compute_compaction_function(
         if label:
             print(f"[{label}] computing compaction function from slow-roll instanton")
         slow_roll_result = _compute_instanton_path(
-            sri, True, traj, potential, units, cosmo,
-            C_threshold, C_bar_threshold, atol, rtol, label=label,
+            sri,
+            True,
+            traj,
+            potential,
+            units,
+            cosmo,
+            C_threshold,
+            C_bar_threshold,
+            atol,
+            rtol,
+            label=label,
         )
 
     return {
@@ -508,8 +577,8 @@ class CompactionFunction(DatastoreObject):
         if getattr(self, "_failure", None) is not None:
             raise RuntimeError("already computed or failed")
 
-        atol = 10.0 ** self._atol.log10_tol
-        rtol = 10.0 ** self._rtol.log10_tol
+        atol = 10.0**self._atol.log10_tol
+        rtol = 10.0**self._rtol.log10_tol
 
         self._compute_ref = _compute_compaction_function.remote(
             full_instanton_proxy=self._full_instanton,
@@ -561,14 +630,16 @@ class CompactionFunction(DatastoreObject):
             self._full_result = full
             self._full_values = [
                 CompactionFunctionValue(store_id=None, r=r, zeta=z, C=c, C_bar=cb)
-                for r, z, c, cb in zip(full["r"], full["zeta"], full["C"], full["C_bar"])
+                for r, z, c, cb in zip(
+                    full["r"], full["zeta"], full["C"], full["C_bar"]
+                )
             ]
-            self._r_max_C_full        = full.get("r_max_C")
-            self._r_max_C_bar_full    = full.get("r_max_C_bar")
-            self._M_C_full            = full.get("M_C")
-            self._M_C_bar_full        = full.get("M_C_bar")
-            self._C_max_full          = full.get("C_max")
-            self._C_bar_max_full      = full.get("C_bar_max")
+            self._r_max_C_full = full.get("r_max_C")
+            self._r_max_C_bar_full = full.get("r_max_C_bar")
+            self._M_C_full = full.get("M_C")
+            self._M_C_bar_full = full.get("M_C_bar")
+            self._C_max_full = full.get("C_max")
+            self._C_bar_max_full = full.get("C_bar_max")
             self._V_end_downflow_full = full.get("V_end_downflow")
             self._N_end_downflow_full = full.get("N_end_downflow")
         else:
@@ -578,15 +649,19 @@ class CompactionFunction(DatastoreObject):
             self._slow_roll_result = slow_roll
             self._slow_roll_values = [
                 CompactionFunctionValue(store_id=None, r=r, zeta=z, C=c, C_bar=cb)
-                for r, z, c, cb in zip(slow_roll["r"], slow_roll["zeta"],
-                                        slow_roll["C"], slow_roll["C_bar"])
+                for r, z, c, cb in zip(
+                    slow_roll["r"],
+                    slow_roll["zeta"],
+                    slow_roll["C"],
+                    slow_roll["C_bar"],
+                )
             ]
-            self._r_max_C_slow_roll        = slow_roll.get("r_max_C")
-            self._r_max_C_bar_slow_roll    = slow_roll.get("r_max_C_bar")
-            self._M_C_slow_roll            = slow_roll.get("M_C")
-            self._M_C_bar_slow_roll        = slow_roll.get("M_C_bar")
-            self._C_max_slow_roll          = slow_roll.get("C_max")
-            self._C_bar_max_slow_roll      = slow_roll.get("C_bar_max")
+            self._r_max_C_slow_roll = slow_roll.get("r_max_C")
+            self._r_max_C_bar_slow_roll = slow_roll.get("r_max_C_bar")
+            self._M_C_slow_roll = slow_roll.get("M_C")
+            self._M_C_bar_slow_roll = slow_roll.get("M_C_bar")
+            self._C_max_slow_roll = slow_roll.get("C_max")
+            self._C_bar_max_slow_roll = slow_roll.get("C_bar_max")
             self._V_end_downflow_slow_roll = slow_roll.get("V_end_downflow")
             self._N_end_downflow_slow_roll = slow_roll.get("N_end_downflow")
         else:
