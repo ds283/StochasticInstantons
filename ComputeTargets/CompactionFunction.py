@@ -70,6 +70,7 @@ def _compute_instanton_path(
     atol: float,
     rtol: float,
     label: Optional[str] = None,
+    verbose: bool = False,
 ) -> dict:
     """
     Compute zeta(r), C(r), C_bar(r) for a single instanton path.
@@ -324,6 +325,7 @@ def _compute_compaction_function(
     atol: float,
     rtol: float,
     label: Optional[str] = None,
+    verbose: bool = False,
 ) -> dict:
     """
     Compute the compaction function C(r) and C_bar(r) from the full and/or
@@ -345,7 +347,7 @@ def _compute_compaction_function(
     full_result = None
     if full_instanton_proxy is not None and full_instanton_proxy.available:
         fi = full_instanton_proxy.get()
-        if label:
+        if verbose:
             print(f"[{label}] computing compaction function from full instanton")
         full_result = _compute_instanton_path(
             fi,
@@ -359,12 +361,13 @@ def _compute_compaction_function(
             atol,
             rtol,
             label=label,
+            verbose=verbose,
         )
 
     slow_roll_result = None
     if slow_roll_instanton_proxy is not None and slow_roll_instanton_proxy.available:
         sri = slow_roll_instanton_proxy.get()
-        if label:
+        if verbose:
             print(f"[{label}] computing compaction function from slow-roll instanton")
         slow_roll_result = _compute_instanton_path(
             sri,
@@ -378,6 +381,7 @@ def _compute_compaction_function(
             atol,
             rtol,
             label=label,
+            verbose=verbose,
         )
 
     return {
@@ -567,7 +571,7 @@ class CompactionFunction(DatastoreObject):
     def N_end_downflow_slow_roll(self) -> Optional[float]:
         return getattr(self, "_N_end_downflow_slow_roll", None)
 
-    def compute(self, label: Optional[str] = None) -> ObjectRef:
+    def compute(self, label: Optional[str] = None, verbose: bool = False) -> ObjectRef:
         """
         Dispatch the compaction function computation as a Ray remote task.
         Returns an ObjectRef. RayWorkPool will call store() once this resolves.
@@ -592,6 +596,7 @@ class CompactionFunction(DatastoreObject):
             atol=atol,
             rtol=rtol,
             label=label or self._label,
+            verbose=verbose,
         )
         return self._compute_ref
 
