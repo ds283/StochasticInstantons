@@ -15,9 +15,9 @@ Ray must be running. Start a local cluster with `ray start --head` before runnin
 
 ## Critical rules — read before touching any file
 
-Three rules have caused rework when violated. They are detailed in
-`.claude/rules/ray-dispatch.md` and `.claude/rules/pool-read-apis.md` but
-summarised here for visibility:
+Four rules have caused rework when violated. They are detailed in
+`.claude/rules/ray-dispatch.md`, `.claude/rules/pool-read-apis.md`, and
+`.claude/rules/spline-interpolation.md` but summarised here for visibility:
 
 **1. Compute target classes are plain Python. Never `@ray.remote` a class.**
 `InflatonTrajectory`, `FullInstanton`, `SlowRollInstanton` — and any future compute
@@ -35,6 +35,13 @@ Every table name belongs in exactly one of the two collections in
 in `replicated_tables`; listing it in `sharded_tables` too made
 `ShardedPool.read_table()` wrongly reject it as sharded. See
 `.claude/rules/pool-read-apis.md` for the full incident and reasoning.
+
+**4. All splines use `SplineWrapper`; never call scipy interpolation primitives directly.**
+When adding a new spline, ask the human which x/y transforms to apply before
+writing code. When adding a root-finder through a spline, ask the human or use
+the transformed-coordinate `brentq` pattern. See
+`.claude/rules/spline-interpolation.md` for the full pattern and transform
+catalogue.
 
 ## Protected infrastructure
 
