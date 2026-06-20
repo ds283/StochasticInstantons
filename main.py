@@ -55,6 +55,15 @@ VERSION_LABEL = "2026.6.1"
 # for the other stages. Raise further when moving to a larger machine.
 MAX_INFLIGHT_PIPELINE = 50
 
+# Pipeline stage ordering — used to resolve --stop-after when multiple values
+# are given (only the earliest stage wins).
+_PIPELINE_STAGES = [
+    "inflaton-trajectory",
+    "full-instanton",
+    "slow-roll-instanton",
+    "compaction-function",
+]
+
 parser = create_argument_parser()
 args = parser.parse_args()
 
@@ -205,6 +214,7 @@ def run_all_pipelines(
     rtol: tolerance,
     cosmo,  # CosmologicalParams instance
     diffusion_model=None,
+    stop_after: Optional[str] = None,
 ):
     """
     Run the full pipeline across every model at once, flattened into a single
@@ -257,6 +267,10 @@ def run_all_pipelines(
                 f"available after compute queue"
             )
         traj_proxies.append(InflatonTrajectoryProxy(traj_obj))
+
+    if stop_after == "inflaton-trajectory":
+        print("\n** Stopping after Stage 1 (--stop-after inflaton-trajectory)")
+        return
 
     ## -----------------------------------------------------------------------
     ## Flatten (model, N_init, N_final, delta_Nstar) into a single grid
@@ -333,6 +347,10 @@ def run_all_pipelines(
         title="STAGE 2: FULL MSR INSTANTONS",
     )
 
+    if stop_after == "full-instanton":
+        print("\n** Stopping after Stage 2 (--stop-after full-instanton)")
+        return
+
     ## -----------------------------------------------------------------------
     ## STAGE 3: Slow-roll instantons — one flat queue, all models and grid points
     ## -----------------------------------------------------------------------
@@ -352,6 +370,10 @@ def run_all_pipelines(
         store_handler=_default_store_handler,
         title="STAGE 3: SLOW-ROLL INSTANTONS",
     )
+
+    if stop_after == "slow-roll-instanton":
+        print("\n** Stopping after Stage 3 (--stop-after slow-roll-instanton)")
+        return
 
     ## -----------------------------------------------------------------------
     ## STAGE 4: Compaction functions — two-pass pattern with upstream lookup
@@ -658,6 +680,13 @@ def execute(pool: ShardedPool, units: UnitsLike):
     ## -----------------------------------------------------------------------
     dm = MasslessDecoupledDiffusion()
 
+    # If multiple --stop-after stages are given, keep only the earliest in pipeline order.
+    stop_after = None
+    if args.stop_after:
+        matches = [s for s in _PIPELINE_STAGES if s in args.stop_after]
+        if matches:
+            stop_after = matches[0]
+
     run_all_pipelines(
         pool=pool,
         model_list=model_list,
@@ -671,6 +700,7 @@ def execute(pool: ShardedPool, units: UnitsLike):
         rtol=rtol,
         cosmo=cosmo,
         diffusion_model=dm,
+        stop_after=stop_after,
     )
 
 

@@ -60,6 +60,18 @@ def create_argument_parser():
         ],
         help="Drop specified table groups before running",
     )
+    db.add_argument(
+        "--stop-after",
+        nargs="*",
+        default=[],
+        choices=[
+            "inflaton-trajectory",
+            "full-instanton",
+            "slow-roll-instanton",
+            "compaction-function",
+        ],
+        help="Stop the pipeline after the named stage completes; if multiple are given, stops at the earliest",
+    )
 
     # Ray
     ray_grp = parser.add_argument_group("Ray")

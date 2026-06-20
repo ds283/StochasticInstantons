@@ -814,19 +814,33 @@ class ShardedPool:
                     new_shard = list(self._shards.keys()).pop()
 
                 # insert a new record for this key
-                conn.execute(
+                result = conn.execute(
                     sqla.insert(self._shard_key_table),
                     {"key_serial": item.store_id, "shard_id": new_shard},
                 )
+                assigned_serial = result.inserted_primary_key[0]
+
+                if assigned_serial != item.store_id:
+                    print(
+                        f"!! _assign_shard_keys MISMATCH: "
+                        f"store_id={item.store_id}, "
+                        f"assigned key_serial={assigned_serial}, "
+                        f"shard={new_shard}"
+                    )
+                else:
+                    print(
+                        f">> _assign_shard_keys: "
+                        f"store_id={item.store_id} → key_serial={assigned_serial} → shard={new_shard}"
+                    )
 
                 self._shard_keys[item.store_id] = new_shard
                 loads[new_shard] = loads[new_shard] + 1
 
-                # print(
-                #     f">> assigned shard #{new_shard} to key object #{item.store_id}"
-                # )
-
             conn.commit()
+            print(
+                f">> _assign_shard_keys: committed {len(missing_keys)} new assignment(s). "
+                f"Full mapping: { {k: v for k, v in sorted(self._shard_keys.items())} }"
+            )
 
     def read_table(self, cls, *args, **kwargs):
         """
