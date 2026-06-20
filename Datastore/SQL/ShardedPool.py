@@ -816,7 +816,7 @@ class ShardedPool:
                 # insert a new record for this key
                 conn.execute(
                     sqla.insert(self._shard_key_table),
-                    {"key_id": item.store_id, "shard_id": new_shard},
+                    {"key_serial": item.store_id, "shard_id": new_shard},
                 )
 
                 self._shard_keys[item.store_id] = new_shard

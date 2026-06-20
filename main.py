@@ -161,10 +161,11 @@ def _run_instanton_queue(
         for item, obj in zip(binned[key], objs)
         if not obj.available
     ]
-    # print(
-    #     f"   -- {len(task_list) - len(missing)} already computed, "
-    #     f"{len(missing)} to compute"
-    # )
+    print(
+        f"\n** {title.upper()} LOOKUP:\n"
+        f"   -- {len(task_list) - len(missing)} already computed, "
+        f"{len(missing)} to compute"
+    )
 
     if not missing:
         return
@@ -493,15 +494,16 @@ def run_all_pipelines(
     ]
 
     n_no_instanton = len(grid) - len(checkable)
-    # print(
-    #     f"   -- {len(checkable) - len(cf_missing)} already computed, "
-    #     f"{len(cf_missing)} to compute"
-    #     + (
-    #         f", {n_no_instanton} skipped (no instanton available)"
-    #         if n_no_instanton > 0
-    #         else ""
-    #     )
-    # )
+    print(
+        f"\n** COMPACTION FUNCTIONS LOOKUP:\n"
+        f"   -- {len(checkable) - len(cf_missing)} already computed, "
+        f"{len(cf_missing)} to compute"
+        + (
+            f", {n_no_instanton} skipped (no instanton available)"
+            if n_no_instanton > 0
+            else ""
+        )
+    )
 
     if cf_missing:
         ## Pass 2a: re-fetch FullInstantons WITH population for the missing CF items.

@@ -292,6 +292,14 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
 
         if prune_unvalidated and len(rows) > 0:
             serials = [r.serial for r in rows]
+            # Delete child value rows first; there is no ON DELETE CASCADE on the FK.
+            value_table = tables.get("FullInstantonValue")
+            if value_table is not None:
+                conn.execute(
+                    sqla.delete(value_table).where(
+                        value_table.c.instanton_serial.in_(serials)
+                    )
+                )
             conn.execute(sqla.delete(table).filter(table.c.serial.in_(serials)))
             return [f"Pruned {len(serials)} unvalidated FullInstanton records"]
         elif len(rows) > 0:

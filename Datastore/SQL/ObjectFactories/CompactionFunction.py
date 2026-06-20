@@ -409,6 +409,14 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
 
         if prune_unvalidated and len(rows) > 0:
             serials = [r.serial for r in rows]
+            # Delete child sample rows first; there is no ON DELETE CASCADE on the FK.
+            samples_table = tables.get("CompactionFunctionSamples")
+            if samples_table is not None:
+                conn.execute(
+                    sqla.delete(samples_table).where(
+                        samples_table.c.parent_serial.in_(serials)
+                    )
+                )
             conn.execute(sqla.delete(table).filter(table.c.serial.in_(serials)))
             return [f"Pruned {len(serials)} unvalidated CompactionFunction records"]
         elif len(rows) > 0:
