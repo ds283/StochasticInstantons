@@ -15,9 +15,10 @@ Ray must be running. Start a local cluster with `ray start --head` before runnin
 
 ## Critical rules — read before touching any file
 
-Four rules have caused rework when violated. They are detailed in
-`.claude/rules/ray-dispatch.md`, `.claude/rules/pool-read-apis.md`, and
-`.claude/rules/spline-interpolation.md` but summarised here for visibility:
+Five rules have caused rework when violated. They are detailed in
+`.claude/rules/ray-dispatch.md`, `.claude/rules/pool-read-apis.md`,
+`.claude/rules/spline-interpolation.md`, and
+`.claude/rules/validate-on-startup.md` but summarised here for visibility:
 
 **1. Compute target classes are plain Python. Never `@ray.remote` a class.**
 `InflatonTrajectory`, `FullInstanton`, `SlowRollInstanton` — and any future compute
@@ -42,6 +43,14 @@ writing code. When adding a root-finder through a spline, ask the human or use
 the transformed-coordinate `brentq` pattern. See
 `.claude/rules/spline-interpolation.md` for the full pattern and transform
 catalogue.
+
+**5. `validate_on_startup` must cascade-delete child value rows before deleting parent rows.**
+The value tables (`FullInstantonValue`, `SlowRollInstantonValue`,
+`CompactionFunctionSamples`) have no `ON DELETE CASCADE`. Deleting unvalidated
+parent rows without first deleting their child rows leaves orphans; SQLite then
+reuses the freed serials, causing UNIQUE constraint violations on the next run.
+Always `DELETE FROM <value_table> WHERE <fk_col> IN (serials)` first.
+See `.claude/rules/validate-on-startup.md` for the cascade map and pattern.
 
 ## Protected infrastructure
 
