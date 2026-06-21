@@ -45,9 +45,9 @@ from Units import Planck_units
 
 VERSION_LABEL = "2026.3.0"
 
-# Cap on the number of "other parameter" combinations shown per sweep
-# directory, unless overridden via --max-combinations.
+DEFAULT_MAX_TRAJECTORIES = 3
 DEFAULT_MAX_COMBINATIONS = 10
+DEFAULT_MAX_INSTANTON_SAMPLES = 30
 
 
 def create_plot_parser():
@@ -71,10 +71,21 @@ def create_plot_parser():
         help="Output figure format (default: pdf)",
     )
     plot_grp.add_argument(
+        "--max-trajectories", type=int, default=DEFAULT_MAX_TRAJECTORIES,
+        help="Maximum number of background trajectories to render "
+             f"(default: {DEFAULT_MAX_TRAJECTORIES})",
+    )
+    plot_grp.add_argument(
         "--max-combinations", type=int, default=DEFAULT_MAX_COMBINATIONS,
-        help="Maximum number of 'other parameter' combinations (and "
-             "trajectories) to show per sweep directory, evenly sampled "
-             f"across the grid (default: {DEFAULT_MAX_COMBINATIONS})",
+        help="Maximum number of parameter combinations per sweep-summary "
+             "plot (curves on compaction_summary and msr_action figures), "
+             f"evenly sampled across the grid (default: {DEFAULT_MAX_COMBINATIONS})",
+    )
+    plot_grp.add_argument(
+        "--max-instanton-samples", type=int, default=DEFAULT_MAX_INSTANTON_SAMPLES,
+        help="Maximum number of (N_init, N_final, delta_Nstar) combinations "
+             "to render in the instantons/ folder, evenly sampled across "
+             f"the 3-D grid (default: {DEFAULT_MAX_INSTANTON_SAMPLES})",
     )
     return parser
 
@@ -90,17 +101,75 @@ def _evenly_sample(seq, k):
     return [seq[i] for i in idx]
 
 
-def _representative_indices(n):
-    """Return up to 3 indices into a length-n sequence (first, middle, last),
-    de-duplicated."""
-    if n == 0:
-        return []
-    return sorted(set([0, n // 2, n - 1]))
+# ── CF annotation helpers ──────────────────────────────────────────────────────
+
+def _extract_cf_annotation(cf, units):
+    """Return a plain-dict of CF summary scalars (all in display units) or None."""
+    if cf is None or not cf.available or cf.failure:
+        return None
+    Mpc = units.Mpc
+    SolarMass = units.SolarMass
+    def _div(v, u): return v / u if v is not None else None
+    def _mul(v, u): return v * u if v is not None else None
+    return {
+        "C_max_full":              cf.C_max_full,
+        "C_bar_max_full":          cf.C_bar_max_full,
+        "r_max_C_full_Mpc":        _div(cf.r_max_C_full,     Mpc),
+        "r_max_C_bar_full_Mpc":    _div(cf.r_max_C_bar_full, Mpc),
+        "M_C_full_solar":          _div(cf.M_C_full,         SolarMass),
+        "M_C_bar_full_solar":      _div(cf.M_C_bar_full,     SolarMass),
+        "C_max_slow_roll":         cf.C_max_slow_roll,
+        "C_bar_max_slow_roll":     cf.C_bar_max_slow_roll,
+        "r_max_C_slow_roll_Mpc":   _div(cf.r_max_C_slow_roll,     Mpc),
+        "r_max_C_bar_slow_roll_Mpc": _div(cf.r_max_C_bar_slow_roll, Mpc),
+        "M_C_slow_roll_solar":     _div(cf.M_C_slow_roll,     SolarMass),
+        "M_C_bar_slow_roll_solar": _div(cf.M_C_bar_slow_roll, SolarMass),
+    }
 
 
-def _representative_points(seq):
-    """Return up to 3 elements of seq (first, middle, last), de-duplicated."""
-    return [seq[i] for i in _representative_indices(len(seq))]
+def _cf_annotation_text(ann):
+    """Build a compact annotation string (LaTeX mathtext) from a CF annotation
+    dict returned by _extract_cf_annotation, or return None if ann is None."""
+    if ann is None:
+        return None
+    lines = []
+    for label, keys in (
+        ("Full", ("C_max_full", "C_bar_max_full",
+                  "r_max_C_full_Mpc", "r_max_C_bar_full_Mpc",
+                  "M_C_full_solar", "M_C_bar_full_solar")),
+        ("SR",   ("C_max_slow_roll", "C_bar_max_slow_roll",
+                  "r_max_C_slow_roll_Mpc", "r_max_C_bar_slow_roll_Mpc",
+                  "M_C_slow_roll_solar", "M_C_bar_slow_roll_solar")),
+    ):
+        C_max, Cb_max, r, rb, M, Mb = (ann.get(k) for k in keys)
+        if C_max is None and M is None:
+            continue
+        parts = []
+        if C_max is not None:
+            parts.append(rf"$C_{{\rm max}}$={C_max:.3g}")
+        if Cb_max is not None:
+            parts.append(rf"$\bar{{C}}_{{\rm max}}$={Cb_max:.3g}")
+        if r is not None:
+            parts.append(rf"$r_{{\rm max,C}}$={r:.3g} Mpc")
+        if M is not None:
+            parts.append(rf"$M_C$={M:.3g} $M_\odot$")
+        lines.append(f"{label}: " + ",  ".join(parts))
+    return "\n".join(lines) if lines else None
+
+
+def _add_cf_annotation(fig, ann_text):
+    """Add ann_text as a small figure-level annotation and adjust layout."""
+    if not ann_text:
+        fig.tight_layout()
+        return
+    n_lines = ann_text.count("\n") + 1
+    bottom_frac = 0.07 * n_lines
+    fig.tight_layout(rect=[0, bottom_frac, 1, 1])
+    fig.text(
+        0.5, 0.01, ann_text,
+        ha="center", va="bottom", fontsize="x-small",
+        transform=fig.transFigure,
+    )
 
 
 # ── Figure functions ──────────────────────────────────────────────────────────
@@ -109,20 +178,19 @@ def _safe_name(s):
     return s.replace(" ", "_").replace("(", "").replace(")", "").replace(",", "")
 
 
-def plot_background_trajectory(traj, potential, units, output_dir, fmt):
-    """Figure 1: φ(N) numerical vs slow-roll attractor."""
+def plot_background_fields(traj, potential, units, output_dir, fmt):
+    """Two-panel figure: φ(N) and π(N) for the background trajectory."""
     if not traj._values:
-        print(f"   Warning: trajectory {traj.store_id} has no values — skipping Figure 1")
+        print(f"   Warning: trajectory {traj.store_id} has no values — skipping background fields plot")
         return
 
     Mp = units.PlanckMass
-    N_vals = [v.N.N for v in traj._values]
+    N_vals   = [v.N.N   for v in traj._values]
     phi_vals = [v.phi / Mp for v in traj._values]
+    pi_vals  = [v.pi  / Mp for v in traj._values]
 
-    fig, ax = plt.subplots()
-    ax.plot(N_vals, phi_vals, label="Numerical")
-
-    # Slow-roll attractor: dφ/dN = -V′(φ) / (3 H²_SR),  H²_SR = V(φ)/3Mp²
+    # Slow-roll attractor φ(N) via ODE (same guard as before)
+    sr_N = sr_phi = None
     try:
         from scipy.integrate import solve_ivp
 
@@ -133,47 +201,63 @@ def plot_background_trajectory(traj, potential, units, output_dir, fmt):
             Hsq = potential.H_sq(phi, 0.0)
             return [-potential.dV_dphi(phi) / (3.0 * Hsq)]
 
-        # The attractor ODE has a genuine pole where φ→0 (e.g. dφ/dN = -2/φ
-        # for a quadratic potential). solve_ivp has no way to detect this on
-        # its own: as the trajectory approaches the pole it keeps shrinking
-        # its step size to maintain accuracy and never terminates, spinning
-        # forever instead of raising. A terminal event stops the integration
-        # once the attractor approximation has broken down anyway, before
-        # the solver ever gets close enough to the singularity to stall.
+        # Terminal event prevents the solver stalling at the slow-roll pole
+        # (e.g. φ → 0 for a quadratic potential).
         phi_floor = max(1e-3 * abs(phi0_sr), 1e-8)
 
-        def sr_attractor_breakdown(N, y):
+        def sr_breakdown(N, y):
             return abs(y[0]) - phi_floor
-
-        sr_attractor_breakdown.terminal = True
+        sr_breakdown.terminal = True
 
         N_span = (N_vals[0], N_vals[-1])
         N_eval = np.linspace(N_vals[0], N_vals[-1], max(len(N_vals), 300))
-        sr_sol = solve_ivp(
-            sr_rhs, N_span, [phi0_sr], method="RK45", t_eval=N_eval,
-            events=sr_attractor_breakdown,
-        )
-        if sr_sol.success:
-            ax.plot(sr_sol.t, sr_sol.y[0] / Mp, "--", label="Slow-roll attractor")
+        sol = solve_ivp(sr_rhs, N_span, [phi0_sr], method="RK45",
+                        t_eval=N_eval, events=sr_breakdown)
+        if sol.success:
+            sr_N   = sol.t
+            sr_phi = sol.y[0] / Mp
     except Exception as exc:
         print(f"   Warning: slow-roll attractor integration failed: {exc}")
 
-    ax.set_xlabel("N (e-folds)")
-    ax.set_ylabel(r"$\varphi\,/\,M_{\rm P}$")
-    ax.set_title(f"Background trajectory — {potential.name}")
-    ax.legend()
+    # Slow-roll π at each sample point: π_SR = -V′(φ) / (3 H²_SR)
+    try:
+        pi_sr_vals = [
+            -potential.dV_dphi(v.phi) / (3.0 * potential.H_sq(v.phi, 0.0)) / Mp
+            for v in traj._values
+        ]
+    except Exception:
+        pi_sr_vals = None
+
+    fig, (ax_phi, ax_pi) = plt.subplots(1, 2, figsize=(10, 4))
+
+    ax_phi.plot(N_vals, phi_vals, label="Numerical")
+    if sr_N is not None:
+        ax_phi.plot(sr_N, sr_phi, "--", label="Slow-roll attractor")
+    ax_phi.set_xlabel("N (e-folds)")
+    ax_phi.set_ylabel(r"$\varphi\,/\,M_{\rm P}$")
+    ax_phi.set_title("Field")
+    ax_phi.legend()
+
+    ax_pi.plot(N_vals, pi_vals, label="Numerical")
+    if pi_sr_vals is not None:
+        ax_pi.plot(N_vals, pi_sr_vals, "--", label="Slow-roll")
+    ax_pi.set_xlabel("N (e-folds)")
+    ax_pi.set_ylabel(r"$\pi\,/\,M_{\rm P}$")
+    ax_pi.set_title("Field velocity")
+    ax_pi.legend()
+
+    fig.suptitle(f"Background trajectory — {potential.name}")
     fig.tight_layout()
 
-    fname = output_dir / f"background_phi.{fmt}"
+    fname = output_dir / f"background_fields.{fmt}"
     fig.savefig(fname)
     plt.close(fig)
-    # print(f"   Saved: {fname}")
 
 
 def plot_epsilon(traj, potential, units, output_dir, fmt):
-    """Figure 2: slow-roll parameter ε(N)."""
+    """Figure: slow-roll parameter ε(N)."""
     if not traj._values:
-        print(f"   Warning: trajectory {traj.store_id} has no values — skipping Figure 2")
+        print(f"   Warning: trajectory {traj.store_id} has no values — skipping epsilon plot")
         return
 
     N_vals = [v.N.N for v in traj._values]
@@ -195,15 +279,15 @@ def plot_epsilon(traj, potential, units, output_dir, fmt):
     fname = output_dir / f"background_epsilon.{fmt}"
     fig.savefig(fname)
     plt.close(fig)
-    # print(f"   Saved: {fname}")
 
 
-def plot_instanton_fields(fi, sri, N_init_val, N_final_val, dns_val, potential, units, output_dir, fmt):
-    """Figure 3: 2×2 grid of instanton field components vs N, at one
+def plot_instanton_fields(fi, sri, N_init_val, N_final_val, dns_val, potential, units,
+                           output_dir, fmt, cf_annotation=None):
+    """2×2 grid of instanton field components vs N, at one
     (N_init, N_final, delta_Nstar) point."""
     if fi is None and sri is None:
         print(f"   Warning: no instanton data for Ninit={N_init_val:.3g}, "
-              f"Nfinal={N_final_val:.3g}, δN★={dns_val:.3g} — skipping Figure 3")
+              f"Nfinal={N_final_val:.3g}, dNstar={dns_val:.3g} — skipping instanton fields plot")
         return
 
     Mp = units.PlanckMass
@@ -216,10 +300,9 @@ def plot_instanton_fields(fi, sri, N_init_val, N_final_val, dns_val, potential, 
     if fi is not None and fi._values:
         N_fi = [v.N.N for v in fi._values]
         ax_phi.plot(N_fi, [v.phi1 / Mp for v in fi._values], label=r"$\varphi_1$ (full)")
-        # φ_init and φ_final horizontal lines
-        phi_init = fi._values[0].phi1
+        phi_init  = fi._values[0].phi1
         phi_final = fi._values[-1].phi1
-        ax_phi.axhline(phi_init / Mp, color="gray", linestyle=":", linewidth=0.8, label=r"$\varphi_{\rm init}$")
+        ax_phi.axhline(phi_init  / Mp, color="gray", linestyle=":",  linewidth=0.8, label=r"$\varphi_{\rm init}$")
         ax_phi.axhline(phi_final / Mp, color="gray", linestyle="-.", linewidth=0.8, label=r"$\varphi_{\rm final}$")
 
     if sri is not None and sri._values:
@@ -236,7 +319,6 @@ def plot_instanton_fields(fi, sri, N_init_val, N_final_val, dns_val, potential, 
         N_fi = [v.N.N for v in fi._values]
         ax_pi.plot(N_fi, [v.phi2 / Mp for v in fi._values], label=r"$\varphi_2$ (full)")
 
-        # Overlay slow-roll π = -V′/(3H²_SR) computed from φ₁
         try:
             pi_sr = [
                 -potential.dV_dphi(v.phi1) / (3.0 * potential.H_sq(v.phi1, 0.0))
@@ -277,18 +359,14 @@ def plot_instanton_fields(fi, sri, N_init_val, N_final_val, dns_val, potential, 
 
     fig.suptitle(
         f"Instanton fields — {potential.name}, "
-        rf"Ninit={N_init_val:.3g}, Nfinal={N_final_val:.3g}, $\delta N_\star$={dns_val:.3g}"
+        rf"$N_{{\rm init}}$={N_init_val:.3g}, $N_{{\rm final}}$={N_final_val:.3g}, "
+        rf"$\delta N_\star$={dns_val:.3g}"
     )
-    fig.tight_layout()
+    _add_cf_annotation(fig, _cf_annotation_text(cf_annotation))
 
-    fname = (
-        output_dir
-        / f"instanton_fields_Ninit={_safe_num(N_init_val)}_Nfinal={_safe_num(N_final_val)}"
-          f"_dNstar={_safe_num(dns_val)}.{fmt}"
-    )
+    fname = output_dir / f"instanton_fields.{fmt}"
     fig.savefig(fname)
     plt.close(fig)
-    # print(f"   Saved: {fname}")
 
 
 def plot_msr_action_sweep(x_label, fi_points, sri_points, fixed_desc, potential_name,
@@ -296,7 +374,7 @@ def plot_msr_action_sweep(x_label, fi_points, sri_points, fixed_desc, potential_
     """One trajectory's MSR action vs the swept dimension, at one fixed
     combination of the other two dimensions (described by fixed_desc).
     fi_points/sri_points: lists of (swept_value, msr_action) tuples."""
-    fi_points = [(x, a) for x, a in fi_points if a is not None]
+    fi_points  = [(x, a) for x, a in fi_points  if a is not None]
     sri_points = [(x, a) for x, a in sri_points if a is not None]
     if not fi_points and not sri_points:
         return
@@ -321,7 +399,6 @@ def plot_msr_action_sweep(x_label, fi_points, sri_points, fixed_desc, potential_
     fname = output_dir / f"msr_action_vs_{swept_file}__{fixed_desc}.{fmt}"
     fig.savefig(fname)
     plt.close(fig)
-    # print(f"   Saved: {fname}")
 
 
 def _safe_num(v: float) -> str:
@@ -329,10 +406,10 @@ def _safe_num(v: float) -> str:
 
 
 def plot_zeta_and_compaction(cf, units, N_init_val, N_final_val, dns_val,
-                              potential_name, output_dir, fmt):
+                              potential_name, output_dir, fmt, cf_annotation=None):
     """Two-panel figure: zeta(r) and C(r)/C_bar(r) vs r in Mpc on a log x-axis."""
     full_vals = cf.full_values
-    sr_vals = cf.slow_roll_values
+    sr_vals   = cf.slow_roll_values
     if not full_vals and not sr_vals:
         return
 
@@ -342,13 +419,13 @@ def plot_zeta_and_compaction(cf, units, N_init_val, N_final_val, dns_val,
     if full_vals:
         r_full = [v.r / Mpc for v in full_vals]
         ax_zeta.plot(r_full, [v.zeta for v in full_vals], label="Full")
-        ax_C.plot(r_full, [v.C for v in full_vals], label=r"$C$ (full)")
+        ax_C.plot(r_full, [v.C     for v in full_vals], label=r"$C$ (full)")
         ax_C.plot(r_full, [v.C_bar for v in full_vals], "--", label=r"$\bar{C}$ (full)")
 
     if sr_vals:
         r_sr = [v.r / Mpc for v in sr_vals]
         ax_zeta.plot(r_sr, [v.zeta for v in sr_vals], "--", label="Slow-roll")
-        ax_C.plot(r_sr, [v.C for v in sr_vals], label=r"$C$ (SR)")
+        ax_C.plot(r_sr, [v.C     for v in sr_vals], label=r"$C$ (SR)")
         ax_C.plot(r_sr, [v.C_bar for v in sr_vals], "--", label=r"$\bar{C}$ (SR)")
 
     for ax in (ax_zeta, ax_C):
@@ -368,16 +445,11 @@ def plot_zeta_and_compaction(cf, units, N_init_val, N_final_val, dns_val,
         rf"$N_{{\rm init}}$={N_init_val:.3g}, $N_{{\rm final}}$={N_final_val:.3g}, "
         rf"$\delta N_\star$={dns_val:.3g}"
     )
-    fig.tight_layout()
+    _add_cf_annotation(fig, _cf_annotation_text(cf_annotation))
 
-    fname = (
-        output_dir
-        / f"compaction_Ninit={_safe_num(N_init_val)}_Nfinal={_safe_num(N_final_val)}"
-          f"_dNstar={_safe_num(dns_val)}.{fmt}"
-    )
+    fname = output_dir / f"compaction.{fmt}"
     fig.savefig(fname)
     plt.close(fig)
-    # print(f"   Saved: {fname}")
 
 
 def plot_compaction_summary(x_label, fi_cf_points, sri_cf_points, fixed_desc,
@@ -386,19 +458,18 @@ def plot_compaction_summary(x_label, fi_cf_points, sri_cf_points, fixed_desc,
     right = PBH mass in solar masses (log y-scale) vs swept parameter."""
     swept_file = {"N_init": "Ninit", "N_final": "Nfinal", "delta_Nstar": "dNstar"}[swept_name]
 
-    # Unpack and filter to only points with at least some data
     def _unzip(points, idx):
         return [p[0] for p in points if p[idx] is not None], \
                [p[idx] for p in points if p[idx] is not None]
 
-    fi_xC, fi_yC         = _unzip(fi_cf_points, 1)
-    fi_xCb, fi_yCb       = _unzip(fi_cf_points, 2)
-    fi_xM, fi_yM         = _unzip(fi_cf_points, 3)
-    fi_xMb, fi_yMb       = _unzip(fi_cf_points, 4)
-    sri_xC, sri_yC       = _unzip(sri_cf_points, 1)
-    sri_xCb, sri_yCb     = _unzip(sri_cf_points, 2)
-    sri_xM, sri_yM       = _unzip(sri_cf_points, 3)
-    sri_xMb, sri_yMb     = _unzip(sri_cf_points, 4)
+    fi_xC,  fi_yC   = _unzip(fi_cf_points,  1)
+    fi_xCb, fi_yCb  = _unzip(fi_cf_points,  2)
+    fi_xM,  fi_yM   = _unzip(fi_cf_points,  3)
+    fi_xMb, fi_yMb  = _unzip(fi_cf_points,  4)
+    sri_xC,  sri_yC  = _unzip(sri_cf_points, 1)
+    sri_xCb, sri_yCb = _unzip(sri_cf_points, 2)
+    sri_xM,  sri_yM  = _unzip(sri_cf_points, 3)
+    sri_xMb, sri_yMb = _unzip(sri_cf_points, 4)
 
     has_C_data = any(len(v) > 0 for v in (fi_xC, fi_xCb, sri_xC, sri_xCb))
     has_M_data = any(len(v) > 0 for v in (fi_xM, fi_xMb, sri_xM, sri_xMb))
@@ -408,11 +479,11 @@ def plot_compaction_summary(x_label, fi_cf_points, sri_cf_points, fixed_desc,
     fig, (ax_C, ax_M) = plt.subplots(1, 2, figsize=(10, 4))
 
     if fi_xC:
-        ax_C.plot(fi_xC, fi_yC, "o-", label=r"$\max C$ (full)")
+        ax_C.plot(fi_xC,  fi_yC,  "o-",  label=r"$\max C$ (full)")
     if fi_xCb:
         ax_C.plot(fi_xCb, fi_yCb, "o--", label=r"$\max \bar{C}$ (full)")
     if sri_xC:
-        ax_C.plot(sri_xC, sri_yC, "s-", label=r"$\max C$ (SR)")
+        ax_C.plot(sri_xC,  sri_yC,  "s-",  label=r"$\max C$ (SR)")
     if sri_xCb:
         ax_C.plot(sri_xCb, sri_yCb, "s--", label=r"$\max \bar{C}$ (SR)")
     ax_C.axhline(y=0.4, color="gray", linestyle=":", linewidth=0.8, label="Threshold")
@@ -422,11 +493,11 @@ def plot_compaction_summary(x_label, fi_cf_points, sri_cf_points, fixed_desc,
     ax_C.legend(fontsize="small")
 
     if fi_xM:
-        ax_M.semilogy(fi_xM, fi_yM, "o-", label=r"$M_C$ (full)")
+        ax_M.semilogy(fi_xM,  fi_yM,  "o-",  label=r"$M_C$ (full)")
     if fi_xMb:
         ax_M.semilogy(fi_xMb, fi_yMb, "o--", label=r"$M_{\bar{C}}$ (full)")
     if sri_xM:
-        ax_M.semilogy(sri_xM, sri_yM, "s-", label=r"$M_C$ (SR)")
+        ax_M.semilogy(sri_xM,  sri_yM,  "s-",  label=r"$M_C$ (SR)")
     if sri_xMb:
         ax_M.semilogy(sri_xMb, sri_yMb, "s--", label=r"$M_{\bar{C}}$ (SR)")
     ax_M.set_xlabel(x_label)
@@ -435,37 +506,36 @@ def plot_compaction_summary(x_label, fi_cf_points, sri_cf_points, fixed_desc,
     if has_M_data:
         ax_M.legend(fontsize="small")
 
-    fig.suptitle(
-        rf"Compaction summary — {potential_name} ({fixed_desc})"
-    )
+    fig.suptitle(rf"Compaction summary — {potential_name} ({fixed_desc})")
     fig.tight_layout()
 
     fname = output_dir / f"compaction_summary_vs_{swept_file}__{fixed_desc}.{fmt}"
     fig.savefig(fname)
     plt.close(fig)
-    # print(f"   Saved: {fname}")
 
 
 # ── Ray remote plot dispatch ────────────────────────────────────────────────
 
 @ray.remote
 def _plot_trajectory_item(traj_proxy, potential, output_dir_str, fmt):
-    """Runs inside a Ray worker: background trajectory + epsilon plots."""
+    """Runs inside a Ray worker: background fields + epsilon plots."""
     traj = traj_proxy.get()
     sns.set_theme(style="ticks", context="paper")
     output_dir = Path(output_dir_str)
     units = Planck_units()
-    plot_background_trajectory(traj, potential, units, output_dir, fmt)
+    plot_background_fields(traj, potential, units, output_dir, fmt)
     plot_epsilon(traj, potential, units, output_dir, fmt)
 
 
 @ray.remote
-def _plot_fields_item(fi, sri, N_init_val, N_final_val, dns_val, potential, output_dir_str, fmt):
+def _plot_fields_item(fi, sri, N_init_val, N_final_val, dns_val, potential,
+                      output_dir_str, fmt, cf_annotation=None):
     """Runs inside a Ray worker: one field-trajectory comparison plot."""
     sns.set_theme(style="ticks", context="paper")
     output_dir = Path(output_dir_str)
     units = Planck_units()
-    plot_instanton_fields(fi, sri, N_init_val, N_final_val, dns_val, potential, units, output_dir, fmt)
+    plot_instanton_fields(fi, sri, N_init_val, N_final_val, dns_val,
+                          potential, units, output_dir, fmt, cf_annotation)
 
 
 @ray.remote
@@ -474,13 +544,13 @@ def _plot_msr_sweep_item(x_label, fi_points, sri_points, fixed_desc, potential_n
     """Runs inside a Ray worker: one MSR-action-vs-swept-parameter plot."""
     sns.set_theme(style="ticks", context="paper")
     output_dir = Path(output_dir_str)
-    plot_msr_action_sweep(x_label, fi_points, sri_points, fixed_desc, potential_name,
-                          output_dir, fmt, swept_name)
+    plot_msr_action_sweep(x_label, fi_points, sri_points, fixed_desc,
+                          potential_name, output_dir, fmt, swept_name)
 
 
 @ray.remote
 def _plot_compaction_item(cf, N_init_val, N_final_val, dns_val, potential_name,
-                           output_dir_str, fmt):
+                           output_dir_str, fmt, cf_annotation=None):
     """Runs inside a Ray worker: zeta(r) and C(r)/C_bar(r) profile plots."""
     if cf is None or not cf.available or cf.failure:
         return
@@ -488,7 +558,7 @@ def _plot_compaction_item(cf, N_init_val, N_final_val, dns_val, potential_name,
     output_dir = Path(output_dir_str)
     units = Planck_units()
     plot_zeta_and_compaction(cf, units, N_init_val, N_final_val, dns_val,
-                              potential_name, output_dir, fmt)
+                              potential_name, output_dir, fmt, cf_annotation)
 
 
 @ray.remote
@@ -571,12 +641,12 @@ def _cf_vectorized_fetch(pool, traj_proxy, fi_list, sri_list, dns_val, cosmo, at
     at least one instanton is available; positions where neither is available get None."""
     n = len(fi_list)
     valid_indices = []
-    payload_data = []
+    payload_data  = []
     for i, (fi_obj, sri_obj) in enumerate(zip(fi_list, sri_list)):
-        fi_avail = fi_obj is not None and fi_obj.available
+        fi_avail  = fi_obj  is not None and fi_obj.available
         sri_avail = sri_obj is not None and sri_obj.available
         if fi_avail or sri_avail:
-            fi_proxy = FullInstantonProxy(fi_obj) if fi_avail else None
+            fi_proxy  = FullInstantonProxy(fi_obj)  if fi_avail  else None
             sri_proxy = SlowRollInstantonProxy(sri_obj) if sri_avail else None
             payload_data.append({
                 **_cf_key_payload(traj_proxy, fi_proxy, sri_proxy, dns_val, cosmo, atol, rtol),
@@ -597,11 +667,12 @@ def _cf_vectorized_fetch(pool, traj_proxy, fi_list, sri_list, dns_val, cosmo, at
 def _sweep_Ninit_or_Nfinal(pool, traj_proxy, potential, out_dir, fmt,
                             swept_name, swept_array, fixed_other_array, dns_array,
                             atol, rtol, max_combos, work_items, cosmo, units):
-    """swept_name in {"N_init", "N_final"}. delta_Nstar is one of the two
-    fixed 'other' dimensions here, so every point on one curve already
-    shares one shard — one object_get_vectorized() call per curve."""
+    """swept_name in {"N_init", "N_final"}. Emits MSR-action sweep plots and
+    compaction summary sweep plots for each selected (other_val, dns_val) combo.
+    Instanton field/compaction profile plots are handled separately by
+    _generate_instanton_samples."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    combos = list(itertools.product(fixed_other_array, dns_array))
+    combos   = list(itertools.product(fixed_other_array, dns_array))
     selected = _evenly_sample(combos, max_combos)
 
     for other_val, dns_val in selected:
@@ -619,20 +690,20 @@ def _sweep_Ninit_or_Nfinal(pool, traj_proxy, potential, out_dir, fmt,
             ]
 
         fi_list, sri_list = ray.get([
-            pool.object_get_vectorized("FullInstanton", dns_val, payload_data=payload_data),
+            pool.object_get_vectorized("FullInstanton",     dns_val, payload_data=payload_data),
             pool.object_get_vectorized("SlowRollInstanton", dns_val, payload_data=payload_data),
         ])
 
         swept_vals = [float(v) for v in swept_array]
-        fi_points = list(zip(swept_vals, (_qualifying_action(o) for o in fi_list)))
+        fi_points  = list(zip(swept_vals, (_qualifying_action(o) for o in fi_list)))
         sri_points = list(zip(swept_vals, (_qualifying_action(o) for o in sri_list)))
 
         if swept_name == "N_init":
             fixed_desc = f"Nfinal={float(other_val):.3g}_dNstar={float(dns_val):.3g}"
-            x_label = r"$N_{\rm init}$"
+            x_label    = r"$N_{\rm init}$"
         else:
             fixed_desc = f"Ninit={float(other_val):.3g}_dNstar={float(dns_val):.3g}"
-            x_label = r"$N_{\rm final}$"
+            x_label    = r"$N_{\rm final}$"
 
         if any(a is not None for _, a in fi_points) or any(a is not None for _, a in sri_points):
             work_items.append((_plot_msr_sweep_item, (
@@ -640,15 +711,14 @@ def _sweep_Ninit_or_Nfinal(pool, traj_proxy, potential, out_dir, fmt,
                 potential.name, str(out_dir), fmt, swept_name,
             )))
 
-        # Compaction summary sweep: fetch CF scalars for all sweep points.
-        cf_list = _cf_vectorized_fetch(pool, traj_proxy, fi_list, sri_list,
-                                        dns_val, cosmo, atol, rtol)
+        cf_list   = _cf_vectorized_fetch(pool, traj_proxy, fi_list, sri_list,
+                                          dns_val, cosmo, atol, rtol)
         SolarMass = units.SolarMass
-        fi_cf_points = []
+        fi_cf_points  = []
         sri_cf_points = []
         for sv, cf in zip(swept_vals, cf_list):
             s = _extract_cf_summary(cf, SolarMass)
-            fi_cf_points.append((sv, s[0], s[1], s[2], s[3]))
+            fi_cf_points.append( (sv, s[0], s[1], s[2], s[3]))
             sri_cf_points.append((sv, s[4], s[5], s[6], s[7]))
         if any(p[1] is not None or p[3] is not None
                for p in fi_cf_points + sri_cf_points):
@@ -657,54 +727,19 @@ def _sweep_Ninit_or_Nfinal(pool, traj_proxy, potential, out_dir, fmt,
                 potential.name, str(out_dir), fmt, swept_name,
             )))
 
-        for rep_idx in _representative_indices(len(swept_array)):
-            rep_v = swept_array[rep_idx]
-            if swept_name == "N_init":
-                N_init_v, N_final_v = rep_v, other_val
-            else:
-                N_init_v, N_final_v = other_val, rep_v
-            # Availability is already known from the do-not-populate vectorized
-            # fetch above, so we can decide whether to plot without resolving
-            # the full object in the driver — the ObjectRef from object_get()
-            # below is passed straight to the worker unresolved, skipping a
-            # round trip of (de)serialisation through driver memory.
-            fi_obj, sri_obj = fi_list[rep_idx], sri_list[rep_idx]
-            fi_available = fi_obj is not None and fi_obj.available
-            sri_available = sri_obj is not None and sri_obj.available
-            if not fi_available and not sri_available:
-                continue
-            payload = _instanton_key_payload(traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol)
-            fi_ref = pool.object_get("FullInstanton", **payload) if fi_available else None
-            sri_ref = pool.object_get("SlowRollInstanton", **payload) if sri_available else None
-            work_items.append((_plot_fields_item, (
-                fi_ref, sri_ref, float(N_init_v), float(N_final_v), float(dns_val),
-                potential, str(out_dir), fmt,
-            )))
-            fi_proxy_for_cf = FullInstantonProxy(fi_obj) if fi_available else None
-            sri_proxy_for_cf = SlowRollInstantonProxy(sri_obj) if sri_available else None
-            cf_ref = pool.object_get(
-                "CompactionFunction",
-                **_cf_key_payload(traj_proxy, fi_proxy_for_cf, sri_proxy_for_cf,
-                                   dns_val, cosmo, atol, rtol),
-            )
-            work_items.append((_plot_compaction_item, (
-                cf_ref, float(N_init_v), float(N_final_v), float(dns_val),
-                potential.name, str(out_dir), fmt,
-            )))
-
 
 def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
                         dns_array, N_init_array, N_final_array,
                         atol, rtol, max_combos, work_items, cosmo, units):
-    """Each curve point has a different delta_Nstar (a different shard), but
-    across the selected (N_init, N_final) combos, points sharing one
-    delta_Nstar value do share a shard — bin across combos by delta_Nstar
-    and issue one object_get_vectorized() call per distinct value."""
+    """Emits MSR-action sweep plots and compaction summary sweep plots vs
+    delta_Nstar for each selected (N_init, N_final) combo.
+    Instanton field/compaction profile plots are handled separately by
+    _generate_instanton_samples."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    combos = list(itertools.product(N_init_array, N_final_array))
+    combos   = list(itertools.product(N_init_array, N_final_array))
     selected = _evenly_sample(combos, max_combos)
 
-    fi_refs = {}
+    fi_refs  = {}
     sri_refs = {}
     for dns_val in dns_array:
         payload_data = [
@@ -712,25 +747,24 @@ def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
              "_do_not_populate": True}
             for (N_init_v, N_final_v) in selected
         ]
-        fi_refs[dns_val] = pool.object_get_vectorized("FullInstanton", dns_val, payload_data=payload_data)
+        fi_refs[dns_val]  = pool.object_get_vectorized("FullInstanton",     dns_val, payload_data=payload_data)
         sri_refs[dns_val] = pool.object_get_vectorized("SlowRollInstanton", dns_val, payload_data=payload_data)
 
-    fi_by_dns = dict(zip(fi_refs.keys(), ray.get(list(fi_refs.values()))))
+    fi_by_dns  = dict(zip(fi_refs.keys(),  ray.get(list(fi_refs.values()))))
     sri_by_dns = dict(zip(sri_refs.keys(), ray.get(list(sri_refs.values()))))
 
-    # Vectorized CF fetch for the compaction summary sweep: one batch per dns_val.
-    cf_refs = {}
+    cf_refs               = {}
     cf_valid_indices_by_dns = {}
     for dns_val in dns_array:
-        fi_list_d = fi_by_dns[dns_val]
+        fi_list_d  = fi_by_dns[dns_val]
         sri_list_d = sri_by_dns[dns_val]
-        valid_indices = []
+        valid_indices  = []
         cf_payload_data = []
         for i, (fi_obj, sri_obj) in enumerate(zip(fi_list_d, sri_list_d)):
-            fi_avail = fi_obj is not None and fi_obj.available
+            fi_avail  = fi_obj  is not None and fi_obj.available
             sri_avail = sri_obj is not None and sri_obj.available
             if fi_avail or sri_avail:
-                fi_proxy = FullInstantonProxy(fi_obj) if fi_avail else None
+                fi_proxy  = FullInstantonProxy(fi_obj)  if fi_avail  else None
                 sri_proxy = SlowRollInstantonProxy(sri_obj) if sri_avail else None
                 cf_payload_data.append({
                     **_cf_key_payload(traj_proxy, fi_proxy, sri_proxy, dns_val, cosmo, atol, rtol),
@@ -743,16 +777,14 @@ def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
             )
         cf_valid_indices_by_dns[dns_val] = valid_indices
 
-    # Resolve all CF refs in one ray.get call.
     dns_with_refs = [(dns, ref) for dns, ref in cf_refs.items()]
     if dns_with_refs:
-        dns_keys, refs = zip(*dns_with_refs)
-        fetched_lists = ray.get(list(refs))
-        cf_by_dns_raw = dict(zip(dns_keys, fetched_lists))
+        dns_keys, refs    = zip(*dns_with_refs)
+        fetched_lists     = ray.get(list(refs))
+        cf_by_dns_raw     = dict(zip(dns_keys, fetched_lists))
     else:
         cf_by_dns_raw = {}
 
-    # Reconstruct index-aligned cf_by_dns.
     cf_by_dns = {}
     for dns_val in dns_array:
         full_list = [None] * len(selected)
@@ -764,7 +796,7 @@ def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
     SolarMass = units.SolarMass
 
     for combo_idx, (N_init_v, N_final_v) in enumerate(selected):
-        fi_points = [
+        fi_points  = [
             (float(dns_val), _qualifying_action(fi_by_dns[dns_val][combo_idx]))
             for dns_val in dns_array
         ]
@@ -780,14 +812,13 @@ def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
                 potential.name, str(out_dir), fmt, "delta_Nstar",
             )))
 
-        # Compaction summary sweep for this (N_init, N_final) combo.
-        fi_cf_points = []
+        fi_cf_points  = []
         sri_cf_points = []
         for dns_val in dns_array:
             cf = cf_by_dns[dns_val][combo_idx]
-            s = _extract_cf_summary(cf, SolarMass)
+            s  = _extract_cf_summary(cf, SolarMass)
             dns_float = float(dns_val)
-            fi_cf_points.append((dns_float, s[0], s[1], s[2], s[3]))
+            fi_cf_points.append( (dns_float, s[0], s[1], s[2], s[3]))
             sri_cf_points.append((dns_float, s[4], s[5], s[6], s[7]))
         if any(p[1] is not None or p[3] is not None
                for p in fi_cf_points + sri_cf_points):
@@ -796,34 +827,119 @@ def _sweep_delta_Nstar(pool, traj_proxy, potential, out_dir, fmt,
                 potential.name, str(out_dir), fmt, "delta_Nstar",
             )))
 
-        for rep_dns in _representative_points(dns_array):
-            # Availability is already known from the do-not-populate vectorized
-            # fetch above (fi_by_dns/sri_by_dns), so the ObjectRef from
-            # object_get() below can be passed straight to the worker
-            # unresolved, skipping a round trip of (de)serialisation through
-            # driver memory.
-            fi_obj, sri_obj = fi_by_dns[rep_dns][combo_idx], sri_by_dns[rep_dns][combo_idx]
-            fi_available = fi_obj is not None and fi_obj.available
+
+def _generate_instanton_samples(pool, traj_proxy, potential, out_dir, fmt,
+                                 N_init_array, N_final_array, dns_array,
+                                 atol, rtol, max_instanton_samples,
+                                 work_items, cosmo, units):
+    """Sample the full 3-D (N_init × N_final × δN★) grid evenly and emit
+    instanton_fields + compaction work items into per-combination sub-folders
+    under out_dir/."""
+    all_combos = list(itertools.product(N_init_array, N_final_array, dns_array))
+    selected   = _evenly_sample(all_combos, max_instanton_samples)
+    if not selected:
+        return
+
+    # Group by dns_val for vectorized fetches (one call per shard).
+    by_dns = {}
+    for N_init_v, N_final_v, dns_val in selected:
+        by_dns.setdefault(dns_val, []).append((N_init_v, N_final_v))
+
+    # Issue all vectorized instanton fetches; resolve in one ray.get.
+    fi_refs  = {}
+    sri_refs = {}
+    for dns_val, combos in by_dns.items():
+        payload_data = [
+            {**_instanton_key_payload(traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol),
+             "_do_not_populate": True}
+            for N_init_v, N_final_v in combos
+        ]
+        fi_refs[dns_val]  = pool.object_get_vectorized("FullInstanton",     dns_val, payload_data=payload_data)
+        sri_refs[dns_val] = pool.object_get_vectorized("SlowRollInstanton", dns_val, payload_data=payload_data)
+
+    all_dns    = list(fi_refs.keys())
+    fi_resolved  = dict(zip(all_dns, ray.get([fi_refs[d]  for d in all_dns])))
+    sri_resolved = dict(zip(all_dns, ray.get([sri_refs[d] for d in all_dns])))
+
+    # Vectorized CF fetch (do_not_populate for the annotation scalars).
+    cf_refs            = {}
+    cf_index_by_dns    = {}
+    for dns_val, combos in by_dns.items():
+        fi_list  = fi_resolved[dns_val]
+        sri_list = sri_resolved[dns_val]
+        valid_indices  = []
+        cf_payload_data = []
+        for i, (fi_obj, sri_obj) in enumerate(zip(fi_list, sri_list)):
+            fi_avail  = fi_obj  is not None and fi_obj.available
+            sri_avail = sri_obj is not None and sri_obj.available
+            if fi_avail or sri_avail:
+                fi_proxy  = FullInstantonProxy(fi_obj)  if fi_avail  else None
+                sri_proxy = SlowRollInstantonProxy(sri_obj) if sri_avail else None
+                cf_payload_data.append({
+                    **_cf_key_payload(traj_proxy, fi_proxy, sri_proxy, dns_val, cosmo, atol, rtol),
+                    "_do_not_populate": True,
+                })
+                valid_indices.append(i)
+        cf_index_by_dns[dns_val] = valid_indices
+        if cf_payload_data:
+            cf_refs[dns_val] = pool.object_get_vectorized(
+                "CompactionFunction", dns_val, payload_data=cf_payload_data
+            )
+
+    dns_with_cf = list(cf_refs.keys())
+    cf_raw      = dict(zip(dns_with_cf, ray.get([cf_refs[d] for d in dns_with_cf]))) if dns_with_cf else {}
+
+    # Reconstruct index-aligned cf_by_dns.
+    cf_by_dns = {}
+    for dns_val, combos in by_dns.items():
+        full_list = [None] * len(combos)
+        for i, cf in zip(cf_index_by_dns.get(dns_val, []), cf_raw.get(dns_val, [])):
+            full_list[i] = cf
+        cf_by_dns[dns_val] = full_list
+
+    # Emit work items, one sub-folder per combination.
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for dns_val, combos in by_dns.items():
+        fi_list  = fi_resolved[dns_val]
+        sri_list = sri_resolved[dns_val]
+        cf_list  = cf_by_dns[dns_val]
+
+        for combo_idx, (N_init_v, N_final_v) in enumerate(combos):
+            fi_obj  = fi_list[combo_idx]
+            sri_obj = sri_list[combo_idx]
+            fi_available  = fi_obj  is not None and fi_obj.available
             sri_available = sri_obj is not None and sri_obj.available
             if not fi_available and not sri_available:
                 continue
-            payload = _instanton_key_payload(traj_proxy, N_init_v, N_final_v, rep_dns, atol, rtol)
-            fi_ref = pool.object_get("FullInstanton", **payload) if fi_available else None
-            sri_ref = pool.object_get("SlowRollInstanton", **payload) if sri_available else None
+
+            combo_dir = (
+                out_dir
+                / f"Ninit={_safe_num(float(N_init_v))}"
+                  f"_Nfinal={_safe_num(float(N_final_v))}"
+                  f"_dNstar={_safe_num(float(dns_val))}"
+            )
+            combo_dir.mkdir(parents=True, exist_ok=True)
+
+            cf_annotation = _extract_cf_annotation(cf_list[combo_idx], units)
+
+            payload  = _instanton_key_payload(traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol)
+            fi_ref   = pool.object_get("FullInstanton",     **payload) if fi_available  else None
+            sri_ref  = pool.object_get("SlowRollInstanton", **payload) if sri_available else None
             work_items.append((_plot_fields_item, (
-                fi_ref, sri_ref, float(N_init_v), float(N_final_v), float(rep_dns),
-                potential, str(out_dir), fmt,
+                fi_ref, sri_ref, float(N_init_v), float(N_final_v), float(dns_val),
+                potential, str(combo_dir), fmt, cf_annotation,
             )))
-            fi_proxy_for_cf = FullInstantonProxy(fi_obj) if fi_available else None
-            sri_proxy_for_cf = SlowRollInstantonProxy(sri_obj) if sri_available else None
+
+            fi_proxy_for_cf  = FullInstantonProxy(fi_obj)       if fi_available  else None
+            sri_proxy_for_cf = SlowRollInstantonProxy(sri_obj)  if sri_available else None
             cf_ref = pool.object_get(
                 "CompactionFunction",
                 **_cf_key_payload(traj_proxy, fi_proxy_for_cf, sri_proxy_for_cf,
-                                   rep_dns, cosmo, atol, rtol),
+                                   dns_val, cosmo, atol, rtol),
             )
             work_items.append((_plot_compaction_item, (
-                cf_ref, float(N_init_v), float(N_final_v), float(rep_dns),
-                potential.name, str(out_dir), fmt,
+                cf_ref, float(N_init_v), float(N_final_v), float(dns_val),
+                potential.name, str(combo_dir), fmt, cf_annotation,
             )))
 
 
@@ -841,7 +957,7 @@ def run_plots(pool, units, args):
     N_final_array = inputs["N_final_array"]
     dns_array     = inputs["dns_array"]
 
-    selected_models = _evenly_sample(inputs["model_list"], args.max_combinations)
+    selected_models = _evenly_sample(inputs["model_list"], args.max_trajectories)
     print(f"\n>> Fetching {len(selected_models)} trajectory record(s)...")
     traj_list = ray.get(
         pool.object_get(
@@ -869,18 +985,25 @@ def run_plots(pool, units, args):
     cosmo = ray.get(pool.object_get("CosmologicalParams", params=Planck2018()))
     print(f"   Cosmological parameters: {cosmo.name} (store_id={cosmo.store_id})")
 
-    max_combos = args.max_combinations
+    max_combos           = args.max_combinations
+    max_instanton_samples = args.max_instanton_samples
 
     work_items = []
     for traj in traj_list:
-        potential = traj._potential
+        potential  = traj._potential
         traj_proxy = InflatonTrajectoryProxy(traj)
-        traj_dir = output_dir / f"{_safe_name(potential.name)}_traj{traj.store_id}"
+        traj_dir   = output_dir / f"{_safe_name(potential.name)}_traj{traj.store_id}"
         traj_dir.mkdir(parents=True, exist_ok=True)
         print(f"\n>> Trajectory {traj.store_id} ({potential.name}) -> {traj_dir}/")
 
         work_items.append((_plot_trajectory_item, (traj_proxy, potential, str(traj_dir), fmt)))
 
+        _generate_instanton_samples(
+            pool, traj_proxy, potential, traj_dir / "instantons", fmt,
+            N_init_array=N_init_array, N_final_array=N_final_array, dns_array=dns_array,
+            atol=atol, rtol=rtol, max_instanton_samples=max_instanton_samples,
+            work_items=work_items, cosmo=cosmo, units=units,
+        )
         _sweep_Ninit_or_Nfinal(
             pool, traj_proxy, potential, traj_dir / "N-init", fmt,
             swept_name="N_init", swept_array=N_init_array,
