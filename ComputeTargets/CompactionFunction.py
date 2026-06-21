@@ -564,6 +564,14 @@ class CompactionFunction(DatastoreObject):
         return getattr(self, "_C_bar_max_slow_roll", None)
 
     @property
+    def C_threshold(self) -> float:
+        return self._C_threshold
+
+    @property
+    def C_bar_threshold(self) -> float:
+        return self._C_bar_threshold
+
+    @property
     def V_end_downflow_slow_roll(self) -> Optional[float]:
         return getattr(self, "_V_end_downflow_slow_roll", None)
 

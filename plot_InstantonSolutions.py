@@ -16,6 +16,7 @@
 import itertools
 import math
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -191,22 +192,85 @@ def _cf_annotation_text(ann):
 
 
 def _add_cf_annotation(fig, ann_text):
-    """Add ann_text as a small figure-level annotation and adjust layout."""
+    """Add ann_text as a small figure-level annotation and adjust layout.
+
+    The footer sits at y≈0.003; the annotation is anchored at y=0.03 so
+    there is always a clear gap between them regardless of line count.
+    """
     if not ann_text:
         fig.tight_layout()
         return
     n_lines = ann_text.count("\n") + 1
-    bottom_frac = 0.07 * n_lines
+    # 0.03 = dedicated footer strip; 0.05/line for annotation text + padding
+    bottom_frac = 0.03 + 0.05 * n_lines
     fig.tight_layout(rect=[0, bottom_frac, 1, 1])
     fig.text(
         0.5,
-        0.01,
+        0.03,
         ann_text,
         ha="center",
         va="bottom",
         fontsize="x-small",
         transform=fig.transFigure,
     )
+
+
+def _provenance_footer(fig, *objs, render_time=None):
+    """Render a small, unobtrusive provenance line at the very bottom of fig.
+
+    Introspects whatever public attributes are present on each object; never
+    raises if an attribute is absent or if the object is not yet persisted.
+    """
+    if render_time is None:
+        render_time = datetime.now()
+
+    obj_parts = []
+    for obj in objs:
+        fields = []
+        try:
+            if hasattr(obj, "available") and obj.available:
+                fields.append(f"id={obj.store_id}")
+        except Exception:
+            pass
+        try:
+            ts = getattr(obj, "timestamp", None)
+            if ts is not None:
+                fields.append(f"stored={ts.strftime('%Y-%m-%d %H:%M')}")
+        except Exception:
+            pass
+        for attr in ("atol", "rtol", "label"):
+            try:
+                val = getattr(obj, attr, None)
+                if val is not None:
+                    try:
+                        formatted = f"{float(val):.2g}"
+                    except (TypeError, ValueError):
+                        formatted = str(val)
+                    fields.append(f"{attr}={formatted}")
+            except Exception:
+                pass
+        if fields:
+            obj_parts.append(f"{type(obj).__name__}({', '.join(fields)})")
+
+    parts = [
+        f"StochasticInstanton v{VERSION_LABEL}",
+        render_time.strftime("%Y-%m-%d %H:%M:%S"),
+    ]
+    parts.extend(obj_parts)
+
+    try:
+        fig.text(
+            0.5,
+            0.003,
+            "  |  ".join(parts),
+            ha="center",
+            va="bottom",
+            fontsize=7,
+            color="#888888",
+            transform=fig.transFigure,
+        )
+    except Exception:
+        pass
 
 
 # ── Figure functions ──────────────────────────────────────────────────────────
@@ -290,6 +354,7 @@ def plot_background_fields(traj, potential, units, output_dir, fmt):
 
     fig.suptitle(f"Background trajectory — {potential.name}")
     fig.tight_layout()
+    _provenance_footer(fig, traj)
 
     fname = output_dir / f"background_fields.{fmt}"
     fig.savefig(fname)
@@ -319,6 +384,7 @@ def plot_epsilon(traj, potential, units, output_dir, fmt):
     ax.set_title(rf"Slow-roll parameter $\epsilon$ — {potential.name}")
     ax.legend()
     fig.tight_layout()
+    _provenance_footer(fig, traj)
 
     fname = output_dir / f"background_epsilon.{fmt}"
     fig.savefig(fname)
@@ -347,7 +413,7 @@ def plot_instanton_fields(
         return
 
     Mp = units.PlanckMass
-    fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+    fig, axes = plt.subplots(2, 2, figsize=(10, 7))
     ax_phi, ax_pi, ax_P1, ax_P2 = (axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1])
 
     # Top-left: φ₁ (full instanton) and φ (slow-roll instanton)
@@ -434,7 +500,25 @@ def plot_instanton_fields(
         rf"$N_{{\rm init}}$={N_init_val:.3g}, $N_{{\rm final}}$={N_final_val:.3g}, "
         rf"$\delta N_\star$={dns_val:.3g}"
     )
-    _add_cf_annotation(fig, _cf_annotation_text(cf_annotation))
+
+    # MSR action annotation alongside the CF summary
+    msr_parts = []
+    if fi is not None and fi.available and not fi.failure:
+        action = getattr(fi, "msr_action", None)
+        if action is not None:
+            msr_parts.append(rf"Full: $S_{{\rm MSR}}$={action:.4g}")
+    if sri is not None and sri.available and not sri.failure:
+        action = getattr(sri, "msr_action", None)
+        if action is not None:
+            msr_parts.append(rf"SR: $S_{{\rm MSR}}$={action:.4g}")
+    msr_text = "   ".join(msr_parts) if msr_parts else None
+
+    cf_text = _cf_annotation_text(cf_annotation)
+    ann_lines = [t for t in (cf_text, msr_text) if t]
+    _add_cf_annotation(fig, "\n".join(ann_lines) if ann_lines else None)
+
+    objs_for_footer = [o for o in (fi, sri) if o is not None]
+    _provenance_footer(fig, *objs_for_footer)
 
     fname = output_dir / f"instanton_fields.{fmt}"
     fig.savefig(fname)
@@ -474,6 +558,7 @@ def plot_msr_action_sweep(
     ax.set_title(f"MSR action vs {x_label} — {potential_name} ({fixed_desc})")
     ax.legend(fontsize="small")
     fig.tight_layout()
+    _provenance_footer(fig)
 
     swept_file = {"N_init": "Ninit", "N_final": "Nfinal", "delta_Nstar": "dNstar"}[
         swept_name
@@ -537,6 +622,7 @@ def plot_zeta_and_compaction(
         rf"$\delta N_\star$={dns_val:.3g}"
     )
     _add_cf_annotation(fig, _cf_annotation_text(cf_annotation))
+    _provenance_footer(fig, cf)
 
     fname = output_dir / f"compaction.{fmt}"
     fig.savefig(fname)
@@ -552,6 +638,7 @@ def plot_compaction_summary(
     output_dir,
     fmt,
     swept_name,
+    threshold=None,
 ):
     """Two-panel summary: left = max C and max C̄ vs swept parameter;
     right = PBH mass in solar masses (log y-scale) vs swept parameter."""
@@ -588,7 +675,14 @@ def plot_compaction_summary(
         ax_C.plot(sri_xC, sri_yC, "s-", label=r"$\max C$ (SR)")
     if sri_xCb:
         ax_C.plot(sri_xCb, sri_yCb, "s--", label=r"$\max \bar{C}$ (SR)")
-    ax_C.axhline(y=0.4, color="gray", linestyle=":", linewidth=0.8, label="Threshold")
+    threshold_val = threshold if threshold is not None else 0.4
+    ax_C.axhline(
+        y=threshold_val,
+        color="gray",
+        linestyle=":",
+        linewidth=0.8,
+        label=f"Threshold ({threshold_val:.2f})",
+    )
     ax_C.set_xlabel(x_label)
     ax_C.set_ylabel(r"$\max C,\;\max \bar{C}$")
     ax_C.set_title("Compaction function maxima")
@@ -610,6 +704,7 @@ def plot_compaction_summary(
 
     fig.suptitle(rf"Compaction summary — {potential_name} ({fixed_desc})")
     fig.tight_layout()
+    _provenance_footer(fig)
 
     fname = output_dir / f"compaction_summary_vs_{swept_file}__{fixed_desc}.{fmt}"
     fig.savefig(fname)
@@ -730,6 +825,7 @@ def _plot_compaction_summary_item(
     output_dir_str,
     fmt,
     swept_name,
+    threshold=None,
 ):
     """Runs inside a Ray worker: two-panel compaction summary sweep plot."""
     # sns.set_theme(style="ticks", context="paper")
@@ -744,6 +840,7 @@ def _plot_compaction_summary_item(
         output_dir,
         fmt,
         swept_name,
+        threshold=threshold,
     )
 
 
@@ -946,10 +1043,25 @@ def _sweep_Ninit_or_Nfinal(
         SolarMass = units.SolarMass
         fi_cf_points = []
         sri_cf_points = []
+        c_thresholds = set()
         for sv, cf in zip(swept_vals, cf_list):
             s = _extract_cf_summary(cf, SolarMass)
             fi_cf_points.append((sv, s[0], s[1], s[2], s[3]))
             sri_cf_points.append((sv, s[4], s[5], s[6], s[7]))
+            if cf is not None and cf.available and not cf.failure:
+                try:
+                    c_thresholds.add(cf.C_threshold)
+                except Exception:
+                    pass
+        threshold = None
+        if len(c_thresholds) == 1:
+            threshold = next(iter(c_thresholds))
+        elif len(c_thresholds) > 1:
+            print(
+                f"  Warning: C_threshold varies across sweep: {sorted(c_thresholds)}. "
+                "Using smallest value."
+            )
+            threshold = sorted(c_thresholds)[0]
         if any(
             p[1] is not None or p[3] is not None for p in fi_cf_points + sri_cf_points
         ):
@@ -965,6 +1077,7 @@ def _sweep_Ninit_or_Nfinal(
                         str(out_dir),
                         fmt,
                         swept_name,
+                        threshold,
                     ),
                 )
             )
@@ -1095,12 +1208,27 @@ def _sweep_delta_Nstar(
 
         fi_cf_points = []
         sri_cf_points = []
+        c_thresholds = set()
         for dns_val in dns_array:
             cf = cf_by_dns[dns_val][combo_idx]
             s = _extract_cf_summary(cf, SolarMass)
             dns_float = float(dns_val)
             fi_cf_points.append((dns_float, s[0], s[1], s[2], s[3]))
             sri_cf_points.append((dns_float, s[4], s[5], s[6], s[7]))
+            if cf is not None and cf.available and not cf.failure:
+                try:
+                    c_thresholds.add(cf.C_threshold)
+                except Exception:
+                    pass
+        threshold = None
+        if len(c_thresholds) == 1:
+            threshold = next(iter(c_thresholds))
+        elif len(c_thresholds) > 1:
+            print(
+                f"  Warning: C_threshold varies across sweep: {sorted(c_thresholds)}. "
+                "Using smallest value."
+            )
+            threshold = sorted(c_thresholds)[0]
         if any(
             p[1] is not None or p[3] is not None for p in fi_cf_points + sri_cf_points
         ):
@@ -1116,6 +1244,7 @@ def _sweep_delta_Nstar(
                         str(out_dir),
                         fmt,
                         "delta_Nstar",
+                        threshold,
                     ),
                 )
             )
