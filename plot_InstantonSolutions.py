@@ -201,8 +201,13 @@ def _add_cf_annotation(fig, ann_text):
         fig.tight_layout()
         return
     n_lines = ann_text.count("\n") + 1
-    # 0.03 = dedicated footer strip; 0.05/line for annotation text + padding
-    bottom_frac = 0.03 + 0.05 * n_lines
+    # Reserve space in absolute inches (text size is fixed in points, not
+    # figure-relative), then convert to a figure-fraction for this fig's
+    # actual height. Avoids over-reserving whitespace on taller figures.
+    fig_height_in = fig.get_size_inches()[1]
+    footer_strip_in = 0.18          # dedicated footer strip
+    per_line_in = 0.22              # x-small annotation line + padding
+    bottom_frac = (footer_strip_in + per_line_in * n_lines) / fig_height_in
     fig.tight_layout(rect=[0, bottom_frac, 1, 1])
     fig.text(
         0.5,
