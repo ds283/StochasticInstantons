@@ -256,6 +256,15 @@ def create_argument_parser():
         default=[],
         help="Explicit list of delta_Nstar values (overrides grid)",
     )
+    inst.add_argument(
+        "--sample-grid-csv",
+        type=str,
+        default=None,
+        help="Path to a CSV file of explicit (N_init, N_final, delta_Nstar) "
+        "triples, used in place of the --N-init-*/--N-final-*/--delta-Nstar-* "
+        "axis-grid arguments. Crossed against --m-values-Mp / model list as "
+        "usual, but NOT crossed against itself.",
+    )
 
     # Output sampling
     samp = parser.add_argument_group("Output sampling")

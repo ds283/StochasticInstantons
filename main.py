@@ -1,4 +1,3 @@
-import itertools
 import math
 import sys
 from datetime import datetime
@@ -20,6 +19,7 @@ from ComputeTargets.CompactionFunction import (
 from ComputeTargets.FullInstanton import FullInstantonProxy
 from ComputeTargets.SlowRollInstanton import SlowRollInstantonProxy
 from config.argument_parser import create_argument_parser
+from config.grid_builder import build_instanton_grid
 from config.pipeline_setup import build_pipeline_inputs
 from config.sharding import (
     ShardKeyType,
@@ -204,9 +204,7 @@ def _run_instanton_queue(
 def run_all_pipelines(
     pool: ShardedPool,
     model_list: List[dict],
-    N_init_array: List[N_init],
-    N_final_array: List[N_final],
-    delta_Nstar_array: List[delta_Nstar],
+    grid: list,
     phi0: phi_value,
     pi0: pi_value,
     samples_per_N: float,
@@ -271,16 +269,6 @@ def run_all_pipelines(
     if stop_after == "inflaton-trajectory":
         print("\n** Stopping after Stage 1 (--stop-after inflaton-trajectory)")
         return
-
-    ## -----------------------------------------------------------------------
-    ## Flatten (model, N_init, N_final, delta_Nstar) into a single grid
-    ## -----------------------------------------------------------------------
-
-    grid = list(
-        itertools.product(
-            range(len(model_list)), N_init_array, N_final_array, delta_Nstar_array
-        )
-    )
 
     def key_fields(item) -> dict:
         """Cheap identifying fields only — no N_sample. Used for Pass-1
@@ -658,16 +646,30 @@ def execute(pool: ShardedPool, units: UnitsLike):
     samples_per_N = args.samples_per_N
     print(f"   -- time sampling: {samples_per_N:.4g} samples per e-fold")
 
+    ## -----------------------------------------------------------------------
+    ## BUILD INSTANTON PARAMETER GRID
+    ## -----------------------------------------------------------------------
+    grid = build_instanton_grid(pool, model_list, args, N_init_array, N_final_array, dns_objects)
+
     n_models = len(model_list)
-    per_model_combinations = len(N_init_array) * len(N_final_array) * len(dns_objects)
-    total_combinations = n_models * per_model_combinations
-    print(
-        f"\n   >> {n_models} model{'s' if n_models != 1 else ''} and "
-        f"{len(N_init_array)} x {len(N_final_array)} x {len(dns_objects)} "
-        f"N_init/N_final/delta_Nstar grid = {per_model_combinations} "
-        f"parameter combination{'s' if per_model_combinations != 1 else ''} per model = "
-        f"{total_combinations} instanton combinations"
-    )
+    if getattr(args, "sample_grid_csv", None):
+        n_csv = len(grid) // n_models if n_models > 0 else len(grid)
+        total_combinations = len(grid)
+        print(
+            f"\n   >> {n_models} model{'s' if n_models != 1 else ''} × "
+            f"{n_csv} CSV sample point{'s' if n_csv != 1 else ''} = "
+            f"{total_combinations} instanton combination{'s' if total_combinations != 1 else ''}"
+        )
+    else:
+        per_model_combinations = len(N_init_array) * len(N_final_array) * len(dns_objects)
+        total_combinations = n_models * per_model_combinations
+        print(
+            f"\n   >> {n_models} model{'s' if n_models != 1 else ''} and "
+            f"{len(N_init_array)} x {len(N_final_array)} x {len(dns_objects)} "
+            f"N_init/N_final/delta_Nstar grid = {per_model_combinations} "
+            f"parameter combination{'s' if per_model_combinations != 1 else ''} per model = "
+            f"{total_combinations} instanton combinations"
+        )
 
     ## -----------------------------------------------------------------------
     ## REGISTER COSMOLOGICAL PARAMETERS
@@ -690,9 +692,7 @@ def execute(pool: ShardedPool, units: UnitsLike):
     run_all_pipelines(
         pool=pool,
         model_list=model_list,
-        N_init_array=N_init_array,
-        N_final_array=N_final_array,
-        delta_Nstar_array=dns_objects,
+        grid=grid,
         phi0=phi0,
         pi0=pi0,
         samples_per_N=samples_per_N,
