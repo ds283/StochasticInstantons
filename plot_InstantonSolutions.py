@@ -543,15 +543,20 @@ def plot_msr_action_sweep(
     if not fi_points and not sri_points:
         return
 
+    max_pts = max(len(fi_points), len(sri_points))
+    use_markers = max_pts <= 25
+    fmt_fi = "o-" if use_markers else "-"
+    fmt_sri = "s--" if use_markers else "--"
+
     fig, ax = plt.subplots(figsize=(7, 5.5))
     if fi_points:
         fi_sorted = sorted(fi_points)
         xs, ys = zip(*fi_sorted)
-        ax.semilogy(xs, ys, "o-", label="Full MSR")
+        ax.semilogy(xs, ys, fmt_fi, label="Full MSR")
     if sri_points:
         sri_sorted = sorted(sri_points)
         xs, ys = zip(*sri_sorted)
-        ax.semilogy(xs, ys, "s--", label="Slow-roll")
+        ax.semilogy(xs, ys, fmt_sri, label="Slow-roll")
 
     ax.set_xlabel(x_label)
     ax.set_ylabel(r"$S_{\rm MSR}$")
