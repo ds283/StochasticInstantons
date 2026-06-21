@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from datetime import datetime
 from math import exp, log
 from math import pi as PI
 from typing import List, Optional
@@ -452,13 +453,14 @@ class CompactionFunction(DatastoreObject):
         rtol: tolerance = None,
         label: Optional[str] = None,
         tags: Optional[List[store_tag]] = None,
+        timestamp: Optional[datetime] = None,
     ):
         if full_instanton is None and slow_roll_instanton is None:
             raise ValueError(
                 "CompactionFunction: at least one of full_instanton or "
                 "slow_roll_instanton must be provided."
             )
-        DatastoreObject.__init__(self, store_id)
+        DatastoreObject.__init__(self, store_id, timestamp=timestamp)
         self._full_instanton = full_instanton
         self._slow_roll_instanton = slow_roll_instanton
         self._trajectory = trajectory

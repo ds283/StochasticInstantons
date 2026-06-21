@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from datetime import datetime
 from typing import Optional
 
 from Datastore.object import DatastoreObject
@@ -30,8 +31,8 @@ class CosmologicalParams(DatastoreObject):
     Subsequent calls with the same parameter set name return the same store_id (idempotent).
     """
 
-    def __init__(self, store_id: Optional[int], params):
-        DatastoreObject.__init__(self, store_id)
+    def __init__(self, store_id: Optional[int], params, timestamp: Optional[datetime] = None):
+        DatastoreObject.__init__(self, store_id, timestamp=timestamp)
         self._params = params
 
     @property

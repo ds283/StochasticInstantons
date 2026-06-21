@@ -105,6 +105,7 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
 
         query = sqla.select(
             table.c.serial,
+            table.c.timestamp,
             table.c.N_total,
             table.c.msr_action,
             table.c.label,
@@ -152,6 +153,7 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
             rtol=rtol,
             diffusion_model=diffusion_model,
             label=row_data.label,
+            timestamp=row_data.timestamp,
         )
         obj._trajectory_serial = trajectory.store_id
         obj._delta_Nstar_serial = delta_Nstar_obj.store_id

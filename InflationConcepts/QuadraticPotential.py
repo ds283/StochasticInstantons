@@ -1,3 +1,4 @@
+from datetime import datetime
 from math import log
 from typing import Optional
 
@@ -15,8 +16,8 @@ class QuadraticPotential(AbstractPotential):
     (in units of the Planck mass).
     """
 
-    def __init__(self, store_id: int, m: inflaton_mass, units: Optional[UnitsLike] = None):
-        super().__init__(store_id, units)
+    def __init__(self, store_id: int, m: inflaton_mass, units: Optional[UnitsLike] = None, timestamp: Optional[datetime] = None):
+        super().__init__(store_id, units, timestamp=timestamp)
         self._m: inflaton_mass = m
         self._m_float: float = float(m)
         self._m_sq: float = self._m_float * self._m_float

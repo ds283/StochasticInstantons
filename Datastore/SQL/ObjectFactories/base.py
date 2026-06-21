@@ -28,3 +28,8 @@ class SQLAFactoryBase:
 
     def validate_on_startup(self, conn, table, tables, prune=False):
         raise NotImplementedError
+
+    @staticmethod
+    def _timestamp_column(table):
+        """Return table.c.timestamp if the table has that column, else None."""
+        return table.c.timestamp if hasattr(table.c, "timestamp") else None

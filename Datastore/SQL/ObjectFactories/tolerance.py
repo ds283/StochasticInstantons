@@ -41,23 +41,25 @@ class sqla_tolerance_factory(SQLAFactoryBase):
                 raise KeyError("Missing expected arguments 'log10_tol' or 'tol")
             log10_tol = log10(tol)
 
-        store_id = conn.execute(
-            sqla.select(table.c.serial).filter(
+        row_data = conn.execute(
+            sqla.select(table.c.serial, table.c.timestamp).filter(
                 sqla.func.abs(table.c.log10_tol - log10_tol) < DEFAULT_FLOAT_PRECISION
             )
-        ).scalar()
+        ).one_or_none()
 
-        if store_id is None:
+        if row_data is None:
             insert_data = {"log10_tol": log10_tol}
             if "serial" in payload:
                 insert_data["serial"] = payload["serial"]
             store_id = inserter(conn, insert_data)
-
+            timestamp = None
             attribute_set = {"_new_insert": True}
         else:
+            store_id = row_data.serial
+            timestamp = row_data.timestamp
             attribute_set = {"_deserialized": True}
 
-        obj = tolerance(store_id=store_id, log10_tol=log10_tol)
+        obj = tolerance(store_id=store_id, timestamp=timestamp, log10_tol=log10_tol)
         for key, value in attribute_set.items():
             setattr(obj, key, value)
         return obj

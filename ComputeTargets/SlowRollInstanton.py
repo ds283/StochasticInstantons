@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from datetime import datetime
 from typing import List, Optional
 
 import ray
@@ -393,8 +394,9 @@ class SlowRollInstanton(DatastoreObject):
         diffusion_model: Optional[AbstractDiffusionModel] = None,
         label: Optional[str] = None,
         tags: Optional[List[store_tag]] = None,
+        timestamp: Optional[datetime] = None,
     ):
-        DatastoreObject.__init__(self, store_id)
+        DatastoreObject.__init__(self, store_id, timestamp=timestamp)
         self._trajectory = trajectory
         self._N_init: N_init = N_init
         self._N_final: N_final = N_final

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 from math import log
 from typing import Optional
 
@@ -16,8 +17,8 @@ class AbstractPotential(DatastoreObject, ABC):
     provided but may be overridden for numerical stability.
     """
 
-    def __init__(self, store_id: int, units: Optional[UnitsLike] = None):
-        DatastoreObject.__init__(self, store_id)
+    def __init__(self, store_id: int, units: Optional[UnitsLike] = None, timestamp: Optional[datetime] = None):
+        DatastoreObject.__init__(self, store_id, timestamp=timestamp)
         self._units: Optional[UnitsLike] = units
 
     @property

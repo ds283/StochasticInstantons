@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from datetime import datetime
 from functools import total_ordering
 from typing import Iterable, Optional
 
@@ -27,13 +28,13 @@ class DimensionfulQuantity(DatastoreObject):
     # storage unit
     default_unit: Optional[str] = None
 
-    def __init__(self, store_id: int, value: float, name: str):
+    def __init__(self, store_id: int, value: float, name: str, timestamp: Optional[datetime] = None):
         """
         Represents a value of beta that can be used in the conformal coupling
         """
         if store_id is None:
             raise ValueError("Store ID cannot be None")
-        DatastoreObject.__init__(self, store_id)
+        DatastoreObject.__init__(self, store_id, timestamp=timestamp)
 
         if not isinstance(value, float):
             raise ValueError("value must be a float")

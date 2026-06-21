@@ -13,13 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from datetime import datetime
 from math import log10, pow
+from typing import Optional
 
 from Datastore import DatastoreObject
 
 
 class tolerance(DatastoreObject):
-    def __init__(self, store_id: int, **kwargs):
+    def __init__(self, store_id: int, timestamp: Optional[datetime] = None, **kwargs):
         """
         Construct a datastore-backed object representing a tolerance (absolute or relative).
         Effectively tokenizes a floating point number to an integer.
@@ -28,7 +30,7 @@ class tolerance(DatastoreObject):
         """
         if store_id is None:
             raise ValueError("Store ID cannot be None")
-        DatastoreObject.__init__(self, store_id)
+        DatastoreObject.__init__(self, store_id, timestamp=timestamp)
 
         if "log10_tol" in kwargs:
             log10_tol = kwargs["log10_tol"]

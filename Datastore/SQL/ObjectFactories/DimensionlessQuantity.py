@@ -44,6 +44,7 @@ class sqla_dimensionless_quantity_factory(SQLAFactoryBase):
         if fabs(value) == 0:
             query = sqla.select(
                 table.c.serial,
+                table.c.timestamp,
             ).filter(
                 sqla.func.abs(table.c.value - value)
                 < DEFAULT_DIMENSIONLESS_QUANTITY_PRECISION
@@ -51,6 +52,7 @@ class sqla_dimensionless_quantity_factory(SQLAFactoryBase):
         else:
             query = sqla.select(
                 table.c.serial,
+                table.c.timestamp,
             ).filter(
                 sqla.func.abs((table.c.value - value) / value)
                 < DEFAULT_DIMENSIONLESS_QUANTITY_RELATIVE_PRECISION
@@ -63,15 +65,18 @@ class sqla_dimensionless_quantity_factory(SQLAFactoryBase):
             if "serial" in payload:
                 insert_data["serial"] = payload["serial"]
             store_id = inserter(conn, insert_data)
+            timestamp = None
             attribute_set = {"_new_insert": True}
         else:
             store_id = row_data.serial
+            timestamp = row_data.timestamp
             attribute_set = {"_deserialized": True}
 
         # return the constructed object
         obj = self.ObjectType(
             store_id=store_id,
             value=value,
+            timestamp=timestamp,
         )
         for k, v in attribute_set.items():
             setattr(obj, k, v)

@@ -1,5 +1,6 @@
+from datetime import datetime
 from functools import total_ordering
-from typing import Iterable, Self
+from typing import Iterable, Optional, Self
 
 from Datastore import DatastoreObject
 from config.defaults import DEFAULT_FLOAT_PRECISION
@@ -19,10 +20,10 @@ class efold_value(DatastoreObject):
     floating-point equality comparisons.
     """
 
-    def __init__(self, store_id: int, N: float):
+    def __init__(self, store_id: int, N: float, timestamp: Optional[datetime] = None):
         if store_id is None:
             raise ValueError("Store ID cannot be None")
-        DatastoreObject.__init__(self, store_id)
+        DatastoreObject.__init__(self, store_id, timestamp=timestamp)
         self.N = N
 
     def __float__(self):

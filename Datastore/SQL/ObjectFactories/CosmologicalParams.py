@@ -43,7 +43,7 @@ class sqla_cosmological_params_factory(SQLAFactoryBase):
         params = payload["params"]
         name = params.name
 
-        query = sqla.select(table.c.serial).filter(table.c.name == name)
+        query = sqla.select(table.c.serial, table.c.timestamp).filter(table.c.name == name)
         row = conn.execute(query).one_or_none()
 
         if row is None:
@@ -59,11 +59,11 @@ class sqla_cosmological_params_factory(SQLAFactoryBase):
             if "serial" in payload:
                 insert_data["serial"] = payload["serial"]
             store_id = inserter(conn, insert_data)
-            obj = CosmologicalParams(store_id=store_id, params=params)
+            obj = CosmologicalParams(store_id=store_id, params=params, timestamp=None)
             obj._new_insert = True
         else:
             store_id = row.serial
-            obj = CosmologicalParams(store_id=store_id, params=params)
+            obj = CosmologicalParams(store_id=store_id, params=params, timestamp=row.timestamp)
             obj._deserialized = True
 
         return obj

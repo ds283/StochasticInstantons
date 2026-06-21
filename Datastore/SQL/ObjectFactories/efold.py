@@ -28,11 +28,11 @@ class sqla_efold_factory(SQLAFactoryBase):
         N = payload["N"]
 
         if fabs(N) == 0:
-            query = sqla.select(table.c.serial).filter(
+            query = sqla.select(table.c.serial, table.c.timestamp).filter(
                 sqla.func.abs(table.c.N - N) < DEFAULT_EFOLD_PRECISION
             )
         else:
-            query = sqla.select(table.c.serial).filter(
+            query = sqla.select(table.c.serial, table.c.timestamp).filter(
                 sqla.func.abs((table.c.N - N) / N) < DEFAULT_EFOLD_RELATIVE_PRECISION
             )
 
@@ -43,12 +43,14 @@ class sqla_efold_factory(SQLAFactoryBase):
             if "serial" in payload:
                 insert_data["serial"] = payload["serial"]
             store_id = inserter(conn, insert_data)
+            timestamp = None
             attribute_set = {"_new_insert": True}
         else:
             store_id = row_data.serial
+            timestamp = row_data.timestamp
             attribute_set = {"_deserialized": True}
 
-        obj = efold_value(store_id=store_id, N=N)
+        obj = efold_value(store_id=store_id, N=N, timestamp=timestamp)
         for key, value in attribute_set.items():
             setattr(obj, key, value)
         return obj

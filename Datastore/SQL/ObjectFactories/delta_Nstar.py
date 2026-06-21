@@ -28,12 +28,12 @@ class sqla_delta_Nstar_factory(SQLAFactoryBase):
         value = payload["value"]
 
         if fabs(value) == 0:
-            query = sqla.select(table.c.serial).filter(
+            query = sqla.select(table.c.serial, table.c.timestamp).filter(
                 sqla.func.abs(table.c.value - value)
                 < DEFAULT_DIMENSIONLESS_QUANTITY_PRECISION
             )
         else:
-            query = sqla.select(table.c.serial).filter(
+            query = sqla.select(table.c.serial, table.c.timestamp).filter(
                 sqla.func.abs((table.c.value - value) / value)
                 < DEFAULT_DIMENSIONLESS_QUANTITY_RELATIVE_PRECISION
             )
@@ -45,12 +45,14 @@ class sqla_delta_Nstar_factory(SQLAFactoryBase):
             if "serial" in payload:
                 insert_data["serial"] = payload["serial"]
             store_id = inserter(conn, insert_data)
+            timestamp = None
             attribute_set = {"_new_insert": True}
         else:
             store_id = row_data.serial
+            timestamp = row_data.timestamp
             attribute_set = {"_deserialized": True}
 
-        obj = delta_Nstar(store_id=store_id, value=value)
+        obj = delta_Nstar(store_id=store_id, value=value, timestamp=timestamp)
         for key, v in attribute_set.items():
             setattr(obj, key, v)
         return obj

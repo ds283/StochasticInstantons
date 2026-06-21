@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from datetime import datetime
 from typing import Optional, List
 
 import ray
@@ -203,8 +204,9 @@ class InflatonTrajectory(DatastoreObject):
         diffusion_model: Optional[AbstractDiffusionModel] = None,
         label: Optional[str] = None,
         tags: Optional[List[store_tag]] = None,
+        timestamp: Optional[datetime] = None,
     ):
-        DatastoreObject.__init__(self, store_id)
+        DatastoreObject.__init__(self, store_id, timestamp=timestamp)
         self._phi0: phi_value = phi0
         self._pi0: pi_value = pi0
         self._potential: AbstractPotential = potential

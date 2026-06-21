@@ -103,6 +103,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
 
         query = sqla.select(
             table.c.serial,
+            table.c.timestamp,
             table.c.N_end,
             table.c.diagnostics_json,
         ).filter(
@@ -137,6 +138,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             atol=atol,
             rtol=rtol,
             diffusion_model=diffusion_model,
+            timestamp=row_data.timestamp,
         )
         obj._N_end = row_data.N_end
         obj._diagnostics = (

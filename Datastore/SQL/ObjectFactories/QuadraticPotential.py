@@ -31,7 +31,7 @@ class sqla_QuadraticPotential_factory(SQLAFactoryBase):
     def build(self, payload, conn, table, inserter, tables, inserters):
         m: inflaton_mass = payload["m"]
 
-        query = sqla.select(table.c.serial).filter(
+        query = sqla.select(table.c.serial, table.c.timestamp).filter(
             table.c.mass_id == m.store_id
         )
         row_data = conn.execute(query).one_or_none()
@@ -41,12 +41,14 @@ class sqla_QuadraticPotential_factory(SQLAFactoryBase):
             if "serial" in payload:
                 insert_data["serial"] = payload["serial"]
             store_id = inserter(conn, insert_data)
+            timestamp = None
             attribute_set = {"_new_insert": True}
         else:
             store_id = row_data.serial
+            timestamp = row_data.timestamp
             attribute_set = {"_deserialized": True}
 
-        obj = QuadraticPotential(store_id=store_id, m=m, units=payload.get("units", None))
+        obj = QuadraticPotential(store_id=store_id, m=m, units=payload.get("units", None), timestamp=timestamp)
         for key, value in attribute_set.items():
             setattr(obj, key, value)
         return obj

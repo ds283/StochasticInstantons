@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union
+from datetime import datetime
+from typing import Optional, Union
 
 from CosmologyConcepts import DimensionfulQuantity
 
@@ -21,15 +22,15 @@ from CosmologyConcepts import DimensionfulQuantity
 class phi_value(DimensionfulQuantity):
     default_unit = "PlanckMass"
 
-    def __init__(self, store_id: int, value: float):
-        super().__init__(store_id, value, "phi_value")
+    def __init__(self, store_id: int, value: float, timestamp: Optional[datetime] = None):
+        super().__init__(store_id, value, "phi_value", timestamp=timestamp)
 
 
 class pi_value(DimensionfulQuantity):
     default_unit = "PlanckMass"
 
-    def __init__(self, store_id: int, value: float):
-        super().__init__(store_id, value, "pi_value")
+    def __init__(self, store_id: int, value: float, timestamp: Optional[datetime] = None):
+        super().__init__(store_id, value, "pi_value", timestamp=timestamp)
 
 
 FieldLike = Union[phi_value, pi_value, float]

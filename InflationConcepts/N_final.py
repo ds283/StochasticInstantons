@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Optional
+
 from CosmologyConcepts.DimensionlessQuantity import DimensionlessQuantity
 
 
@@ -10,5 +13,5 @@ class N_final(DimensionlessQuantity):
     means "5 e-folds before the end of inflation". Convention: value > 0.
     """
 
-    def __init__(self, store_id: int, value: float):
-        super().__init__(store_id, value, "N_final")
+    def __init__(self, store_id: int, value: float, timestamp: Optional[datetime] = None):
+        super().__init__(store_id, value, "N_final", timestamp=timestamp)

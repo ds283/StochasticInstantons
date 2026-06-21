@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Optional
+
 from CosmologyConcepts.DimensionlessQuantity import DimensionlessQuantity
 
 
@@ -15,8 +18,8 @@ class delta_Nstar(DimensionlessQuantity):
     delta_Nstar value.
     """
 
-    def __init__(self, store_id: int, value: float):
-        super().__init__(store_id, value, "delta_Nstar")
+    def __init__(self, store_id: int, value: float, timestamp: Optional[datetime] = None):
+        super().__init__(store_id, value, "delta_Nstar", timestamp=timestamp)
 
     @property
     def shard_key(self) -> "delta_Nstar":

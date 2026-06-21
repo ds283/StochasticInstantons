@@ -1,3 +1,4 @@
+from datetime import datetime
 from math import log
 from typing import Optional
 
@@ -15,8 +16,8 @@ class QuarticPotential(AbstractPotential):
     quartic_coupling object.
     """
 
-    def __init__(self, store_id: int, lambda_: quartic_coupling, units: Optional[UnitsLike] = None):
-        super().__init__(store_id, units)
+    def __init__(self, store_id: int, lambda_: quartic_coupling, units: Optional[UnitsLike] = None, timestamp: Optional[datetime] = None):
+        super().__init__(store_id, units, timestamp=timestamp)
         self._lambda: quartic_coupling = lambda_
         self._lambda_float: float = float(lambda_)
 

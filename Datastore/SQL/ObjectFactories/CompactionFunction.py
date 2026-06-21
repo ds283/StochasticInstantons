@@ -133,6 +133,7 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
 
         query = sqla.select(
             table.c.serial,
+            table.c.timestamp,
             table.c.failure_full,
             table.c.failure_slow_roll,
             table.c.r_max_C_full_Mpc,
@@ -208,6 +209,7 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
             rtol=rtol,
             label=label,
             tags=tags,
+            timestamp=row.timestamp,
         )
         obj._failure = bool(row.failure_full) and bool(row.failure_slow_roll)
         obj._diagnostics = json.loads(row.metadata) if row.metadata else None
