@@ -413,7 +413,7 @@ def plot_instanton_fields(
         return
 
     Mp = units.PlanckMass
-    fig, axes = plt.subplots(2, 2, figsize=(10, 7))
+    fig, axes = plt.subplots(2, 2, figsize=(10, 9))
     ax_phi, ax_pi, ax_P1, ax_P2 = (axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1])
 
     # Top-left: φ₁ (full instanton) and φ (slow-roll instanton)
@@ -655,26 +655,43 @@ def plot_compaction_summary(
     fi_xCb, fi_yCb = _unzip(fi_cf_points, 2)
     fi_xM, fi_yM = _unzip(fi_cf_points, 3)
     fi_xMb, fi_yMb = _unzip(fi_cf_points, 4)
+    fi_xr, fi_yr = _unzip(fi_cf_points, 5)
+    fi_xrb, fi_yrb = _unzip(fi_cf_points, 6)
     sri_xC, sri_yC = _unzip(sri_cf_points, 1)
     sri_xCb, sri_yCb = _unzip(sri_cf_points, 2)
     sri_xM, sri_yM = _unzip(sri_cf_points, 3)
     sri_xMb, sri_yMb = _unzip(sri_cf_points, 4)
+    sri_xr, sri_yr = _unzip(sri_cf_points, 5)
+    sri_xrb, sri_yrb = _unzip(sri_cf_points, 6)
 
     has_C_data = any(len(v) > 0 for v in (fi_xC, fi_xCb, sri_xC, sri_xCb))
     has_M_data = any(len(v) > 0 for v in (fi_xM, fi_xMb, sri_xM, sri_xMb))
-    if not has_C_data and not has_M_data:
+    has_r_data = any(len(v) > 0 for v in (fi_xr, fi_xrb, sri_xr, sri_xrb))
+    if not has_C_data and not has_M_data and not has_r_data:
         return
 
-    fig, (ax_C, ax_M) = plt.subplots(1, 2, figsize=(10, 5))
+    all_series = (
+        fi_xC, fi_xCb, sri_xC, sri_xCb,
+        fi_xM, fi_xMb, sri_xM, sri_xMb,
+        fi_xr, fi_xrb, sri_xr, sri_xrb,
+    )
+    max_pts = max((len(x) for x in all_series), default=0)
+    use_markers = max_pts <= 25
+    fmt_full_s = "o-" if use_markers else "-"
+    fmt_full_d = "o--" if use_markers else "--"
+    fmt_sr_s = "s-" if use_markers else "-"
+    fmt_sr_d = "s--" if use_markers else "--"
+
+    fig, (ax_C, ax_M, ax_r) = plt.subplots(1, 3, figsize=(15, 5))
 
     if fi_xC:
-        ax_C.plot(fi_xC, fi_yC, "o-", label=r"$\max C$ (full)")
+        ax_C.plot(fi_xC, fi_yC, fmt_full_s, label=r"$\max C$ (full)")
     if fi_xCb:
-        ax_C.plot(fi_xCb, fi_yCb, "o--", label=r"$\max \bar{C}$ (full)")
+        ax_C.plot(fi_xCb, fi_yCb, fmt_full_d, label=r"$\max \bar{C}$ (full)")
     if sri_xC:
-        ax_C.plot(sri_xC, sri_yC, "s-", label=r"$\max C$ (SR)")
+        ax_C.plot(sri_xC, sri_yC, fmt_sr_s, label=r"$\max C$ (SR)")
     if sri_xCb:
-        ax_C.plot(sri_xCb, sri_yCb, "s--", label=r"$\max \bar{C}$ (SR)")
+        ax_C.plot(sri_xCb, sri_yCb, fmt_sr_d, label=r"$\max \bar{C}$ (SR)")
     threshold_val = threshold if threshold is not None else 0.4
     ax_C.axhline(
         y=threshold_val,
@@ -689,18 +706,32 @@ def plot_compaction_summary(
     ax_C.legend(fontsize="small")
 
     if fi_xM:
-        ax_M.semilogy(fi_xM, fi_yM, "o-", label=r"$M_C$ (full)")
+        ax_M.semilogy(fi_xM, fi_yM, fmt_full_s, label=r"$M_C$ (full)")
     if fi_xMb:
-        ax_M.semilogy(fi_xMb, fi_yMb, "o--", label=r"$M_{\bar{C}}$ (full)")
+        ax_M.semilogy(fi_xMb, fi_yMb, fmt_full_d, label=r"$M_{\bar{C}}$ (full)")
     if sri_xM:
-        ax_M.semilogy(sri_xM, sri_yM, "s-", label=r"$M_C$ (SR)")
+        ax_M.semilogy(sri_xM, sri_yM, fmt_sr_s, label=r"$M_C$ (SR)")
     if sri_xMb:
-        ax_M.semilogy(sri_xMb, sri_yMb, "s--", label=r"$M_{\bar{C}}$ (SR)")
+        ax_M.semilogy(sri_xMb, sri_yMb, fmt_sr_d, label=r"$M_{\bar{C}}$ (SR)")
     ax_M.set_xlabel(x_label)
     ax_M.set_ylabel(r"$M_{\rm PBH}\,/\,M_\odot$")
     ax_M.set_title("PBH mass")
     if has_M_data:
         ax_M.legend(fontsize="small")
+
+    if fi_xr:
+        ax_r.semilogy(fi_xr, fi_yr, fmt_full_s, label=r"$r_{\rm max,C}$ (full)")
+    if fi_xrb:
+        ax_r.semilogy(fi_xrb, fi_yrb, fmt_full_d, label=r"$r_{\rm max,\bar{C}}$ (full)")
+    if sri_xr:
+        ax_r.semilogy(sri_xr, sri_yr, fmt_sr_s, label=r"$r_{\rm max,C}$ (SR)")
+    if sri_xrb:
+        ax_r.semilogy(sri_xrb, sri_yrb, fmt_sr_d, label=r"$r_{\rm max,\bar{C}}$ (SR)")
+    ax_r.set_xlabel(x_label)
+    ax_r.set_ylabel(r"$r_{\rm PBH}\,/\,\mathrm{Mpc}$")
+    ax_r.set_title("PBH collapse scale")
+    if has_r_data:
+        ax_r.legend(fontsize="small")
 
     fig.suptitle(rf"Compaction summary — {potential_name} ({fixed_desc})")
     fig.tight_layout()
@@ -889,16 +920,25 @@ def _qualifying_action(obj):
     return obj.msr_action
 
 
-def _extract_cf_summary(cf, SolarMass):
-    """Return (C_max_full, C_bar_max_full, M_C_full_solar, M_C_bar_full_solar,
-               C_max_sr,   C_bar_max_sr,   M_C_sr_solar,   M_C_bar_sr_solar)
-    from a CompactionFunction object, or an all-None 8-tuple when unavailable."""
-    none8 = (None,) * 8
+def _extract_cf_summary(cf, units):
+    """Return a 12-tuple:
+        (C_max_full, C_bar_max_full, M_C_full_solar, M_C_bar_full_solar,
+         C_max_sr,   C_bar_max_sr,   M_C_sr_solar,   M_C_bar_sr_solar,
+         r_max_C_full_Mpc, r_max_C_bar_full_Mpc,
+         r_max_C_sr_Mpc,   r_max_C_bar_sr_Mpc)
+    from a CompactionFunction object, or an all-None 12-tuple when unavailable."""
+    none12 = (None,) * 12
     if cf is None or not cf.available or cf.failure:
-        return none8
+        return none12
+
+    SolarMass = units.SolarMass
+    Mpc = units.Mpc
 
     def _m(v):
         return v / SolarMass if v is not None else None
+
+    def _r(v):
+        return v / Mpc if v is not None else None
 
     return (
         cf.C_max_full,
@@ -909,6 +949,10 @@ def _extract_cf_summary(cf, SolarMass):
         cf.C_bar_max_slow_roll,
         _m(cf.M_C_slow_roll),
         _m(cf.M_C_bar_slow_roll),
+        _r(cf.r_max_C_full),
+        _r(cf.r_max_C_bar_full),
+        _r(cf.r_max_C_slow_roll),
+        _r(cf.r_max_C_bar_slow_roll),
     )
 
 
@@ -1040,14 +1084,13 @@ def _sweep_Ninit_or_Nfinal(
         cf_list = _cf_vectorized_fetch(
             pool, traj_proxy, fi_list, sri_list, dns_val, cosmo, atol, rtol
         )
-        SolarMass = units.SolarMass
         fi_cf_points = []
         sri_cf_points = []
         c_thresholds = set()
         for sv, cf in zip(swept_vals, cf_list):
-            s = _extract_cf_summary(cf, SolarMass)
-            fi_cf_points.append((sv, s[0], s[1], s[2], s[3]))
-            sri_cf_points.append((sv, s[4], s[5], s[6], s[7]))
+            s = _extract_cf_summary(cf, units)
+            fi_cf_points.append((sv, s[0], s[1], s[2], s[3], s[8], s[9]))
+            sri_cf_points.append((sv, s[4], s[5], s[6], s[7], s[10], s[11]))
             if cf is not None and cf.available and not cf.failure:
                 try:
                     c_thresholds.add(cf.C_threshold)
@@ -1174,8 +1217,6 @@ def _sweep_delta_Nstar(
             full_list[i] = cf
         cf_by_dns[dns_val] = full_list
 
-    SolarMass = units.SolarMass
-
     for combo_idx, (N_init_v, N_final_v) in enumerate(selected):
         fi_points = [
             (float(dns_val), _qualifying_action(fi_by_dns[dns_val][combo_idx]))
@@ -1211,10 +1252,10 @@ def _sweep_delta_Nstar(
         c_thresholds = set()
         for dns_val in dns_array:
             cf = cf_by_dns[dns_val][combo_idx]
-            s = _extract_cf_summary(cf, SolarMass)
+            s = _extract_cf_summary(cf, units)
             dns_float = float(dns_val)
-            fi_cf_points.append((dns_float, s[0], s[1], s[2], s[3]))
-            sri_cf_points.append((dns_float, s[4], s[5], s[6], s[7]))
+            fi_cf_points.append((dns_float, s[0], s[1], s[2], s[3], s[8], s[9]))
+            sri_cf_points.append((dns_float, s[4], s[5], s[6], s[7], s[10], s[11]))
             if cf is not None and cf.available and not cf.failure:
                 try:
                     c_thresholds.add(cf.C_threshold)
