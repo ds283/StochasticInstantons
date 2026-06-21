@@ -28,6 +28,7 @@ from ComputeTargets import InflatonTrajectoryProxy
 from ComputeTargets.FullInstanton import FullInstantonProxy
 from ComputeTargets.SlowRollInstanton import SlowRollInstantonProxy
 from config.argument_parser import create_argument_parser
+from config.grid_builder import build_instanton_grid
 from config.pipeline_setup import build_pipeline_inputs
 from config.sharding import (
     ShardKeyType,
@@ -1316,11 +1317,16 @@ def _generate_instanton_samples(
     work_items,
     cosmo,
     units,
+    combos=None,
 ):
     """Sample the full 3-D (N_init × N_final × δN★) grid evenly and emit
     instanton_fields + compaction work items into per-combination sub-folders
-    under out_dir/."""
-    all_combos = list(itertools.product(N_init_array, N_final_array, dns_array))
+    under out_dir/. When combos is provided (CSV mode), use it directly instead
+    of building the Cartesian product from N_init_array/N_final_array/dns_array."""
+    if combos is None:
+        all_combos = list(itertools.product(N_init_array, N_final_array, dns_array))
+    else:
+        all_combos = combos
     selected = _evenly_sample(all_combos, max_instanton_samples)
     if not selected:
         return
@@ -1497,10 +1503,16 @@ def run_plots(pool, units, args):
     N_init_array = inputs["N_init_array"]
     N_final_array = inputs["N_final_array"]
     dns_array = inputs["dns_array"]
+    model_list = inputs["model_list"]
 
-    selected_models = _evenly_sample(inputs["model_list"], args.max_trajectories)
+    selected_models = _evenly_sample(model_list, args.max_trajectories)
+    # Map each selected model back to its index in model_list (needed to filter
+    # CSV grid tuples per trajectory; _evenly_sample returns elements by reference).
+    id_to_model_idx = {id(m): i for i, m in enumerate(model_list)}
+    selected_model_indices = [id_to_model_idx[id(sm)] for sm in selected_models]
+
     print(f"\n>> Fetching {len(selected_models)} trajectory record(s)...")
-    traj_list = ray.get(
+    raw_trajs = ray.get(
         pool.object_get(
             "InflatonTrajectory",
             payload_data=[
@@ -1516,14 +1528,24 @@ def run_plots(pool, units, args):
             ],
         )
     )
-    traj_list = [t for t in traj_list if t.available and t._potential is not None]
+    # Preserve the model_idx for each trajectory so CSV tuples can be filtered
+    # per trajectory inside the loop.
+    filtered = [
+        (selected_model_indices[i], t)
+        for i, t in enumerate(raw_trajs)
+        if t.available and t._potential is not None
+    ]
+    traj_list = [t for _, t in filtered]
+    traj_model_indices = [idx for idx, _ in filtered]
     print(f"   {len(traj_list)} trajectory record(s) found in database")
 
     if not traj_list:
         print("No trajectories found. Run main.py first.")
         return
 
-    if not dns_array:
+    csv_mode = getattr(args, "sample_grid_csv", None)
+
+    if not csv_mode and not dns_array:
         print("No delta_Nstar values found. Run main.py first.")
         return
 
@@ -1534,8 +1556,17 @@ def run_plots(pool, units, args):
     max_combos = args.max_combinations
     max_instanton_samples = args.max_instanton_samples
 
+    if csv_mode:
+        csv_grid = build_instanton_grid(pool, model_list, args, N_init_array, N_final_array, dns_array)
+        print(
+            "\n>> --sample-grid-csv active: skipping N-init/N-final/delta-Nstar axis "
+            "sweep plots (require dense axis coverage); only instantons/ will be generated."
+        )
+    else:
+        csv_grid = None
+
     work_items = []
-    for traj in traj_list:
+    for traj_idx, traj in enumerate(traj_list):
         potential = traj._potential
         traj_proxy = InflatonTrajectoryProxy(traj)
         traj_dir = output_dir / f"{_safe_name(potential.name)}_traj{traj.store_id}"
@@ -1545,6 +1576,16 @@ def run_plots(pool, units, args):
         work_items.append(
             (_plot_trajectory_item, (traj_proxy, potential, str(traj_dir), fmt))
         )
+
+        if csv_mode:
+            model_idx = traj_model_indices[traj_idx]
+            traj_combos = [
+                (N_init, N_final, dns)
+                for (midx, N_init, N_final, dns) in csv_grid
+                if midx == model_idx
+            ]
+        else:
+            traj_combos = None
 
         _generate_instanton_samples(
             pool,
@@ -1561,57 +1602,60 @@ def run_plots(pool, units, args):
             work_items=work_items,
             cosmo=cosmo,
             units=units,
+            combos=traj_combos,
         )
-        _sweep_Ninit_or_Nfinal(
-            pool,
-            traj_proxy,
-            potential,
-            traj_dir / "N-init",
-            fmt,
-            swept_name="N_init",
-            swept_array=N_init_array,
-            fixed_other_array=N_final_array,
-            dns_array=dns_array,
-            atol=atol,
-            rtol=rtol,
-            max_combos=max_combos,
-            work_items=work_items,
-            cosmo=cosmo,
-            units=units,
-        )
-        _sweep_Ninit_or_Nfinal(
-            pool,
-            traj_proxy,
-            potential,
-            traj_dir / "N-final",
-            fmt,
-            swept_name="N_final",
-            swept_array=N_final_array,
-            fixed_other_array=N_init_array,
-            dns_array=dns_array,
-            atol=atol,
-            rtol=rtol,
-            max_combos=max_combos,
-            work_items=work_items,
-            cosmo=cosmo,
-            units=units,
-        )
-        _sweep_delta_Nstar(
-            pool,
-            traj_proxy,
-            potential,
-            traj_dir / "delta-Nstar",
-            fmt,
-            dns_array=dns_array,
-            N_init_array=N_init_array,
-            N_final_array=N_final_array,
-            atol=atol,
-            rtol=rtol,
-            max_combos=max_combos,
-            work_items=work_items,
-            cosmo=cosmo,
-            units=units,
-        )
+
+        if not csv_mode:
+            _sweep_Ninit_or_Nfinal(
+                pool,
+                traj_proxy,
+                potential,
+                traj_dir / "N-init",
+                fmt,
+                swept_name="N_init",
+                swept_array=N_init_array,
+                fixed_other_array=N_final_array,
+                dns_array=dns_array,
+                atol=atol,
+                rtol=rtol,
+                max_combos=max_combos,
+                work_items=work_items,
+                cosmo=cosmo,
+                units=units,
+            )
+            _sweep_Ninit_or_Nfinal(
+                pool,
+                traj_proxy,
+                potential,
+                traj_dir / "N-final",
+                fmt,
+                swept_name="N_final",
+                swept_array=N_final_array,
+                fixed_other_array=N_init_array,
+                dns_array=dns_array,
+                atol=atol,
+                rtol=rtol,
+                max_combos=max_combos,
+                work_items=work_items,
+                cosmo=cosmo,
+                units=units,
+            )
+            _sweep_delta_Nstar(
+                pool,
+                traj_proxy,
+                potential,
+                traj_dir / "delta-Nstar",
+                fmt,
+                dns_array=dns_array,
+                N_init_array=N_init_array,
+                N_final_array=N_final_array,
+                atol=atol,
+                rtol=rtol,
+                max_combos=max_combos,
+                work_items=work_items,
+                cosmo=cosmo,
+                units=units,
+            )
 
     print(f"\n>> Dispatching {len(work_items)} plot(s) for rendering...")
     work_queue = RayWorkPool(
