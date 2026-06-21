@@ -263,7 +263,9 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
                 samples_table.c.zeta,
                 samples_table.c.C,
                 samples_table.c.C_bar,
-            ).filter(samples_table.c.parent_serial == obj.store_id)
+            )
+            .filter(samples_table.c.parent_serial == obj.store_id)
+            .order_by(samples_table.c.source, samples_table.c.r_Mpc)
         ).fetchall()
 
         full_vals = []
@@ -280,6 +282,14 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
                 full_vals.append(v)
             elif r.source == "slow_roll":
                 sr_vals.append(v)
+
+        for label, vals in (("full", full_vals), ("slow_roll", sr_vals)):
+            r_vals = [v.r for v in vals]
+            if any(r_vals[i] > r_vals[i + 1] for i in range(len(r_vals) - 1)):
+                raise RuntimeError(
+                    f"CompactionFunction(id={obj.store_id}): {label} sample r-values are not "
+                    f"non-decreasing after ORDER BY — database may be corrupt"
+                )
 
         obj._full_values = full_vals
         obj._slow_roll_values = sr_vals

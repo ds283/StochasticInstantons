@@ -186,16 +186,15 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
             sqla.select(
                 value_table.c.N_serial,
                 value_table.c.fields_json,
-            ).filter(value_table.c.instanton_serial == obj.store_id)
+                efold_table.c.N,
+            )
+            .select_from(value_table.join(efold_table, value_table.c.N_serial == efold_table.c.serial))
+            .filter(value_table.c.instanton_serial == obj.store_id)
+            .order_by(efold_table.c.N)
         ).fetchall()
 
         for r in rows:
-            efold_row = conn.execute(
-                sqla.select(efold_table.c.serial, efold_table.c.N).filter(
-                    efold_table.c.serial == r.N_serial
-                )
-            ).one()
-            N_obj = efold_value(store_id=efold_row.serial, N=efold_row.N)
+            N_obj = efold_value(store_id=r.N_serial, N=r.N)
             data = json.loads(r.fields_json)
             obj._values.append(
                 FullInstantonValue(
@@ -206,6 +205,13 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
                     P1=  data["P1_invPlanckMass"][0] / units.PlanckMass,
                     P2=  data["P2_invPlanckMass"][0] / units.PlanckMass,
                 )
+            )
+
+        N_vals = [v.N.N for v in obj._values]
+        if any(N_vals[i] > N_vals[i + 1] for i in range(len(N_vals) - 1)):
+            raise RuntimeError(
+                f"FullInstanton(id={obj.store_id}): N-values are not non-decreasing after "
+                f"ORDER BY — database may be corrupt"
             )
 
     def store(self, obj, conn, table, inserter, tables, inserters):
