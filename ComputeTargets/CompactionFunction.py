@@ -59,6 +59,45 @@ def ln_k_phys_Mpc(
     )
 
 
+def _classify_r_max(r_v, C_v, C_bar_v, C_threshold: float, C_bar_threshold: float):
+    """
+    Classify r_max_C and r_max_C_bar from sample arrays, returning diagnostic flags.
+
+    Returns (r_max_C, r_max_C_bar, r_max_C_at_grid_edge, r_max_C_bar_extrapolated).
+
+    r_max_C_at_grid_edge is True iff C_v[-1] >= C_threshold (the backward scan
+    found its threshold crossing at the very last sample, meaning the grid did
+    not extend far enough to see C turn over).
+
+    r_max_C_bar_extrapolated is True iff C_bar_v[-1] >= C_bar_threshold (the
+    last sample is still above threshold, so r_max_C_bar is set by the analytic
+    power-law continuation rather than by an inward threshold crossing).
+
+    Both flags are False when the corresponding r_max value is None.
+    """
+    r_max_C = None
+    r_max_C_at_grid_edge = False
+    for i in range(len(r_v) - 1, -1, -1):
+        if C_v[i] >= C_threshold:
+            r_max_C = float(r_v[i])
+            r_max_C_at_grid_edge = i == len(r_v) - 1
+            break
+
+    C_bar_last = float(C_bar_v[-1])
+    r_last = float(r_v[-1])
+    r_max_C_bar_extrapolated = C_bar_last >= C_bar_threshold
+    r_max_C_bar = None
+    if r_max_C_bar_extrapolated:
+        r_max_C_bar = r_last * (C_bar_last / C_bar_threshold) ** (1.0 / 3.0)
+    else:
+        for i in range(len(r_v) - 1, -1, -1):
+            if C_bar_v[i] >= C_bar_threshold:
+                r_max_C_bar = float(r_v[i])
+                break
+
+    return r_max_C, r_max_C_bar, r_max_C_at_grid_edge, r_max_C_bar_extrapolated
+
+
 def _compute_instanton_path(
     instanton_obj,
     is_slow_roll: bool,
@@ -255,26 +294,10 @@ def _compute_instanton_path(
         ]
     )
 
-    C_bar_last = float(C_bar_v[-1])
-    r_last = float(r_v[-1])
-
     # ── Step E: r_max ─────────────────────────────────────────────────────
-    # r_max_C: largest r with C >= C_threshold
-    r_max_C = None
-    for i in range(len(r_v) - 1, -1, -1):
-        if C_v[i] >= C_threshold:
-            r_max_C = float(r_v[i])
-            break
-
-    # r_max_C_bar: analytic extrapolation or last inward crossing
-    r_max_C_bar = None
-    if C_bar_last >= C_bar_threshold:
-        r_max_C_bar = r_last * (C_bar_last / C_bar_threshold) ** (1.0 / 3.0)
-    else:
-        for i in range(len(r_v) - 1, -1, -1):
-            if C_bar_v[i] >= C_bar_threshold:
-                r_max_C_bar = float(r_v[i])
-                break
+    r_max_C, r_max_C_bar, r_max_C_at_grid_edge, r_max_C_bar_extrapolated = (
+        _classify_r_max(r_v, C_v, C_bar_v, C_threshold, C_bar_threshold)
+    )
 
     # ── Step F: PBH mass ──────────────────────────────────────────────────
     k_star = 0.05 / units.Mpc
@@ -307,6 +330,8 @@ def _compute_instanton_path(
             "type_II": type_II,
             "n_valid_points": int(np.sum(valid_mask)),
             "n_total_points": len(values),
+            "r_max_C_bar_extrapolated": r_max_C_bar_extrapolated,
+            "r_max_C_at_grid_edge": r_max_C_at_grid_edge,
         },
     }
 
