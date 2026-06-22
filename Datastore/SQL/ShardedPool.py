@@ -785,6 +785,7 @@ class ShardedPool:
 
         # assign any shard keys that we can, without going out to the database
         # (because this is bound to be slower)
+        seen_store_ids = set()
         missing_keys = []
         for item in data:
             if not isinstance(item, self._ShardKeyType):
@@ -792,8 +793,9 @@ class ShardedPool:
                     f'shard keys should be of type "{self._ShardKeyType_name}"'
                 )
 
-            if item.store_id not in self._shard_keys:
+            if item.store_id not in self._shard_keys and item.store_id not in seen_store_ids:
                 missing_keys.append(item)
+                seen_store_ids.add(item.store_id)
 
         # if no work to do, return
         if len(missing_keys) == 0:
