@@ -1489,6 +1489,390 @@ def _generate_instanton_samples(
             )
 
 
+# ── DOE scalar collection and summary plots ───────────────────────────────────
+
+
+def _collect_doe_scalar_data(
+    pool,
+    traj_proxy,
+    grid_combos,
+    cosmo,
+    atol,
+    rtol,
+    units,
+) -> list:
+    """Return a list of dicts (one per available grid point) with scalar summaries.
+    Grid points where neither FullInstanton nor SlowRollInstanton is available
+    are omitted entirely."""
+    if not grid_combos:
+        return []
+
+    # Group by dns value (shard key) to allow one vectorized fetch per shard.
+    by_dns = {}
+    for combo_idx, (N_init_obj, N_final_obj, dns_obj) in enumerate(grid_combos):
+        key = float(dns_obj)
+        if key not in by_dns:
+            by_dns[key] = {"dns_obj": dns_obj, "pairs": []}
+        by_dns[key]["pairs"].append((combo_idx, N_init_obj, N_final_obj))
+
+    # Issue vectorized instanton fetches per shard.
+    fi_refs = {}
+    sri_refs = {}
+    for dns_float, group in by_dns.items():
+        dns_val = group["dns_obj"]
+        pairs = group["pairs"]
+        payload_data = [
+            {
+                **_instanton_key_payload(traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol),
+                "_do_not_populate": True,
+            }
+            for _, N_init_v, N_final_v in pairs
+        ]
+        fi_refs[dns_float] = pool.object_get_vectorized(
+            "FullInstanton", dns_val, payload_data=payload_data
+        )
+        sri_refs[dns_float] = pool.object_get_vectorized(
+            "SlowRollInstanton", dns_val, payload_data=payload_data
+        )
+
+    dns_floats = list(by_dns.keys())
+    fi_results = ray.get([fi_refs[d] for d in dns_floats])
+    sri_results = ray.get([sri_refs[d] for d in dns_floats])
+    fi_by_dns = dict(zip(dns_floats, fi_results))
+    sri_by_dns = dict(zip(dns_floats, sri_results))
+
+    # Fetch CF scalars per shard.
+    cf_by_dns = {}
+    for dns_float, group in by_dns.items():
+        dns_val = group["dns_obj"]
+        fi_list = fi_by_dns[dns_float]
+        sri_list = sri_by_dns[dns_float]
+        cf_by_dns[dns_float] = _cf_vectorized_fetch(
+            pool, traj_proxy, fi_list, sri_list, dns_val, cosmo, atol, rtol
+        )
+
+    result = []
+    for dns_float, group in by_dns.items():
+        dns_val = group["dns_obj"]
+        pairs = group["pairs"]
+        fi_list = fi_by_dns[dns_float]
+        sri_list = sri_by_dns[dns_float]
+        cf_list = cf_by_dns[dns_float]
+
+        for local_idx, (_, N_init_obj, N_final_obj) in enumerate(pairs):
+            fi_obj = fi_list[local_idx]
+            sri_obj = sri_list[local_idx]
+            cf_obj = cf_list[local_idx]
+
+            fi_avail = fi_obj is not None and fi_obj.available
+            sri_avail = sri_obj is not None and sri_obj.available
+            if not fi_avail and not sri_avail:
+                continue
+
+            s = _extract_cf_summary(cf_obj, units)
+            result.append({
+                "N_init":               float(N_init_obj),
+                "N_final":              float(N_final_obj),
+                "delta_Nstar":          float(dns_val),
+                "delta_N":              float(N_init_obj) - float(N_final_obj),
+                "msr_action_full":      _qualifying_action(fi_obj),
+                "msr_action_sr":        _qualifying_action(sri_obj),
+                "C_max_full":           s[0],
+                "C_bar_max_full":       s[1],
+                "M_C_full_solar":       s[2],
+                "M_C_bar_full_solar":   s[3],
+                "r_max_C_full_Mpc":     s[8],
+                "r_max_C_bar_full_Mpc": s[9],
+                "C_max_sr":             s[4],
+                "C_bar_max_sr":         s[5],
+                "M_C_sr_solar":         s[6],
+                "M_C_bar_sr_solar":     s[7],
+                "r_max_C_sr_Mpc":       s[10],
+                "r_max_C_bar_sr_Mpc":   s[11],
+            })
+
+    return result
+
+
+def plot_doe_scalar_summary(
+    data_points,
+    potential_name: str,
+    output_dir,
+    fmt: str,
+    threshold: float = 0.4,
+):
+    from matplotlib.colors import LogNorm, Normalize
+    from matplotlib.lines import Line2D
+
+    if not data_points:
+        return
+
+    dns_arr = np.array([d["delta_Nstar"] for d in data_points])
+    dN_arr = np.array([d["delta_N"] for d in data_points])
+
+    # ── Figure 1: compaction maxima, MSR action, threshold boundary ───────────
+    cb_max_f = [d["C_bar_max_full"] for d in data_points]
+    cb_max_s = [d["C_bar_max_sr"] for d in data_points]
+    c_max_f = [d["C_max_full"] for d in data_points]
+    c_max_s = [d["C_max_sr"] for d in data_points]
+    act_f = [d["msr_action_full"] for d in data_points]
+    act_s = [d["msr_action_sr"] for d in data_points]
+
+    any_fig1 = any(
+        v is not None
+        for v in cb_max_f + cb_max_s + c_max_f + c_max_s + act_f + act_s
+    )
+    if any_fig1:
+        fig1, axes1 = plt.subplots(2, 2, figsize=(12, 10))
+
+        def _cmp_panel(ax, full_vals, sr_vals, cbar_label, title):
+            f_ok = np.array([v is not None for v in full_vals])
+            s_ok = np.array([v is not None for v in sr_vals])
+            if not f_ok.any() and not s_ok.any():
+                return
+            v_f = np.array([v for v in full_vals if v is not None], dtype=float)
+            v_s = np.array([v for v in sr_vals if v is not None], dtype=float)
+            parts = [arr for arr in (v_f, v_s) if len(arr) > 0]
+            all_v = np.concatenate(parts)
+            vmin, vmax = float(all_v.min()), float(all_v.max())
+            if vmin >= vmax:
+                vmax = vmin + 1e-9
+
+            sc_ref = None
+            if f_ok.any():
+                ec = ["red" if v > threshold else "none" for v in v_f]
+                sc_ref = ax.scatter(
+                    dns_arr[f_ok], dN_arr[f_ok], c=v_f,
+                    vmin=vmin, vmax=vmax, cmap="viridis", marker="o",
+                    edgecolors=ec, linewidths=0.8, label="Full", zorder=3,
+                )
+            if s_ok.any():
+                ec = ["red" if v > threshold else "none" for v in v_s]
+                sc2 = ax.scatter(
+                    dns_arr[s_ok], dN_arr[s_ok], c=v_s,
+                    vmin=vmin, vmax=vmax, cmap="viridis", marker="^",
+                    edgecolors=ec, linewidths=0.8, label="SR", zorder=3,
+                )
+                if sc_ref is None:
+                    sc_ref = sc2
+
+            cb = fig1.colorbar(sc_ref, ax=ax)
+            cb.set_label(cbar_label)
+            if vmin < threshold < vmax:
+                t_norm = (threshold - vmin) / (vmax - vmin)
+                cb.ax.axhline(t_norm, color="k", linestyle="--", linewidth=1.0)
+            ax.set_xlabel(r"$\delta N_\star$")
+            ax.set_ylabel(r"$\Delta N = N_{\rm init} - N_{\rm final}$")
+            ax.set_title(title)
+            ax.legend(fontsize="small")
+
+        _cmp_panel(axes1[0, 0], cb_max_f, cb_max_s, r"$\max \bar{C}$", r"$\bar{C}_{\rm max}$")
+        _cmp_panel(axes1[0, 1], c_max_f, c_max_s, r"$\max C$", r"$C_{\rm max}$")
+
+        # Panel [1,0]: S_MSR with log colorbar
+        ax10 = axes1[1, 0]
+        f_idx = [i for i, v in enumerate(act_f) if v is not None]
+        s_idx = [i for i, v in enumerate(act_s) if v is not None]
+        if f_idx or s_idx:
+            act_all = [act_f[i] for i in f_idx] + [act_s[i] for i in s_idx]
+            pos_vals = [v for v in act_all if v > 0]
+            vmin_a = min(pos_vals) if pos_vals else 1e-10
+            vmax_a = max(act_all) if act_all else 1.0
+            try:
+                norm_a = LogNorm(vmin=vmin_a, vmax=max(vmax_a, vmin_a * 1.01))
+            except Exception:
+                norm_a = Normalize(vmin=vmin_a, vmax=vmax_a)
+
+            sc_a = None
+            if f_idx:
+                xs = dns_arr[np.array(f_idx)]
+                ys = dN_arr[np.array(f_idx)]
+                cs = np.array([act_f[i] for i in f_idx])
+                sc_a = ax10.scatter(
+                    xs, ys, c=cs, norm=norm_a, cmap="plasma",
+                    marker="o", label="Full", zorder=3,
+                )
+
+            common = [
+                (act_f[i], act_s[i]) for i in range(len(data_points))
+                if act_f[i] is not None and act_s[i] is not None
+            ]
+            sr_differs = any(
+                abs(af - asr) / (abs(af) + 1e-30) > 0.01 for af, asr in common
+            )
+            if (sr_differs or not f_idx) and s_idx:
+                xs = dns_arr[np.array(s_idx)]
+                ys = dN_arr[np.array(s_idx)]
+                cs = np.array([act_s[i] for i in s_idx])
+                sc2 = ax10.scatter(
+                    xs, ys, c=cs, norm=norm_a, cmap="plasma",
+                    marker="^", label="SR", zorder=3,
+                )
+                if sc_a is None:
+                    sc_a = sc2
+
+            if sc_a is not None:
+                cb_a = fig1.colorbar(sc_a, ax=ax10)
+                cb_a.set_label(r"$S_{\rm MSR}$")
+            ax10.legend(fontsize="small")
+
+        ax10.set_xlabel(r"$\delta N_\star$")
+        ax10.set_ylabel(r"$\Delta N = N_{\rm init} - N_{\rm final}$")
+        ax10.set_title(r"$S_{\rm MSR}$")
+
+        # Panel [1,1]: threshold boundary
+        ax11 = axes1[1, 1]
+        for i, d in enumerate(data_points):
+            cbf = d["C_bar_max_full"]
+            cbs = d["C_bar_max_sr"]
+            xi, yi = dns_arr[i], dN_arr[i]
+            if cbf is not None:
+                ax11.scatter(
+                    [xi], [yi],
+                    color="green" if cbf > threshold else "gray",
+                    marker="o", s=40, zorder=3,
+                )
+            if cbs is not None:
+                ax11.scatter(
+                    [xi], [yi],
+                    color="green" if cbs > threshold else "gray",
+                    marker="^", s=40, zorder=3,
+                )
+        _thr_gt = f"$> {threshold}$"
+        _thr_le = r"$\leq$" + f" {threshold}"
+        leg_elems = [
+            Line2D([0], [0], marker="o", color="w", markerfacecolor="green",
+                   label=r"Full: $\bar{C}_{\rm max}$ " + _thr_gt, markersize=8),
+            Line2D([0], [0], marker="o", color="w", markerfacecolor="gray",
+                   label=r"Full: $\bar{C}_{\rm max}$ " + _thr_le, markersize=8),
+            Line2D([0], [0], marker="^", color="w", markerfacecolor="green",
+                   label=r"SR: $\bar{C}_{\rm max}$ " + _thr_gt, markersize=8),
+            Line2D([0], [0], marker="^", color="w", markerfacecolor="gray",
+                   label=r"SR: $\bar{C}_{\rm max}$ " + _thr_le, markersize=8),
+        ]
+        ax11.legend(handles=leg_elems, fontsize="small")
+        ax11.set_xlabel(r"$\delta N_\star$")
+        ax11.set_ylabel(r"$\Delta N = N_{\rm init} - N_{\rm final}$")
+        ax11.set_title(r"Threshold boundary ($\bar{C}_{\rm max}$ " + _thr_gt + ")")
+
+        fig1.suptitle(f"DOE scalar summary — {potential_name}")
+        fig1.tight_layout()
+        _provenance_footer(fig1)
+        fig1.savefig(output_dir / f"doe_compaction_action.{fmt}")
+        plt.close(fig1)
+
+    # ── Figure 2: PBH mass and collapse radius ────────────────────────────────
+    M_f = [d["M_C_bar_full_solar"] for d in data_points]
+    M_s = [d["M_C_bar_sr_solar"] for d in data_points]
+    r_f = [d["r_max_C_bar_full_Mpc"] for d in data_points]
+    r_s = [d["r_max_C_bar_sr_Mpc"] for d in data_points]
+
+    any_fig2 = any(v is not None for v in M_f + M_s + r_f + r_s)
+    if any_fig2:
+        fig2, (ax_M, ax_r) = plt.subplots(1, 2, figsize=(12, 5))
+        vmin_dN = float(dN_arr.min())
+        vmax_dN = float(dN_arr.max())
+        if vmin_dN >= vmax_dN:
+            vmax_dN = vmin_dN + 1.0
+
+        def _mass_panel(ax, full_vals, sr_vals, y_label, title):
+            f_ok = np.array([v is not None and v > 0 for v in full_vals])
+            s_ok = np.array([v is not None and v > 0 for v in sr_vals])
+            if not f_ok.any() and not s_ok.any():
+                return None
+            sc_ref = None
+            if f_ok.any():
+                yf = np.array([v for v in full_vals if v is not None and v > 0])
+                sc_ref = ax.scatter(
+                    dns_arr[f_ok], yf, c=dN_arr[f_ok],
+                    vmin=vmin_dN, vmax=vmax_dN, cmap="coolwarm",
+                    marker="o", label="Full", zorder=3,
+                )
+            if s_ok.any():
+                ys = np.array([v for v in sr_vals if v is not None and v > 0])
+                sc2 = ax.scatter(
+                    dns_arr[s_ok], ys, c=dN_arr[s_ok],
+                    vmin=vmin_dN, vmax=vmax_dN, cmap="coolwarm",
+                    marker="^", label="SR", zorder=3,
+                )
+                if sc_ref is None:
+                    sc_ref = sc2
+            ax.set_yscale("log")
+            ax.set_xlabel(r"$\delta N_\star$")
+            ax.set_ylabel(y_label)
+            ax.set_title(title)
+            ax.legend(fontsize="small")
+            return sc_ref
+
+        sc_M = _mass_panel(ax_M, M_f, M_s, r"$M_{\rm PBH}\,/\,M_\odot$", "PBH mass")
+        sc_r = _mass_panel(ax_r, r_f, r_s, r"$r_{\rm PBH}\,/\,{\rm Mpc}$", "PBH collapse scale")
+
+        sc_cb = sc_M if sc_M is not None else sc_r
+        if sc_cb is not None:
+            cb2 = fig2.colorbar(sc_cb, ax=[ax_M, ax_r])
+            cb2.set_label(r"$\Delta N = N_{\rm init} - N_{\rm final}$")
+
+        fig2.suptitle(f"DOE mass and collapse scale — {potential_name}")
+        fig2.tight_layout()
+        _provenance_footer(fig2)
+        fig2.savefig(output_dir / f"doe_mass_collapse.{fmt}")
+        plt.close(fig2)
+
+
+@ray.remote
+def _plot_doe_summary_item(data_points, potential_name, output_dir_str, fmt, threshold):
+    sns.set_theme()
+    output_dir = Path(output_dir_str)
+    plot_doe_scalar_summary(data_points, potential_name, output_dir, fmt, threshold)
+
+
+def _run_doe_summary_plots(
+    pool,
+    traj_proxy,
+    potential,
+    traj_dir,
+    fmt: str,
+    grid_combos,
+    cosmo,
+    atol,
+    rtol,
+    units,
+    work_items: list,
+    threshold: float = 0.4,
+):
+    print(
+        f"   >> Collecting scalar summaries for {len(grid_combos)} "
+        f"grid point(s)..."
+    )
+    data_points = _collect_doe_scalar_data(
+        pool, traj_proxy, grid_combos, cosmo, atol, rtol, units
+    )
+    if not data_points:
+        print("   >> No data found — skipping DOE summary plots and CSV.")
+        return
+
+    print(
+        f"   >> {len(data_points)} point(s) with data; "
+        f"queuing DOE summary plots."
+    )
+    doe_dir = traj_dir / "doe_summary"
+    doe_dir.mkdir(parents=True, exist_ok=True)
+
+    work_items.append((
+        _plot_doe_summary_item,
+        (data_points, potential.name, str(doe_dir), fmt, threshold),
+    ))
+
+    import csv
+    csv_path = doe_dir / "scalar_data.csv"
+    fieldnames = list(data_points[0].keys())
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data_points)
+    print(f"   >> Scalar data written to {csv_path}")
+
+
 # ── Main pipeline ─────────────────────────────────────────────────────────────
 
 
@@ -1558,10 +1942,9 @@ def run_plots(pool, units, args):
 
     if csv_mode:
         csv_grid = build_instanton_grid(pool, model_list, args, N_init_array, N_final_array, dns_array)
-        print(
-            "\n>> --sample-grid-csv active: skipping N-init/N-final/delta-Nstar axis "
-            "sweep plots (require dense axis coverage); only instantons/ will be generated."
-        )
+        if not csv_grid:
+            print("No grid points found in --sample-grid-csv. Nothing to plot.")
+            return
     else:
         csv_grid = None
 
@@ -1577,84 +1960,126 @@ def run_plots(pool, units, args):
             (_plot_trajectory_item, (traj_proxy, potential, str(traj_dir), fmt))
         )
 
-        if csv_mode:
+        if csv_grid is not None:
             model_idx = traj_model_indices[traj_idx]
             traj_combos = [
                 (N_init, N_final, dns)
                 for (midx, N_init, N_final, dns) in csv_grid
                 if midx == model_idx
             ]
+            if not traj_combos:
+                print(f"   Skipping trajectory {traj.store_id}: no grid combos for this model.")
+                continue
         else:
             traj_combos = None
 
-        _generate_instanton_samples(
+        if args.no_store_values:
+            print(
+                "   >> --no-store-values active: skipping per-instanton field and "
+                "compaction-profile plots (value rows were not stored)."
+            )
+        else:
+            _generate_instanton_samples(
+                pool,
+                traj_proxy,
+                potential,
+                traj_dir / "instantons",
+                fmt,
+                N_init_array=N_init_array,
+                N_final_array=N_final_array,
+                dns_array=dns_array,
+                atol=atol,
+                rtol=rtol,
+                max_instanton_samples=max_instanton_samples,
+                work_items=work_items,
+                cosmo=cosmo,
+                units=units,
+                combos=traj_combos,
+            )
+
+        if csv_grid is not None:
+            seen_init, seen_final, seen_dns = {}, {}, {}
+            for N_init_obj, N_final_obj, dns_obj in traj_combos:
+                seen_init.setdefault(float(N_init_obj), N_init_obj)
+                seen_final.setdefault(float(N_final_obj), N_final_obj)
+                seen_dns.setdefault(float(dns_obj), dns_obj)
+            eff_N_init = [v for _, v in sorted(seen_init.items())]
+            eff_N_final = [v for _, v in sorted(seen_final.items())]
+            eff_dns = [v for _, v in sorted(seen_dns.items())]
+            print("   >> --sample-grid-csv active: sweep plots will reflect sparse DOE coverage")
+        else:
+            eff_N_init = N_init_array
+            eff_N_final = N_final_array
+            eff_dns = dns_array
+
+        _sweep_Ninit_or_Nfinal(
             pool,
             traj_proxy,
             potential,
-            traj_dir / "instantons",
+            traj_dir / "N-init",
             fmt,
-            N_init_array=N_init_array,
-            N_final_array=N_final_array,
-            dns_array=dns_array,
+            swept_name="N_init",
+            swept_array=eff_N_init,
+            fixed_other_array=eff_N_final,
+            dns_array=eff_dns,
             atol=atol,
             rtol=rtol,
-            max_instanton_samples=max_instanton_samples,
+            max_combos=max_combos,
             work_items=work_items,
             cosmo=cosmo,
             units=units,
-            combos=traj_combos,
+        )
+        _sweep_Ninit_or_Nfinal(
+            pool,
+            traj_proxy,
+            potential,
+            traj_dir / "N-final",
+            fmt,
+            swept_name="N_final",
+            swept_array=eff_N_final,
+            fixed_other_array=eff_N_init,
+            dns_array=eff_dns,
+            atol=atol,
+            rtol=rtol,
+            max_combos=max_combos,
+            work_items=work_items,
+            cosmo=cosmo,
+            units=units,
+        )
+        _sweep_delta_Nstar(
+            pool,
+            traj_proxy,
+            potential,
+            traj_dir / "delta-Nstar",
+            fmt,
+            dns_array=eff_dns,
+            N_init_array=eff_N_init,
+            N_final_array=eff_N_final,
+            atol=atol,
+            rtol=rtol,
+            max_combos=max_combos,
+            work_items=work_items,
+            cosmo=cosmo,
+            units=units,
         )
 
-        if not csv_mode:
-            _sweep_Ninit_or_Nfinal(
-                pool,
-                traj_proxy,
-                potential,
-                traj_dir / "N-init",
-                fmt,
-                swept_name="N_init",
-                swept_array=N_init_array,
-                fixed_other_array=N_final_array,
-                dns_array=dns_array,
-                atol=atol,
-                rtol=rtol,
-                max_combos=max_combos,
-                work_items=work_items,
-                cosmo=cosmo,
-                units=units,
+        if args.no_store_values:
+            grid_combos = traj_combos if csv_grid is not None else list(
+                itertools.product(N_init_array, N_final_array, dns_array)
             )
-            _sweep_Ninit_or_Nfinal(
-                pool,
-                traj_proxy,
-                potential,
-                traj_dir / "N-final",
-                fmt,
-                swept_name="N_final",
-                swept_array=N_final_array,
-                fixed_other_array=N_init_array,
-                dns_array=dns_array,
+            _run_doe_summary_plots(
+                pool=pool,
+                traj_proxy=traj_proxy,
+                potential=potential,
+                traj_dir=traj_dir,
+                fmt=fmt,
+                grid_combos=grid_combos,
+                cosmo=cosmo,
                 atol=atol,
                 rtol=rtol,
-                max_combos=max_combos,
-                work_items=work_items,
-                cosmo=cosmo,
                 units=units,
-            )
-            _sweep_delta_Nstar(
-                pool,
-                traj_proxy,
-                potential,
-                traj_dir / "delta-Nstar",
-                fmt,
-                dns_array=dns_array,
-                N_init_array=N_init_array,
-                N_final_array=N_final_array,
-                atol=atol,
-                rtol=rtol,
-                max_combos=max_combos,
                 work_items=work_items,
-                cosmo=cosmo,
-                units=units,
+                threshold=0.4,
             )
 
     print(f"\n>> Dispatching {len(work_items)} plot(s) for rendering...")
