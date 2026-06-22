@@ -1050,7 +1050,7 @@ def _inventory_dimensionful(pool, type_name, label, units):
 def _inventory_efold(pool):
     print("\n   -- E-fold sample values")
     try:
-        data = pool.inventory("efold")
+        data = pool.inventory("efold_value")
         vals = sorted(data.get("values", []))
         _print_value_list(vals, fmt=lambda v: f"{v:.6g}")
     except Exception as e:
