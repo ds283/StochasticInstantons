@@ -1844,7 +1844,7 @@ def plot_doe_scalar_summary(
 
         sc_cb = sc_M if sc_M is not None else sc_r
         if sc_cb is not None:
-            cb2 = fig2.colorbar(sc_cb, ax=[ax_M, ax_r])
+            cb2 = fig2.colorbar(sc_cb, ax=ax_r)
             cb2.set_label(r"$\Delta N = N_{\rm init} - N_{\rm final}$")
 
         fig2.suptitle(f"DOE mass and collapse scale — {potential_name}")
