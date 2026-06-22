@@ -500,15 +500,21 @@ class SlowRollInstanton(DatastoreObject):
         )
         return self._compute_ref
 
-    def store(self):
-        """
-        Called on the driver by RayWorkPool after compute() resolves.
-        Reads the result dict and populates internal state.
-        """
+    def store(self) -> None:
+        """Called on the driver by RayWorkPool after compute() resolves."""
         if self._compute_ref is None:
             raise RuntimeError("store() called but no compute() is in progress")
         data = ray.get(self._compute_ref)
         self._compute_ref = None
+        self._populate_from_result(data)
+
+    def _populate_from_result(self, data: dict) -> None:
+        """Populate internal state from a pre-computed result dict.
+
+        Called by store() after resolving the Ray future, and directly by
+        the pipeline store-handler when results arrive from compute_pipeline
+        without a compute() having been dispatched on this object.
+        """
         self._diagnostics = data.get("diagnostics")
         if data.get("failure", False):
             self._failure = True
