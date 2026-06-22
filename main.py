@@ -17,6 +17,7 @@ from ComputeTargets.CompactionFunction import (
     CompactionFunctionProxy,
 )
 from ComputeTargets.FullInstanton import FullInstantonProxy
+from ComputeTargets.pipeline import PipelineWorkItem
 from ComputeTargets.SlowRollInstanton import SlowRollInstantonProxy
 from config.argument_parser import create_argument_parser
 from config.grid_builder import build_instanton_grid
@@ -104,6 +105,276 @@ def inflaton_trajectory_store_handler(obj, pool):
         for N_obj, phi, pi in zip(efold_objects, raw["phi"], raw["pi"])
     ]
     del obj._raw_sample
+
+
+def _persist_pipeline_item(item: PipelineWorkItem, pool: ShardedPool, no_store_values: bool):
+    """
+    Persist FullInstanton, SlowRollInstanton, and CompactionFunction for one
+    pipeline work item, in FK order: fi first, then sri, then cf.
+
+    If fi or sri already exist in the database (scalar-only rows from a
+    prior DOE run), their store_ids are reused and no new rows are inserted.
+    Otherwise they are persisted as scalar-only (if no_store_values=True)
+    or full-fidelity (if False).
+
+    Returns the ObjectRef from pool.object_store(cf), which RayWorkPool
+    awaits before calling the validation_handler.
+    """
+    fi = item.fi
+    sri = item.sri
+    cf = item.cf
+
+    # ── FullInstanton ─────────────────────────────────────────────────────────
+    if item.fi_existing is not None and item.fi_existing.available:
+        # Reuse existing DB row as FK anchor — propagate its store_id to the
+        # freshly-computed fi object. Since cf._full_instanton IS fi (Python
+        # reference), this also fixes cf's FK reference.
+        fi._my_id = item.fi_existing.store_id
+    else:
+        if no_store_values:
+            fi.set_store_full_values(False)
+        fi_stored = ray.get(pool.object_store(fi))
+        fi._my_id = fi_stored.store_id
+        ray.get(pool.object_validate(fi))
+
+    # ── SlowRollInstanton ─────────────────────────────────────────────────────
+    if item.sri_existing is not None and item.sri_existing.available:
+        sri._my_id = item.sri_existing.store_id
+    else:
+        if no_store_values:
+            sri.set_store_full_values(False)
+        sri_stored = ray.get(pool.object_store(sri))
+        sri._my_id = sri_stored.store_id
+        ray.get(pool.object_validate(sri))
+
+    # ── CompactionFunction ────────────────────────────────────────────────────
+    # fi._my_id and sri._my_id are now set.
+    # cf._full_instanton IS fi and cf._slow_roll_instanton IS sri
+    # (reference semantics — set in PipelineWorkItem.store()), so
+    # the factory's store() will read the correct FK serials automatically.
+    if cf is None:
+        # Both fi and sri failed — no CF to store. fi and sri were already
+        # persisted above to prevent re-computation on subsequent runs.
+        raise RuntimeError(
+            "PipelineWorkItem: both FullInstanton and SlowRollInstanton failed; "
+            "CompactionFunction cannot be computed for this grid point."
+        )
+
+    if no_store_values:
+        cf.set_store_full_values(False)
+
+    return pool.object_store(cf)  # ObjectRef — RayWorkPool awaits this
+
+
+def _run_pipeline_queue(
+    pool: ShardedPool,
+    task_list: list,
+    key_fields,
+    full_payload,
+    shard_key_of,
+    traj_proxies: list,
+    cosmo,
+    atol,
+    rtol,
+    dm,
+    C_threshold: float,
+    C_bar_threshold: float,
+    no_store_values: bool,
+    title: str = "STAGES 2+3+4: UNIFIED PIPELINE",
+):
+    """
+    Unified pipeline queue: looks up pre-existing FullInstanton/SlowRollInstanton
+    and CompactionFunction rows, then dispatches compute_pipeline for missing items.
+
+    Pre-dispatch Steps A and B do scalar-only lookups for fi and sri (no value
+    rows fetched). Step C does the CF existence check using those store_ids.
+    The compute step runs a single RayWorkPool that computes all three targets
+    per grid point in one Ray task via PipelineWorkItem.
+    """
+    ## Step A: vectorized FullInstanton lookup (scalar-only)
+    binned = {}
+    for item in task_list:
+        binned.setdefault(shard_key_of(item), []).append(item)
+    shard_keys = list(binned.keys())
+
+    fi_query_queue = RayWorkPool(
+        pool,
+        shard_keys,
+        task_builder=lambda key: pool.object_get_vectorized(
+            "FullInstanton",
+            key,
+            payload_data=[
+                {**key_fields(item), "_do_not_populate": True} for item in binned[key]
+            ],
+        ),
+        compute_handler=None,
+        store_handler=None,
+        persist_handler=None,
+        validation_handler=None,
+        title=None,
+        store_results=True,
+        create_batch_size=20,
+        process_batch_size=20,
+    )
+    fi_query_queue.run()
+
+    fi_existing_map = {
+        id(item): obj
+        for key, objs in zip(shard_keys, fi_query_queue.results)
+        for item, obj in zip(binned[key], objs)
+    }
+
+    ## Step B: vectorized SlowRollInstanton lookup (scalar-only)
+    sri_query_queue = RayWorkPool(
+        pool,
+        shard_keys,
+        task_builder=lambda key: pool.object_get_vectorized(
+            "SlowRollInstanton",
+            key,
+            payload_data=[
+                {**key_fields(item), "_do_not_populate": True} for item in binned[key]
+            ],
+        ),
+        compute_handler=None,
+        store_handler=None,
+        persist_handler=None,
+        validation_handler=None,
+        title=None,
+        store_results=True,
+        create_batch_size=20,
+        process_batch_size=20,
+    )
+    sri_query_queue.run()
+
+    sri_existing_map = {
+        id(item): obj
+        for key, objs in zip(shard_keys, sri_query_queue.results)
+        for item, obj in zip(binned[key], objs)
+    }
+
+    ## Step C: CF existence check using actual instanton store_ids.
+    ## Only query for items where at least one instanton is in the DB; the rest
+    ## trivially have no CF (FK constraint) and go straight into cf_missing.
+
+    def cf_key_fields(item):
+        model_idx, N_init_obj, N_final_obj, dns = item
+        fi_obj = fi_existing_map[id(item)]
+        sri_obj = sri_existing_map[id(item)]
+        fi_proxy = FullInstantonProxy(fi_obj) if fi_obj.available else None
+        sri_proxy = SlowRollInstantonProxy(sri_obj) if sri_obj.available else None
+        return dict(
+            trajectory=traj_proxies[model_idx],
+            full_instanton=fi_proxy,
+            slow_roll_instanton=sri_proxy,
+            delta_Nstar=dns,
+            cosmo=cosmo,
+            C_threshold=C_threshold,
+            C_bar_threshold=C_bar_threshold,
+            atol=atol,
+            rtol=rtol,
+            tags=[],
+        )
+
+    skippable = [
+        item
+        for item in task_list
+        if not fi_existing_map[id(item)].available
+        and not sri_existing_map[id(item)].available
+    ]
+    checkable = [
+        item
+        for item in task_list
+        if fi_existing_map[id(item)].available or sri_existing_map[id(item)].available
+    ]
+
+    cf_binned = {}
+    for item in checkable:
+        cf_binned.setdefault(shard_key_of(item), []).append(item)
+    cf_shard_keys = list(cf_binned.keys())
+
+    cf_query_queue = RayWorkPool(
+        pool,
+        cf_shard_keys,
+        task_builder=lambda key: pool.object_get_vectorized(
+            "CompactionFunction",
+            key,
+            payload_data=[
+                {**cf_key_fields(item), "_do_not_populate": True}
+                for item in cf_binned[key]
+            ],
+        ),
+        compute_handler=None,
+        store_handler=None,
+        persist_handler=None,
+        validation_handler=None,
+        title=None,
+        store_results=True,
+        create_batch_size=20,
+        process_batch_size=20,
+    )
+    cf_query_queue.run()
+
+    cf_checkable_missing = [
+        item
+        for key, objs in zip(cf_shard_keys, cf_query_queue.results)
+        for item, obj in zip(cf_binned[key], objs)
+        if not obj.available
+    ]
+    cf_missing = cf_checkable_missing + skippable
+
+    n_already = len(checkable) - len(cf_checkable_missing)
+    n_skipped = len(skippable)
+    print(
+        f"\n** PIPELINE LOOKUP:\n"
+        f"   -- {n_already} already computed, "
+        f"{len(cf_missing)} to compute"
+        + (f", {n_skipped} skipped (no instanton available)" if n_skipped > 0 else "")
+    )
+
+    if not cf_missing:
+        return
+
+    ## Compute step: single RayWorkPool for cf_missing
+    def build_pipeline_item(item):
+        model_idx, N_init_obj, N_final_obj, dns = item
+        payload = full_payload(item)
+        work_item = PipelineWorkItem(
+            grid_item=item,
+            traj_proxy=traj_proxies[model_idx],
+            N_sample=payload["N_sample"],
+            dm=dm,
+            cosmo=cosmo,
+            C_threshold=C_threshold,
+            C_bar_threshold=C_bar_threshold,
+            atol_obj=atol,
+            rtol_obj=rtol,
+            fi_existing=fi_existing_map[id(item)],
+            sri_existing=sri_existing_map[id(item)],
+        )
+        return ray.put(work_item)
+
+    def pipeline_store_handler(item, pool):
+        item.store()
+
+    def pipeline_persist_handler(item, pool):
+        return _persist_pipeline_item(item, pool, no_store_values)
+
+    pipeline_queue = RayWorkPool(
+        pool,
+        cf_missing,
+        task_builder=build_pipeline_item,
+        compute_handler=lambda obj, **kw: obj.compute(**kw),
+        store_handler=pipeline_store_handler,
+        persist_handler=pipeline_persist_handler,
+        validation_handler=lambda obj: pool.object_validate(obj),
+        label_builder=lambda obj: f"Pipeline(dNstar={float(obj.delta_Nstar):.4g})",
+        title=title,
+        store_results=False,
+        create_batch_size=5,
+        process_batch_size=3,
+        max_task_queue=MAX_INFLIGHT_PIPELINE,
+    )
+    pipeline_queue.run()
 
 
 def _run_instanton_queue(
@@ -213,6 +484,7 @@ def run_all_pipelines(
     cosmo,  # CosmologicalParams instance
     diffusion_model=None,
     stop_after: Optional[str] = None,
+    no_store_values: bool = False,
 ):
     """
     Run the full pipeline across every model at once, flattened into a single
@@ -315,6 +587,35 @@ def run_all_pipelines(
         _, _, _, dns = item
         return dns
 
+    C_THRESHOLD = 0.4
+    C_BAR_THRESHOLD = 0.4
+
+    if no_store_values:
+        # Unified pipeline: compute all three targets per grid point in a single
+        # Ray task. Stages 2, 3, and 4 are merged.
+        if stop_after in {"full-instanton", "slow-roll-instanton"}:
+            print(
+                f"\n!! WARNING: --stop-after {stop_after!r} is not supported in "
+                f"pipeline mode (--no-store-values). The full pipeline will run "
+                f"(FullInstanton + SlowRollInstanton + CompactionFunction)."
+            )
+        _run_pipeline_queue(
+            pool=pool,
+            task_list=grid,
+            key_fields=key_fields,
+            full_payload=full_payload,
+            shard_key_of=shard_key_of,
+            traj_proxies=traj_proxies,
+            cosmo=cosmo,
+            atol=atol,
+            rtol=rtol,
+            dm=dm,
+            C_threshold=C_THRESHOLD,
+            C_bar_threshold=C_BAR_THRESHOLD,
+            no_store_values=True,
+        )
+        return
+
     ## -----------------------------------------------------------------------
     ## STAGE 2: Full MSR instantons — one flat queue, all models and grid points
     ## -----------------------------------------------------------------------
@@ -368,9 +669,6 @@ def run_all_pipelines(
     ## -----------------------------------------------------------------------
 
     print("\n** STAGE 4: COMPACTION FUNCTIONS")
-
-    C_THRESHOLD = 0.4
-    C_BAR_THRESHOLD = 0.4
 
     ## Pass 1a: look up FullInstanton for ALL grid items, binned by shard key.
     ## We need instanton store_ids before we can do the CF existence check, since
@@ -701,6 +999,7 @@ def execute(pool: ShardedPool, units: UnitsLike):
         cosmo=cosmo,
         diffusion_model=dm,
         stop_after=stop_after,
+        no_store_values=args.no_store_values,
     )
 
 

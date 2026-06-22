@@ -265,6 +265,21 @@ def create_argument_parser():
         "axis-grid arguments. Crossed against --m-values-Mp / model list as "
         "usual, but NOT crossed against itself.",
     )
+    inst.add_argument(
+        "--no-store-values",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip writing per-sample value rows for FullInstanton, "
+            "SlowRollInstanton, and CompactionFunction. Only scalar summary "
+            "columns are persisted. Activates unified pipeline mode: all three "
+            "compute targets are computed in a single Ray task per grid point, "
+            "so FullInstanton and SlowRollInstanton values are passed in-memory "
+            "to the CompactionFunction computation and never need to be loaded "
+            "from the database. Recommended for sparse-sampling / "
+            "sensitivity-analysis runs."
+        ),
+    )
 
     # Output sampling
     samp = parser.add_argument_group("Output sampling")
