@@ -1929,6 +1929,11 @@ def run_plots(pool, units, args):
     run_label = "  |  ".join(_run_label_parts)
 
     print("\n>> Building pipeline inputs...")
+    if getattr(args, "sample_grid_csv", None):
+        print(
+            f"   -- sample-grid-csv: active — "
+            f"N_init/N_final/delta_Nstar taken from '{args.sample_grid_csv}'"
+        )
     inputs = build_pipeline_inputs(pool, units, args)
     atol, rtol = inputs["atol"], inputs["rtol"]
     N_init_array = inputs["N_init_array"]

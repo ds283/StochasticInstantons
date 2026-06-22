@@ -29,6 +29,17 @@ def build_model_list(pool, units, args):
                             n, endpoint=True).tolist()
             )
 
+        nm = len(m_sample)
+        if nm <= 20:
+            _fmt = [f"{v:.4g} Mp" for v in m_sample]
+        else:
+            _fmt = (
+                [f"{v:.4g} Mp" for v in m_sample[:10]]
+                + ["..."]
+                + [f"{v:.4g} Mp" for v in m_sample[-10:]]
+            )
+        print(f"   -- Quadratic m: {nm} value{'' if nm == 1 else 's'} = [ {', '.join(_fmt)} ]")
+
         m_objects = ray.get(
             pool.object_get(
                 "inflaton_mass",
@@ -64,6 +75,17 @@ def build_model_list(pool, units, args):
                 np.logspace(args.log10_lambda_low, args.log10_lambda_high,
                             n, endpoint=True).tolist()
             )
+
+        nl = len(lambda_sample)
+        if nl <= 20:
+            _fmt = [f"{v:.4g}" for v in lambda_sample]
+        else:
+            _fmt = (
+                [f"{v:.4g}" for v in lambda_sample[:10]]
+                + ["..."]
+                + [f"{v:.4g}" for v in lambda_sample[-10:]]
+            )
+        print(f"   -- Quartic lambda: {nl} value{'' if nl == 1 else 's'} = [ {', '.join(_fmt)} ]")
 
         lambda_objects = ray.get(
             pool.object_get(

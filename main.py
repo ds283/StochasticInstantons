@@ -930,6 +930,11 @@ def execute(pool: ShardedPool, units: UnitsLike):
     ## -----------------------------------------------------------------------
     print("\n** BUILDING PARAMETER SAMPLING GRIDS")
     print(f'   -- using potential type "{args.potential_type}"')
+    if getattr(args, "sample_grid_csv", None):
+        print(
+            f"   -- sample-grid-csv: active — "
+            f"N_init/N_final/delta_Nstar taken from '{args.sample_grid_csv}'"
+        )
     inputs = build_pipeline_inputs(pool, units, args)
     atol, rtol = inputs["atol"], inputs["rtol"]
     phi0, pi0 = inputs["phi0"], inputs["pi0"]

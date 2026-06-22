@@ -84,7 +84,15 @@ def build_grid_from_csv(pool, csv_path: str, model_list) -> list:
     to the same store_id, so no duplicate database rows are created.
     """
     rows = _read_csv(csv_path)
-    print(f"   -- sample-grid-csv: {len(rows)} sample point(s) from '{csv_path}'")
+    n_rows = len(rows)
+    print(f"   -- sample-grid-csv: {n_rows} sample point(s) from '{csv_path}'")
+    for col in ("N_init", "N_final", "delta_Nstar"):
+        vals = sorted({r[col] for r in rows})
+        n_u = len(vals)
+        if n_u == 1:
+            print(f"      {col}: {vals[0]:.5g} (1 unique value)")
+        else:
+            print(f"      {col}: {vals[0]:.5g} .. {vals[-1]:.5g} ({n_u} unique values)")
 
     N_init_objects, N_final_objects, dns_objects = ray.get(
         [

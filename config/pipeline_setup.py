@@ -21,23 +21,24 @@ import ray
 from config.model_list import build_model_list
 
 
-def _build_grid(low, high, samples, values, label):
+def _build_grid(low, high, samples, values, label, silent=False):
     if len(values) > 0:
         sample = sorted(values)
     else:
         sample = sorted(np.linspace(low, high, samples, endpoint=True).tolist())
-    n = len(sample)
-    if n <= 20:
-        formatted = [f"{v:.5g}" for v in sample]
-    else:
-        formatted = (
-            [f"{v:.5g}" for v in sample[:10]]
-            + ["..."]
-            + [f"{v:.5g}" for v in sample[-10:]]
+    if not silent:
+        n = len(sample)
+        if n <= 20:
+            formatted = [f"{v:.5g}" for v in sample]
+        else:
+            formatted = (
+                [f"{v:.5g}" for v in sample[:10]]
+                + ["..."]
+                + [f"{v:.5g}" for v in sample[-10:]]
+            )
+        print(
+            f"   -- {label}: {n} value{'' if n == 1 else 's'} = [ {', '.join(formatted)} ]"
         )
-    print(
-        f"   -- {label}: {n} value{'' if n == 1 else 's'} = [ {', '.join(formatted)} ]"
-    )
     return sample
 
 
@@ -57,18 +58,21 @@ def build_pipeline_inputs(pool, units, args) -> dict:
         dns_array     -- list of delta_Nstar objects
         model_list    -- list of {"label": str, "potential": obj} dicts
     """
-    # Build sample grids (sequential: each prints its own summary line)
+    # Build sample grids (sequential: each prints its own summary line).
+    # In CSV mode the axis-grid values are ignored for instanton dispatch, so
+    # suppress the prints to avoid showing misleading defaults.
+    csv_mode = bool(getattr(args, "sample_grid_csv", None))
     N_init_sample = _build_grid(
         args.N_init_low, args.N_init_high, args.N_init_samples,
-        args.N_init_values, "N_init",
+        args.N_init_values, "N_init", silent=csv_mode,
     )
     N_final_sample = _build_grid(
         args.N_final_low, args.N_final_high, args.N_final_samples,
-        args.N_final_values, "N_final",
+        args.N_final_values, "N_final", silent=csv_mode,
     )
     dns_sample = _build_grid(
         args.delta_Nstar_low, args.delta_Nstar_high, args.delta_Nstar_samples,
-        args.delta_Nstar_values, "delta_Nstar",
+        args.delta_Nstar_values, "delta_Nstar", silent=csv_mode,
     )
 
     # Register all parameter objects in parallel
