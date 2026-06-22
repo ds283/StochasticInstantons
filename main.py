@@ -54,7 +54,30 @@ VERSION_LABEL = "2026.6.1"
 # so this must be well above the desired compute parallelism. On a 10-core
 # MacBook Pro, 50 keeps ~10 compute tasks queued in Ray while leaving headroom
 # for the other stages. Raise further when moving to a larger machine.
+#
+# Used for the non-unified pipeline stages (Stages 2, 3, 4 individually), where
+# each inflight slot maps to one @ray.remote(num_cpus=1) task. Ray's own CPU
+# accounting limits active workers to the machine's core count; this cap mainly
+# limits the queue depth above that floor.
 MAX_INFLIGHT_PIPELINE = 50
+
+# Unified-pipeline (--sample-grid-csv) cap. Each inflight slot here maps to
+# THREE Python worker processes:
+#   - one compute_pipeline orchestrator  (@ray.remote(num_cpus=0))
+#   - one _compute_full_instanton task   (@ray.remote(num_cpus=1))
+#   - one _compute_slow_roll_instanton   (@ray.remote(num_cpus=1))
+#
+# compute_pipeline is declared num_cpus=0 because it spends most of its time
+# blocked in ray.get() waiting for sub-tasks; claiming a CPU during that wait
+# would starve the sub-tasks it dispatched. But num_cpus=0 means Ray has no
+# resource signal to auto-throttle concurrency — MAX_INFLIGHT_PIPELINE is the
+# sole throttle. Using the full MAX_INFLIGHT_PIPELINE here would allow ~50
+# orchestrators to run simultaneously, spawning ~150 Python workers and
+# exhausting the OS open-file limit (typically ~256 fds on macOS).
+#
+# Setting this to MAX_INFLIGHT_PIPELINE // 3 keeps the peak Python worker count
+# comparable to the non-unified stages while still preserving CPU saturation.
+MAX_INFLIGHT_PIPELINE_UNIFIED = MAX_INFLIGHT_PIPELINE // 3
 
 # Pipeline stage ordering — used to resolve --stop-after when multiple values
 # are given (only the earliest stage wins).
@@ -372,7 +395,7 @@ def _run_pipeline_queue(
         store_results=False,
         create_batch_size=5,
         process_batch_size=3,
-        max_task_queue=MAX_INFLIGHT_PIPELINE,
+        max_task_queue=MAX_INFLIGHT_PIPELINE_UNIFIED,
     )
     pipeline_queue.run()
 
