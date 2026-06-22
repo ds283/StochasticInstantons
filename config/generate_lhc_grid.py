@@ -4,17 +4,19 @@ config/generate_lhc_grid.py
 ────────────────────────────
 Generate a --sample-grid-csv-compatible CSV for StochasticInstanton DOE runs.
 
-The effective physics parameter space is two-dimensional:
+The design space is three-dimensional:
   • delta_Nstar  — excess e-folds accumulated by the instanton relative to the
                    noiseless background; controls perturbation amplitude and
                    therefore threshold crossing.
   • ΔN = N_init − N_final  — controls the log-width of the enhanced spectrum,
                    i.e. roughly ln(k_largest / k_smallest).
+  • N_final      — e-folds before end of inflation at the instanton endpoint;
+                   sets the absolute physical scale (PBH mass, Mpc).  Largely
+                   decoupled from C_max and C̄_max but controls S_MSR at the
+                   ~10%/e-fold level, so it is included as a full sampled
+                   dimension rather than a replicated fixed list.
 
-N_final sets the absolute physical scale (PBH mass, Mpc) and is treated as a
-near-independent "calibration" axis, sampled coarsely.
-
-For each (delta_Nstar, ΔN) sample and each N_final value, the script derives
+For each (delta_Nstar, ΔN, N_final) sample the script derives
   N_init = N_final + ΔN
 and writes a row to the output CSV.
 
@@ -27,19 +29,26 @@ through
 and may even be extrapolated beyond the grid edge when C̄ is still above
 threshold at r_v[-1].  The ΔN axis therefore controls the dynamic range of
 scales sampled, while delta_Nstar controls whether the threshold is crossed
-at all.  Sampling both parameters densely (with N_final fixed) gives the
-most information about r_max and M_PBH sensitivity.
+at all.
 
-Usage
-─────
-python3 config/generate_lhc_grid.py \\
-    --delta-nstar-low  0.1  --delta-nstar-high 3.0  \\
-    --delta-N-low      0.5  --delta-N-high     6.0  \\
-    --N-final-values   16.0 17.5 19.0               \\
-    --n-points         500                           \\
-    --method           sobol                         \\
-    --seed             42                            \\
+Usage (quasi-random 3D design)
+───────────────────────────────
+python3 config/generate_lhc_grid.py \
+    --delta-nstar-low  0.1  --delta-nstar-high 3.0  \
+    --delta-N-low      0.5  --delta-N-high     6.0  \
+    --N-final-low     15.0  --N-final-high    25.0  --N-final-samples 5 \
+    --n-points         500                           \
+    --method           sobol                         \
+    --seed             42                            \
     --output           lhc_grid_500.csv
+
+Usage (Cartesian product, Step 1 validation)
+─────────────────────────────────────────────
+python3 config/generate_lhc_grid.py \
+    --delta-nstar-values 1.0 2.0 2.5 \
+    --delta-N-values     3.5         \
+    --N-final-values     16.0 17.0 18.0 19.0 \
+    --output             step1_validation.csv
 
 The CSV header comment records the full generation provenance.
 """
@@ -86,8 +95,8 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="FLOAT",
         help="Explicit list of delta_Nstar values.  When given, bypasses the "
-             "quasi-random sampler entirely and produces a simple Cartesian "
-             "product of (delta_Nstar) × (delta_N_values) × (N_final_values).  "
+             "quasi-random sampler and produces a Cartesian product grid.  "
+             "Requires --delta-N-values and --N-final-values.  "
              "Useful for Step 1 validation runs.",
     )
 
@@ -115,21 +124,47 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=None,
         metavar="FLOAT",
-        help="Explicit list of ΔN values.  When given together with "
-             "--delta-nstar-values, produces a simple Cartesian product "
-             "grid rather than a quasi-random design.",
+        help="Explicit list of ΔN values for Cartesian product mode.  "
+             "Requires --delta-nstar-values and --N-final-values.",
     )
 
-    # N_final calibration values
-    cal = p.add_argument_group("N_final calibration axis")
-    cal.add_argument(
+    # N_final axis
+    ax3 = p.add_argument_group("N_final axis")
+    ax3.add_argument(
+        "--N-final-low",
+        type=float,
+        default=15.0,
+        metavar="FLOAT",
+        help="Lower bound for N_final sampling (ignored if "
+             "--N-final-values is given).",
+    )
+    ax3.add_argument(
+        "--N-final-high",
+        type=float,
+        default=25.0,
+        metavar="FLOAT",
+        help="Upper bound for N_final sampling (ignored if "
+             "--N-final-values is given).",
+    )
+    ax3.add_argument(
+        "--N-final-samples",
+        type=int,
+        default=5,
+        metavar="INT",
+        help="Number of quasi-random samples along the N_final axis.  "
+             "The Sobol/LHC sequence fills the full (delta_Nstar, ΔN, N_final) "
+             "cube, so this controls the resolution of the N_final dimension "
+             "relative to the total --n-points budget.  Ignored if "
+             "--N-final-values is given.",
+    )
+    ax3.add_argument(
         "--N-final-values",
         nargs="+",
         type=float,
-        default=[16.0, 17.5, 19.0],
+        default=None,
         metavar="FLOAT",
-        help="One or more N_final values (e-folds before end of inflation at "
-             "instanton endpoint).  Each value produces a copy of the 2-D design.",
+        help="Explicit list of N_final values for Cartesian product mode.  "
+             "Requires --delta-nstar-values and --delta-N-values.",
     )
 
     # Boundary guards
@@ -137,7 +172,7 @@ def _build_parser() -> argparse.ArgumentParser:
     bnd.add_argument(
         "--N-init-max",
         type=float,
-        default=25.0,
+        default=50.0,
         metavar="FLOAT",
         help="Drop rows where N_init = N_final + ΔN exceeds this value.",
     )
@@ -147,9 +182,8 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="FLOAT",
         help="Drop rows where delta_Nstar is below this value (overrides "
-             "--delta-nstar-low for post-generation filtering only; useful when "
-             "the low bound is relaxed for design purposes but very small values "
-             "are unphysical for a particular run).  Defaults to --delta-nstar-low.",
+             "--delta-nstar-low for post-generation filtering only).  "
+             "Defaults to --delta-nstar-low.",
     )
 
     # Sampler
@@ -159,8 +193,9 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=500,
         metavar="INT",
-        help="Number of quasi-random samples in the (delta_Nstar, ΔN) plane "
-             "before N_final replication.  Total rows ≤ n_points × len(N_final_values).",
+        help="Number of quasi-random samples in the 3D "
+             "(delta_Nstar, ΔN, N_final) cube.  Total output rows equals "
+             "this after boundary-guard filtering.",
     )
     smp.add_argument(
         "--method",
@@ -198,12 +233,13 @@ def _build_parser() -> argparse.ArgumentParser:
 
 # ── Sampler ────────────────────────────────────────────────────────────────────
 
-def _sample_unit_square(n: int, method: str, seed: int):
+def _sample_unit_cube(n: int, method: str, seed: int):
     """
-    Return an (n, 2) array of samples in [0, 1)^2 using the chosen method.
+    Return an (n, 3) array of samples in [0, 1)^3 using the chosen method.
 
     Column 0 → delta_Nstar dimension
     Column 1 → ΔN dimension
+    Column 2 → N_final dimension
     """
     from scipy.stats.qmc import LatinHypercube, Sobol
 
@@ -218,10 +254,10 @@ def _sample_unit_square(n: int, method: str, seed: int):
                 file=sys.stderr,
             )
             n = n_rounded
-        sampler = Sobol(d=2, scramble=True, seed=seed)
+        sampler = Sobol(d=3, scramble=True, seed=seed)
         samples = sampler.random(n)
     else:  # lhc
-        sampler = LatinHypercube(d=2, seed=seed)
+        sampler = LatinHypercube(d=3, seed=seed)
         samples = sampler.random(n)
 
     return samples, n
@@ -267,89 +303,87 @@ def cartesian_grid(
 
 
 def build_grid(
-    samples,            # (n, 2) unit-square samples
+    samples,                 # (n, 3) unit-cube samples
     delta_nstar_low: float,
     delta_nstar_high: float,
     delta_N_low: float,
     delta_N_high: float,
-    N_final_values: list,
+    N_final_low: float,
+    N_final_high: float,
     N_init_max: float,
     delta_nstar_min: float,
-) -> list:
+) -> tuple:
     """
-    Map unit-square samples to physical parameters and replicate across N_final.
+    Map unit-cube samples to physical parameters.
 
-    Returns a list of dicts with keys: N_init, N_final, delta_Nstar.
-    Rows violating boundary constraints are dropped.
+    Returns (rows, n_dropped_N_init, n_dropped_dns).
 
     Physical rationale for the parameter ordering
     ─────────────────────────────────────────────
     • delta_Nstar controls perturbation amplitude.  Near the threshold
-      (delta_Nstar ~ 2.3 for quadratic potential), C̄_max changes rapidly;
+      (delta_Nstar ~ 2.3 for the quadratic potential), C̄_max changes rapidly;
       dense sampling near threshold is valuable.  Linear mapping is a
-      reasonable first pass; log-space can be considered if the response is
-      very steep at low values.
+      reasonable first pass.
     • ΔN controls the log-width of the perturbed spectrum.  Larger ΔN means
       the compaction function is evaluated over a wider range of scales;
       r_max may be correspondingly larger.  Linear mapping in ΔN corresponds
       to uniform coverage in log(k_large / k_small).
-    • N_final is replicated coarsely (3–5 values).  It shifts the absolute
-      physical scale (mass, Mpc) but leaves C̄_max and C_max largely
-      unchanged — the decoupling hypothesis to be verified by Step 1
-      validation runs.
+    • N_final sets the absolute physical scale.  Linear mapping covers the
+      desired range uniformly in e-folds, which is natural given that both
+      M_PBH ~ exp(2 N_final) and S_MSR ~ exp(-0.10 N_final) are smooth
+      monotone functions of N_final.
     """
     rows = []
     n_dropped_N_init = 0
     n_dropped_dns = 0
 
-    for (u_dns, u_dN) in samples:
-        # Map from [0, 1) to physical range (linear in both dimensions)
-        dns = delta_nstar_low + u_dns * (delta_nstar_high - delta_nstar_low)
-        dN  = delta_N_low    + u_dN  * (delta_N_high    - delta_N_low)
+    for (u_dns, u_dN, u_Nf) in samples:
+        dns     = delta_nstar_low + u_dns * (delta_nstar_high - delta_nstar_low)
+        dN      = delta_N_low    + u_dN  * (delta_N_high    - delta_N_low)
+        N_final = N_final_low    + u_Nf  * (N_final_high    - N_final_low)
 
-        # Enforce delta_nstar_min guard
         if dns < delta_nstar_min:
             n_dropped_dns += 1
             continue
 
-        for N_final in N_final_values:
-            N_init = N_final + dN
+        N_init = N_final + dN
+        if N_init > N_init_max:
+            n_dropped_N_init += 1
+            continue
 
-            # Enforce N_init ceiling
-            if N_init > N_init_max:
-                n_dropped_N_init += 1
-                continue
-
-            rows.append({
-                "N_init":       N_init,
-                "N_final":      N_final,
-                "delta_Nstar":  dns,
-            })
+        rows.append({
+            "N_init":      N_init,
+            "N_final":     N_final,
+            "delta_Nstar": dns,
+        })
 
     return rows, n_dropped_N_init, n_dropped_dns
 
 
 # ── CSV output ─────────────────────────────────────────────────────────────────
 
-def _write_csv(path: Path, rows: list, args, n_samples_actual: int) -> None:
+def _write_csv(path: Path, rows: list, args, n_samples_actual: int, use_cartesian: bool) -> None:
     """Write rows to CSV with a provenance comment header."""
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    # Build comment block — we embed it as lines starting with '#'.
-    # The pipeline's CSV reader (csv.DictReader) skips lines starting with '#'
-    # if the caller uses a filtering wrapper, but the canonical convention in
-    # this codebase is a plain header line first.  We therefore write the
-    # provenance as comments *before* the column header.
+    if use_cartesian:
+        N_final_desc = str(sorted(args.N_final_values))
+    else:
+        N_final_desc = (
+            f"[{args.N_final_low}, {args.N_final_high}] "
+            f"({args.N_final_samples} quasi-random samples)"
+        )
+
     comment_lines = [
         f"# StochasticInstanton sample grid",
         f"# generated: {timestamp}",
-        f"# method: {args.method}",
+        f"# method: {'cartesian' if use_cartesian else args.method}",
         f"# seed: {args.seed}",
         f"# n_requested: {args.n_points}",
         f"# n_samples_generated: {n_samples_actual}",
         f"# delta_nstar_range: [{args.delta_nstar_low}, {args.delta_nstar_high}]",
         f"# delta_N_range: [{args.delta_N_low}, {args.delta_N_high}]",
-        f"# N_final_values: {args.N_final_values}",
+        f"# N_final: {N_final_desc}",
         f"# N_init_max: {args.N_init_max}",
         f"# total_rows: {len(rows)}",
     ]
@@ -373,9 +407,6 @@ def main():
     parser = _build_parser()
     args = parser.parse_args()
 
-    # ── Validate bounds ───────────────────────────────────────────────────────
-    if not args.N_final_values:
-        parser.error("At least one --N-final-values value is required.")
     if args.n_points < 1:
         parser.error("--n-points must be >= 1.")
 
@@ -387,41 +418,43 @@ def main():
 
     # ── Choose generation mode ────────────────────────────────────────────────
     use_cartesian = (
-        args.delta_nstar_values is not None or args.delta_N_values is not None
+        args.delta_nstar_values is not None
+        or args.delta_N_values is not None
+        or args.N_final_values is not None
     )
 
     if use_cartesian:
-        # Cartesian-product mode (Step 1 validation / targeted runs)
-        if args.delta_nstar_values is None:
+        # All three explicit-values flags must be present together.
+        missing = [
+            name for name, val in [
+                ("--delta-nstar-values", args.delta_nstar_values),
+                ("--delta-N-values",     args.delta_N_values),
+                ("--N-final-values",     args.N_final_values),
+            ]
+            if val is None
+        ]
+        if missing:
             parser.error(
-                "--delta-N-values requires --delta-nstar-values "
-                "(cannot mix explicit ΔN with a quasi-random delta_Nstar design)"
+                f"Cartesian product mode requires all three explicit-values flags; "
+                f"missing: {', '.join(missing)}"
             )
-        if args.delta_N_values is None:
-            parser.error(
-                "--delta-nstar-values requires --delta-N-values "
-                "(cannot mix explicit delta_Nstar with a quasi-random ΔN design)"
-            )
-        dns_values = sorted(args.delta_nstar_values)
-        dN_values  = sorted(args.delta_N_values)
-        n_actual   = len(dns_values) * len(dN_values)
+        dns_values    = sorted(args.delta_nstar_values)
+        dN_values     = sorted(args.delta_N_values)
+        N_final_values = sorted(args.N_final_values)
+        n_actual      = len(dns_values) * len(dN_values) * len(N_final_values)
         print(
             f"Cartesian-product mode: {len(dns_values)} delta_Nstar × "
-            f"{len(dN_values)} ΔN = {n_actual} base points …"
+            f"{len(dN_values)} ΔN × {len(N_final_values)} N_final "
+            f"= {n_actual} rows …"
         )
         rows, n_dropped_N_init, n_dropped_dns = cartesian_grid(
             dns_values=dns_values,
             dN_values=dN_values,
-            N_final_values=sorted(args.N_final_values),
+            N_final_values=N_final_values,
             N_init_max=args.N_init_max,
             delta_nstar_min=delta_nstar_min,
         )
     else:
-        # ── Generate unit-square samples ──────────────────────────────────────
-        print(f"Generating {args.n_points} {args.method.upper()} samples (seed={args.seed}) …")
-        samples, n_actual = _sample_unit_square(args.n_points, args.method, args.seed)
-        print(f"  → {n_actual} unit-square samples generated.")
-
         # ── Validate bounds ───────────────────────────────────────────────────
         if args.delta_nstar_low >= args.delta_nstar_high:
             parser.error(
@@ -438,6 +471,18 @@ def main():
                 f"--delta-N-low ({args.delta_N_low}) must be > 0 "
                 f"(N_init must exceed N_final)."
             )
+        if args.N_final_low >= args.N_final_high:
+            parser.error(
+                f"--N-final-low ({args.N_final_low}) must be < "
+                f"--N-final-high ({args.N_final_high})"
+            )
+        if args.N_final_samples < 1:
+            parser.error("--N-final-samples must be >= 1.")
+
+        # ── Generate unit-cube samples ────────────────────────────────────────
+        print(f"Generating {args.n_points} {args.method.upper()} samples (seed={args.seed}) …")
+        samples, n_actual = _sample_unit_cube(args.n_points, args.method, args.seed)
+        print(f"  → {n_actual} unit-cube samples generated.")
 
         # ── Map to physical grid ──────────────────────────────────────────────
         rows, n_dropped_N_init, n_dropped_dns = build_grid(
@@ -446,7 +491,8 @@ def main():
             delta_nstar_high=args.delta_nstar_high,
             delta_N_low=args.delta_N_low,
             delta_N_high=args.delta_N_high,
-            N_final_values=sorted(args.N_final_values),
+            N_final_low=args.N_final_low,
+            N_final_high=args.N_final_high,
             N_init_max=args.N_init_max,
             delta_nstar_min=delta_nstar_min,
         )
@@ -455,21 +501,25 @@ def main():
     print()
     print("Grid summary")
     print("────────────")
-    print(f"  Sampling method    : {args.method}")
-    print(f"  Seed               : {args.seed}")
-    print(f"  2-D samples        : {n_actual}")
-    print(f"  N_final values     : {sorted(args.N_final_values)}")
-    print(f"  Maximum possible   : {n_actual * len(args.N_final_values)}")
+    if use_cartesian:
+        print(f"  Mode               : Cartesian product")
+    else:
+        print(f"  Sampling method    : {args.method}")
+        print(f"  Seed               : {args.seed}")
+        print(f"  Samples generated  : {n_actual}")
+        print(f"  N_final range      : [{args.N_final_low}, {args.N_final_high}]")
     print(f"  Dropped (N_init>max): {n_dropped_N_init}")
     print(f"  Dropped (dns<min)  : {n_dropped_dns}")
     print(f"  Output rows        : {len(rows)}")
     if rows:
         dns_vals = [r["delta_Nstar"] for r in rows]
         dN_vals  = [r["N_init"] - r["N_final"] for r in rows]
+        Nf_vals  = [r["N_final"] for r in rows]
         Ni_vals  = [r["N_init"] for r in rows]
         print()
         print(f"  delta_Nstar : [{min(dns_vals):.4f}, {max(dns_vals):.4f}]")
         print(f"  ΔN          : [{min(dN_vals):.4f}, {max(dN_vals):.4f}]")
+        print(f"  N_final     : [{min(Nf_vals):.4f}, {max(Nf_vals):.4f}]")
         print(f"  N_init      : [{min(Ni_vals):.4f}, {max(Ni_vals):.4f}]")
 
     if args.dry_run:
@@ -484,7 +534,7 @@ def main():
 
     # ── Write ─────────────────────────────────────────────────────────────────
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    _write_csv(args.output, rows, args, n_actual)
+    _write_csv(args.output, rows, args, n_actual, use_cartesian)
     print()
     print(f"Written {len(rows)} rows to: {args.output}")
 
