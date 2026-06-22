@@ -29,7 +29,7 @@ def _read_csv(csv_path: str) -> list:
     """
     try:
         with open(csv_path, newline="") as f:
-            reader = csv.DictReader(f)
+            reader = csv.DictReader(line for line in f if not line.startswith("#"))
             if reader.fieldnames is None:
                 raise ValueError(f"'{csv_path}': file is empty")
             required = {"N_init", "N_final", "delta_Nstar"}
