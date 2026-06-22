@@ -347,8 +347,8 @@ def save_models(all_bundles: list, output_dir: Path):
         "C_bar_max_full":         "gp_C_bar_max_full.joblib",
         "C_max_full":             "gp_C_max_full.joblib",
         "log(msr_action_full)":   "gp_log_msr_action_full.joblib",
-        "log(M) - 2*N_final":      "gp_log_M_C_bar_full_solar.joblib",
-        "log(r) - N_final":        "gp_log_r_max_C_bar_full_Mpc.joblib",
+        "log(M_C_bar_full_solar)":"gp_log_M_C_bar_full_solar.joblib",
+        "log(r_max_C_bar_full_Mpc)":"gp_log_r_max_C_bar_full_Mpc.joblib",
     }
 
     for bundle in all_bundles:
@@ -495,43 +495,33 @@ def main():
     X_tr45 = scaler.transform(df.iloc[above_train_idx][FEATURE_COLS].values)
     X_te45 = scaler.transform(df.iloc[above_test_idx][FEATURE_COLS].values)
 
-    # ── GP 4: log(M_C_bar_full_solar) - 2*N_final ────────────────────────────
-    # Analytically detrend the known M ~ exp(2 N_final) scaling (measured as
-    # d(ln M)/dN_final ~= 1.974 in Step 1; rounded to 2 for cleanliness).
-    # The GP therefore learns only the residual dependence on (delta_Nstar, delta_N),
-    # which is much smoother and improves R^2 near the threshold boundary.
-    # To recover physical log(M): add back 2.0 * N_final to the GP prediction.
-    Nf_tr45 = df.iloc[above_train_idx]["N_final"].values.astype(float)
-    Nf_te45 = df.iloc[above_test_idx]["N_final"].values.astype(float)
-    y_tr4 = np.log(df.iloc[above_train_idx]["M_C_bar_full_solar"].values.astype(float)) - 2.0 * Nf_tr45
-    y_te4 = np.log(df.iloc[above_test_idx]["M_C_bar_full_solar"].values.astype(float)) - 2.0 * Nf_te45
+    # ── GP 4: log(M_C_bar_full_solar) ─────────────────────────────────────────
+    y_tr4 = np.log(df.iloc[above_train_idx]["M_C_bar_full_solar"].values.astype(float))
+    y_te4 = np.log(df.iloc[above_test_idx]["M_C_bar_full_solar"].values.astype(float))
 
-    gp4 = fit_gp("log(M) - 2*N_final", X_tr45, y_tr4, _make_kernel(), args.seed)
+    gp4 = fit_gp("log(M_C_bar_full_solar)", X_tr45, y_tr4, _make_kernel(), args.seed)
     metrics4 = evaluate_gp(gp4, X_te45, y_te4)
     bundle4 = dict(
-        name="log(M) - 2*N_final", gp_index=4,
+        name="log(M_C_bar_full_solar)", gp_index=4,
         gp=gp4, scaler=scaler,
         X_test=X_te45, y_test=y_te4, metrics=metrics4,
-        target_col="M_C_bar_full_solar", target_transform="log_detrend_2Nfinal",
+        target_col="M_C_bar_full_solar", target_transform="log",
         n_train=len(y_tr4), n_test=len(y_te4), n_total=n_total,
     )
     all_bundles.append(bundle4)
     _print_bundle_diagnostics(bundle4)
 
-    # ── GP 5: log(r_max_C_bar_full_Mpc) - N_final ─────────────────────────────
-    # Analytically detrend the known r ~ exp(N_final) scaling (measured as
-    # d(ln r)/dN_final ~= 0.987 in Step 1; rounded to 1 for cleanliness).
-    # To recover physical log(r): add back 1.0 * N_final to the GP prediction.
-    y_tr5 = np.log(df.iloc[above_train_idx]["r_max_C_bar_full_Mpc"].values.astype(float)) - 1.0 * Nf_tr45
-    y_te5 = np.log(df.iloc[above_test_idx]["r_max_C_bar_full_Mpc"].values.astype(float)) - 1.0 * Nf_te45
+    # ── GP 5: log(r_max_C_bar_full_Mpc) ──────────────────────────────────────
+    y_tr5 = np.log(df.iloc[above_train_idx]["r_max_C_bar_full_Mpc"].values.astype(float))
+    y_te5 = np.log(df.iloc[above_test_idx]["r_max_C_bar_full_Mpc"].values.astype(float))
 
-    gp5 = fit_gp("log(r) - N_final", X_tr45, y_tr5, _make_kernel(), args.seed)
+    gp5 = fit_gp("log(r_max_C_bar_full_Mpc)", X_tr45, y_tr5, _make_kernel(), args.seed)
     metrics5 = evaluate_gp(gp5, X_te45, y_te5)
     bundle5 = dict(
-        name="log(r) - N_final", gp_index=5,
+        name="log(r_max_C_bar_full_Mpc)", gp_index=5,
         gp=gp5, scaler=scaler,
         X_test=X_te45, y_test=y_te5, metrics=metrics5,
-        target_col="r_max_C_bar_full_Mpc", target_transform="log_detrend_1Nfinal",
+        target_col="r_max_C_bar_full_Mpc", target_transform="log",
         n_train=len(y_tr5), n_test=len(y_te5), n_total=n_total,
     )
     all_bundles.append(bundle5)
