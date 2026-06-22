@@ -167,6 +167,12 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
         )
 
         if not do_not_populate:
+            if obj._diagnostics is not None and obj._diagnostics.get("full_values_stored", True) is False:
+                raise RuntimeError(
+                    f"FullInstanton(id={obj.store_id}) was stored in scalars-only mode; "
+                    f"full per-sample values were never persisted. Re-run with "
+                    f"_do_not_populate=True, or recompute this instanton in full-fidelity mode."
+                )
             self._populate(obj, row_data, tables, conn, units=payload["trajectory"].units)
 
         setattr(obj, "_deserialized", True)
@@ -215,7 +221,18 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
             )
 
     def store(self, obj, conn, table, inserter, tables, inserters):
-        diagnostics_json = json.dumps(obj.diagnostics) if obj.diagnostics is not None else None
+        store_full_values = getattr(obj, "_store_full_values", True)
+
+        # In scalars-only mode (success path only), merge full_values_stored=False into
+        # the stored diagnostics JSON so that build() can detect this state and raise
+        # rather than silently returning empty _values.  Absent key is treated as True,
+        # so full-fidelity rows need no explicit marker — backwards-compatible by design.
+        if not obj.failure and not store_full_values:
+            diag = dict(obj.diagnostics) if obj.diagnostics is not None else {}
+            diag["full_values_stored"] = False
+            diagnostics_json = json.dumps(diag)
+        else:
+            diagnostics_json = json.dumps(obj.diagnostics) if obj.diagnostics is not None else None
 
         if obj.failure:
             store_id = inserter(conn, {
@@ -251,20 +268,21 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
         })
         obj._my_id = store_id
 
-        units = obj._trajectory.units
-        value_inserter = inserters["FullInstantonValue"]
+        if store_full_values:
+            units = obj._trajectory.units
+            value_inserter = inserters["FullInstantonValue"]
 
-        for v in obj._values:
-            value_inserter(conn, {
-                "instanton_serial": store_id,
-                "N_serial": v.N.store_id,
-                "fields_json": json.dumps({
-                    "phi1_PlanckMass":  [v.phi1 / units.PlanckMass],
-                    "phi2_PlanckMass":  [v.phi2 / units.PlanckMass],
-                    "P1_invPlanckMass": [v.P1 * units.PlanckMass],
-                    "P2_invPlanckMass": [v.P2 * units.PlanckMass],
-                }),
-            })
+            for v in obj._values:
+                value_inserter(conn, {
+                    "instanton_serial": store_id,
+                    "N_serial": v.N.store_id,
+                    "fields_json": json.dumps({
+                        "phi1_PlanckMass":  [v.phi1 / units.PlanckMass],
+                        "phi2_PlanckMass":  [v.phi2 / units.PlanckMass],
+                        "P1_invPlanckMass": [v.P1 * units.PlanckMass],
+                        "P2_invPlanckMass": [v.P2 * units.PlanckMass],
+                    }),
+                })
 
         return obj
 
@@ -276,7 +294,8 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
             validated = True
         else:
             value_table = tables["FullInstantonValue"]
-            expected = len(obj._values)
+            store_full_values = getattr(obj, "_store_full_values", True)
+            expected = 0 if not store_full_values else len(obj._values)
             actual = conn.execute(
                 sqla.select(sqla.func.count()).select_from(value_table).filter(
                     value_table.c.instanton_serial == obj.store_id

@@ -412,6 +412,7 @@ class SlowRollInstanton(DatastoreObject):
         self._msr_action: Optional[float] = None
         self._values: List[SlowRollInstantonValue] = []
         self._compute_ref: Optional[ObjectRef] = None
+        self._store_full_values: bool = True
 
     @property
     def available(self) -> bool:
@@ -520,6 +521,16 @@ class SlowRollInstanton(DatastoreObject):
             SlowRollInstantonValue(store_id=None, N=N_obj, phi=phi, P1=P1)
             for N_obj, phi, P1 in zip(self._N_sample, data["phi"], data["P1"])
         ]
+
+    def set_store_full_values(self, flag: bool) -> None:
+        """Control whether the factory persists per-sample SlowRollInstantonValue rows.
+
+        Call after construction, before pool.object_store(). When False, the factory
+        writes only scalar summary columns (N_total, msr_action, diagnostics_json) and
+        skips the per-sample child rows. The in-memory _values list is always populated
+        after compute() regardless of this flag.
+        """
+        self._store_full_values = flag
 
 
 class SlowRollInstantonProxy:
