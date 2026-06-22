@@ -1,0 +1,17 @@
+potential-type: "Quadratic"
+shards: 10
+abs-tol: 1e-8
+rel-tol: 1e-8
+m-values-Mp: [ 1E-5 ]
+phi0-Mp: 15.0
+pi0-Mp: 0.0
+N-init-low: 22.0
+N-init-high: 19.5
+N-init-samples: 5
+N-final-low: 19.0
+N-final-high: 16.0
+N-final-samples: 5
+delta-Nstar-low: 0.1
+delta-Nstar-high: 3.0
+delta-Nstar-samples: 5
+samples-per-N: 100
