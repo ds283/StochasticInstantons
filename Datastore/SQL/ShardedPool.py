@@ -16,18 +16,18 @@
 import random
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Callable
+from typing import Callable, Dict, List, Optional
 
 import ray
 import sqlalchemy as sqla
 
+from config.defaults import DEFAULT_STRING_LENGTH
+from config.sharding import ShardKeyType
 from Datastore.SQL import Datastore
-from Datastore.SQL.Datastore import PathType, ReadTableConfigType, InventoryConfigType
+from Datastore.SQL.Datastore import InventoryConfigType, PathType, ReadTableConfigType
 from Datastore.SQL.ProfileAgent import ProfileAgent
 from Datastore.SQL.SerialPoolBroker import SerialPoolBroker
 from MetadataConcepts import version
-from config.defaults import DEFAULT_STRING_LENGTH
-from config.sharding import ShardKeyType
 
 
 class ShardedPool:
@@ -827,20 +827,20 @@ class ShardedPool:
                         f"assigned key_serial={assigned_serial}, "
                         f"shard={new_shard}"
                     )
-                else:
-                    print(
-                        f">> _assign_shard_keys: "
-                        f"store_id={item.store_id} → key_serial={assigned_serial} → shard={new_shard}"
-                    )
+                # else:
+                #     print(
+                #         f">> _assign_shard_keys: "
+                #         f"store_id={item.store_id} → key_serial={assigned_serial} → shard={new_shard}"
+                #     )
 
                 self._shard_keys[item.store_id] = new_shard
                 loads[new_shard] = loads[new_shard] + 1
 
             conn.commit()
-            print(
-                f">> _assign_shard_keys: committed {len(missing_keys)} new assignment(s). "
-                f"Full mapping: { {k: v for k, v in sorted(self._shard_keys.items())} }"
-            )
+            # print(
+            #     f">> _assign_shard_keys: committed {len(missing_keys)} new assignment(s). "
+            #     f"Full mapping: { {k: v for k, v in sorted(self._shard_keys.items())} }"
+            # )
 
     def read_table(self, cls, *args, **kwargs):
         """
