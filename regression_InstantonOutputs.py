@@ -17,6 +17,7 @@ Usage:
 
 import argparse
 import sys
+from datetime import datetime
 from math import sqrt
 from pathlib import Path
 
@@ -24,6 +25,7 @@ import joblib
 import matplotlib
 import numpy as np
 import pandas as pd
+import seaborn as sns
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -33,6 +35,8 @@ from sklearn.gaussian_process.kernels import ConstantKernel, Matern, WhiteKernel
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+
+VERSION_LABEL = "2026.3.0"
 
 FEATURE_COLS = ["delta_Nstar", "delta_N", "N_final"]
 THRESHOLD = 0.4
@@ -129,10 +133,42 @@ def _print_bundle_diagnostics(bundle: dict):
     print(f"  training rows:      {n_train} / {n_total} ({100*n_train/n_total:.1f}% of total)")
 
 
+# ── Footer ───────────────────────────────────────────────────────────────────
+
+
+def _provenance_footer(fig, scalar_data_path: Path = None, render_time=None):
+    """Add a small provenance line at the very bottom of fig."""
+    if render_time is None:
+        render_time = datetime.now()
+
+    parts = [
+        f"StochasticInstanton regression v{VERSION_LABEL}",
+        render_time.strftime("%Y-%m-%d %H:%M:%S"),
+    ]
+    if scalar_data_path is not None:
+        parts.append(f"data: {scalar_data_path.name}")
+
+    footer_text = "  |  ".join(parts)
+    try:
+        fig.text(
+            0.5,
+            0.003,
+            footer_text,
+            ha="center",
+            va="bottom",
+            fontsize=7,
+            color="#888888",
+            transform=fig.transFigure,
+        )
+    except Exception:
+        pass
+
+
 # ── Plots ─────────────────────────────────────────────────────────────────────
 
 
-def plot_predicted_vs_actual(all_bundles: list, output_dir: Path, fmt: str):
+def plot_predicted_vs_actual(all_bundles: list, output_dir: Path, fmt: str,
+                             scalar_data_path: Path = None, render_time=None):
     fig, axes = plt.subplots(2, 3, figsize=(14, 9))
     axes = axes.flatten()
 
@@ -164,6 +200,7 @@ def plot_predicted_vs_actual(all_bundles: list, output_dir: Path, fmt: str):
     axes[-1].set_visible(False)
     fig.suptitle("GP regression: predicted vs actual (test set)", fontsize=13)
     fig.tight_layout()
+    _provenance_footer(fig, scalar_data_path, render_time)
 
     out_path = output_dir / f"predicted_vs_actual.{fmt}"
     fig.savefig(out_path, bbox_inches="tight")
@@ -171,7 +208,8 @@ def plot_predicted_vs_actual(all_bundles: list, output_dir: Path, fmt: str):
     print(f"   >> {out_path}")
 
 
-def plot_threshold_boundary(gp1_bundle: dict, df_train: pd.DataFrame, output_dir: Path, fmt: str):
+def plot_threshold_boundary(gp1_bundle: dict, df_train: pd.DataFrame, output_dir: Path, fmt: str,
+                            scalar_data_path: Path = None, render_time=None):
     gp = gp1_bundle["gp"]
     scaler = gp1_bundle["scaler"]
 
@@ -241,6 +279,7 @@ def plot_threshold_boundary(gp1_bundle: dict, df_train: pd.DataFrame, output_dir
 
     fig.suptitle(r"GP-estimated $\bar{C}_{\rm max} = 0.4$ threshold boundary", fontsize=13)
     fig.tight_layout()
+    _provenance_footer(fig, scalar_data_path, render_time)
 
     out_path = output_dir / f"threshold_boundary.{fmt}"
     fig.savefig(out_path, bbox_inches="tight")
@@ -248,7 +287,8 @@ def plot_threshold_boundary(gp1_bundle: dict, df_train: pd.DataFrame, output_dir
     print(f"   >> {out_path}")
 
 
-def plot_ard_length_scales(all_bundles: list, output_dir: Path, fmt: str):
+def plot_ard_length_scales(all_bundles: list, output_dir: Path, fmt: str,
+                           scalar_data_path: Path = None, render_time=None):
     n_gps = len(all_bundles)
     n_features = len(FEATURE_COLS)
     bar_h = 0.22
@@ -289,6 +329,7 @@ def plot_ard_length_scales(all_bundles: list, output_dir: Path, fmt: str):
     ax.legend(handles=legend_elements, fontsize=9, loc="lower right")
 
     fig.tight_layout()
+    _provenance_footer(fig, scalar_data_path, render_time)
     out_path = output_dir / f"ard_length_scales.{fmt}"
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
@@ -306,8 +347,8 @@ def save_models(all_bundles: list, output_dir: Path):
         "C_bar_max_full":         "gp_C_bar_max_full.joblib",
         "C_max_full":             "gp_C_max_full.joblib",
         "log(msr_action_full)":   "gp_log_msr_action_full.joblib",
-        "log(M_C_bar_full_solar)":"gp_log_M_C_bar_full_solar.joblib",
-        "log(r_max_C_bar_full_Mpc)":"gp_log_r_max_C_bar_full_Mpc.joblib",
+        "log(M) - 2*N_final":      "gp_log_M_C_bar_full_solar.joblib",
+        "log(r) - N_final":        "gp_log_r_max_C_bar_full_Mpc.joblib",
     }
 
     for bundle in all_bundles:
@@ -357,6 +398,9 @@ def main():
 
     output_dir: Path = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    sns.set_theme()
+    render_time = datetime.now()
 
     # ── Load ──────────────────────────────────────────────────────────────────
     df = load_scalar_data(args.scalar_data)
@@ -451,33 +495,43 @@ def main():
     X_tr45 = scaler.transform(df.iloc[above_train_idx][FEATURE_COLS].values)
     X_te45 = scaler.transform(df.iloc[above_test_idx][FEATURE_COLS].values)
 
-    # ── GP 4: log(M_C_bar_full_solar) ─────────────────────────────────────────
-    y_tr4 = np.log(df.iloc[above_train_idx]["M_C_bar_full_solar"].values.astype(float))
-    y_te4 = np.log(df.iloc[above_test_idx]["M_C_bar_full_solar"].values.astype(float))
+    # ── GP 4: log(M_C_bar_full_solar) - 2*N_final ────────────────────────────
+    # Analytically detrend the known M ~ exp(2 N_final) scaling (measured as
+    # d(ln M)/dN_final ~= 1.974 in Step 1; rounded to 2 for cleanliness).
+    # The GP therefore learns only the residual dependence on (delta_Nstar, delta_N),
+    # which is much smoother and improves R^2 near the threshold boundary.
+    # To recover physical log(M): add back 2.0 * N_final to the GP prediction.
+    Nf_tr45 = df.iloc[above_train_idx]["N_final"].values.astype(float)
+    Nf_te45 = df.iloc[above_test_idx]["N_final"].values.astype(float)
+    y_tr4 = np.log(df.iloc[above_train_idx]["M_C_bar_full_solar"].values.astype(float)) - 2.0 * Nf_tr45
+    y_te4 = np.log(df.iloc[above_test_idx]["M_C_bar_full_solar"].values.astype(float)) - 2.0 * Nf_te45
 
-    gp4 = fit_gp("log(M_C_bar_full_solar)", X_tr45, y_tr4, _make_kernel(), args.seed)
+    gp4 = fit_gp("log(M) - 2*N_final", X_tr45, y_tr4, _make_kernel(), args.seed)
     metrics4 = evaluate_gp(gp4, X_te45, y_te4)
     bundle4 = dict(
-        name="log(M_C_bar_full_solar)", gp_index=4,
+        name="log(M) - 2*N_final", gp_index=4,
         gp=gp4, scaler=scaler,
         X_test=X_te45, y_test=y_te4, metrics=metrics4,
-        target_col="M_C_bar_full_solar", target_transform="log",
+        target_col="M_C_bar_full_solar", target_transform="log_detrend_2Nfinal",
         n_train=len(y_tr4), n_test=len(y_te4), n_total=n_total,
     )
     all_bundles.append(bundle4)
     _print_bundle_diagnostics(bundle4)
 
-    # ── GP 5: log(r_max_C_bar_full_Mpc) ──────────────────────────────────────
-    y_tr5 = np.log(df.iloc[above_train_idx]["r_max_C_bar_full_Mpc"].values.astype(float))
-    y_te5 = np.log(df.iloc[above_test_idx]["r_max_C_bar_full_Mpc"].values.astype(float))
+    # ── GP 5: log(r_max_C_bar_full_Mpc) - N_final ─────────────────────────────
+    # Analytically detrend the known r ~ exp(N_final) scaling (measured as
+    # d(ln r)/dN_final ~= 0.987 in Step 1; rounded to 1 for cleanliness).
+    # To recover physical log(r): add back 1.0 * N_final to the GP prediction.
+    y_tr5 = np.log(df.iloc[above_train_idx]["r_max_C_bar_full_Mpc"].values.astype(float)) - 1.0 * Nf_tr45
+    y_te5 = np.log(df.iloc[above_test_idx]["r_max_C_bar_full_Mpc"].values.astype(float)) - 1.0 * Nf_te45
 
-    gp5 = fit_gp("log(r_max_C_bar_full_Mpc)", X_tr45, y_tr5, _make_kernel(), args.seed)
+    gp5 = fit_gp("log(r) - N_final", X_tr45, y_tr5, _make_kernel(), args.seed)
     metrics5 = evaluate_gp(gp5, X_te45, y_te5)
     bundle5 = dict(
-        name="log(r_max_C_bar_full_Mpc)", gp_index=5,
+        name="log(r) - N_final", gp_index=5,
         gp=gp5, scaler=scaler,
         X_test=X_te45, y_test=y_te5, metrics=metrics5,
-        target_col="r_max_C_bar_full_Mpc", target_transform="log",
+        target_col="r_max_C_bar_full_Mpc", target_transform="log_detrend_1Nfinal",
         n_train=len(y_tr5), n_test=len(y_te5), n_total=n_total,
     )
     all_bundles.append(bundle5)
@@ -485,9 +539,12 @@ def main():
 
     # ── Plots ─────────────────────────────────────────────────────────────────
     print("\nProducing plots …")
-    plot_predicted_vs_actual(all_bundles, output_dir, args.format)
-    plot_threshold_boundary(bundle1, df_train, output_dir, args.format)
-    plot_ard_length_scales(all_bundles, output_dir, args.format)
+    plot_predicted_vs_actual(all_bundles, output_dir, args.format,
+                             scalar_data_path=args.scalar_data, render_time=render_time)
+    plot_threshold_boundary(bundle1, df_train, output_dir, args.format,
+                            scalar_data_path=args.scalar_data, render_time=render_time)
+    plot_ard_length_scales(all_bundles, output_dir, args.format,
+                           scalar_data_path=args.scalar_data, render_time=render_time)
 
     # ── Serialise ─────────────────────────────────────────────────────────────
     print("\nSerialising models …")
