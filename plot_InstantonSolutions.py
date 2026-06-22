@@ -221,11 +221,13 @@ def _add_cf_annotation(fig, ann_text):
     )
 
 
-def _provenance_footer(fig, *objs, render_time=None):
+def _provenance_footer(fig, *objs, render_time=None, run_label: str = ""):
     """Render a small, unobtrusive provenance line at the very bottom of fig.
 
     Introspects whatever public attributes are present on each object; never
     raises if an attribute is absent or if the object is not yet persisted.
+    When run_label is non-empty, renders a second line above the version/timestamp
+    line showing the database filename, config, and active mode flags.
     """
     if render_time is None:
         render_time = datetime.now()
@@ -263,12 +265,23 @@ def _provenance_footer(fig, *objs, render_time=None):
         render_time.strftime("%Y-%m-%d %H:%M:%S"),
     ]
     parts.extend(obj_parts)
+    bottom_line = "  |  ".join(parts)
+
+    if run_label:
+        fig_height_in = fig.get_size_inches()[1]
+        two_line_strip_in = 0.30
+        bottom_frac = two_line_strip_in / fig_height_in
+        current_bottom = fig.subplotpars.bottom
+        if bottom_frac > current_bottom:
+            fig.subplots_adjust(bottom=bottom_frac)
+
+    footer_text = "\n".join([run_label, bottom_line]) if run_label else bottom_line
 
     try:
         fig.text(
             0.5,
             0.003,
-            "  |  ".join(parts),
+            footer_text,
             ha="center",
             va="bottom",
             fontsize=7,
@@ -286,7 +299,7 @@ def _safe_name(s):
     return s.replace(" ", "_").replace("(", "").replace(")", "").replace(",", "")
 
 
-def plot_background_fields(traj, potential, units, output_dir, fmt):
+def plot_background_fields(traj, potential, units, output_dir, fmt, run_label: str = ""):
     """Two-panel figure: φ(N) and π(N) for the background trajectory."""
     if not traj._values:
         print(
@@ -360,14 +373,14 @@ def plot_background_fields(traj, potential, units, output_dir, fmt):
 
     fig.suptitle(f"Background trajectory — {potential.name}")
     fig.tight_layout()
-    _provenance_footer(fig, traj)
+    _provenance_footer(fig, traj, run_label=run_label)
 
     fname = output_dir / f"background_fields.{fmt}"
     fig.savefig(fname)
     plt.close(fig)
 
 
-def plot_epsilon(traj, potential, units, output_dir, fmt):
+def plot_epsilon(traj, potential, units, output_dir, fmt, run_label: str = ""):
     """Figure: slow-roll parameter ε(N)."""
     if not traj._values:
         print(
@@ -390,7 +403,7 @@ def plot_epsilon(traj, potential, units, output_dir, fmt):
     ax.set_title(rf"Slow-roll parameter $\epsilon$ — {potential.name}")
     ax.legend()
     fig.tight_layout()
-    _provenance_footer(fig, traj)
+    _provenance_footer(fig, traj, run_label=run_label)
 
     fname = output_dir / f"background_epsilon.{fmt}"
     fig.savefig(fname)
@@ -408,6 +421,7 @@ def plot_instanton_fields(
     output_dir,
     fmt,
     cf_annotation=None,
+    run_label: str = "",
 ):
     """2×2 grid of instanton field components vs N, at one
     (N_init, N_final, delta_Nstar) point."""
@@ -524,7 +538,7 @@ def plot_instanton_fields(
     _add_cf_annotation(fig, "\n".join(ann_lines) if ann_lines else None)
 
     objs_for_footer = [o for o in (fi, sri) if o is not None]
-    _provenance_footer(fig, *objs_for_footer)
+    _provenance_footer(fig, *objs_for_footer, run_label=run_label)
 
     fname = output_dir / f"instanton_fields.{fmt}"
     fig.savefig(fname)
@@ -540,6 +554,7 @@ def plot_msr_action_sweep(
     output_dir,
     fmt,
     swept_name,
+    run_label: str = "",
 ):
     """One trajectory's MSR action vs the swept dimension, at one fixed
     combination of the other two dimensions (described by fixed_desc).
@@ -569,7 +584,7 @@ def plot_msr_action_sweep(
     ax.set_title(f"MSR action vs {x_label} — {potential_name} ({fixed_desc})")
     ax.legend(fontsize="small")
     fig.tight_layout()
-    _provenance_footer(fig)
+    _provenance_footer(fig, run_label=run_label)
 
     swept_file = {"N_init": "Ninit", "N_final": "Nfinal", "delta_Nstar": "dNstar"}[
         swept_name
@@ -593,6 +608,7 @@ def plot_zeta_and_compaction(
     output_dir,
     fmt,
     cf_annotation=None,
+    run_label: str = "",
 ):
     """Two-panel figure: zeta(r) and C(r)/C_bar(r) vs r in Mpc on a log x-axis."""
     full_vals = cf.full_values
@@ -633,7 +649,7 @@ def plot_zeta_and_compaction(
         rf"$\delta N_\star$={dns_val:.3g}"
     )
     _add_cf_annotation(fig, _cf_annotation_text(cf_annotation))
-    _provenance_footer(fig, cf)
+    _provenance_footer(fig, cf, run_label=run_label)
 
     fname = output_dir / f"compaction.{fmt}"
     fig.savefig(fname)
@@ -650,6 +666,7 @@ def plot_compaction_summary(
     fmt,
     swept_name,
     threshold=None,
+    run_label: str = "",
 ):
     """Two-panel summary: left = max C and max C̄ vs swept parameter;
     right = PBH mass in solar masses (log y-scale) vs swept parameter."""
@@ -746,7 +763,7 @@ def plot_compaction_summary(
 
     fig.suptitle(rf"Compaction summary — {potential_name} ({fixed_desc})")
     fig.tight_layout()
-    _provenance_footer(fig)
+    _provenance_footer(fig, run_label=run_label)
 
     fname = output_dir / f"compaction_summary_vs_{swept_file}__{fixed_desc}.{fmt}"
     fig.savefig(fname)
@@ -757,15 +774,15 @@ def plot_compaction_summary(
 
 
 @ray.remote
-def _plot_trajectory_item(traj_proxy, potential, output_dir_str, fmt):
+def _plot_trajectory_item(traj_proxy, potential, output_dir_str, fmt, run_label: str = ""):
     """Runs inside a Ray worker: background fields + epsilon plots."""
     traj = traj_proxy.get()
     # sns.set_theme(style="ticks", context="paper")
     sns.set_theme()
     output_dir = Path(output_dir_str)
     units = Planck_units()
-    plot_background_fields(traj, potential, units, output_dir, fmt)
-    plot_epsilon(traj, potential, units, output_dir, fmt)
+    plot_background_fields(traj, potential, units, output_dir, fmt, run_label=run_label)
+    plot_epsilon(traj, potential, units, output_dir, fmt, run_label=run_label)
 
 
 @ray.remote
@@ -779,6 +796,7 @@ def _plot_fields_item(
     output_dir_str,
     fmt,
     cf_annotation=None,
+    run_label: str = "",
 ):
     """Runs inside a Ray worker: one field-trajectory comparison plot."""
     # sns.set_theme(style="ticks", context="paper")
@@ -796,6 +814,7 @@ def _plot_fields_item(
         output_dir,
         fmt,
         cf_annotation,
+        run_label=run_label,
     )
 
 
@@ -809,6 +828,7 @@ def _plot_msr_sweep_item(
     output_dir_str,
     fmt,
     swept_name,
+    run_label: str = "",
 ):
     """Runs inside a Ray worker: one MSR-action-vs-swept-parameter plot."""
     # sns.set_theme(style="ticks", context="paper")
@@ -823,6 +843,7 @@ def _plot_msr_sweep_item(
         output_dir,
         fmt,
         swept_name,
+        run_label=run_label,
     )
 
 
@@ -836,6 +857,7 @@ def _plot_compaction_item(
     output_dir_str,
     fmt,
     cf_annotation=None,
+    run_label: str = "",
 ):
     """Runs inside a Ray worker: zeta(r) and C(r)/C_bar(r) profile plots."""
     if cf is None or not cf.available or cf.failure:
@@ -854,6 +876,7 @@ def _plot_compaction_item(
         output_dir,
         fmt,
         cf_annotation,
+        run_label=run_label,
     )
 
 
@@ -868,6 +891,7 @@ def _plot_compaction_summary_item(
     fmt,
     swept_name,
     threshold=None,
+    run_label: str = "",
 ):
     """Runs inside a Ray worker: two-panel compaction summary sweep plot."""
     # sns.set_theme(style="ticks", context="paper")
@@ -883,6 +907,7 @@ def _plot_compaction_summary_item(
         fmt,
         swept_name,
         threshold=threshold,
+        run_label=run_label,
     )
 
 
@@ -1020,6 +1045,7 @@ def _sweep_Ninit_or_Nfinal(
     work_items,
     cosmo,
     units,
+    run_label: str = "",
 ):
     """swept_name in {"N_init", "N_final"}. Emits MSR-action sweep plots and
     compaction summary sweep plots for each selected (other_val, dns_val) combo.
@@ -1088,6 +1114,7 @@ def _sweep_Ninit_or_Nfinal(
                         str(out_dir),
                         fmt,
                         swept_name,
+                        run_label,
                     ),
                 )
             )
@@ -1132,6 +1159,7 @@ def _sweep_Ninit_or_Nfinal(
                         fmt,
                         swept_name,
                         threshold,
+                        run_label,
                     ),
                 )
             )
@@ -1152,6 +1180,7 @@ def _sweep_delta_Nstar(
     work_items,
     cosmo,
     units,
+    run_label: str = "",
 ):
     """Emits MSR-action sweep plots and compaction summary sweep plots vs
     delta_Nstar for each selected (N_init, N_final) combo.
@@ -1254,6 +1283,7 @@ def _sweep_delta_Nstar(
                         str(out_dir),
                         fmt,
                         "delta_Nstar",
+                        run_label,
                     ),
                 )
             )
@@ -1297,6 +1327,7 @@ def _sweep_delta_Nstar(
                         fmt,
                         "delta_Nstar",
                         threshold,
+                        run_label,
                     ),
                 )
             )
@@ -1318,6 +1349,7 @@ def _generate_instanton_samples(
     cosmo,
     units,
     combos=None,
+    run_label: str = "",
 ):
     """Sample the full 3-D (N_init × N_final × δN★) grid evenly and emit
     instanton_fields + compaction work items into per-combination sub-folders
@@ -1452,6 +1484,7 @@ def _generate_instanton_samples(
                         str(combo_dir),
                         fmt,
                         cf_annotation,
+                        run_label,
                     ),
                 )
             )
@@ -1484,6 +1517,7 @@ def _generate_instanton_samples(
                         str(combo_dir),
                         fmt,
                         cf_annotation,
+                        run_label,
                     ),
                 )
             )
@@ -1600,6 +1634,7 @@ def plot_doe_scalar_summary(
     output_dir,
     fmt: str,
     threshold: float = 0.4,
+    run_label: str = "",
 ):
     from matplotlib.colors import LogNorm, Normalize
     from matplotlib.lines import Line2D
@@ -1757,7 +1792,7 @@ def plot_doe_scalar_summary(
 
         fig1.suptitle(f"DOE scalar summary — {potential_name}")
         fig1.tight_layout()
-        _provenance_footer(fig1)
+        _provenance_footer(fig1, run_label=run_label)
         fig1.savefig(output_dir / f"doe_compaction_action.{fmt}")
         plt.close(fig1)
 
@@ -1814,16 +1849,16 @@ def plot_doe_scalar_summary(
 
         fig2.suptitle(f"DOE mass and collapse scale — {potential_name}")
         fig2.tight_layout()
-        _provenance_footer(fig2)
+        _provenance_footer(fig2, run_label=run_label)
         fig2.savefig(output_dir / f"doe_mass_collapse.{fmt}")
         plt.close(fig2)
 
 
 @ray.remote
-def _plot_doe_summary_item(data_points, potential_name, output_dir_str, fmt, threshold):
+def _plot_doe_summary_item(data_points, potential_name, output_dir_str, fmt, threshold, run_label: str = ""):
     sns.set_theme()
     output_dir = Path(output_dir_str)
-    plot_doe_scalar_summary(data_points, potential_name, output_dir, fmt, threshold)
+    plot_doe_scalar_summary(data_points, potential_name, output_dir, fmt, threshold, run_label=run_label)
 
 
 def _run_doe_summary_plots(
@@ -1839,6 +1874,7 @@ def _run_doe_summary_plots(
     units,
     work_items: list,
     threshold: float = 0.4,
+    run_label: str = "",
 ):
     print(
         f"   >> Collecting scalar summaries for {len(grid_combos)} "
@@ -1860,7 +1896,7 @@ def _run_doe_summary_plots(
 
     work_items.append((
         _plot_doe_summary_item,
-        (data_points, potential.name, str(doe_dir), fmt, threshold),
+        (data_points, potential.name, str(doe_dir), fmt, threshold, run_label),
     ))
 
     import csv
@@ -1880,6 +1916,17 @@ def run_plots(pool, units, args):
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     fmt = args.format
+
+    # ── Run provenance label ──────────────────────────────────────────────
+    _db_stem = Path(args.database).name
+    _cfg_stem = Path(args.config).name if getattr(args, "config", None) else None
+    _flags = []
+    if getattr(args, "no_store_values", False):
+        _flags.append("[summary-only]")
+    _run_label_parts = [p for p in [_db_stem, _cfg_stem] if p]
+    if _flags:
+        _run_label_parts.append(" ".join(_flags))
+    run_label = "  |  ".join(_run_label_parts)
 
     print("\n>> Building pipeline inputs...")
     inputs = build_pipeline_inputs(pool, units, args)
@@ -1957,7 +2004,7 @@ def run_plots(pool, units, args):
         print(f"\n>> Trajectory {traj.store_id} ({potential.name}) -> {traj_dir}/")
 
         work_items.append(
-            (_plot_trajectory_item, (traj_proxy, potential, str(traj_dir), fmt))
+            (_plot_trajectory_item, (traj_proxy, potential, str(traj_dir), fmt, run_label))
         )
 
         if csv_grid is not None:
@@ -1995,6 +2042,7 @@ def run_plots(pool, units, args):
                 cosmo=cosmo,
                 units=units,
                 combos=traj_combos,
+                run_label=run_label,
             )
 
         if csv_grid is not None:
@@ -2028,6 +2076,7 @@ def run_plots(pool, units, args):
             work_items=work_items,
             cosmo=cosmo,
             units=units,
+            run_label=run_label,
         )
         _sweep_Ninit_or_Nfinal(
             pool,
@@ -2045,6 +2094,7 @@ def run_plots(pool, units, args):
             work_items=work_items,
             cosmo=cosmo,
             units=units,
+            run_label=run_label,
         )
         _sweep_delta_Nstar(
             pool,
@@ -2061,6 +2111,7 @@ def run_plots(pool, units, args):
             work_items=work_items,
             cosmo=cosmo,
             units=units,
+            run_label=run_label,
         )
 
         if args.no_store_values:
@@ -2080,6 +2131,7 @@ def run_plots(pool, units, args):
                 units=units,
                 work_items=work_items,
                 threshold=0.4,
+                run_label=run_label,
             )
 
     print(f"\n>> Dispatching {len(work_items)} plot(s) for rendering...")
