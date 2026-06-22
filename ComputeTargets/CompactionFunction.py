@@ -500,6 +500,7 @@ class CompactionFunction(DatastoreObject):
         self._full_values: List[CompactionFunctionValue] = []
         self._slow_roll_values: List[CompactionFunctionValue] = []
         self._compute_ref: Optional[ObjectRef] = None
+        self._store_full_values: bool = True
 
     @property
     def available(self) -> bool:
@@ -704,6 +705,15 @@ class CompactionFunction(DatastoreObject):
             self._N_end_downflow_slow_roll = slow_roll.get("N_end_downflow")
         else:
             self._slow_roll_result = None
+
+    def set_store_full_values(self, flag: bool) -> None:
+        """
+        When set to False, the factory's store() will skip writing child rows to
+        CompactionFunctionSamples. All scalar summary columns on the parent row are
+        written unconditionally. Use this for sparse-sampling campaigns where
+        per-r profiles are not needed.
+        """
+        self._store_full_values = flag
 
 
 class CompactionFunctionProxy:

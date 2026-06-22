@@ -242,6 +242,12 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
 
         do_not_populate = payload.get("_do_not_populate", False)
         if not do_not_populate:
+            if obj._diagnostics is not None and obj._diagnostics.get("full_values_stored", True) is False:
+                raise RuntimeError(
+                    f"CompactionFunction(id={obj.store_id}) was stored in scalars-only mode; "
+                    f"full per-sample values were never persisted. Re-run with "
+                    f"_do_not_populate=True, or recompute in full-fidelity mode."
+                )
             self._populate(obj, row, tables, conn)
 
         setattr(obj, "_deserialized", True)
@@ -303,7 +309,14 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
         full_result = getattr(obj, "_full_result", None)
         sr_result = getattr(obj, "_slow_roll_result", None)
 
-        metadata_json = json.dumps(obj.diagnostics) if obj.diagnostics is not None else None
+        store_full_values = getattr(obj, "_store_full_values", True)
+
+        if not obj.failure and not store_full_values:
+            diag = dict(obj.diagnostics) if obj.diagnostics is not None else {}
+            diag["full_values_stored"] = False
+            metadata_json = json.dumps(diag)
+        else:
+            metadata_json = json.dumps(obj.diagnostics) if obj.diagnostics is not None else None
 
         units = obj._trajectory.units
         PlanckMass4 = units.PlanckMass ** 4
@@ -358,25 +371,26 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
 
         samples_inserter = inserters["CompactionFunctionSamples"]
 
-        for v in obj._full_values:
-            samples_inserter(conn, {
-                "parent_serial": store_id,
-                "source": "full",
-                "r_Mpc": v.r / units.Mpc,
-                "zeta": v.zeta,
-                "C": v.C,
-                "C_bar": v.C_bar,
-            })
+        if store_full_values:
+            for v in obj._full_values:
+                samples_inserter(conn, {
+                    "parent_serial": store_id,
+                    "source": "full",
+                    "r_Mpc": v.r / units.Mpc,
+                    "zeta": v.zeta,
+                    "C": v.C,
+                    "C_bar": v.C_bar,
+                })
 
-        for v in obj._slow_roll_values:
-            samples_inserter(conn, {
-                "parent_serial": store_id,
-                "source": "slow_roll",
-                "r_Mpc": v.r / units.Mpc,
-                "zeta": v.zeta,
-                "C": v.C,
-                "C_bar": v.C_bar,
-            })
+            for v in obj._slow_roll_values:
+                samples_inserter(conn, {
+                    "parent_serial": store_id,
+                    "source": "slow_roll",
+                    "r_Mpc": v.r / units.Mpc,
+                    "zeta": v.zeta,
+                    "C": v.C,
+                    "C_bar": v.C_bar,
+                })
 
         return obj
 
@@ -389,7 +403,8 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
         else:
             samples_table = tables.get("CompactionFunctionSamples")
             if samples_table is not None:
-                expected = len(obj._full_values) + len(obj._slow_roll_values)
+                store_full_values = getattr(obj, "_store_full_values", True)
+                expected = 0 if not store_full_values else len(obj._full_values) + len(obj._slow_roll_values)
                 actual = conn.execute(
                     sqla.select(sqla.func.count()).select_from(samples_table).filter(
                         samples_table.c.parent_serial == obj.store_id
