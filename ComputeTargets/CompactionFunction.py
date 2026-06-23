@@ -537,12 +537,12 @@ class CompactionFunction(DatastoreObject):
         return getattr(self, "_M_peak_full", None)
 
     @property
-    def C_max_full(self) -> Optional[float]:
-        return getattr(self, "_C_max_full", None)
+    def C_peak_full(self) -> Optional[float]:
+        return getattr(self, "_C_peak_full", None)
 
     @property
-    def C_bar_max_full(self) -> Optional[float]:
-        return getattr(self, "_C_bar_max_full", None)
+    def C_bar_peak_full(self) -> Optional[float]:
+        return getattr(self, "_C_bar_peak_full", None)
 
     @property
     def V_end_downflow_full(self) -> Optional[float]:
@@ -570,12 +570,12 @@ class CompactionFunction(DatastoreObject):
         return getattr(self, "_M_peak_slow_roll", None)
 
     @property
-    def C_max_slow_roll(self) -> Optional[float]:
-        return getattr(self, "_C_max_slow_roll", None)
+    def C_peak_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_C_peak_slow_roll", None)
 
     @property
-    def C_bar_max_slow_roll(self) -> Optional[float]:
-        return getattr(self, "_C_bar_max_slow_roll", None)
+    def C_bar_peak_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_C_bar_peak_slow_roll", None)
 
     @property
     def C_threshold(self) -> float:
@@ -667,8 +667,8 @@ class CompactionFunction(DatastoreObject):
             self._M_max_full = full.get("M_max")
             self._r_peak_full = full.get("r_peak")
             self._M_peak_full = full.get("M_peak")
-            self._C_max_full = full.get("C_max")
-            self._C_bar_max_full = full.get("C_bar_max")
+            self._C_peak_full = full.get("C_max")
+            self._C_bar_peak_full = full.get("C_bar_max")
             self._V_end_downflow_full = full.get("V_end_downflow")
             self._N_end_downflow_full = full.get("N_end_downflow")
         else:
@@ -689,8 +689,8 @@ class CompactionFunction(DatastoreObject):
             self._M_max_slow_roll = slow_roll.get("M_max")
             self._r_peak_slow_roll = slow_roll.get("r_peak")
             self._M_peak_slow_roll = slow_roll.get("M_peak")
-            self._C_max_slow_roll = slow_roll.get("C_max")
-            self._C_bar_max_slow_roll = slow_roll.get("C_bar_max")
+            self._C_peak_slow_roll = slow_roll.get("C_max")
+            self._C_bar_peak_slow_roll = slow_roll.get("C_bar_max")
             self._V_end_downflow_slow_roll = slow_roll.get("V_end_downflow")
             self._N_end_downflow_slow_roll = slow_roll.get("N_end_downflow")
         else:

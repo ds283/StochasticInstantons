@@ -271,12 +271,12 @@ class TestCompactionFunctionPopulateFromResult:
 
         assert cf._r_max_C_full == pytest.approx(2.5)
         assert cf._r_max_C_bar_full == pytest.approx(2.4)
-        assert cf._C_max_full == pytest.approx(0.15)
-        assert cf._C_bar_max_full == pytest.approx(0.14)
+        assert cf._C_peak_full == pytest.approx(0.15)
+        assert cf._C_bar_peak_full == pytest.approx(0.14)
         assert cf._V_end_downflow_full == pytest.approx(1e-10)
         assert cf._N_end_downflow_full == pytest.approx(2.9)
         assert cf._r_max_C_slow_roll == pytest.approx(2.5)
-        assert cf._C_max_slow_roll == pytest.approx(0.15)
+        assert cf._C_peak_slow_roll == pytest.approx(0.15)
 
     def test_full_succeeds_slow_roll_fails(self):
         cf = _make_compaction_function()

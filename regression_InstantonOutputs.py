@@ -44,9 +44,9 @@ THRESHOLD = 0.4
 _EXPECTED_COLUMNS = {
     "N_init", "N_final", "delta_Nstar", "delta_N",
     "msr_action_full", "msr_action_sr",
-    "C_max_full", "C_bar_max_full",
+    "C_peak_full", "C_bar_peak_full",
     "M_C_full_solar", "M_C_bar_full_solar", "r_max_C_full_Mpc", "r_max_C_bar_full_Mpc",
-    "C_max_sr", "C_bar_max_sr",
+    "C_peak_sr", "C_bar_peak_sr",
     "M_C_sr_solar", "M_C_bar_sr_solar", "r_max_C_sr_Mpc", "r_max_C_bar_sr_Mpc",
 }
 
@@ -254,11 +254,11 @@ def plot_threshold_boundary(gp1_bundle: dict, df_train: pd.DataFrame, output_dir
         except Exception:
             pass
 
-        mask = ~df_train["C_bar_max_full"].isna()
+        mask = ~df_train["C_bar_peak_full"].isna()
         sc = ax.scatter(
             df_train.loc[mask, "delta_Nstar"],
             df_train.loc[mask, "delta_N"],
-            c=df_train.loc[mask, "C_bar_max_full"],
+            c=df_train.loc[mask, "C_bar_peak_full"],
             s=15, alpha=0.85, vmin=0.0, vmax=1.6,
             cmap="viridis", zorder=3,
         )
@@ -344,8 +344,8 @@ def save_models(all_bundles: list, output_dir: Path):
     models_dir.mkdir(parents=True, exist_ok=True)
 
     filenames = {
-        "C_bar_max_full":         "gp_C_bar_max_full.joblib",
-        "C_max_full":             "gp_C_max_full.joblib",
+        "C_bar_peak_full":         "gp_C_bar_peak_full.joblib",
+        "C_peak_full":             "gp_C_peak_full.joblib",
         "log(msr_action_full)":   "gp_log_msr_action_full.joblib",
         "log(M_C_bar_full_solar)":"gp_log_M_C_bar_full_solar.joblib",
         "log(r_max_C_bar_full_Mpc)":"gp_log_r_max_C_bar_full_Mpc.joblib",
@@ -409,7 +409,7 @@ def main():
     n_total = len(df)
 
     # ── Stratified 80/20 split on full dataset (for GPs 1–3) ─────────────────
-    strat = (df["C_bar_max_full"] > THRESHOLD).astype(int)
+    strat = (df["C_bar_peak_full"] > THRESHOLD).astype(int)
     idx_train, idx_test = train_test_split(
         np.arange(n_total),
         test_size=0.2,
@@ -425,41 +425,41 @@ def main():
 
     all_bundles = []
 
-    # ── GP 1: C_bar_max_full ─────────────────────────────────────────────────
-    mask_tr1 = ~df_train["C_bar_max_full"].isna()
-    mask_te1 = ~df_test["C_bar_max_full"].isna()
+    # ── GP 1: C_bar_peak_full ────────────────────────────────────────────────
+    mask_tr1 = ~df_train["C_bar_peak_full"].isna()
+    mask_te1 = ~df_test["C_bar_peak_full"].isna()
     X_tr1 = X_train_all[mask_tr1.values]
-    y_tr1 = df_train.loc[mask_tr1, "C_bar_max_full"].values
+    y_tr1 = df_train.loc[mask_tr1, "C_bar_peak_full"].values
     X_te1 = X_test_all[mask_te1.values]
-    y_te1 = df_test.loc[mask_te1, "C_bar_max_full"].values
+    y_te1 = df_test.loc[mask_te1, "C_bar_peak_full"].values
 
-    gp1 = fit_gp("C_bar_max_full", X_tr1, y_tr1, _make_kernel(), args.seed)
+    gp1 = fit_gp("C_bar_peak_full", X_tr1, y_tr1, _make_kernel(), args.seed)
     metrics1 = evaluate_gp(gp1, X_te1, y_te1)
     bundle1 = dict(
-        name="C_bar_max_full", gp_index=1,
+        name="C_bar_peak_full", gp_index=1,
         gp=gp1, scaler=scaler,
         X_test=X_te1, y_test=y_te1, metrics=metrics1,
-        target_col="C_bar_max_full", target_transform="identity",
+        target_col="C_bar_peak_full", target_transform="identity",
         n_train=len(y_tr1), n_test=len(y_te1), n_total=n_total,
     )
     all_bundles.append(bundle1)
     _print_bundle_diagnostics(bundle1)
 
-    # ── GP 2: C_max_full ─────────────────────────────────────────────────────
-    mask_tr2 = ~df_train["C_max_full"].isna()
-    mask_te2 = ~df_test["C_max_full"].isna()
+    # ── GP 2: C_peak_full ────────────────────────────────────────────────────
+    mask_tr2 = ~df_train["C_peak_full"].isna()
+    mask_te2 = ~df_test["C_peak_full"].isna()
     X_tr2 = X_train_all[mask_tr2.values]
-    y_tr2 = df_train.loc[mask_tr2, "C_max_full"].values
+    y_tr2 = df_train.loc[mask_tr2, "C_peak_full"].values
     X_te2 = X_test_all[mask_te2.values]
-    y_te2 = df_test.loc[mask_te2, "C_max_full"].values
+    y_te2 = df_test.loc[mask_te2, "C_peak_full"].values
 
-    gp2 = fit_gp("C_max_full", X_tr2, y_tr2, _make_kernel(), args.seed)
+    gp2 = fit_gp("C_peak_full", X_tr2, y_tr2, _make_kernel(), args.seed)
     metrics2 = evaluate_gp(gp2, X_te2, y_te2)
     bundle2 = dict(
-        name="C_max_full", gp_index=2,
+        name="C_peak_full", gp_index=2,
         gp=gp2, scaler=scaler,
         X_test=X_te2, y_test=y_te2, metrics=metrics2,
-        target_col="C_max_full", target_transform="identity",
+        target_col="C_peak_full", target_transform="identity",
         n_train=len(y_tr2), n_test=len(y_te2), n_total=n_total,
     )
     all_bundles.append(bundle2)
@@ -486,7 +486,7 @@ def main():
     _print_bundle_diagnostics(bundle3)
 
     # ── GPs 4 & 5: above-threshold subset, independent 80/20 split ───────────
-    above_mask = df["C_bar_max_full"] > THRESHOLD
+    above_mask = df["C_bar_peak_full"] > THRESHOLD
     above_idx = np.where(above_mask.values)[0]
     above_train_idx, above_test_idx = train_test_split(
         above_idx, test_size=0.2, random_state=args.seed,

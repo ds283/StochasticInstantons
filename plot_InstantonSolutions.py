@@ -131,14 +131,14 @@ def _extract_cf_annotation(cf, units):
         return v * u if v is not None else None
 
     return {
-        "C_max_full": cf.C_max_full,
-        "C_bar_max_full": cf.C_bar_max_full,
+        "C_peak_full": cf.C_peak_full,
+        "C_bar_peak_full": cf.C_bar_peak_full,
         "r_max_full_Mpc": _div(cf.r_max_full, Mpc),
         "r_peak_full_Mpc": _div(cf.r_peak_full, Mpc),
         "M_max_full_solar": _div(cf.M_max_full, SolarMass),
         "M_peak_full_solar": _div(cf.M_peak_full, SolarMass),
-        "C_max_slow_roll": cf.C_max_slow_roll,
-        "C_bar_max_slow_roll": cf.C_bar_max_slow_roll,
+        "C_peak_slow_roll": cf.C_peak_slow_roll,
+        "C_bar_peak_slow_roll": cf.C_bar_peak_slow_roll,
         "r_max_slow_roll_Mpc": _div(cf.r_max_slow_roll, Mpc),
         "r_peak_slow_roll_Mpc": _div(cf.r_peak_slow_roll, Mpc),
         "M_max_slow_roll_solar": _div(cf.M_max_slow_roll, SolarMass),
@@ -156,8 +156,8 @@ def _cf_annotation_text(ann):
         (
             "Full",
             (
-                "C_max_full",
-                "C_bar_max_full",
+                "C_peak_full",
+                "C_bar_peak_full",
                 "r_max_full_Mpc",
                 "r_peak_full_Mpc",
                 "M_max_full_solar",
@@ -167,8 +167,8 @@ def _cf_annotation_text(ann):
         (
             "SR",
             (
-                "C_max_slow_roll",
-                "C_bar_max_slow_roll",
+                "C_peak_slow_roll",
+                "C_bar_peak_slow_roll",
                 "r_max_slow_roll_Mpc",
                 "r_peak_slow_roll_Mpc",
                 "M_max_slow_roll_solar",
@@ -181,9 +181,9 @@ def _cf_annotation_text(ann):
             continue
         parts = []
         if C_max is not None:
-            parts.append(rf"$C_{{\rm max}}$={C_max:.3g}")
+            parts.append(rf"$C_{{\rm peak}}$={C_max:.3g}")
         if Cb_max is not None:
-            parts.append(rf"$\bar{{C}}_{{\rm max}}$={Cb_max:.3g}")
+            parts.append(rf"$\bar{{C}}_{{\rm peak}}$={Cb_max:.3g}")
         if r_max is not None:
             parts.append(rf"$r_{{\rm max}}$={r_max:.3g} Mpc")
         if r_peak is not None:
@@ -853,13 +853,13 @@ def plot_compaction_summary(
     fig, (ax_C, ax_M, ax_r) = plt.subplots(1, 3, figsize=(15, 5))
 
     if fi_xC:
-        ax_C.plot(fi_xC, fi_yC, fmt_full_s, label=r"$\max C$ (full)")
+        ax_C.plot(fi_xC, fi_yC, fmt_full_s, label=r"$C_{\rm peak}$ (full)")
     if fi_xCb:
-        ax_C.plot(fi_xCb, fi_yCb, fmt_full_d, label=r"$\max \bar{C}$ (full)")
+        ax_C.plot(fi_xCb, fi_yCb, fmt_full_d, label=r"$\bar{C}_{\rm peak}$ (full)")
     if sri_xC:
-        ax_C.plot(sri_xC, sri_yC, fmt_sr_s, label=r"$\max C$ (SR)")
+        ax_C.plot(sri_xC, sri_yC, fmt_sr_s, label=r"$C_{\rm peak}$ (SR)")
     if sri_xCb:
-        ax_C.plot(sri_xCb, sri_yCb, fmt_sr_d, label=r"$\max \bar{C}$ (SR)")
+        ax_C.plot(sri_xCb, sri_yCb, fmt_sr_d, label=r"$\bar{C}_{\rm peak}$ (SR)")
     threshold_val = threshold if threshold is not None else 0.4
     ax_C.axhline(
         y=threshold_val,
@@ -869,8 +869,8 @@ def plot_compaction_summary(
         label=f"Threshold ({threshold_val:.2f})",
     )
     ax_C.set_xlabel(x_label)
-    ax_C.set_ylabel(r"$\max C,\;\max \bar{C}$")
-    ax_C.set_title("Compaction function maxima")
+    ax_C.set_ylabel(r"$C_{\rm peak},\;\bar{C}_{\rm peak}$")
+    ax_C.set_title("Compaction function peak values")
     ax_C.legend(fontsize="small")
 
     if fi_xM:
@@ -1130,8 +1130,8 @@ def _qualifying_action(obj):
 
 def _extract_cf_summary(cf, units):
     """Return a 12-tuple:
-        (C_max_full, C_bar_max_full, M_max_full_solar, M_peak_full_solar,
-         C_max_sr,   C_bar_max_sr,   M_max_sr_solar,   M_peak_sr_solar,
+        (C_peak_full, C_bar_peak_full, M_max_full_solar, M_peak_full_solar,
+         C_peak_sr,   C_bar_peak_sr,   M_max_sr_solar,   M_peak_sr_solar,
          r_max_full_Mpc, r_peak_full_Mpc,
          r_max_sr_Mpc,   r_peak_sr_Mpc)
     from a CompactionFunction object, or an all-None 12-tuple when unavailable."""
@@ -1149,12 +1149,12 @@ def _extract_cf_summary(cf, units):
         return v / Mpc if v is not None else None
 
     return (
-        cf.C_max_full,
-        cf.C_bar_max_full,
+        cf.C_peak_full,
+        cf.C_bar_peak_full,
         _m(cf.M_max_full),
         _m(cf.M_peak_full),
-        cf.C_max_slow_roll,
-        cf.C_bar_max_slow_roll,
+        cf.C_peak_slow_roll,
+        cf.C_bar_peak_slow_roll,
         _m(cf.M_max_slow_roll),
         _m(cf.M_peak_slow_roll),
         _r(cf.r_max_full),
@@ -1827,14 +1827,14 @@ def _collect_doe_scalar_data(
                     if sri_avail
                     else None,
                     "noise_phi2_max_sr": sri_obj.noise_phi2_max if sri_avail else None,
-                    "C_max_full": s[0],
-                    "C_bar_max_full": s[1],
+                    "C_peak_full": s[0],
+                    "C_bar_peak_full": s[1],
                     "M_max_full_solar": s[2],
                     "M_peak_full_solar": s[3],
                     "r_max_full_Mpc": s[8],
                     "r_peak_full_Mpc": s[9],
-                    "C_max_sr": s[4],
-                    "C_bar_max_sr": s[5],
+                    "C_peak_sr": s[4],
+                    "C_bar_peak_sr": s[5],
                     "M_max_sr_solar": s[6],
                     "M_peak_sr_solar": s[7],
                     "r_max_sr_Mpc": s[10],
@@ -1863,10 +1863,10 @@ def plot_doe_scalar_summary(
     dN_arr = np.array([d["delta_N"] for d in data_points])
 
     # ── Figure 1: compaction maxima, MSR action, threshold boundary ───────────
-    cb_max_f = [d["C_bar_max_full"] for d in data_points]
-    cb_max_s = [d["C_bar_max_sr"] for d in data_points]
-    c_max_f = [d["C_max_full"] for d in data_points]
-    c_max_s = [d["C_max_sr"] for d in data_points]
+    cb_max_f = [d["C_bar_peak_full"] for d in data_points]
+    cb_max_s = [d["C_bar_peak_sr"] for d in data_points]
+    c_max_f = [d["C_peak_full"] for d in data_points]
+    c_max_s = [d["C_peak_sr"] for d in data_points]
     act_f = [d["msr_action_full"] for d in data_points]
     act_s = [d["msr_action_sr"] for d in data_points]
 
@@ -1934,9 +1934,9 @@ def plot_doe_scalar_summary(
             ax.legend(fontsize="small")
 
         _cmp_panel(
-            axes1[0, 0], cb_max_f, cb_max_s, r"$\max \bar{C}$", r"$\bar{C}_{\rm max}$"
+            axes1[0, 0], cb_max_f, cb_max_s, r"$\bar{C}_{\rm peak}$", r"$\bar{C}_{\rm peak}$"
         )
-        _cmp_panel(axes1[0, 1], c_max_f, c_max_s, r"$\max C$", r"$C_{\rm max}$")
+        _cmp_panel(axes1[0, 1], c_max_f, c_max_s, r"$C_{\rm peak}$", r"$C_{\rm peak}$")
 
         # Panel [1,0]: S_MSR with log colorbar
         ax10 = axes1[1, 0]
@@ -2005,8 +2005,8 @@ def plot_doe_scalar_summary(
         # Panel [1,1]: threshold boundary
         ax11 = axes1[1, 1]
         for i, d in enumerate(data_points):
-            cbf = d["C_bar_max_full"]
-            cbs = d["C_bar_max_sr"]
+            cbf = d["C_bar_peak_full"]
+            cbs = d["C_bar_peak_sr"]
             xi, yi = dns_arr[i], dN_arr[i]
             if cbf is not None:
                 ax11.scatter(
@@ -2035,7 +2035,7 @@ def plot_doe_scalar_summary(
                 marker="o",
                 color="w",
                 markerfacecolor="green",
-                label=r"Full: $\bar{C}_{\rm max}$ " + _thr_gt,
+                label=r"Full: $\bar{C}_{\rm peak}$ " + _thr_gt,
                 markersize=8,
             ),
             Line2D(
@@ -2044,7 +2044,7 @@ def plot_doe_scalar_summary(
                 marker="o",
                 color="w",
                 markerfacecolor="gray",
-                label=r"Full: $\bar{C}_{\rm max}$ " + _thr_le,
+                label=r"Full: $\bar{C}_{\rm peak}$ " + _thr_le,
                 markersize=8,
             ),
             Line2D(
@@ -2053,7 +2053,7 @@ def plot_doe_scalar_summary(
                 marker="^",
                 color="w",
                 markerfacecolor="green",
-                label=r"SR: $\bar{C}_{\rm max}$ " + _thr_gt,
+                label=r"SR: $\bar{C}_{\rm peak}$ " + _thr_gt,
                 markersize=8,
             ),
             Line2D(
@@ -2062,14 +2062,14 @@ def plot_doe_scalar_summary(
                 marker="^",
                 color="w",
                 markerfacecolor="gray",
-                label=r"SR: $\bar{C}_{\rm max}$ " + _thr_le,
+                label=r"SR: $\bar{C}_{\rm peak}$ " + _thr_le,
                 markersize=8,
             ),
         ]
         ax11.legend(handles=leg_elems, fontsize="small")
         ax11.set_xlabel(r"$\delta N_\star$")
         ax11.set_ylabel(r"$\Delta N = N_{\rm init} - N_{\rm final}$")
-        ax11.set_title(r"Threshold boundary ($\bar{C}_{\rm max}$ " + _thr_gt + ")")
+        ax11.set_title(r"Threshold boundary ($\bar{C}_{\rm peak}$ " + _thr_gt + ")")
 
         fig1.suptitle(f"DOE scalar summary — {potential_name}")
         fig1.tight_layout()

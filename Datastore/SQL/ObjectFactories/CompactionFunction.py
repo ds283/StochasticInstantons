@@ -86,8 +86,8 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
                 sqla.Column("M_max_full_SolarMass",        sqla.Float(64), nullable=True),
                 sqla.Column("r_peak_full_Mpc",             sqla.Float(64), nullable=True),
                 sqla.Column("M_peak_full_SolarMass",       sqla.Float(64), nullable=True),
-                sqla.Column("C_max_full",                  sqla.Float(64), nullable=True),
-                sqla.Column("C_bar_max_full",              sqla.Float(64), nullable=True),
+                sqla.Column("C_peak_full",                 sqla.Float(64), nullable=True),
+                sqla.Column("C_bar_peak_full",             sqla.Float(64), nullable=True),
                 sqla.Column("V_end_downflow_full_PlanckMass4", sqla.Float(64), nullable=True),
                 sqla.Column("N_end_downflow_full",         sqla.Float(64), nullable=True),
                 sqla.Column("failure_full",  sqla.Integer, nullable=False, default=1),
@@ -96,8 +96,8 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
                 sqla.Column("M_max_slow_roll_SolarMass",   sqla.Float(64), nullable=True),
                 sqla.Column("r_peak_slow_roll_Mpc",        sqla.Float(64), nullable=True),
                 sqla.Column("M_peak_slow_roll_SolarMass",  sqla.Float(64), nullable=True),
-                sqla.Column("C_max_slow_roll",             sqla.Float(64), nullable=True),
-                sqla.Column("C_bar_max_slow_roll",         sqla.Float(64), nullable=True),
+                sqla.Column("C_peak_slow_roll",            sqla.Float(64), nullable=True),
+                sqla.Column("C_bar_peak_slow_roll",        sqla.Float(64), nullable=True),
                 sqla.Column("V_end_downflow_slow_roll_PlanckMass4", sqla.Float(64), nullable=True),
                 sqla.Column("N_end_downflow_slow_roll",    sqla.Float(64), nullable=True),
                 sqla.Column("failure_slow_roll", sqla.Integer, nullable=False, default=1),
@@ -138,16 +138,16 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
             table.c.M_max_full_SolarMass,
             table.c.r_peak_full_Mpc,
             table.c.M_peak_full_SolarMass,
-            table.c.C_max_full,
-            table.c.C_bar_max_full,
+            table.c.C_peak_full,
+            table.c.C_bar_peak_full,
             table.c.V_end_downflow_full_PlanckMass4,
             table.c.N_end_downflow_full,
             table.c.r_max_slow_roll_Mpc,
             table.c.M_max_slow_roll_SolarMass,
             table.c.r_peak_slow_roll_Mpc,
             table.c.M_peak_slow_roll_SolarMass,
-            table.c.C_max_slow_roll,
-            table.c.C_bar_max_slow_roll,
+            table.c.C_peak_slow_roll,
+            table.c.C_bar_peak_slow_roll,
             table.c.V_end_downflow_slow_roll_PlanckMass4,
             table.c.N_end_downflow_slow_roll,
             table.c.metadata,
@@ -223,16 +223,16 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
         obj._M_max_full               = _restore_M(row.M_max_full_SolarMass)
         obj._r_peak_full              = _restore_r(row.r_peak_full_Mpc)
         obj._M_peak_full              = _restore_M(row.M_peak_full_SolarMass)
-        obj._C_max_full               = row.C_max_full
-        obj._C_bar_max_full           = row.C_bar_max_full
+        obj._C_peak_full               = row.C_peak_full
+        obj._C_bar_peak_full           = row.C_bar_peak_full
         obj._V_end_downflow_full      = _restore_V(row.V_end_downflow_full_PlanckMass4)
         obj._N_end_downflow_full      = row.N_end_downflow_full
         obj._r_max_slow_roll          = _restore_r(row.r_max_slow_roll_Mpc)
         obj._M_max_slow_roll          = _restore_M(row.M_max_slow_roll_SolarMass)
         obj._r_peak_slow_roll         = _restore_r(row.r_peak_slow_roll_Mpc)
         obj._M_peak_slow_roll         = _restore_M(row.M_peak_slow_roll_SolarMass)
-        obj._C_max_slow_roll          = row.C_max_slow_roll
-        obj._C_bar_max_slow_roll      = row.C_bar_max_slow_roll
+        obj._C_peak_slow_roll          = row.C_peak_slow_roll
+        obj._C_bar_peak_slow_roll      = row.C_bar_peak_slow_roll
         obj._V_end_downflow_slow_roll = _restore_V(row.V_end_downflow_slow_roll_PlanckMass4)
         obj._N_end_downflow_slow_roll = row.N_end_downflow_slow_roll
 
@@ -345,8 +345,8 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
             "M_max_full_SolarMass":               _M(full_result, "M_max"),
             "r_peak_full_Mpc":                    _r(full_result, "r_peak"),
             "M_peak_full_SolarMass":              _M(full_result, "M_peak"),
-            "C_max_full":                          _plain(full_result, "C_max"),
-            "C_bar_max_full":                      _plain(full_result, "C_bar_max"),
+            "C_peak_full":                         _plain(full_result, "C_max"),
+            "C_bar_peak_full":                     _plain(full_result, "C_bar_max"),
             "V_end_downflow_full_PlanckMass4":    _V(full_result, "V_end_downflow"),
             "N_end_downflow_full":                 _plain(full_result, "N_end_downflow"),
             "failure_full": 1 if (full_result is None or full_result.get("failure", True)) else 0,
@@ -354,8 +354,8 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
             "M_max_slow_roll_SolarMass":          _M(sr_result, "M_max"),
             "r_peak_slow_roll_Mpc":               _r(sr_result, "r_peak"),
             "M_peak_slow_roll_SolarMass":         _M(sr_result, "M_peak"),
-            "C_max_slow_roll":                     _plain(sr_result, "C_max"),
-            "C_bar_max_slow_roll":                 _plain(sr_result, "C_bar_max"),
+            "C_peak_slow_roll":                    _plain(sr_result, "C_max"),
+            "C_bar_peak_slow_roll":                _plain(sr_result, "C_bar_max"),
             "V_end_downflow_slow_roll_PlanckMass4": _V(sr_result, "V_end_downflow"),
             "N_end_downflow_slow_roll":            _plain(sr_result, "N_end_downflow"),
             "failure_slow_roll": 1 if (sr_result is None or sr_result.get("failure", True)) else 0,
