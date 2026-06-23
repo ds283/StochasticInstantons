@@ -104,10 +104,10 @@ def _make_fake_full_result():
     units = Planck_units()
     return {
         "failure":        False,
-        "r_max_C":        1.0 * units.Mpc,
-        "r_max_C_bar":    2.0 * units.Mpc,
-        "M_C":            1.0 * units.SolarMass,
-        "M_C_bar":        2.0 * units.SolarMass,
+        "r_max":          1.0 * units.Mpc,
+        "r_peak":         2.0 * units.Mpc,
+        "M_max":          1.0 * units.SolarMass,
+        "M_peak":         2.0 * units.SolarMass,
         "C_max":          0.5,
         "C_bar_max":      0.4,
         "V_end_downflow": 1e-10 * units.PlanckMass ** 4,
@@ -120,10 +120,10 @@ def _make_fake_sr_result():
     units = Planck_units()
     return {
         "failure":        False,
-        "r_max_C":        1.1 * units.Mpc,
-        "r_max_C_bar":    2.1 * units.Mpc,
-        "M_C":            1.1 * units.SolarMass,
-        "M_C_bar":        2.1 * units.SolarMass,
+        "r_max":          1.1 * units.Mpc,
+        "r_peak":         2.1 * units.Mpc,
+        "M_max":          1.1 * units.SolarMass,
+        "M_peak":         2.1 * units.SolarMass,
         "C_max":          0.48,
         "C_bar_max":      0.38,
         "V_end_downflow": 1.1e-10 * units.PlanckMass ** 4,

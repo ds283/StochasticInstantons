@@ -114,10 +114,10 @@ def _cf_branch_success():
         "zeta": [0.1, 0.2, 0.3],
         "C": [0.05, 0.10, 0.15],
         "C_bar": [0.04, 0.09, 0.14],
-        "r_max_C": 2.5,
-        "r_max_C_bar": 2.4,
-        "M_C": 1e15,
-        "M_C_bar": 1e14,
+        "r_max": 2.5,
+        "r_peak": 3.0,
+        "M_max": 1e15,
+        "M_peak": 1e14,
         "C_max": 0.15,
         "C_bar_max": 0.14,
         "V_end_downflow": 1e-10,
@@ -269,13 +269,13 @@ class TestCompactionFunctionPopulateFromResult:
         branch = _cf_branch_success()
         cf._populate_from_result({"full": branch, "slow_roll": branch})
 
-        assert cf._r_max_C_full == pytest.approx(2.5)
-        assert cf._r_max_C_bar_full == pytest.approx(2.4)
+        assert cf._r_max_full == pytest.approx(2.5)
+        assert cf._r_peak_full == pytest.approx(3.0)
         assert cf._C_peak_full == pytest.approx(0.15)
         assert cf._C_bar_peak_full == pytest.approx(0.14)
         assert cf._V_end_downflow_full == pytest.approx(1e-10)
         assert cf._N_end_downflow_full == pytest.approx(2.9)
-        assert cf._r_max_C_slow_roll == pytest.approx(2.5)
+        assert cf._r_max_slow_roll == pytest.approx(2.5)
         assert cf._C_peak_slow_roll == pytest.approx(0.15)
 
     def test_full_succeeds_slow_roll_fails(self):
