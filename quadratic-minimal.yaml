@@ -1,0 +1,8 @@
+potential-type: "Quadratic"
+shards: 10
+abs-tol: 1e-8
+rel-tol: 1e-8
+m-values-Mp: [ 1E-5 ]
+phi0-Mp: 15.0
+pi0-Mp: 0.0
+samples-per-N: 100
