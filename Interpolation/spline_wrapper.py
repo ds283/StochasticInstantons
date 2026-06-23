@@ -135,7 +135,6 @@ class SplineWrapper:
         x_transform: str = 'linear',
         y_transform: str = 'linear',
         k: int = 3,
-        bc_type=None,
     ):
         _valid = {'linear', 'log', 'sinh'}
         if x_transform not in _valid:
@@ -150,7 +149,7 @@ class SplineWrapper:
         y_arr = np.asarray(y, dtype=float)
         x_t = self._apply(x_arr, x_transform)
         y_t = self._apply(y_arr, y_transform)
-        self._spline = make_interp_spline(x_t, y_t, k=k, bc_type=bc_type)
+        self._spline = make_interp_spline(x_t, y_t, k=k)
 
     # ── Public evaluation ────────────────────────────────────────────────────
 
