@@ -741,38 +741,48 @@ def plot_zeta_and_compaction(
     cf_annotation=None,
     run_label: str = "",
 ):
-    """Two-panel figure: zeta(r) and C(r)/C_bar(r) vs r in Mpc on a log x-axis."""
+    """Three-panel figure: zeta(r), C(r), and C_bar(r) vs r in Mpc on a log x-axis."""
     full_vals = cf.full_values
     sr_vals = cf.slow_roll_values
     if not full_vals and not sr_vals:
         return
 
     Mpc = units.Mpc
-    fig, (ax_zeta, ax_C) = plt.subplots(1, 2, figsize=(10, 5))
+
+    # 1 column on left (zeta), 1 column on right split into 2 rows (C, C_bar)
+    fig = plt.figure(figsize=(12, 5))
+    ax_zeta = fig.add_subplot(1, 2, 1)
+    ax_C = fig.add_subplot(2, 2, 2)
+    ax_Cbar = fig.add_subplot(2, 2, 4, sharex=ax_C)
 
     if full_vals:
         r_full = [v.r / Mpc for v in full_vals]
         ax_zeta.plot(r_full, [v.zeta for v in full_vals], label="Full")
         ax_C.plot(r_full, [v.C for v in full_vals], label=r"$C$ (full)")
-        ax_C.plot(r_full, [v.C_bar for v in full_vals], "--", label=r"$\bar{C}$ (full)")
+        ax_Cbar.plot(r_full, [v.C_bar for v in full_vals], label=r"$\bar{C}$ (full)")
 
     if sr_vals:
         r_sr = [v.r / Mpc for v in sr_vals]
         ax_zeta.plot(r_sr, [v.zeta for v in sr_vals], "--", label="Slow-roll")
-        ax_C.plot(r_sr, [v.C for v in sr_vals], label=r"$C$ (SR)")
-        ax_C.plot(r_sr, [v.C_bar for v in sr_vals], "--", label=r"$\bar{C}$ (SR)")
+        ax_C.plot(r_sr, [v.C for v in sr_vals], "--", label=r"$C$ (SR)")
+        ax_Cbar.plot(r_sr, [v.C_bar for v in sr_vals], "--", label=r"$\bar{C}$ (SR)")
 
-    for ax in (ax_zeta, ax_C):
-        ax.set_xscale("log")
-        ax.set_xlabel(r"$r$ / Mpc")
-
+    ax_zeta.set_xscale("log")
+    ax_zeta.set_xlabel(r"$r$ / Mpc")
     ax_zeta.set_ylabel(r"$\zeta(r)$")
     ax_zeta.set_title(r"Density contrast $\zeta(r)$")
     ax_zeta.legend(fontsize="small")
 
+    ax_C.set_xscale("log")
     ax_C.set_ylabel(r"$C(r)$")
     ax_C.set_title("Compaction function")
     ax_C.legend(fontsize="small")
+    plt.setp(ax_C.get_xticklabels(), visible=False)  # shared x, hide top labels
+
+    ax_Cbar.set_xscale("log")
+    ax_Cbar.set_xlabel(r"$r$ / Mpc")
+    ax_Cbar.set_ylabel(r"$\bar{C}(r)$")
+    ax_Cbar.legend(fontsize="small")
 
     fig.suptitle(
         rf"Compaction — {potential_name}, "
@@ -1934,7 +1944,11 @@ def plot_doe_scalar_summary(
             ax.legend(fontsize="small")
 
         _cmp_panel(
-            axes1[0, 0], cb_max_f, cb_max_s, r"$\bar{C}_{\rm peak}$", r"$\bar{C}_{\rm peak}$"
+            axes1[0, 0],
+            cb_max_f,
+            cb_max_s,
+            r"$\bar{C}_{\rm peak}$",
+            r"$\bar{C}_{\rm peak}$",
         )
         _cmp_panel(axes1[0, 1], c_max_f, c_max_s, r"$C_{\rm peak}$", r"$C_{\rm peak}$")
 
@@ -2002,32 +2016,30 @@ def plot_doe_scalar_summary(
         ax10.set_ylabel(r"$\Delta N = N_{\rm init} - N_{\rm final}$")
         ax10.set_title(r"$S_{\rm MSR}$")
 
-        # Panel [1,1]: threshold boundary
+        # Panel [1,1]: r_max existence
         ax11 = axes1[1, 1]
         for i, d in enumerate(data_points):
-            cbf = d["C_bar_peak_full"]
-            cbs = d["C_bar_peak_sr"]
+            rmf = d["r_max_full_Mpc"]
+            rms = d["r_max_sr_Mpc"]
             xi, yi = dns_arr[i], dN_arr[i]
-            if cbf is not None:
-                ax11.scatter(
-                    [xi],
-                    [yi],
-                    color="green" if cbf > threshold else "gray",
-                    marker="o",
-                    s=40,
-                    zorder=3,
-                )
-            if cbs is not None:
-                ax11.scatter(
-                    [xi],
-                    [yi],
-                    color="green" if cbs > threshold else "gray",
-                    marker="^",
-                    s=40,
-                    zorder=3,
-                )
-        _thr_gt = f"$> {threshold}$"
-        _thr_le = r"$\leq$" + f" {threshold}"
+            ax11.scatter(
+                [xi],
+                [yi],
+                color="green" if rmf is not None else "gray",
+                marker="o",
+                s=40,
+                alpha=1.0 if rmf is not None else 0.4,
+                zorder=3,
+            )
+            ax11.scatter(
+                [xi],
+                [yi],
+                color="green" if rms is not None else "gray",
+                marker="^",
+                s=40,
+                alpha=1.0 if rms is not None else 0.4,
+                zorder=3,
+            )
         leg_elems = [
             Line2D(
                 [0],
@@ -2035,7 +2047,7 @@ def plot_doe_scalar_summary(
                 marker="o",
                 color="w",
                 markerfacecolor="green",
-                label=r"Full: $\bar{C}_{\rm peak}$ " + _thr_gt,
+                label=r"Full: $r_{\rm max}$ exists",
                 markersize=8,
             ),
             Line2D(
@@ -2044,7 +2056,7 @@ def plot_doe_scalar_summary(
                 marker="o",
                 color="w",
                 markerfacecolor="gray",
-                label=r"Full: $\bar{C}_{\rm peak}$ " + _thr_le,
+                label=r"Full: $r_{\rm max}$ absent",
                 markersize=8,
             ),
             Line2D(
@@ -2053,7 +2065,7 @@ def plot_doe_scalar_summary(
                 marker="^",
                 color="w",
                 markerfacecolor="green",
-                label=r"SR: $\bar{C}_{\rm peak}$ " + _thr_gt,
+                label=r"SR: $r_{\rm max}$ exists",
                 markersize=8,
             ),
             Line2D(
@@ -2062,14 +2074,14 @@ def plot_doe_scalar_summary(
                 marker="^",
                 color="w",
                 markerfacecolor="gray",
-                label=r"SR: $\bar{C}_{\rm peak}$ " + _thr_le,
+                label=r"SR: $r_{\rm max}$ absent",
                 markersize=8,
             ),
         ]
         ax11.legend(handles=leg_elems, fontsize="small")
         ax11.set_xlabel(r"$\delta N_\star$")
         ax11.set_ylabel(r"$\Delta N = N_{\rm init} - N_{\rm final}$")
-        ax11.set_title(r"Threshold boundary ($\bar{C}_{\rm peak}$ " + _thr_gt + ")")
+        ax11.set_title(r"$r_{\rm max}$ (PBH collapse scale) existence")
 
         fig1.suptitle(f"DOE scalar summary — {potential_name}")
         fig1.tight_layout()
