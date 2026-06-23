@@ -17,6 +17,9 @@ Files are grouped by architectural layer to make it easy to find related pieces.
 | `config_sharding.py`        | `config/sharding.py`        | Defines the `ShardedPool` configuration: shard-key type (`delta_Nstar`), `replicated_tables`, `sharded_tables` dict, `read_table_config`, `inventory_config`                                      |
 | `config_argument_parser.py` | `config/argument_parser.py` | CLI + YAML argument parsing via `configargparse`; defines all grid, tolerance, potential, sampling, and database arguments                                                                        |
 | `config_model_list.py`      | `config/model_list.py`      | `build_model_list()` helper: constructs the list of inflationary-model parameter dicts passed into the pipeline                                                                                   |
+| `config_grid_builder.py`    | `config/grid_builder.py`    | `build_instanton_grid()`: builds the N_init × N_final × delta_Nstar parameter grid from parsed CLI/YAML args; supports both Cartesian and CSV-specified grids                                    |
+| `config_pipeline_setup.py`  | `config/pipeline_setup.py`  | `build_pipeline_inputs()`: mints the datastore objects (trajectory, N_init, N_final, delta_Nstar) needed to run the compute pipeline or plotting scripts                                          |
+| `config_generate_lhc_grid.py` | `config/generate_lhc_grid.py` | Standalone script to generate a Latin hypercube sample (LHC) CSV grid over (delta_Nstar, ΔN, N_final) for DOE runs; produces `--sample-grid-csv`-compatible output                           |
 
  
 ---
@@ -32,11 +35,11 @@ Files are grouped by architectural layer to make it easy to find related pieces.
 
 ## 3. Datastore core
 
-| Flat filename                  | Original path                  | Purpose                                                                                                                                                                                                                                |
-|--------------------------------|--------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Datastore_object.py`          | `Datastore/object.py`          | `DatastoreObject` base class: provides `store_id` property and `available` boolean used everywhere to test persistence state                                                                                                           |
-| `Datastore_SQL_ShardedPool.py` | `Datastore/SQL/ShardedPool.py` | `ShardedPool` — the primary datastore API seen by `main.py`; coordinates multiple `Datastore` Ray actors across shards; implements `object_get`, `object_get_vectorized`, `object_store`, `object_validate`, `read_table`, `inventory` |
-| `Datastore_SQL_Datastore.py`   | `Datastore/SQL/Datastore.py`   | `@ray.remote class Datastore` — a single shard actor wrapping a SQLite connection; owns the factory registry and delegates to factories for every get/store/validate call                                                              |
+| Flat filename                  | Original path                  | Purpose                                                                                                                                                                                                                                                                |
+|--------------------------------|--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Datastore_object.py`          | `Datastore/object.py`          | `DatastoreObject` base class: provides `store_id` property and `available` boolean used everywhere to test persistence state                                                                                                                                           |
+| `Datastore_SQL_ShardedPool.py` | `Datastore/SQL/ShardedPool.py` | `ShardedPool` — the primary datastore API seen by `main.py`; coordinates multiple `Datastore` Ray actors across shards; implements `object_get`, `object_get_vectorized`, `object_store`, `object_validate`, `read_table`, `inventory`                                 |
+| `Datastore_SQL_Datastore.py`   | `Datastore/SQL/Datastore.py`   | `@ray.remote class Datastore` — a single shard actor wrapping a SQLite connection; owns the factory registry and delegates to factories for every get/store/validate call                                                                                              |
 
  
 ---
@@ -45,19 +48,21 @@ Files are grouped by architectural layer to make it easy to find related pieces.
 
 The base protocol plus a progression from simplest to most complex factory.
 
-| Flat filename                                            | Original path                                            | Purpose                                                                                                                                                             |
-|----------------------------------------------------------|----------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Datastore_SQL_ObjectFactories_base.py`                  | `Datastore/SQL/ObjectFactories/base.py`                  | `SQLAFactoryBase` — the abstract base class for all factories; documents the four-method protocol: `register()`, `build()`, `store()`, `validate()`                 |
-| `Datastore_SQL_ObjectFactories_tolerance.py`             | `Datastore/SQL/ObjectFactories/tolerance.py`             | Simplest factory: single-column table, fuzzy float match in `build()`, no value list in `store()`                                                                   |
-| `Datastore_SQL_ObjectFactories_DimensionlessQuantity.py` | `Datastore/SQL/ObjectFactories/DimensionlessQuantity.py` | Generic factory for all dimensionless quantity subclasses (`delta_Nstar`, `N_init`, `N_final`, `quartic_coupling`); uses a `classname → column_name` dispatch table |
-| `Datastore_SQL_ObjectFactories_DimensionfulQuantity.py`  | `Datastore/SQL/ObjectFactories/DimensionfulQuantity.py`  | Generic factory for all dimensional quantity subclasses (`phi_value`, `pi_value`, `inflaton_mass`); same dispatch-table pattern                                     |
-| `Datastore_SQL_ObjectFactories_delta_Nstar.py`           | `Datastore/SQL/ObjectFactories/delta_Nstar.py`           | Factory for `delta_Nstar` — the shard key type; illustrates how the shard-key object is registered and looked up                                                    |
-| `Datastore_SQL_ObjectFactories_efold.py`                 | `Datastore/SQL/ObjectFactories/efold.py`                 | Factory for `efold_value` sample coordinates; used whenever the pipeline mints an N-grid                                                                            |
-| `Datastore_SQL_ObjectFactories_QuadraticPotential.py`    | `Datastore/SQL/ObjectFactories/QuadraticPotential.py`    | Factory for the `QuadraticPotential` model object; illustrates how a potential object is persisted and restored                                                     |
-| `Datastore_SQL_ObjectFactories_InflatonTrajectory.py`    | `Datastore/SQL/ObjectFactories/InflatonTrajectory.py`    | Factory for `InflatonTrajectory`; `store()` serialises the full `_values` list (N, φ, π) to a JSON blob; `validate()` checks row-count consistency                  |
-| `Datastore_SQL_ObjectFactories_FullInstanton.py`         | `Datastore/SQL/ObjectFactories/FullInstanton.py`         | Factory for `FullInstanton`; most complex: sharded table, `store()` serialises (N, φ₁, φ₂, P₁, P₂, MSR action) per sample, `validate()` marks the row validated     |
-| `Datastore_SQL_ObjectFactories_SlowRollInstanton.py`     | `Datastore/SQL/ObjectFactories/SlowRollInstanton.py`     | Factory for `SlowRollInstanton`; same sharded pattern as `FullInstanton` with the slow-roll field subset                                                            |
-| `Datastore_SQL_ObjectFactories_CompactionFunction.py`    | `Datastore/SQL/ObjectFactories/CompactionFunction.py`    | Factory for `CompactionFunction` compute target                                                                                                                     |
+| Flat filename                                                    | Original path                                                    | Purpose                                                                                                                                                             |
+|------------------------------------------------------------------|------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Datastore_SQL_ObjectFactories_base.py`                          | `Datastore/SQL/ObjectFactories/base.py`                          | `SQLAFactoryBase` — the abstract base class for all factories; documents the four-method protocol: `register()`, `build()`, `store()`, `validate()`                 |
+| `Datastore_SQL_ObjectFactories_tolerance.py`                     | `Datastore/SQL/ObjectFactories/tolerance.py`                     | Simplest factory: single-column table, fuzzy float match in `build()`, no value list in `store()`                                                                   |
+| `Datastore_SQL_ObjectFactories_DimensionlessQuantity.py`         | `Datastore/SQL/ObjectFactories/DimensionlessQuantity.py`         | Generic factory for all dimensionless quantity subclasses (`delta_Nstar`, `N_init`, `N_final`, `quartic_coupling`); uses a `classname → column_name` dispatch table |
+| `Datastore_SQL_ObjectFactories_DimensionfulQuantity.py`          | `Datastore/SQL/ObjectFactories/DimensionfulQuantity.py`          | Generic factory for all dimensional quantity subclasses (`phi_value`, `pi_value`, `inflaton_mass`); same dispatch-table pattern                                     |
+| `Datastore_SQL_ObjectFactories_delta_Nstar.py`                   | `Datastore/SQL/ObjectFactories/delta_Nstar.py`                   | Factory for `delta_Nstar` — the shard key type; illustrates how the shard-key object is registered and looked up                                                    |
+| `Datastore_SQL_ObjectFactories_efold.py`                         | `Datastore/SQL/ObjectFactories/efold.py`                         | Factory for `efold_value` sample coordinates; used whenever the pipeline mints an N-grid                                                                            |
+| `Datastore_SQL_ObjectFactories_QuadraticPotential.py`            | `Datastore/SQL/ObjectFactories/QuadraticPotential.py`            | Factory for the `QuadraticPotential` model object; illustrates how a potential object is persisted and restored                                                     |
+| `Datastore_SQL_ObjectFactories_InflatonTrajectory.py`            | `Datastore/SQL/ObjectFactories/InflatonTrajectory.py`            | Factory for `InflatonTrajectory`; `store()` serialises the full `_values` list (N, φ, π) to a JSON blob; `validate()` checks row-count consistency                  |
+| `Datastore_SQL_ObjectFactories_FullInstanton.py`                 | `Datastore/SQL/ObjectFactories/FullInstanton.py`                 | Factory for `FullInstanton`; most complex: sharded table, `store()` serialises (N, φ₁, φ₂, P₁, P₂, MSR action) per sample, `validate()` marks the row validated     |
+| `Datastore_SQL_ObjectFactories_SlowRollInstanton.py`             | `Datastore/SQL/ObjectFactories/SlowRollInstanton.py`             | Factory for `SlowRollInstanton`; same sharded pattern as `FullInstanton` with the slow-roll field subset                                                            |
+| `Datastore_SQL_ObjectFactories_CompactionFunction.py`            | `Datastore/SQL/ObjectFactories/CompactionFunction.py`            | Factory for `CompactionFunction` compute target                                                                                                                     |
+| `Datastore_SQL_ObjectFactories_MasslessDecoupledDiffusion.py`    | `Datastore/SQL/ObjectFactories/MasslessDecoupledDiffusion.py`    | Factory for `MasslessDecoupledDiffusion`; singleton table (no parameters); registers the type in `DIFFUSION_MODEL_REGISTRY` on build                                |
+| `Datastore_SQL_ObjectFactories_CosmologicalParams.py`            | `Datastore/SQL/ObjectFactories/CosmologicalParams.py`            | Factory for `CosmologicalParams`; stores cosmological parameter bundles (Planck2013/2015/2018) as named rows; looked up by name on build                             |
 
  
 ---
@@ -67,17 +72,27 @@ The base protocol plus a progression from simplest to most complex factory.
 Each file follows the four-part pattern: `@ray.remote` function → `FooValue`
 class → `Foo` class (plain Python, no decorator) → `FooProxy` class.
 
-| Flat filename                          | Original path                          | Purpose                                                                                                                                                                                                              |
-|----------------------------------------|----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ComputeTargets_InflatonTrajectory.py` | `ComputeTargets/InflatonTrajectory.py` | Background ODE integration; internally-built sample grid (Approach B); custom `store_handler` required in `main.py` to mint `efold_value` objects after the ODE endpoint is known                                    |
-| `ComputeTargets_FullInstanton.py`      | `ComputeTargets/FullInstanton.py`      | Full MSR instanton BVP; Picard inner loop + Newton outer loop; pre-minted sample grid (Approach A); `store()` populates `_values` directly                                                                           |
-| `ComputeTargets_SlowRollInstanton.py`  | `ComputeTargets/SlowRollInstanton.py`  | Slow-roll-approximated instanton BVP; same Approach A pattern as `FullInstanton`                                                                                                                                     |
-| `ComputeTargets_CompactionFunctionpy`  | `ComputeTargets/CompactionFunction.py` | Compute radial density profile `zeta(r)` and compaction function `C(r)`; derive averaged compaction function `\bar{C}(r)`; determine if PBH forms from threshold on `C(r)` or `\bar{C}(r)`; determine final PBH mass |
+| Flat filename                          | Original path                          | Purpose                                                                                                                                                                                              |
+|----------------------------------------|----------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `ComputeTargets_InflatonTrajectory.py` | `ComputeTargets/InflatonTrajectory.py` | Background ODE integration; internally-built sample grid (Approach B); custom `store_handler` required in `main.py` to mint `efold_value` objects after the ODE endpoint is known                    |
+| `ComputeTargets_FullInstanton.py`      | `ComputeTargets/FullInstanton.py`      | Full MSR instanton BVP; Picard inner loop + Newton outer loop; pre-minted sample grid (Approach A); `store()` populates `_values` directly                                                           |
+| `ComputeTargets_SlowRollInstanton.py`  | `ComputeTargets/SlowRollInstanton.py`  | Slow-roll-approximated instanton BVP; same Approach A pattern as `FullInstanton`                                                                                                                     |
+| `ComputeTargets_CompactionFunction.py` | `ComputeTargets/CompactionFunction.py` | Compute radial density profile `zeta(r)` and compaction function `C(r)`; derive averaged compaction function `C_bar(r)`; determine if PBH forms from threshold on `C(r)` or `C_bar(r)`; PBH mass    |
+| `ComputeTargets_pipeline.py`           | `ComputeTargets/pipeline.py`           | Pipeline helper: `_run_scalar_only_compaction_path()` for the scalar-only (no `_values`) populate path; handles integrity checks for pre-existing scalar-only rows before triggering a full recompute |
 
  
 ---
 
-## 6. Domain concepts — CosmologyConcepts
+## 6. Interpolation
+
+| Flat filename                   | Original path                   | Purpose                                                                                                                                                                        |
+|---------------------------------|---------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Interpolation_spline_wrapper.py` | `Interpolation/spline_wrapper.py` | `SplineWrapper`: thin wrapper around `make_interp_spline` that applies optional `linear`/`log`/`sinh` coordinate transforms before fitting; exposes `derivative()` with full chain-rule correction; root-finding API works in transformed space |
+
+ 
+---
+
+## 7. Domain concepts — CosmologyConcepts
 
 These provide the base classes for all physics quantities.
 
@@ -90,25 +105,41 @@ These provide the base classes for all physics quantities.
  
 ---
 
-## 7. Domain concepts — InflationConcepts
+## 8. Domain concepts — InflationConcepts
 
 Inflation-specific domain objects that implement or specialise the cosmology
 base classes.
 
-| Flat filename                             | Original path                             | Purpose                                                                                                                                    |
-|-------------------------------------------|-------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
-| `InflationConcepts_delta_Nstar.py`        | `InflationConcepts/delta_Nstar.py`        | `delta_Nstar` — excess transition e-fold count; the shard key of the entire database                                                       |
-| `InflationConcepts_efold_value.py`        | `InflationConcepts/efold_value.py`        | `efold_value` — a single e-fold sample coordinate N; also defines `efold_array` container                                                  |
-| `InflationConcepts_N_init.py`             | `InflationConcepts/N_init.py`             | `N_init` — initial e-fold count; one axis of the instanton parameter grid                                                                  |
-| `InflationConcepts_N_final.py`            | `InflationConcepts/N_final.py`            | `N_final` — final e-fold count; the other axis of the instanton parameter grid                                                             |
-| `InflationConcepts_DiffusionModel.py`     | `InflationConcepts/DiffusionModel.py`     | `AbstractDiffusionModel` and `MasslessDecoupledDiffusion`; provides the 2×2 diffusion matrix D_{ij}(φ, π) used in the stochastic equations |
-| `InflationConcepts_QuadraticPotential.py` | `InflationConcepts/QuadraticPotential.py` | `QuadraticPotential` concrete implementation: V(φ) = ½m²φ²                                                                                 |
-| `InflationConcepts_QuarticPotential.py`   | `InflationConcepts/QuarticPotential.py`   | `QuarticPotential` concrete implementation: V(φ) = λφ⁴                                                                                     |
+| Flat filename                                      | Original path                                      | Purpose                                                                                                                                    |
+|----------------------------------------------------|----------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| `InflationConcepts_delta_Nstar.py`                 | `InflationConcepts/delta_Nstar.py`                 | `delta_Nstar` — excess transition e-fold count; the shard key of the entire database                                                       |
+| `InflationConcepts_efold_value.py`                 | `InflationConcepts/efold_value.py`                 | `efold_value` — a single e-fold sample coordinate N; also defines `efold_array` container                                                  |
+| `InflationConcepts_N_init.py`                      | `InflationConcepts/N_init.py`                      | `N_init` — initial e-fold count; one axis of the instanton parameter grid                                                                  |
+| `InflationConcepts_N_final.py`                     | `InflationConcepts/N_final.py`                     | `N_final` — final e-fold count; the other axis of the instanton parameter grid                                                             |
+| `InflationConcepts_DiffusionModel.py`              | `InflationConcepts/DiffusionModel/__init__.py`     | `AbstractDiffusionModel` and `MasslessDecoupledDiffusion`; provides the 2×2 diffusion matrix D_{ij}(φ, π) used in the stochastic equations |
+| `InflationConcepts_DiffusionModel_model_ids.py`    | `InflationConcepts/DiffusionModel/model_ids.py`    | Integer type-ID constants for `AbstractDiffusionModel` subclasses; `MASSLESS_DECOUPLED_DIFFUSION = 1`                                     |
+| `InflationConcepts_DiffusionModel_registry.py`     | `InflationConcepts/DiffusionModel/registry.py`     | `DIFFUSION_MODEL_REGISTRY` dict populated by each concrete subclass factory on import; used to route `build()` calls by `type_id`          |
+| `InflationConcepts_noiseless_equations.py`         | `InflationConcepts/noiseless_equations.py`         | Shared ODE RHS `noiseless_rhs()` and `end_of_inflation_event()` for the noiseless background; used by `InflatonTrajectory` and `CompactionFunction` |
+| `InflationConcepts_QuadraticPotential.py`          | `InflationConcepts/QuadraticPotential.py`          | `QuadraticPotential` concrete implementation: V(φ) = ½m²φ²                                                                                 |
+| `InflationConcepts_QuarticPotential.py`            | `InflationConcepts/QuarticPotential.py`            | `QuarticPotential` concrete implementation: V(φ) = λφ⁴                                                                                     |
 
  
 ---
 
-## 8. Metadata concepts
+## 9. Domain concepts — CosmologyModels
+
+Persistable wrappers around cosmological parameter bundles used to convert
+instanton scales to physical PBH masses and radii.
+
+| Flat filename                  | Original path                  | Purpose                                                                                                                                    |
+|--------------------------------|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| `CosmologyModels_cosmo_params.py` | `CosmologyModels/cosmo_params.py` | `CosmologicalParams` — persistable `DatastoreObject` wrapping a parameter bundle; exposes `omega_cc`, `omega_m`, `h`, `T_CMB_Kelvin`, etc. |
+| `CosmologyModels_params.py`    | `CosmologyModels/params.py`    | Bare dataclasses `Planck2013`, `Planck2015`, `Planck2018` holding best-fit cosmological constants; passed into `CosmologicalParams`        |
+
+ 
+---
+
+## 10. Metadata concepts
 
 | Flat filename                   | Original path                   | Purpose                                                                                                     |
 |---------------------------------|---------------------------------|-------------------------------------------------------------------------------------------------------------|
@@ -117,12 +148,22 @@ base classes.
  
 ---
 
-## 9. Units
+## 11. Units
 
 | Flat filename           | Original path           | Purpose                                                                                                                          |
 |-------------------------|-------------------------|----------------------------------------------------------------------------------------------------------------------------------|
 | `Units_base.py`         | `Units/base.py`         | `UnitsLike` abstract base class: declares abstract properties for every unit used in the code (PlanckMass, Metre, eV, c, Mpc, …) |
 | `Units_Planck_units.py` | `Units/Planck_units.py` | `Planck_units` concrete implementation: sets all constants relative to reduced Planck units (Mₚ = 1, 8πG = 1)                    |
+
+ 
+---
+
+## 12. Plotting and analysis driver scripts
+
+| Flat filename                    | Original path                    | Purpose                                                                                                                                                                                   |
+|----------------------------------|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `plot_InstantonSolutions.py`     | `plot_InstantonSolutions.py`     | Plotting driver: reads the database via `ShardedPool`; produces background-trajectory, instanton-field, noise-profile, MSR-action-sweep, compaction-profile, and DOE-scalar-summary figures using Ray-dispatched worker tasks |
+| `regression_InstantonOutputs.py` | `regression_InstantonOutputs.py` | GP regression driver: reads `scalar_data.csv` from the plot script; fits 5 independent single-output GPs (C_bar_max, C_max, log S_MSR, log M_PBH, log r_PBH); writes diagnostic plots and serialised `.joblib` model bundles |
 
  
 ---
@@ -157,4 +198,5 @@ to files already included, or peripheral to the patterns described above.
 | `RayTools/` (other files)                               | Only `RayWorkPool.py` is directly relevant                                  |
 | `config/defaults.py`                                    | Small constants file; values visible in `argument_parser.py`                |
 | `ComputeTargets/exceptions.py`                          | Small; exception class definitions only                                     |
- 
+| `constants.py`                                          | Only defines `RadiationConstant` and `StefanBoltzmannConstant`; peripheral  |
+| `utilities.py`                                          | General-purpose utilities (timing, grouper, etc.); not needed for patterns  |
