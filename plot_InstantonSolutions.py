@@ -545,6 +545,127 @@ def plot_instanton_fields(
     plt.close(fig)
 
 
+def plot_noise_profile(
+    fi,
+    sri,
+    N_init_val,
+    N_final_val,
+    dns_val,
+    potential_name,
+    output_dir,
+    fmt,
+    cf_annotation=None,
+    run_label: str = "",
+):
+    """Two-panel figure: sigma_phi1(N) and sigma_phi2(N) noise amplitude profiles."""
+    if fi is None and sri is None:
+        print(
+            f"   Warning: no instanton data for Ninit={N_init_val:.3g}, "
+            f"Nfinal={N_final_val:.3g}, dNstar={dns_val:.3g} — skipping noise profile plot"
+        )
+        return
+
+    fi_prof = None
+    if fi is not None and fi._values:
+        fi_prof = fi.noise_profile_arrays()
+
+    sri_prof = None
+    if sri is not None and sri._values:
+        sri_prof = sri.noise_profile_arrays()
+
+    if fi_prof is None and sri_prof is None:
+        print(
+            f"   Warning: noise profile unavailable for Ninit={N_init_val:.3g}, "
+            f"Nfinal={N_final_val:.3g}, dNstar={dns_val:.3g} — skipping noise profile plot"
+        )
+        return
+
+    fig, (ax_s1, ax_s2) = plt.subplots(1, 2, figsize=(10, 5))
+
+    # Left panel: sigma_phi1
+    if fi_prof is not None:
+        N_fi = fi_prof["N"]
+        s1_fi = fi_prof["sigma_phi1"]
+        mask = ~np.isnan(s1_fi)
+        if mask.any():
+            ax_s1.plot(N_fi[mask], s1_fi[mask], label=r"$\sigma_{\varphi_1}$ (full)")
+
+    if sri_prof is not None:
+        N_sri = sri_prof["N"]
+        s1_sri = sri_prof["sigma_phi1"]
+        mask = ~np.isnan(s1_sri)
+        if mask.any():
+            ax_s1.plot(N_sri[mask], s1_sri[mask], "--", label=r"$\sigma_{\varphi_1}$ (SR)")
+
+    ax_s1.set_xlabel("N (e-folds)")
+    ax_s1.set_ylabel(r"$\sigma_{\varphi_1}$")
+    ax_s1.set_title(r"Noise amplitude $\sigma_{\varphi_1}$")
+    ax_s1.legend(fontsize="small")
+
+    # Right panel: sigma_phi2
+    s2_has_data = False
+    if fi_prof is not None:
+        N_fi = fi_prof["N"]
+        s2_fi = fi_prof["sigma_phi2"]
+        mask = ~np.isnan(s2_fi)
+        if mask.any():
+            ax_s2.plot(N_fi[mask], s2_fi[mask], label=r"$\sigma_{\varphi_2}$ (full)")
+            s2_has_data = True
+
+    if sri_prof is not None:
+        N_sri = sri_prof["N"]
+        s2_sri = sri_prof["sigma_phi2"]
+        mask = ~np.isnan(s2_sri)
+        if mask.any():
+            ax_s2.plot(N_sri[mask], s2_sri[mask], "--", label=r"$\sigma_{\varphi_2}$ (SR)")
+            s2_has_data = True
+
+    if not s2_has_data:
+        ax_s2.text(
+            0.5,
+            0.5,
+            r"No $\varphi_2$ channel data",
+            ha="center",
+            va="center",
+            transform=ax_s2.transAxes,
+            color="gray",
+        )
+
+    ax_s2.set_xlabel("N (e-folds)")
+    ax_s2.set_ylabel(r"$\sigma_{\varphi_2}$")
+    ax_s2.set_title(r"Noise amplitude $\sigma_{\varphi_2}$")
+    if s2_has_data:
+        ax_s2.legend(fontsize="small")
+
+    fig.suptitle(
+        rf"Noise profile — {potential_name}, "
+        rf"$N_{{\rm init}}$={N_init_val:.3g}, $N_{{\rm final}}$={N_final_val:.3g}, "
+        rf"$\delta N_\star$={dns_val:.3g}"
+    )
+
+    msr_parts = []
+    if fi is not None and fi.available and not fi.failure:
+        action = getattr(fi, "msr_action", None)
+        if action is not None:
+            msr_parts.append(rf"Full: $S_{{\rm MSR}}$={action:.4g}")
+    if sri is not None and sri.available and not sri.failure:
+        action = getattr(sri, "msr_action", None)
+        if action is not None:
+            msr_parts.append(rf"SR: $S_{{\rm MSR}}$={action:.4g}")
+    msr_text = "   ".join(msr_parts) if msr_parts else None
+
+    cf_text = _cf_annotation_text(cf_annotation)
+    ann_lines = [t for t in (cf_text, msr_text) if t]
+    _add_cf_annotation(fig, "\n".join(ann_lines) if ann_lines else None)
+
+    objs_for_footer = [o for o in (fi, sri) if o is not None]
+    _provenance_footer(fig, *objs_for_footer, run_label=run_label)
+
+    fname = output_dir / f"noise_profile.{fmt}"
+    fig.savefig(fname)
+    plt.close(fig)
+
+
 def plot_msr_action_sweep(
     x_label,
     fi_points,
@@ -811,6 +932,36 @@ def _plot_fields_item(
         dns_val,
         potential,
         units,
+        output_dir,
+        fmt,
+        cf_annotation,
+        run_label=run_label,
+    )
+
+
+@ray.remote
+def _plot_noise_profile_item(
+    fi,
+    sri,
+    N_init_val,
+    N_final_val,
+    dns_val,
+    potential_name,
+    output_dir_str,
+    fmt,
+    cf_annotation=None,
+    run_label: str = "",
+):
+    """Runs inside a Ray worker: noise amplitude sigma_phi1/phi2 vs N plot."""
+    sns.set_theme()
+    output_dir = Path(output_dir_str)
+    plot_noise_profile(
+        fi,
+        sri,
+        N_init_val,
+        N_final_val,
+        dns_val,
+        potential_name,
         output_dir,
         fmt,
         cf_annotation,
@@ -1481,6 +1632,23 @@ def _generate_instanton_samples(
                         float(N_final_v),
                         float(dns_val),
                         potential,
+                        str(combo_dir),
+                        fmt,
+                        cf_annotation,
+                        run_label,
+                    ),
+                )
+            )
+            work_items.append(
+                (
+                    _plot_noise_profile_item,
+                    (
+                        fi_ref,
+                        sri_ref,
+                        float(N_init_v),
+                        float(N_final_v),
+                        float(dns_val),
+                        potential.name,
                         str(combo_dir),
                         fmt,
                         cf_annotation,
