@@ -298,11 +298,11 @@ def _compute_instanton_path(
     C_bar_max = float(np.nanmax(C_bar_v))
 
     M_max = None
-    if r_max is not None and not r_max_at_grid_edge and C_max >= C_threshold:
+    if r_max is not None and C_max >= C_threshold:
         M_max = (1.0 + C_max) * 5.6e15 * (k_star * r_max) ** 2 * units.SolarMass
 
     M_peak = None
-    if r_peak is not None and not r_peak_at_grid_edge and C_max >= C_threshold:
+    if r_peak is not None and C_max >= C_threshold:
         M_peak = (1.0 + C_max) * 5.6e15 * (k_star * r_peak) ** 2 * units.SolarMass
 
     return {

@@ -210,8 +210,8 @@ def _add_cf_annotation(fig, ann_text):
     # figure-relative), then convert to a figure-fraction for this fig's
     # actual height. Avoids over-reserving whitespace on taller figures.
     fig_height_in = fig.get_size_inches()[1]
-    footer_strip_in = 0.18          # dedicated footer strip
-    per_line_in = 0.22              # x-small annotation line + padding
+    footer_strip_in = 0.18  # dedicated footer strip
+    per_line_in = 0.22  # x-small annotation line + padding
     bottom_frac = (footer_strip_in + per_line_in * n_lines) / fig_height_in
     fig.tight_layout(rect=[0, bottom_frac, 1, 1])
     fig.text(
@@ -303,7 +303,9 @@ def _safe_name(s):
     return s.replace(" ", "_").replace("(", "").replace(")", "").replace(",", "")
 
 
-def plot_background_fields(traj, potential, units, output_dir, fmt, run_label: str = ""):
+def plot_background_fields(
+    traj, potential, units, output_dir, fmt, run_label: str = ""
+):
     """Two-panel figure: φ(N) and π(N) for the background trajectory."""
     if not traj._values:
         print(
@@ -599,7 +601,9 @@ def plot_noise_profile(
         s1_sri = sri_prof["sigma_phi1"]
         mask = ~np.isnan(s1_sri)
         if mask.any():
-            ax_s1.plot(N_sri[mask], s1_sri[mask], "--", label=r"$\sigma_{\varphi_1}$ (SR)")
+            ax_s1.plot(
+                N_sri[mask], s1_sri[mask], "--", label=r"$\sigma_{\varphi_1}$ (SR)"
+            )
 
     ax_s1.set_xlabel("N (e-folds)")
     ax_s1.set_ylabel(r"$\sigma_{\varphi_1}$")
@@ -621,7 +625,9 @@ def plot_noise_profile(
         s2_sri = sri_prof["sigma_phi2"]
         mask = ~np.isnan(s2_sri)
         if mask.any():
-            ax_s2.plot(N_sri[mask], s2_sri[mask], "--", label=r"$\sigma_{\varphi_2}$ (SR)")
+            ax_s2.plot(
+                N_sri[mask], s2_sri[mask], "--", label=r"$\sigma_{\varphi_2}$ (SR)"
+            )
             s2_has_data = True
 
     if not s2_has_data:
@@ -824,9 +830,18 @@ def plot_compaction_summary(
         return
 
     all_series = (
-        fi_xC, fi_xCb, sri_xC, sri_xCb,
-        fi_xM, fi_xMb, sri_xM, sri_xMb,
-        fi_xr, fi_xrb, sri_xr, sri_xrb,
+        fi_xC,
+        fi_xCb,
+        sri_xC,
+        sri_xCb,
+        fi_xM,
+        fi_xMb,
+        sri_xM,
+        sri_xMb,
+        fi_xr,
+        fi_xrb,
+        sri_xr,
+        sri_xrb,
     )
     max_pts = max((len(x) for x in all_series), default=0)
     use_markers = max_pts <= 25
@@ -899,7 +914,9 @@ def plot_compaction_summary(
 
 
 @ray.remote
-def _plot_trajectory_item(traj_proxy, potential, output_dir_str, fmt, run_label: str = ""):
+def _plot_trajectory_item(
+    traj_proxy, potential, output_dir_str, fmt, run_label: str = ""
+):
     """Runs inside a Ray worker: background fields + epsilon plots."""
     traj = traj_proxy.get()
     # sns.set_theme(style="ticks", context="paper")
@@ -1733,7 +1750,9 @@ def _collect_doe_scalar_data(
         pairs = group["pairs"]
         payload_data = [
             {
-                **_instanton_key_payload(traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol, dm),
+                **_instanton_key_payload(
+                    traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol, dm
+                ),
                 "_do_not_populate": True,
             }
             for _, N_init_v, N_final_v in pairs
@@ -1780,38 +1799,48 @@ def _collect_doe_scalar_data(
                 continue
 
             s = _extract_cf_summary(cf_obj, units)
-            result.append({
-                "N_init":               float(N_init_obj),
-                "N_final":              float(N_final_obj),
-                "delta_Nstar":          float(dns_val),
-                "delta_N":              float(N_init_obj) - float(N_final_obj),
-                "msr_action_full":      _qualifying_action(fi_obj),
-                "msr_action_sr":        _qualifying_action(sri_obj),
-                "noise_phi1_min_full":  fi_obj.noise_phi1_min  if fi_avail else None,
-                "noise_phi1_mean_full": fi_obj.noise_phi1_mean if fi_avail else None,
-                "noise_phi1_max_full":  fi_obj.noise_phi1_max  if fi_avail else None,
-                "noise_phi2_min_full":  fi_obj.noise_phi2_min  if fi_avail else None,
-                "noise_phi2_mean_full": fi_obj.noise_phi2_mean if fi_avail else None,
-                "noise_phi2_max_full":  fi_obj.noise_phi2_max  if fi_avail else None,
-                "noise_phi1_min_sr":    sri_obj.noise_phi1_min  if sri_avail else None,
-                "noise_phi1_mean_sr":   sri_obj.noise_phi1_mean if sri_avail else None,
-                "noise_phi1_max_sr":    sri_obj.noise_phi1_max  if sri_avail else None,
-                "noise_phi2_min_sr":    sri_obj.noise_phi2_min  if sri_avail else None,
-                "noise_phi2_mean_sr":   sri_obj.noise_phi2_mean if sri_avail else None,
-                "noise_phi2_max_sr":    sri_obj.noise_phi2_max  if sri_avail else None,
-                "C_max_full":           s[0],
-                "C_bar_max_full":       s[1],
-                "M_max_full_solar":     s[2],
-                "M_peak_full_solar":    s[3],
-                "r_max_full_Mpc":       s[8],
-                "r_peak_full_Mpc":      s[9],
-                "C_max_sr":             s[4],
-                "C_bar_max_sr":         s[5],
-                "M_max_sr_solar":       s[6],
-                "M_peak_sr_solar":      s[7],
-                "r_max_sr_Mpc":         s[10],
-                "r_peak_sr_Mpc":        s[11],
-            })
+            result.append(
+                {
+                    "N_init": float(N_init_obj),
+                    "N_final": float(N_final_obj),
+                    "delta_Nstar": float(dns_val),
+                    "delta_N": float(N_init_obj) - float(N_final_obj),
+                    "msr_action_full": _qualifying_action(fi_obj),
+                    "msr_action_sr": _qualifying_action(sri_obj),
+                    "noise_phi1_min_full": fi_obj.noise_phi1_min if fi_avail else None,
+                    "noise_phi1_mean_full": fi_obj.noise_phi1_mean
+                    if fi_avail
+                    else None,
+                    "noise_phi1_max_full": fi_obj.noise_phi1_max if fi_avail else None,
+                    "noise_phi2_min_full": fi_obj.noise_phi2_min if fi_avail else None,
+                    "noise_phi2_mean_full": fi_obj.noise_phi2_mean
+                    if fi_avail
+                    else None,
+                    "noise_phi2_max_full": fi_obj.noise_phi2_max if fi_avail else None,
+                    "noise_phi1_min_sr": sri_obj.noise_phi1_min if sri_avail else None,
+                    "noise_phi1_mean_sr": sri_obj.noise_phi1_mean
+                    if sri_avail
+                    else None,
+                    "noise_phi1_max_sr": sri_obj.noise_phi1_max if sri_avail else None,
+                    "noise_phi2_min_sr": sri_obj.noise_phi2_min if sri_avail else None,
+                    "noise_phi2_mean_sr": sri_obj.noise_phi2_mean
+                    if sri_avail
+                    else None,
+                    "noise_phi2_max_sr": sri_obj.noise_phi2_max if sri_avail else None,
+                    "C_max_full": s[0],
+                    "C_bar_max_full": s[1],
+                    "M_max_full_solar": s[2],
+                    "M_peak_full_solar": s[3],
+                    "r_max_full_Mpc": s[8],
+                    "r_peak_full_Mpc": s[9],
+                    "C_max_sr": s[4],
+                    "C_bar_max_sr": s[5],
+                    "M_max_sr_solar": s[6],
+                    "M_peak_sr_solar": s[7],
+                    "r_max_sr_Mpc": s[10],
+                    "r_peak_sr_Mpc": s[11],
+                }
+            )
 
     return result
 
@@ -1842,8 +1871,7 @@ def plot_doe_scalar_summary(
     act_s = [d["msr_action_sr"] for d in data_points]
 
     any_fig1 = any(
-        v is not None
-        for v in cb_max_f + cb_max_s + c_max_f + c_max_s + act_f + act_s
+        v is not None for v in cb_max_f + cb_max_s + c_max_f + c_max_s + act_f + act_s
     )
     if any_fig1:
         fig1, axes1 = plt.subplots(2, 2, figsize=(12, 10))
@@ -1865,16 +1893,32 @@ def plot_doe_scalar_summary(
             if f_ok.any():
                 ec = ["red" if v > threshold else "none" for v in v_f]
                 sc_ref = ax.scatter(
-                    dns_arr[f_ok], dN_arr[f_ok], c=v_f,
-                    vmin=vmin, vmax=vmax, cmap="viridis", marker="o",
-                    edgecolors=ec, linewidths=0.8, label="Full", zorder=3,
+                    dns_arr[f_ok],
+                    dN_arr[f_ok],
+                    c=v_f,
+                    vmin=vmin,
+                    vmax=vmax,
+                    cmap="viridis",
+                    marker="o",
+                    edgecolors=ec,
+                    linewidths=0.8,
+                    label="Full",
+                    zorder=3,
                 )
             if s_ok.any():
                 ec = ["red" if v > threshold else "none" for v in v_s]
                 sc2 = ax.scatter(
-                    dns_arr[s_ok], dN_arr[s_ok], c=v_s,
-                    vmin=vmin, vmax=vmax, cmap="viridis", marker="^",
-                    edgecolors=ec, linewidths=0.8, label="SR", zorder=3,
+                    dns_arr[s_ok],
+                    dN_arr[s_ok],
+                    c=v_s,
+                    vmin=vmin,
+                    vmax=vmax,
+                    cmap="viridis",
+                    marker="^",
+                    edgecolors=ec,
+                    linewidths=0.8,
+                    label="SR",
+                    zorder=3,
                 )
                 if sc_ref is None:
                     sc_ref = sc2
@@ -1889,7 +1933,9 @@ def plot_doe_scalar_summary(
             ax.set_title(title)
             ax.legend(fontsize="small")
 
-        _cmp_panel(axes1[0, 0], cb_max_f, cb_max_s, r"$\max \bar{C}$", r"$\bar{C}_{\rm max}$")
+        _cmp_panel(
+            axes1[0, 0], cb_max_f, cb_max_s, r"$\max \bar{C}$", r"$\bar{C}_{\rm max}$"
+        )
         _cmp_panel(axes1[0, 1], c_max_f, c_max_s, r"$\max C$", r"$C_{\rm max}$")
 
         # Panel [1,0]: S_MSR with log colorbar
@@ -1912,12 +1958,19 @@ def plot_doe_scalar_summary(
                 ys = dN_arr[np.array(f_idx)]
                 cs = np.array([act_f[i] for i in f_idx])
                 sc_a = ax10.scatter(
-                    xs, ys, c=cs, norm=norm_a, cmap="plasma",
-                    marker="o", label="Full", zorder=3,
+                    xs,
+                    ys,
+                    c=cs,
+                    norm=norm_a,
+                    cmap="plasma",
+                    marker="o",
+                    label="Full",
+                    zorder=3,
                 )
 
             common = [
-                (act_f[i], act_s[i]) for i in range(len(data_points))
+                (act_f[i], act_s[i])
+                for i in range(len(data_points))
                 if act_f[i] is not None and act_s[i] is not None
             ]
             sr_differs = any(
@@ -1928,8 +1981,14 @@ def plot_doe_scalar_summary(
                 ys = dN_arr[np.array(s_idx)]
                 cs = np.array([act_s[i] for i in s_idx])
                 sc2 = ax10.scatter(
-                    xs, ys, c=cs, norm=norm_a, cmap="plasma",
-                    marker="^", label="SR", zorder=3,
+                    xs,
+                    ys,
+                    c=cs,
+                    norm=norm_a,
+                    cmap="plasma",
+                    marker="^",
+                    label="SR",
+                    zorder=3,
                 )
                 if sc_a is None:
                     sc_a = sc2
@@ -1951,27 +2010,61 @@ def plot_doe_scalar_summary(
             xi, yi = dns_arr[i], dN_arr[i]
             if cbf is not None:
                 ax11.scatter(
-                    [xi], [yi],
+                    [xi],
+                    [yi],
                     color="green" if cbf > threshold else "gray",
-                    marker="o", s=40, zorder=3,
+                    marker="o",
+                    s=40,
+                    zorder=3,
                 )
             if cbs is not None:
                 ax11.scatter(
-                    [xi], [yi],
+                    [xi],
+                    [yi],
                     color="green" if cbs > threshold else "gray",
-                    marker="^", s=40, zorder=3,
+                    marker="^",
+                    s=40,
+                    zorder=3,
                 )
         _thr_gt = f"$> {threshold}$"
         _thr_le = r"$\leq$" + f" {threshold}"
         leg_elems = [
-            Line2D([0], [0], marker="o", color="w", markerfacecolor="green",
-                   label=r"Full: $\bar{C}_{\rm max}$ " + _thr_gt, markersize=8),
-            Line2D([0], [0], marker="o", color="w", markerfacecolor="gray",
-                   label=r"Full: $\bar{C}_{\rm max}$ " + _thr_le, markersize=8),
-            Line2D([0], [0], marker="^", color="w", markerfacecolor="green",
-                   label=r"SR: $\bar{C}_{\rm max}$ " + _thr_gt, markersize=8),
-            Line2D([0], [0], marker="^", color="w", markerfacecolor="gray",
-                   label=r"SR: $\bar{C}_{\rm max}$ " + _thr_le, markersize=8),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                markerfacecolor="green",
+                label=r"Full: $\bar{C}_{\rm max}$ " + _thr_gt,
+                markersize=8,
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                markerfacecolor="gray",
+                label=r"Full: $\bar{C}_{\rm max}$ " + _thr_le,
+                markersize=8,
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="^",
+                color="w",
+                markerfacecolor="green",
+                label=r"SR: $\bar{C}_{\rm max}$ " + _thr_gt,
+                markersize=8,
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="^",
+                color="w",
+                markerfacecolor="gray",
+                label=r"SR: $\bar{C}_{\rm max}$ " + _thr_le,
+                markersize=8,
+            ),
         ]
         ax11.legend(handles=leg_elems, fontsize="small")
         ax11.set_xlabel(r"$\delta N_\star$")
@@ -1985,19 +2078,25 @@ def plot_doe_scalar_summary(
         plt.close(fig1)
 
     # ── Figure 2: PBH mass and collapse radius ────────────────────────────────
-    M_max_f  = [d["M_max_full_solar"]  for d in data_points]
+    M_max_f = [d["M_max_full_solar"] for d in data_points]
     M_peak_f = [d["M_peak_full_solar"] for d in data_points]
-    M_max_s  = [d["M_max_sr_solar"]    for d in data_points]
-    M_peak_s = [d["M_peak_sr_solar"]   for d in data_points]
-    r_max_f  = [d["r_max_full_Mpc"]    for d in data_points]
-    r_peak_f = [d["r_peak_full_Mpc"]   for d in data_points]
-    r_max_s  = [d["r_max_sr_Mpc"]      for d in data_points]
-    r_peak_s = [d["r_peak_sr_Mpc"]     for d in data_points]
+    M_max_s = [d["M_max_sr_solar"] for d in data_points]
+    M_peak_s = [d["M_peak_sr_solar"] for d in data_points]
+    r_max_f = [d["r_max_full_Mpc"] for d in data_points]
+    r_peak_f = [d["r_peak_full_Mpc"] for d in data_points]
+    r_max_s = [d["r_max_sr_Mpc"] for d in data_points]
+    r_peak_s = [d["r_peak_sr_Mpc"] for d in data_points]
 
     any_fig2 = any(
         v is not None
-        for v in M_max_f + M_peak_f + M_max_s + M_peak_s
-                 + r_max_f + r_peak_f + r_max_s + r_peak_s
+        for v in M_max_f
+        + M_peak_f
+        + M_max_s
+        + M_peak_s
+        + r_max_f
+        + r_peak_f
+        + r_max_s
+        + r_peak_s
     )
     if any_fig2:
         fig2, (ax_M, ax_r) = plt.subplots(1, 2, figsize=(12, 5))
@@ -2006,45 +2105,76 @@ def plot_doe_scalar_summary(
         if vmin_dN >= vmax_dN:
             vmax_dN = vmin_dN + 1.0
 
-        def _mass_panel(ax, full_max_vals, sr_max_vals, full_peak_vals, sr_peak_vals, y_label, title):
+        def _mass_panel(
+            ax, full_max_vals, sr_max_vals, full_peak_vals, sr_peak_vals, y_label, title
+        ):
             fm_ok = np.array([v is not None and v > 0 for v in full_max_vals])
             sm_ok = np.array([v is not None and v > 0 for v in sr_max_vals])
             fp_ok = np.array([v is not None and v > 0 for v in full_peak_vals])
             sp_ok = np.array([v is not None and v > 0 for v in sr_peak_vals])
-            if not fm_ok.any() and not sm_ok.any() and not fp_ok.any() and not sp_ok.any():
+            if (
+                not fm_ok.any()
+                and not sm_ok.any()
+                and not fp_ok.any()
+                and not sp_ok.any()
+            ):
                 return None
             sc_ref = None
             if fm_ok.any():
                 yf = np.array([v for v in full_max_vals if v is not None and v > 0])
                 sc_ref = ax.scatter(
-                    dns_arr[fm_ok], yf, c=dN_arr[fm_ok],
-                    vmin=vmin_dN, vmax=vmax_dN, cmap="coolwarm",
-                    marker="o", label=r"$M_{\rm max}$ (full)", zorder=3,
+                    dns_arr[fm_ok],
+                    yf,
+                    c=dN_arr[fm_ok],
+                    vmin=vmin_dN,
+                    vmax=vmax_dN,
+                    cmap="coolwarm",
+                    marker="o",
+                    label=r"$M_{\rm max}$ (full)",
+                    zorder=3,
                 )
             if sm_ok.any():
                 ys = np.array([v for v in sr_max_vals if v is not None and v > 0])
                 sc2 = ax.scatter(
-                    dns_arr[sm_ok], ys, c=dN_arr[sm_ok],
-                    vmin=vmin_dN, vmax=vmax_dN, cmap="coolwarm",
-                    marker="^", label=r"$M_{\rm max}$ (SR)", zorder=3,
+                    dns_arr[sm_ok],
+                    ys,
+                    c=dN_arr[sm_ok],
+                    vmin=vmin_dN,
+                    vmax=vmax_dN,
+                    cmap="coolwarm",
+                    marker="^",
+                    label=r"$M_{\rm max}$ (SR)",
+                    zorder=3,
                 )
                 if sc_ref is None:
                     sc_ref = sc2
             if fp_ok.any():
                 yf = np.array([v for v in full_peak_vals if v is not None and v > 0])
                 sc3 = ax.scatter(
-                    dns_arr[fp_ok], yf, c=dN_arr[fp_ok],
-                    vmin=vmin_dN, vmax=vmax_dN, cmap="coolwarm",
-                    marker="s", label=r"$M_{\rm peak}$ (full)", zorder=3,
+                    dns_arr[fp_ok],
+                    yf,
+                    c=dN_arr[fp_ok],
+                    vmin=vmin_dN,
+                    vmax=vmax_dN,
+                    cmap="coolwarm",
+                    marker="s",
+                    label=r"$M_{\rm peak}$ (full)",
+                    zorder=3,
                 )
                 if sc_ref is None:
                     sc_ref = sc3
             if sp_ok.any():
                 ys = np.array([v for v in sr_peak_vals if v is not None and v > 0])
                 sc4 = ax.scatter(
-                    dns_arr[sp_ok], ys, c=dN_arr[sp_ok],
-                    vmin=vmin_dN, vmax=vmax_dN, cmap="coolwarm",
-                    marker="v", label=r"$M_{\rm peak}$ (SR)", zorder=3,
+                    dns_arr[sp_ok],
+                    ys,
+                    c=dN_arr[sp_ok],
+                    vmin=vmin_dN,
+                    vmax=vmax_dN,
+                    cmap="coolwarm",
+                    marker="v",
+                    label=r"$M_{\rm peak}$ (SR)",
+                    zorder=3,
                 )
                 if sc_ref is None:
                     sc_ref = sc4
@@ -2055,10 +2185,24 @@ def plot_doe_scalar_summary(
             ax.legend(fontsize="small")
             return sc_ref
 
-        sc_M = _mass_panel(ax_M, M_max_f, M_max_s, M_peak_f, M_peak_s,
-                           r"$M_{\rm PBH}\,/\,M_\odot$", "PBH mass")
-        sc_r = _mass_panel(ax_r, r_max_f, r_max_s, r_peak_f, r_peak_s,
-                           r"$r_{\rm PBH}\,/\,{\rm Mpc}$", "PBH collapse scale")
+        sc_M = _mass_panel(
+            ax_M,
+            M_max_f,
+            M_max_s,
+            M_peak_f,
+            M_peak_s,
+            r"$M_{\rm PBH}\,/\,M_\odot$",
+            "PBH mass",
+        )
+        sc_r = _mass_panel(
+            ax_r,
+            r_max_f,
+            r_max_s,
+            r_peak_f,
+            r_peak_s,
+            r"$r_{\rm PBH}\,/\,{\rm Mpc}$",
+            "PBH collapse scale",
+        )
 
         sc_cb = sc_M if sc_M is not None else sc_r
         if sc_cb is not None:
@@ -2073,10 +2217,14 @@ def plot_doe_scalar_summary(
 
 
 @ray.remote
-def _plot_doe_summary_item(data_points, potential_name, output_dir_str, fmt, threshold, run_label: str = ""):
+def _plot_doe_summary_item(
+    data_points, potential_name, output_dir_str, fmt, threshold, run_label: str = ""
+):
     sns.set_theme()
     output_dir = Path(output_dir_str)
-    plot_doe_scalar_summary(data_points, potential_name, output_dir, fmt, threshold, run_label=run_label)
+    plot_doe_scalar_summary(
+        data_points, potential_name, output_dir, fmt, threshold, run_label=run_label
+    )
 
 
 def _run_doe_summary_plots(
@@ -2095,10 +2243,7 @@ def _run_doe_summary_plots(
     threshold: float = 0.4,
     run_label: str = "",
 ):
-    print(
-        f"   >> Collecting scalar summaries for {len(grid_combos)} "
-        f"grid point(s)..."
-    )
+    print(f"   >> Collecting scalar summaries for {len(grid_combos)} grid point(s)...")
     data_points = _collect_doe_scalar_data(
         pool, traj_proxy, grid_combos, cosmo, atol, rtol, units, dm
     )
@@ -2106,19 +2251,19 @@ def _run_doe_summary_plots(
         print("   >> No data found — skipping DOE summary plots and CSV.")
         return
 
-    print(
-        f"   >> {len(data_points)} point(s) with data; "
-        f"queuing DOE summary plots."
-    )
+    print(f"   >> {len(data_points)} point(s) with data; queuing DOE summary plots.")
     doe_dir = traj_dir / "doe_summary"
     doe_dir.mkdir(parents=True, exist_ok=True)
 
-    work_items.append((
-        _plot_doe_summary_item,
-        (data_points, potential.name, str(doe_dir), fmt, threshold, run_label),
-    ))
+    work_items.append(
+        (
+            _plot_doe_summary_item,
+            (data_points, potential.name, str(doe_dir), fmt, threshold, run_label),
+        )
+    )
 
     import csv
+
     csv_path = doe_dir / "scalar_data.csv"
     fieldnames = list(data_points[0].keys())
     with open(csv_path, "w", newline="") as f:
@@ -2215,7 +2360,9 @@ def run_plots(pool, units, args):
     max_instanton_samples = args.max_instanton_samples
 
     if csv_mode:
-        csv_grid = build_instanton_grid(pool, model_list, args, N_init_array, N_final_array, dns_array)
+        csv_grid = build_instanton_grid(
+            pool, model_list, args, N_init_array, N_final_array, dns_array
+        )
         if not csv_grid:
             print("No grid points found in --sample-grid-csv. Nothing to plot.")
             return
@@ -2231,7 +2378,10 @@ def run_plots(pool, units, args):
         print(f"\n>> Trajectory {traj.store_id} ({potential.name}) -> {traj_dir}/")
 
         work_items.append(
-            (_plot_trajectory_item, (traj_proxy, potential, str(traj_dir), fmt, run_label))
+            (
+                _plot_trajectory_item,
+                (traj_proxy, potential, str(traj_dir), fmt, run_label),
+            )
         )
 
         if csv_grid is not None:
@@ -2242,7 +2392,9 @@ def run_plots(pool, units, args):
                 if midx == model_idx
             ]
             if not traj_combos:
-                print(f"   Skipping trajectory {traj.store_id}: no grid combos for this model.")
+                print(
+                    f"   Skipping trajectory {traj.store_id}: no grid combos for this model."
+                )
                 continue
         else:
             traj_combos = None
@@ -2282,7 +2434,9 @@ def run_plots(pool, units, args):
             eff_N_init = [v for _, v in sorted(seen_init.items())]
             eff_N_final = [v for _, v in sorted(seen_final.items())]
             eff_dns = [v for _, v in sorted(seen_dns.items())]
-            print("   >> --sample-grid-csv active: sweep plots will reflect sparse DOE coverage")
+            print(
+                "   >> --sample-grid-csv active: sweep plots will reflect sparse DOE coverage"
+            )
         else:
             eff_N_init = N_init_array
             eff_N_final = N_final_array
@@ -2345,26 +2499,27 @@ def run_plots(pool, units, args):
             run_label=run_label,
         )
 
-        if args.no_store_values:
-            grid_combos = traj_combos if csv_grid is not None else list(
-                itertools.product(N_init_array, N_final_array, dns_array)
-            )
-            _run_doe_summary_plots(
-                pool=pool,
-                traj_proxy=traj_proxy,
-                potential=potential,
-                traj_dir=traj_dir,
-                fmt=fmt,
-                grid_combos=grid_combos,
-                cosmo=cosmo,
-                atol=atol,
-                rtol=rtol,
-                units=units,
-                dm=dm,
-                work_items=work_items,
-                threshold=0.4,
-                run_label=run_label,
-            )
+        grid_combos = (
+            traj_combos
+            if csv_grid is not None
+            else list(itertools.product(N_init_array, N_final_array, dns_array))
+        )
+        _run_doe_summary_plots(
+            pool=pool,
+            traj_proxy=traj_proxy,
+            potential=potential,
+            traj_dir=traj_dir,
+            fmt=fmt,
+            grid_combos=grid_combos,
+            cosmo=cosmo,
+            atol=atol,
+            rtol=rtol,
+            units=units,
+            dm=dm,
+            work_items=work_items,
+            threshold=0.4,
+            run_label=run_label,
+        )
 
     print(f"\n>> Dispatching {len(work_items)} plot(s) for rendering...")
     work_queue = RayWorkPool(
