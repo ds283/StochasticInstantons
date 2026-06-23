@@ -243,7 +243,8 @@ def _compute_instanton_path(
         }
 
     # ── Step D: zeta(r), C(r), C_bar(r) ─────────────────────────────────
-    zeta_spline = SplineWrapper(r_v, zeta_v, x_transform='log', k=3)
+    zeta_spline = SplineWrapper(r_v, zeta_v, x_transform='log', k=3,
+                                bc_type="clamped")
     zeta_prime = zeta_spline.derivative()
 
     C_v = np.array(
