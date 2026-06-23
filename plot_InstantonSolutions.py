@@ -1072,7 +1072,7 @@ def _dispatch_plot_work(item):
 # ── Sweep-direction data fetching ────────────────────────────────────────────
 
 
-def _instanton_key_payload(traj_proxy, N_init, N_final, dns, atol, rtol):
+def _instanton_key_payload(traj_proxy, N_init, N_final, dns, atol, rtol, dm):
     return dict(
         trajectory=traj_proxy,
         N_init=N_init,
@@ -1081,6 +1081,7 @@ def _instanton_key_payload(traj_proxy, N_init, N_final, dns, atol, rtol):
         atol=atol,
         rtol=rtol,
         tags=[],
+        diffusion_model=dm,
     )
 
 
@@ -1196,6 +1197,7 @@ def _sweep_Ninit_or_Nfinal(
     work_items,
     cosmo,
     units,
+    dm,
     run_label: str = "",
 ):
     """swept_name in {"N_init", "N_final"}. Emits MSR-action sweep plots and
@@ -1211,7 +1213,7 @@ def _sweep_Ninit_or_Nfinal(
             payload_data = [
                 {
                     **_instanton_key_payload(
-                        traj_proxy, v, other_val, dns_val, atol, rtol
+                        traj_proxy, v, other_val, dns_val, atol, rtol, dm
                     ),
                     "_do_not_populate": True,
                 }
@@ -1221,7 +1223,7 @@ def _sweep_Ninit_or_Nfinal(
             payload_data = [
                 {
                     **_instanton_key_payload(
-                        traj_proxy, other_val, v, dns_val, atol, rtol
+                        traj_proxy, other_val, v, dns_val, atol, rtol, dm
                     ),
                     "_do_not_populate": True,
                 }
@@ -1331,6 +1333,7 @@ def _sweep_delta_Nstar(
     work_items,
     cosmo,
     units,
+    dm,
     run_label: str = "",
 ):
     """Emits MSR-action sweep plots and compaction summary sweep plots vs
@@ -1347,7 +1350,7 @@ def _sweep_delta_Nstar(
         payload_data = [
             {
                 **_instanton_key_payload(
-                    traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol
+                    traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol, dm
                 ),
                 "_do_not_populate": True,
             }
@@ -1499,6 +1502,7 @@ def _generate_instanton_samples(
     work_items,
     cosmo,
     units,
+    dm,
     combos=None,
     run_label: str = "",
 ):
@@ -1526,7 +1530,7 @@ def _generate_instanton_samples(
         payload_data = [
             {
                 **_instanton_key_payload(
-                    traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol
+                    traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol, dm
                 ),
                 "_do_not_populate": True,
             }
@@ -1612,7 +1616,7 @@ def _generate_instanton_samples(
             cf_annotation = _extract_cf_annotation(cf_list[combo_idx], units)
 
             payload = _instanton_key_payload(
-                traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol
+                traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol, dm
             )
             fi_ref = (
                 pool.object_get("FullInstanton", **payload) if fi_available else None
@@ -1702,6 +1706,7 @@ def _collect_doe_scalar_data(
     atol,
     rtol,
     units,
+    dm,
 ) -> list:
     """Return a list of dicts (one per available grid point) with scalar summaries.
     Grid points where neither FullInstanton nor SlowRollInstanton is available
@@ -1725,7 +1730,7 @@ def _collect_doe_scalar_data(
         pairs = group["pairs"]
         payload_data = [
             {
-                **_instanton_key_payload(traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol),
+                **_instanton_key_payload(traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol, dm),
                 "_do_not_populate": True,
             }
             for _, N_init_v, N_final_v in pairs
@@ -2052,6 +2057,7 @@ def _run_doe_summary_plots(
     atol,
     rtol,
     units,
+    dm,
     work_items: list,
     threshold: float = 0.4,
     run_label: str = "",
@@ -2061,7 +2067,7 @@ def _run_doe_summary_plots(
         f"grid point(s)..."
     )
     data_points = _collect_doe_scalar_data(
-        pool, traj_proxy, grid_combos, cosmo, atol, rtol, units
+        pool, traj_proxy, grid_combos, cosmo, atol, rtol, units, dm
     )
     if not data_points:
         print("   >> No data found — skipping DOE summary plots and CSV.")
@@ -2169,6 +2175,9 @@ def run_plots(pool, units, args):
     cosmo = ray.get(pool.object_get("CosmologicalParams", params=Planck2018()))
     print(f"   Cosmological parameters: {cosmo.name} (store_id={cosmo.store_id})")
 
+    dm = ray.get(pool.object_get("MasslessDecoupledDiffusion"))
+    print(f"   Diffusion model: {dm.name} (store_id={dm.store_id})")
+
     max_combos = args.max_combinations
     max_instanton_samples = args.max_instanton_samples
 
@@ -2226,6 +2235,7 @@ def run_plots(pool, units, args):
                 work_items=work_items,
                 cosmo=cosmo,
                 units=units,
+                dm=dm,
                 combos=traj_combos,
                 run_label=run_label,
             )
@@ -2261,6 +2271,7 @@ def run_plots(pool, units, args):
             work_items=work_items,
             cosmo=cosmo,
             units=units,
+            dm=dm,
             run_label=run_label,
         )
         _sweep_Ninit_or_Nfinal(
@@ -2279,6 +2290,7 @@ def run_plots(pool, units, args):
             work_items=work_items,
             cosmo=cosmo,
             units=units,
+            dm=dm,
             run_label=run_label,
         )
         _sweep_delta_Nstar(
@@ -2296,6 +2308,7 @@ def run_plots(pool, units, args):
             work_items=work_items,
             cosmo=cosmo,
             units=units,
+            dm=dm,
             run_label=run_label,
         )
 
@@ -2314,6 +2327,7 @@ def run_plots(pool, units, args):
                 atol=atol,
                 rtol=rtol,
                 units=units,
+                dm=dm,
                 work_items=work_items,
                 threshold=0.4,
                 run_label=run_label,
