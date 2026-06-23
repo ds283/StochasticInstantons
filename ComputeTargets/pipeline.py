@@ -67,6 +67,26 @@ def _check_scalar_integrity(
                 f"non-deterministic or the database row may be corrupt."
             )
 
+    stored_phi1_mean = getattr(existing_obj, "_noise_phi1_mean", None)
+    fresh_phi1_mean  = fresh_data.get("noise_phi1_mean")
+    if stored_phi1_mean is None and fresh_phi1_mean is not None:
+        raise RuntimeError(
+            f"{cls_name}(id={existing_obj.store_id}): stored row is missing "
+            f"noise_phi1_mean but fresh computation produced {fresh_phi1_mean!r}. "
+            f"The stored row pre-dates noise amplitude support and must be recomputed."
+        )
+    if stored_phi1_mean is not None and fresh_phi1_mean is not None:
+        rel_err = abs(stored_phi1_mean - fresh_phi1_mean) / max(abs(stored_phi1_mean), 1e-300)
+        if rel_err > PIPELINE_SCALAR_INTEGRITY_RTOL:
+            raise RuntimeError(
+                f"{cls_name}(id={existing_obj.store_id}): recomputed noise_phi1_mean="
+                f"{fresh_phi1_mean!r} disagrees with stored value {stored_phi1_mean!r} "
+                f"(relative error {rel_err:.2e} > tolerance "
+                f"{PIPELINE_SCALAR_INTEGRITY_RTOL:.2e}). "
+                f"This is a database integrity failure — the computation may be "
+                f"non-deterministic or the database row may be corrupt."
+            )
+
 
 @ray.remote(num_cpus=0)
 def compute_pipeline(

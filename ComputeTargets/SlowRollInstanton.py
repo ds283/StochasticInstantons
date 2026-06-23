@@ -140,6 +140,8 @@ def _compute_slow_roll_instanton(
             "phi": [],
             "P1": [],
             "msr_action": None,
+            "noise_phi1_min": None, "noise_phi1_mean": None, "noise_phi1_max": None,
+            "noise_phi2_min": None, "noise_phi2_mean": None, "noise_phi2_max": None,
             "diagnostics": {
                 "compute_time": time.perf_counter() - compute_start,
                 "converged": False,
@@ -172,6 +174,8 @@ def _compute_slow_roll_instanton(
             "phi": [],
             "P1": [],
             "msr_action": None,
+            "noise_phi1_min": None, "noise_phi1_mean": None, "noise_phi1_max": None,
+            "noise_phi2_min": None, "noise_phi2_mean": None, "noise_phi2_max": None,
             "diagnostics": {
                 "compute_time": time.perf_counter() - compute_start,
                 "converged": False,
@@ -231,6 +235,8 @@ def _compute_slow_roll_instanton(
             "phi": [],
             "P1": [],
             "msr_action": None,
+            "noise_phi1_min": None, "noise_phi1_mean": None, "noise_phi1_max": None,
+            "noise_phi2_min": None, "noise_phi2_mean": None, "noise_phi2_max": None,
             "diagnostics": {
                 "compute_time": time.perf_counter() - compute_start,
                 "converged": False,
@@ -256,6 +262,8 @@ def _compute_slow_roll_instanton(
             "phi": [],
             "P1": [],
             "msr_action": None,
+            "noise_phi1_min": None, "noise_phi1_mean": None, "noise_phi1_max": None,
+            "noise_phi2_min": None, "noise_phi2_mean": None, "noise_phi2_max": None,
             "diagnostics": {
                 "compute_time": time.perf_counter() - compute_start,
                 "converged": False,
@@ -305,6 +313,8 @@ def _compute_slow_roll_instanton(
             "phi": [],
             "P1": [],
             "msr_action": None,
+            "noise_phi1_min": None, "noise_phi1_mean": None, "noise_phi1_max": None,
+            "noise_phi2_min": None, "noise_phi2_mean": None, "noise_phi2_max": None,
             "diagnostics": diagnostics,
         }
 
@@ -313,6 +323,24 @@ def _compute_slow_roll_instanton(
 
     D11_arr = np.array([D11_sr(phi_arr[i]) for i in range(len(N_grid))])
     msr_action = float(np.trapezoid(D11_arr * P1_arr**2, N_grid))
+
+    D12_arr = np.array([dm.D_matrix(phi_arr[i], 0.0, potential)[1]
+                        for i in range(len(N_grid))])
+
+    abs_P1 = np.abs(P1_arr)
+
+    if np.any(D11_arr == 0.0):
+        noise_phi1_min = noise_phi1_mean = noise_phi1_max = None
+    else:
+        sqrt_2D11 = np.sqrt(2.0 * D11_arr)
+        # In slow-roll P2=0, so the D12 term vanishes identically.
+        sigma_phi1 = sqrt_2D11 * abs_P1
+        noise_phi1_min  = float(sigma_phi1.min())
+        noise_phi1_mean = float(sigma_phi1.mean())
+        noise_phi1_max  = float(sigma_phi1.max())
+
+    # φ2 channel does not exist in the slow-roll approximation (no P2).
+    noise_phi2_min = noise_phi2_mean = noise_phi2_max = None
 
     N_out = sorted([n for n in N_sample if 0.0 <= n <= N_total]) or [0.0, N_total]
     N_a = np.array(N_out)
@@ -326,6 +354,12 @@ def _compute_slow_roll_instanton(
         "phi": phi_sp(N_a).tolist(),
         "P1": P1_sp(N_a).tolist(),
         "msr_action": msr_action,
+        "noise_phi1_min":  noise_phi1_min,
+        "noise_phi1_mean": noise_phi1_mean,
+        "noise_phi1_max":  noise_phi1_max,
+        "noise_phi2_min":  noise_phi2_min,
+        "noise_phi2_mean": noise_phi2_mean,
+        "noise_phi2_max":  noise_phi2_max,
         "diagnostics": diagnostics,
     }
 
@@ -410,6 +444,12 @@ class SlowRollInstanton(DatastoreObject):
         self._label: Optional[str] = label
         self._tags: List[store_tag] = tags or []
         self._msr_action: Optional[float] = None
+        self._noise_phi1_min:  Optional[float] = None
+        self._noise_phi1_mean: Optional[float] = None
+        self._noise_phi1_max:  Optional[float] = None
+        self._noise_phi2_min:  Optional[float] = None
+        self._noise_phi2_mean: Optional[float] = None
+        self._noise_phi2_max:  Optional[float] = None
         self._values: List[SlowRollInstantonValue] = []
         self._compute_ref: Optional[ObjectRef] = None
         self._store_full_values: bool = True
@@ -447,6 +487,30 @@ class SlowRollInstanton(DatastoreObject):
     def msr_action(self) -> Optional[float]:
         """MSR saddle-point action in the slow-roll approximation; None until compute() succeeds."""
         return self._msr_action
+
+    @property
+    def noise_phi1_min(self) -> Optional[float]:
+        return self._noise_phi1_min
+
+    @property
+    def noise_phi1_mean(self) -> Optional[float]:
+        return self._noise_phi1_mean
+
+    @property
+    def noise_phi1_max(self) -> Optional[float]:
+        return self._noise_phi1_max
+
+    @property
+    def noise_phi2_min(self) -> Optional[float]:
+        return self._noise_phi2_min
+
+    @property
+    def noise_phi2_mean(self) -> Optional[float]:
+        return self._noise_phi2_mean
+
+    @property
+    def noise_phi2_max(self) -> Optional[float]:
+        return self._noise_phi2_max
 
     @property
     def diagnostics(self) -> Optional[dict]:
@@ -522,6 +586,12 @@ class SlowRollInstanton(DatastoreObject):
             return
         self._failure = False
         self._msr_action = data["msr_action"]
+        self._noise_phi1_min  = data.get("noise_phi1_min")
+        self._noise_phi1_mean = data.get("noise_phi1_mean")
+        self._noise_phi1_max  = data.get("noise_phi1_max")
+        self._noise_phi2_min  = data.get("noise_phi2_min")
+        self._noise_phi2_mean = data.get("noise_phi2_mean")
+        self._noise_phi2_max  = data.get("noise_phi2_max")
         self._N_total = data["N_total"]
         self._values = [
             SlowRollInstantonValue(store_id=None, N=N_obj, phi=phi, P1=P1)

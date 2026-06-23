@@ -104,6 +104,8 @@ def _compute_full_instanton(
             "failure": True, "N_total": N_total,
             "N_sample": [], "phi1": [], "phi2": [],
             "P1": [], "P2": [], "msr_action": None,
+            "noise_phi1_min": None, "noise_phi1_mean": None, "noise_phi1_max": None,
+            "noise_phi2_min": None, "noise_phi2_mean": None, "noise_phi2_max": None,
             "diagnostics": {
                 "compute_time": time.perf_counter() - compute_start,
                 "converged": False,
@@ -287,13 +289,41 @@ def _compute_full_instanton(
             "failure": True, "N_total": N_total,
             "N_sample": [], "phi1": [], "phi2": [],
             "P1": [], "P2": [], "msr_action": None,
+            "noise_phi1_min": None, "noise_phi1_mean": None, "noise_phi1_max": None,
+            "noise_phi2_min": None, "noise_phi2_mean": None, "noise_phi2_max": None,
             "diagnostics": diagnostics,
         }
 
-    # ── MSR action ────────────────────────────────────────────────────────
-    D11_arr    = np.array([_Dij(phi1_f[i], phi2_f[i])[0]
-                           for i in range(len(N_grid))])
+    # ── MSR action and noise amplitudes ──────────────────────────────────
+    D11_arr = np.array([_Dij(phi1_f[i], phi2_f[i])[0] for i in range(len(N_grid))])
+    D12_arr = np.array([_Dij(phi1_f[i], phi2_f[i])[1] for i in range(len(N_grid))])
+    D22_arr = np.array([_Dij(phi1_f[i], phi2_f[i])[2] for i in range(len(N_grid))])
     msr_action = float(np.trapezoid(D11_arr * P1_f ** 2, N_grid))
+
+    # Noise amplitude in units of Hawking standard deviations per e-fold.
+    # σ_φ1 = √(2 D11) |P1| + [2 D12 / √(2 D11)] |P2|
+    # σ_φ2 = [2 D12 / √(2 D22)] |P1| + √(2 D22) |P2|
+    # None if the corresponding diagonal element is zero anywhere.
+    abs_P1 = np.abs(P1_f)
+    abs_P2 = np.abs(P2_f)
+
+    if np.any(D11_arr == 0.0):
+        noise_phi1_min = noise_phi1_mean = noise_phi1_max = None
+    else:
+        sqrt_2D11 = np.sqrt(2.0 * D11_arr)
+        sigma_phi1 = sqrt_2D11 * abs_P1 + (2.0 * D12_arr / sqrt_2D11) * abs_P2
+        noise_phi1_min  = float(sigma_phi1.min())
+        noise_phi1_mean = float(sigma_phi1.mean())
+        noise_phi1_max  = float(sigma_phi1.max())
+
+    if np.any(D22_arr == 0.0):
+        noise_phi2_min = noise_phi2_mean = noise_phi2_max = None
+    else:
+        sqrt_2D22 = np.sqrt(2.0 * D22_arr)
+        sigma_phi2 = (2.0 * D12_arr / sqrt_2D22) * abs_P1 + sqrt_2D22 * abs_P2
+        noise_phi2_min  = float(sigma_phi2.min())
+        noise_phi2_mean = float(sigma_phi2.mean())
+        noise_phi2_max  = float(sigma_phi2.max())
 
     # ── Output sample ─────────────────────────────────────────────────────
     N_out = sorted([n for n in N_sample if 0.0 <= n <= N_total]) or [0.0, N_total]
@@ -314,6 +344,12 @@ def _compute_full_instanton(
         "P1":         interp_P(P1_f),
         "P2":         interp_P(P2_f),
         "msr_action": msr_action,
+        "noise_phi1_min":  noise_phi1_min,
+        "noise_phi1_mean": noise_phi1_mean,
+        "noise_phi1_max":  noise_phi1_max,
+        "noise_phi2_min":  noise_phi2_min,
+        "noise_phi2_mean": noise_phi2_mean,
+        "noise_phi2_max":  noise_phi2_max,
         "diagnostics": diagnostics,
     }
 
@@ -404,6 +440,12 @@ class FullInstanton(DatastoreObject):
         self._label: Optional[str] = label
         self._tags: List[store_tag] = tags or []
         self._msr_action: Optional[float] = None
+        self._noise_phi1_min:  Optional[float] = None
+        self._noise_phi1_mean: Optional[float] = None
+        self._noise_phi1_max:  Optional[float] = None
+        self._noise_phi2_min:  Optional[float] = None
+        self._noise_phi2_mean: Optional[float] = None
+        self._noise_phi2_max:  Optional[float] = None
         self._values: List[FullInstantonValue] = []
         self._compute_ref: Optional[ObjectRef] = None
         self._store_full_values: bool = True
@@ -441,6 +483,30 @@ class FullInstanton(DatastoreObject):
     def msr_action(self) -> Optional[float]:
         """MSR saddle-point action; None until compute() succeeds."""
         return self._msr_action
+
+    @property
+    def noise_phi1_min(self) -> Optional[float]:
+        return self._noise_phi1_min
+
+    @property
+    def noise_phi1_mean(self) -> Optional[float]:
+        return self._noise_phi1_mean
+
+    @property
+    def noise_phi1_max(self) -> Optional[float]:
+        return self._noise_phi1_max
+
+    @property
+    def noise_phi2_min(self) -> Optional[float]:
+        return self._noise_phi2_min
+
+    @property
+    def noise_phi2_mean(self) -> Optional[float]:
+        return self._noise_phi2_mean
+
+    @property
+    def noise_phi2_max(self) -> Optional[float]:
+        return self._noise_phi2_max
 
     @property
     def diagnostics(self) -> Optional[dict]:
@@ -516,6 +582,12 @@ class FullInstanton(DatastoreObject):
             return
         self._failure = False
         self._msr_action = data["msr_action"]
+        self._noise_phi1_min  = data.get("noise_phi1_min")
+        self._noise_phi1_mean = data.get("noise_phi1_mean")
+        self._noise_phi1_max  = data.get("noise_phi1_max")
+        self._noise_phi2_min  = data.get("noise_phi2_min")
+        self._noise_phi2_mean = data.get("noise_phi2_mean")
+        self._noise_phi2_max  = data.get("noise_phi2_max")
         self._N_total = data["N_total"]
         self._values = [
             FullInstantonValue(store_id=None, N=N_obj, phi1=phi1, phi2=phi2, P1=P1, P2=P2)

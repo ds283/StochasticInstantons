@@ -76,6 +76,12 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
                 sqla.Column("n_fields", sqla.Integer, nullable=False, default=1),
                 sqla.Column("N_total", sqla.Float(64), nullable=True),
                 sqla.Column("msr_action", sqla.Float(64), nullable=True),
+                sqla.Column("noise_phi1_min",  sqla.Float(64), nullable=True),
+                sqla.Column("noise_phi1_mean", sqla.Float(64), nullable=True),
+                sqla.Column("noise_phi1_max",  sqla.Float(64), nullable=True),
+                sqla.Column("noise_phi2_min",  sqla.Float(64), nullable=True),
+                sqla.Column("noise_phi2_mean", sqla.Float(64), nullable=True),
+                sqla.Column("noise_phi2_max",  sqla.Float(64), nullable=True),
                 sqla.Column("label", sqla.Text, nullable=True),
                 sqla.Column("diagnostics_json", sqla.Text, nullable=True),
                 sqla.Column(
@@ -109,6 +115,12 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
             table.c.timestamp,
             table.c.N_total,
             table.c.msr_action,
+            table.c.noise_phi1_min,
+            table.c.noise_phi1_mean,
+            table.c.noise_phi1_max,
+            table.c.noise_phi2_min,
+            table.c.noise_phi2_mean,
+            table.c.noise_phi2_max,
             table.c.label,
             table.c.diagnostics_json,
         ).filter(
@@ -162,6 +174,12 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
             obj._N_total = row_data.N_total
         if row_data.msr_action is not None:
             obj._msr_action = row_data.msr_action
+        obj._noise_phi1_min  = row_data.noise_phi1_min
+        obj._noise_phi1_mean = row_data.noise_phi1_mean
+        obj._noise_phi1_max  = row_data.noise_phi1_max
+        obj._noise_phi2_min  = row_data.noise_phi2_min
+        obj._noise_phi2_mean = row_data.noise_phi2_mean
+        obj._noise_phi2_max  = row_data.noise_phi2_max
         obj._diagnostics = (
             json.loads(row_data.diagnostics_json) if row_data.diagnostics_json else None
         )
@@ -245,6 +263,12 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
                 "n_fields": obj.n_fields,
                 "N_total": None,
                 "msr_action": None,
+                "noise_phi1_min": None,
+                "noise_phi1_mean": None,
+                "noise_phi1_max": None,
+                "noise_phi2_min": None,
+                "noise_phi2_mean": None,
+                "noise_phi2_max": None,
                 "label": obj._label,
                 "diagnostics_json": diagnostics_json,
                 "validated": False,
@@ -262,6 +286,12 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
             "n_fields": obj.n_fields,
             "N_total": getattr(obj, "_N_total", None),
             "msr_action": obj._msr_action,
+            "noise_phi1_min":  obj.noise_phi1_min,
+            "noise_phi1_mean": obj.noise_phi1_mean,
+            "noise_phi1_max":  obj.noise_phi1_max,
+            "noise_phi2_min":  obj.noise_phi2_min,
+            "noise_phi2_mean": obj.noise_phi2_mean,
+            "noise_phi2_max":  obj.noise_phi2_max,
             "label": obj._label,
             "diagnostics_json": diagnostics_json,
             "validated": False,
@@ -348,6 +378,12 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
             table.c.trajectory_serial,
             table.c.N_total,
             table.c.msr_action,
+            table.c.noise_phi1_min,
+            table.c.noise_phi1_mean,
+            table.c.noise_phi1_max,
+            table.c.noise_phi2_min,
+            table.c.noise_phi2_mean,
+            table.c.noise_phi2_max,
             table.c.N_init_serial,
             table.c.N_final_serial,
             table.c.delta_Nstar_serial,
@@ -377,6 +413,12 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
                 obj._N_total = row.N_total
             if row.msr_action is not None:
                 obj._msr_action = row.msr_action
+            obj._noise_phi1_min  = row.noise_phi1_min
+            obj._noise_phi1_mean = row.noise_phi1_mean
+            obj._noise_phi1_max  = row.noise_phi1_max
+            obj._noise_phi2_min  = row.noise_phi2_min
+            obj._noise_phi2_mean = row.noise_phi2_mean
+            obj._noise_phi2_max  = row.noise_phi2_max
             obj._diagnostics = (
                 json.loads(row.diagnostics_json) if row.diagnostics_json else None
             )
