@@ -241,3 +241,61 @@ if abs(N_init_val) == 0:
 else:
     sqla.func.abs((table.c.N_init - N_init_val) / N_init_val) < DEFAULT_FLOAT_PRECISION
 ```
+
+## Replicated-table factories MUST honour a supplied `serial`
+
+### How `ShardedPool` replicates a new row
+
+When `pool.object_get()` is called for a replicated table, `ShardedPool`:
+
+1. Picks a random "controlling" shard and calls `factory.build()` on it.
+2. If `build()` set `_new_insert` on the returned object, the pool calls
+   `factory.build()` on every **other** shard, passing `serial=<store_id>` in
+   the kwargs so they insert with the same serial.
+
+Step 2 only works if the factory honours that supplied serial. If `inserter()` is
+called without forwarding `payload["serial"]`, each shard uses its own
+autoincrement sequence and the same logical object ends up with **different
+serials in different shards**.
+
+### The consequence of ignoring the serial
+
+Sharded tables (e.g. `FullInstanton`) store the serial of a replicated object
+(e.g. `diffusion_serial`) as a plain integer. When `FullInstanton.build()` later
+looks up records on shard N, it compares against `dm.store_id` — which came from
+whichever shard the pool queried for the diffusion model. If replicated serials
+are inconsistent, only the one shard whose serial happens to match will return
+results; all others silently miss every record. This was confirmed by
+`SMSR_scaling_values.sqlite`, where `MasslessDecoupledDiffusion` had serials
+1, 6, 11, 16, 21, 26, 32, 36, 41, 46 across ten shards, but every
+`FullInstanton` row stored `diffusion_serial=1` (from the lucky first-writer
+shard), making 90 % of instanton lookups return unavailable.
+
+### Required pattern for replicated-table `build()`
+
+Any `build()` that calls `inserter()` (i.e. any factory for a replicated
+parameter/metadata table) **must** forward the serial when one is provided:
+
+```python
+if row_data is None:
+    insert_data = {"value": value, ...}   # whatever columns this table has
+    if "serial" in payload:               # replication supplies this
+        insert_data["serial"] = payload["serial"]
+    store_id = inserter(conn, insert_data)
+    obj = Foo(store_id=store_id, ...)
+    setattr(obj, "_new_insert", True)     # signals ShardedPool to replicate
+else:
+    obj = Foo(store_id=row_data.serial, ...)
+    setattr(obj, "_deserialized", True)
+```
+
+Both `_new_insert` (on insert) and `_deserialized` (on existing-row read) must
+be set so `ShardedPool` can tell whether to trigger replication.
+
+### Checklist for every replicated-table factory
+
+- [ ] `build()` checks `if "serial" in payload` before calling `inserter()`.
+- [ ] `inserter()` is called with `{"serial": payload["serial"], ...}` when the
+      key is present.
+- [ ] `setattr(obj, "_new_insert", True)` is set on a fresh insert.
+- [ ] `setattr(obj, "_deserialized", True)` is set on an existing-row read.

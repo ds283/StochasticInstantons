@@ -30,7 +30,10 @@ class sqla_MasslessDecoupledDiffusion_factory(SQLAFactoryBase):
         ).one_or_none()
 
         if row_data is None:
-            store_id = inserter(conn, {})
+            insert_data = {}
+            if "serial" in payload:
+                insert_data["serial"] = payload["serial"]
+            store_id = inserter(conn, insert_data)
             obj = MasslessDecoupledDiffusion(store_id=store_id)
             setattr(obj, "_new_insert", True)
         else:
