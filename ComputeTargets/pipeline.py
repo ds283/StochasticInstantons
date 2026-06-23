@@ -100,7 +100,6 @@ def compute_pipeline(
     dm,
     cosmo,
     C_threshold: float,
-    C_bar_threshold: float,
     label: Optional[str] = None,
     verbose: bool = False,
 ) -> dict:
@@ -158,7 +157,7 @@ def compute_pipeline(
     if not fi.failure:
         full_cf_result = _compute_instanton_path(
             fi, False, traj, potential, units, cosmo,
-            C_threshold, C_bar_threshold, atol_f, rtol_f,
+            C_threshold, atol_f, rtol_f,
             label=label, verbose=verbose,
         )
 
@@ -166,7 +165,7 @@ def compute_pipeline(
     if not sri.failure:
         sr_cf_result = _compute_instanton_path(
             sri, True, traj, potential, units, cosmo,
-            C_threshold, C_bar_threshold, atol_f, rtol_f,
+            C_threshold, atol_f, rtol_f,
             label=label, verbose=verbose,
         )
 
@@ -196,11 +195,11 @@ class PipelineWorkItem:
         dm,
         cosmo,
         C_threshold: float,
-        C_bar_threshold: float,
-        atol_obj,
-        rtol_obj,
-        fi_existing,
-        sri_existing,
+        C_bar_threshold: float = 0.4,  # accepted for backward compat; unused
+        atol_obj=None,
+        rtol_obj=None,
+        fi_existing=None,
+        sri_existing=None,
     ):
         self._grid_item = grid_item
         self._traj_proxy = traj_proxy
@@ -208,7 +207,6 @@ class PipelineWorkItem:
         self._dm = dm
         self._cosmo = cosmo
         self._C_threshold = C_threshold
-        self._C_bar_threshold = C_bar_threshold
         self._atol_obj = atol_obj
         self._rtol_obj = rtol_obj
         self._fi_existing = fi_existing
@@ -267,7 +265,6 @@ class PipelineWorkItem:
             dm=self._dm,
             cosmo=self._cosmo,
             C_threshold=self._C_threshold,
-            C_bar_threshold=self._C_bar_threshold,
             label=label,
             verbose=verbose,
         )
@@ -337,7 +334,6 @@ class PipelineWorkItem:
             cosmo=self._cosmo,
             delta_Nstar=delta_Nstar_obj,
             C_threshold=self._C_threshold,
-            C_bar_threshold=self._C_bar_threshold,
             atol=self._atol_obj,
             rtol=self._rtol_obj,
         )

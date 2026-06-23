@@ -59,43 +59,36 @@ def ln_k_phys_Mpc(
     )
 
 
-def _classify_r_max(r_v, C_v, C_bar_v, C_threshold: float, C_bar_threshold: float):
+def _classify_radii(r_v, C_v, C_threshold: float):
     """
-    Classify r_max_C and r_max_C_bar from sample arrays, returning diagnostic flags.
+    Compute r_max and r_peak from C(r) sample arrays.
 
-    Returns (r_max_C, r_max_C_bar, r_max_C_at_grid_edge, r_max_C_bar_extrapolated).
+    r_max: outermost r where C >= C_threshold, scanning inward.
+           r_max_at_grid_edge=True when C_v[-1] >= C_threshold
+           (peak not resolved within grid).
+           r_max=None if C nowhere reaches C_threshold.
 
-    r_max_C_at_grid_edge is True iff C_v[-1] >= C_threshold (the backward scan
-    found its threshold crossing at the very last sample, meaning the grid did
-    not extend far enough to see C turn over).
+    r_peak: r at which C is maximised (nanargmax).
+            r_peak_at_grid_edge=True when argmax == len-1
+            (peak not resolved within grid).
 
-    r_max_C_bar_extrapolated is True iff C_bar_v[-1] >= C_bar_threshold (the
-    last sample is still above threshold, so r_max_C_bar is set by the analytic
-    power-law continuation rather than by an inward threshold crossing).
-
-    Both flags are False when the corresponding r_max value is None.
+    Returns (r_max, r_peak, r_max_at_grid_edge, r_peak_at_grid_edge).
     """
-    r_max_C = None
-    r_max_C_at_grid_edge = False
+    import numpy as np
+
+    r_max = None
+    r_max_at_grid_edge = False
     for i in range(len(r_v) - 1, -1, -1):
         if C_v[i] >= C_threshold:
-            r_max_C = float(r_v[i])
-            r_max_C_at_grid_edge = i == len(r_v) - 1
+            r_max = float(r_v[i])
+            r_max_at_grid_edge = i == len(r_v) - 1
             break
 
-    C_bar_last = float(C_bar_v[-1])
-    r_last = float(r_v[-1])
-    r_max_C_bar_extrapolated = C_bar_last >= C_bar_threshold
-    r_max_C_bar = None
-    if r_max_C_bar_extrapolated:
-        r_max_C_bar = r_last * (C_bar_last / C_bar_threshold) ** (1.0 / 3.0)
-    else:
-        for i in range(len(r_v) - 1, -1, -1):
-            if C_bar_v[i] >= C_bar_threshold:
-                r_max_C_bar = float(r_v[i])
-                break
+    peak_idx = int(np.nanargmax(C_v))
+    r_peak = float(r_v[peak_idx])
+    r_peak_at_grid_edge = peak_idx == len(r_v) - 1
 
-    return r_max_C, r_max_C_bar, r_max_C_at_grid_edge, r_max_C_bar_extrapolated
+    return r_max, r_peak, r_max_at_grid_edge, r_peak_at_grid_edge
 
 
 def _compute_instanton_path(
@@ -106,7 +99,6 @@ def _compute_instanton_path(
     units,
     cosmo,
     C_threshold: float,
-    C_bar_threshold: float,
     atol: float,
     rtol: float,
     label: Optional[str] = None,
@@ -115,8 +107,9 @@ def _compute_instanton_path(
     """
     Compute zeta(r), C(r), C_bar(r) for a single instanton path.
 
-    Returns a result dict with keys: failure, r, zeta, C, C_bar, r_max_C,
-    r_max_C_bar, M_C, M_C_bar, C_max, V_end_downflow, N_end_downflow, diagnostics.
+    Returns a result dict with keys: failure, r, zeta, C, C_bar, r_max,
+    r_peak, M_max, M_peak, C_max, C_bar_max, V_end_downflow, N_end_downflow,
+    diagnostics.
     """
     import numpy as np
     from scipy.optimize import brentq
@@ -294,23 +287,23 @@ def _compute_instanton_path(
         ]
     )
 
-    # ── Step E: r_max ─────────────────────────────────────────────────────
-    r_max_C, r_max_C_bar, r_max_C_at_grid_edge, r_max_C_bar_extrapolated = (
-        _classify_r_max(r_v, C_v, C_bar_v, C_threshold, C_bar_threshold)
+    # ── Step E: radii ─────────────────────────────────────────────────────
+    r_max, r_peak, r_max_at_grid_edge, r_peak_at_grid_edge = (
+        _classify_radii(r_v, C_v, C_threshold)
     )
 
     # ── Step F: PBH mass ──────────────────────────────────────────────────
     k_star = 0.05 / units.Mpc
-    C_max = float(np.nanmax(C_v))
+    C_max    = float(np.nanmax(C_v))
     C_bar_max = float(np.nanmax(C_bar_v))
 
-    M_C = None
-    if r_max_C is not None:
-        M_C = (1.0 + C_max) * 5.6e15 * (k_star * r_max_C) ** 2 * units.SolarMass
+    M_max = None
+    if r_max is not None and not r_max_at_grid_edge and C_max >= C_threshold:
+        M_max = (1.0 + C_max) * 5.6e15 * (k_star * r_max) ** 2 * units.SolarMass
 
-    M_C_bar = None
-    if r_max_C_bar is not None:
-        M_C_bar = (1.0 + C_max) * 5.6e15 * (k_star * r_max_C_bar) ** 2 * units.SolarMass
+    M_peak = None
+    if r_peak is not None and not r_peak_at_grid_edge and C_max >= C_threshold:
+        M_peak = (1.0 + C_max) * 5.6e15 * (k_star * r_peak) ** 2 * units.SolarMass
 
     return {
         "failure": False,
@@ -318,10 +311,10 @@ def _compute_instanton_path(
         "zeta": zeta_v.tolist(),
         "C": C_v.tolist(),
         "C_bar": C_bar_v.tolist(),
-        "r_max_C": r_max_C,
-        "r_max_C_bar": r_max_C_bar,
-        "M_C": M_C,
-        "M_C_bar": M_C_bar,
+        "r_max": r_max,
+        "r_peak": r_peak,
+        "M_max": M_max,
+        "M_peak": M_peak,
         "C_max": C_max,
         "C_bar_max": C_bar_max,
         "V_end_downflow": V_end_downflow,
@@ -330,8 +323,8 @@ def _compute_instanton_path(
             "type_II": type_II,
             "n_valid_points": int(np.sum(valid_mask)),
             "n_total_points": len(values),
-            "r_max_C_bar_extrapolated": r_max_C_bar_extrapolated,
-            "r_max_C_at_grid_edge": r_max_C_at_grid_edge,
+            "r_max_at_grid_edge": r_max_at_grid_edge,
+            "r_peak_at_grid_edge": r_peak_at_grid_edge,
         },
     }
 
@@ -345,7 +338,6 @@ def _compute_compaction_function(
     cosmo_store_id: int,
     cosmo_T_CMB_Kelvin: float,
     C_threshold: float,
-    C_bar_threshold: float,
     atol: float,
     rtol: float,
     label: Optional[str] = None,
@@ -381,7 +373,6 @@ def _compute_compaction_function(
             units,
             cosmo,
             C_threshold,
-            C_bar_threshold,
             atol,
             rtol,
             label=label,
@@ -401,7 +392,6 @@ def _compute_compaction_function(
             units,
             cosmo,
             C_threshold,
-            C_bar_threshold,
             atol,
             rtol,
             label=label,
@@ -473,7 +463,6 @@ class CompactionFunction(DatastoreObject):
         cosmo,
         delta_Nstar: delta_Nstar,
         C_threshold: float = 0.4,
-        C_bar_threshold: float = 0.4,
         atol: tolerance = None,
         rtol: tolerance = None,
         label: Optional[str] = None,
@@ -492,7 +481,6 @@ class CompactionFunction(DatastoreObject):
         self._cosmo = cosmo
         self._delta_Nstar: delta_Nstar = delta_Nstar
         self._C_threshold: float = C_threshold
-        self._C_bar_threshold: float = C_bar_threshold
         self._atol: tolerance = atol
         self._rtol: tolerance = rtol
         self._label: Optional[str] = label
@@ -533,24 +521,28 @@ class CompactionFunction(DatastoreObject):
     # Scalar summary properties for the full-instanton path.
     # Set either by store() (after fresh compute) or by the factory build() (after DB load).
     @property
-    def r_max_C_full(self) -> Optional[float]:
-        return getattr(self, "_r_max_C_full", None)
+    def r_max_full(self) -> Optional[float]:
+        return getattr(self, "_r_max_full", None)
 
     @property
-    def r_max_C_bar_full(self) -> Optional[float]:
-        return getattr(self, "_r_max_C_bar_full", None)
+    def M_max_full(self) -> Optional[float]:
+        return getattr(self, "_M_max_full", None)
 
     @property
-    def M_C_full(self) -> Optional[float]:
-        return getattr(self, "_M_C_full", None)
+    def r_peak_full(self) -> Optional[float]:
+        return getattr(self, "_r_peak_full", None)
 
     @property
-    def M_C_bar_full(self) -> Optional[float]:
-        return getattr(self, "_M_C_bar_full", None)
+    def M_peak_full(self) -> Optional[float]:
+        return getattr(self, "_M_peak_full", None)
 
     @property
     def C_max_full(self) -> Optional[float]:
         return getattr(self, "_C_max_full", None)
+
+    @property
+    def C_bar_max_full(self) -> Optional[float]:
+        return getattr(self, "_C_bar_max_full", None)
 
     @property
     def V_end_downflow_full(self) -> Optional[float]:
@@ -562,28 +554,24 @@ class CompactionFunction(DatastoreObject):
 
     # Scalar summary properties for the slow-roll path.
     @property
-    def r_max_C_slow_roll(self) -> Optional[float]:
-        return getattr(self, "_r_max_C_slow_roll", None)
+    def r_max_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_r_max_slow_roll", None)
 
     @property
-    def r_max_C_bar_slow_roll(self) -> Optional[float]:
-        return getattr(self, "_r_max_C_bar_slow_roll", None)
+    def M_max_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_M_max_slow_roll", None)
 
     @property
-    def M_C_slow_roll(self) -> Optional[float]:
-        return getattr(self, "_M_C_slow_roll", None)
+    def r_peak_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_r_peak_slow_roll", None)
 
     @property
-    def M_C_bar_slow_roll(self) -> Optional[float]:
-        return getattr(self, "_M_C_bar_slow_roll", None)
+    def M_peak_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_M_peak_slow_roll", None)
 
     @property
     def C_max_slow_roll(self) -> Optional[float]:
         return getattr(self, "_C_max_slow_roll", None)
-
-    @property
-    def C_bar_max_full(self) -> Optional[float]:
-        return getattr(self, "_C_bar_max_full", None)
 
     @property
     def C_bar_max_slow_roll(self) -> Optional[float]:
@@ -592,10 +580,6 @@ class CompactionFunction(DatastoreObject):
     @property
     def C_threshold(self) -> float:
         return self._C_threshold
-
-    @property
-    def C_bar_threshold(self) -> float:
-        return self._C_bar_threshold
 
     @property
     def V_end_downflow_slow_roll(self) -> Optional[float]:
@@ -626,7 +610,6 @@ class CompactionFunction(DatastoreObject):
             cosmo_store_id=self._cosmo.store_id,
             cosmo_T_CMB_Kelvin=self._cosmo.T_CMB_Kelvin,
             C_threshold=self._C_threshold,
-            C_bar_threshold=self._C_bar_threshold,
             atol=atol,
             rtol=rtol,
             label=label or self._label,
@@ -680,10 +663,10 @@ class CompactionFunction(DatastoreObject):
                     full["r"], full["zeta"], full["C"], full["C_bar"]
                 )
             ]
-            self._r_max_C_full = full.get("r_max_C")
-            self._r_max_C_bar_full = full.get("r_max_C_bar")
-            self._M_C_full = full.get("M_C")
-            self._M_C_bar_full = full.get("M_C_bar")
+            self._r_max_full = full.get("r_max")
+            self._M_max_full = full.get("M_max")
+            self._r_peak_full = full.get("r_peak")
+            self._M_peak_full = full.get("M_peak")
             self._C_max_full = full.get("C_max")
             self._C_bar_max_full = full.get("C_bar_max")
             self._V_end_downflow_full = full.get("V_end_downflow")
@@ -702,10 +685,10 @@ class CompactionFunction(DatastoreObject):
                     slow_roll["C_bar"],
                 )
             ]
-            self._r_max_C_slow_roll = slow_roll.get("r_max_C")
-            self._r_max_C_bar_slow_roll = slow_roll.get("r_max_C_bar")
-            self._M_C_slow_roll = slow_roll.get("M_C")
-            self._M_C_bar_slow_roll = slow_roll.get("M_C_bar")
+            self._r_max_slow_roll = slow_roll.get("r_max")
+            self._M_max_slow_roll = slow_roll.get("M_max")
+            self._r_peak_slow_roll = slow_roll.get("r_peak")
+            self._M_peak_slow_roll = slow_roll.get("M_peak")
             self._C_max_slow_roll = slow_roll.get("C_max")
             self._C_bar_max_slow_roll = slow_roll.get("C_bar_max")
             self._V_end_downflow_slow_roll = slow_roll.get("V_end_downflow")

@@ -133,16 +133,16 @@ def _extract_cf_annotation(cf, units):
     return {
         "C_max_full": cf.C_max_full,
         "C_bar_max_full": cf.C_bar_max_full,
-        "r_max_C_full_Mpc": _div(cf.r_max_C_full, Mpc),
-        "r_max_C_bar_full_Mpc": _div(cf.r_max_C_bar_full, Mpc),
-        "M_C_full_solar": _div(cf.M_C_full, SolarMass),
-        "M_C_bar_full_solar": _div(cf.M_C_bar_full, SolarMass),
+        "r_max_full_Mpc": _div(cf.r_max_full, Mpc),
+        "r_peak_full_Mpc": _div(cf.r_peak_full, Mpc),
+        "M_max_full_solar": _div(cf.M_max_full, SolarMass),
+        "M_peak_full_solar": _div(cf.M_peak_full, SolarMass),
         "C_max_slow_roll": cf.C_max_slow_roll,
         "C_bar_max_slow_roll": cf.C_bar_max_slow_roll,
-        "r_max_C_slow_roll_Mpc": _div(cf.r_max_C_slow_roll, Mpc),
-        "r_max_C_bar_slow_roll_Mpc": _div(cf.r_max_C_bar_slow_roll, Mpc),
-        "M_C_slow_roll_solar": _div(cf.M_C_slow_roll, SolarMass),
-        "M_C_bar_slow_roll_solar": _div(cf.M_C_bar_slow_roll, SolarMass),
+        "r_max_slow_roll_Mpc": _div(cf.r_max_slow_roll, Mpc),
+        "r_peak_slow_roll_Mpc": _div(cf.r_peak_slow_roll, Mpc),
+        "M_max_slow_roll_solar": _div(cf.M_max_slow_roll, SolarMass),
+        "M_peak_slow_roll_solar": _div(cf.M_peak_slow_roll, SolarMass),
     }
 
 
@@ -158,10 +158,10 @@ def _cf_annotation_text(ann):
             (
                 "C_max_full",
                 "C_bar_max_full",
-                "r_max_C_full_Mpc",
-                "r_max_C_bar_full_Mpc",
-                "M_C_full_solar",
-                "M_C_bar_full_solar",
+                "r_max_full_Mpc",
+                "r_peak_full_Mpc",
+                "M_max_full_solar",
+                "M_peak_full_solar",
             ),
         ),
         (
@@ -169,25 +169,29 @@ def _cf_annotation_text(ann):
             (
                 "C_max_slow_roll",
                 "C_bar_max_slow_roll",
-                "r_max_C_slow_roll_Mpc",
-                "r_max_C_bar_slow_roll_Mpc",
-                "M_C_slow_roll_solar",
-                "M_C_bar_slow_roll_solar",
+                "r_max_slow_roll_Mpc",
+                "r_peak_slow_roll_Mpc",
+                "M_max_slow_roll_solar",
+                "M_peak_slow_roll_solar",
             ),
         ),
     ):
-        C_max, Cb_max, r, rb, M, Mb = (ann.get(k) for k in keys)
-        if C_max is None and M is None:
+        C_max, Cb_max, r_max, r_peak, M_max, M_peak = (ann.get(k) for k in keys)
+        if C_max is None and M_max is None:
             continue
         parts = []
         if C_max is not None:
             parts.append(rf"$C_{{\rm max}}$={C_max:.3g}")
         if Cb_max is not None:
             parts.append(rf"$\bar{{C}}_{{\rm max}}$={Cb_max:.3g}")
-        if r is not None:
-            parts.append(rf"$r_{{\rm max,C}}$={r:.3g} Mpc")
-        if M is not None:
-            parts.append(rf"$M_C$={M:.3g} $M_\odot$")
+        if r_max is not None:
+            parts.append(rf"$r_{{\rm max}}$={r_max:.3g} Mpc")
+        if r_peak is not None:
+            parts.append(rf"$r_{{\rm peak}}$={r_peak:.3g} Mpc")
+        if M_max is not None:
+            parts.append(rf"$M_{{\rm max}}$={M_max:.3g} $M_\odot$")
+        if M_peak is not None:
+            parts.append(rf"$M_{{\rm peak}}$={M_peak:.3g} $M_\odot$")
         lines.append(f"{label}: " + ",  ".join(parts))
     return "\n".join(lines) if lines else None
 
@@ -855,13 +859,13 @@ def plot_compaction_summary(
     ax_C.legend(fontsize="small")
 
     if fi_xM:
-        ax_M.semilogy(fi_xM, fi_yM, fmt_full_s, label=r"$M_C$ (full)")
+        ax_M.semilogy(fi_xM, fi_yM, fmt_full_s, label=r"$M_{\rm max}$ (full)")
     if fi_xMb:
-        ax_M.semilogy(fi_xMb, fi_yMb, fmt_full_d, label=r"$M_{\bar{C}}$ (full)")
+        ax_M.semilogy(fi_xMb, fi_yMb, fmt_full_d, label=r"$M_{\rm peak}$ (full)")
     if sri_xM:
-        ax_M.semilogy(sri_xM, sri_yM, fmt_sr_s, label=r"$M_C$ (SR)")
+        ax_M.semilogy(sri_xM, sri_yM, fmt_sr_s, label=r"$M_{\rm max}$ (SR)")
     if sri_xMb:
-        ax_M.semilogy(sri_xMb, sri_yMb, fmt_sr_d, label=r"$M_{\bar{C}}$ (SR)")
+        ax_M.semilogy(sri_xMb, sri_yMb, fmt_sr_d, label=r"$M_{\rm peak}$ (SR)")
     ax_M.set_xlabel(x_label)
     ax_M.set_ylabel(r"$M_{\rm PBH}\,/\,M_\odot$")
     ax_M.set_title("PBH mass")
@@ -869,13 +873,13 @@ def plot_compaction_summary(
         ax_M.legend(fontsize="small")
 
     if fi_xr:
-        ax_r.semilogy(fi_xr, fi_yr, fmt_full_s, label=r"$r_{\rm max,C}$ (full)")
+        ax_r.semilogy(fi_xr, fi_yr, fmt_full_s, label=r"$r_{\rm max}$ (full)")
     if fi_xrb:
-        ax_r.semilogy(fi_xrb, fi_yrb, fmt_full_d, label=r"$r_{\rm max,\bar{C}}$ (full)")
+        ax_r.semilogy(fi_xrb, fi_yrb, fmt_full_d, label=r"$r_{\rm peak}$ (full)")
     if sri_xr:
-        ax_r.semilogy(sri_xr, sri_yr, fmt_sr_s, label=r"$r_{\rm max,C}$ (SR)")
+        ax_r.semilogy(sri_xr, sri_yr, fmt_sr_s, label=r"$r_{\rm max}$ (SR)")
     if sri_xrb:
-        ax_r.semilogy(sri_xrb, sri_yrb, fmt_sr_d, label=r"$r_{\rm max,\bar{C}}$ (SR)")
+        ax_r.semilogy(sri_xrb, sri_yrb, fmt_sr_d, label=r"$r_{\rm peak}$ (SR)")
     ax_r.set_xlabel(x_label)
     ax_r.set_ylabel(r"$r_{\rm PBH}\,/\,\mathrm{Mpc}$")
     ax_r.set_title("PBH collapse scale")
@@ -1093,7 +1097,6 @@ def _cf_key_payload(traj_proxy, fi_proxy, sri_proxy, dns, cosmo, atol, rtol):
         delta_Nstar=dns,
         cosmo=cosmo,
         C_threshold=0.4,
-        C_bar_threshold=0.4,
         atol=atol,
         rtol=rtol,
         tags=[],
@@ -1110,10 +1113,10 @@ def _qualifying_action(obj):
 
 def _extract_cf_summary(cf, units):
     """Return a 12-tuple:
-        (C_max_full, C_bar_max_full, M_C_full_solar, M_C_bar_full_solar,
-         C_max_sr,   C_bar_max_sr,   M_C_sr_solar,   M_C_bar_sr_solar,
-         r_max_C_full_Mpc, r_max_C_bar_full_Mpc,
-         r_max_C_sr_Mpc,   r_max_C_bar_sr_Mpc)
+        (C_max_full, C_bar_max_full, M_max_full_solar, M_peak_full_solar,
+         C_max_sr,   C_bar_max_sr,   M_max_sr_solar,   M_peak_sr_solar,
+         r_max_full_Mpc, r_peak_full_Mpc,
+         r_max_sr_Mpc,   r_peak_sr_Mpc)
     from a CompactionFunction object, or an all-None 12-tuple when unavailable."""
     none12 = (None,) * 12
     if cf is None or not cf.available or cf.failure:
@@ -1131,16 +1134,16 @@ def _extract_cf_summary(cf, units):
     return (
         cf.C_max_full,
         cf.C_bar_max_full,
-        _m(cf.M_C_full),
-        _m(cf.M_C_bar_full),
+        _m(cf.M_max_full),
+        _m(cf.M_peak_full),
         cf.C_max_slow_roll,
         cf.C_bar_max_slow_roll,
-        _m(cf.M_C_slow_roll),
-        _m(cf.M_C_bar_slow_roll),
-        _r(cf.r_max_C_full),
-        _r(cf.r_max_C_bar_full),
-        _r(cf.r_max_C_slow_roll),
-        _r(cf.r_max_C_bar_slow_roll),
+        _m(cf.M_max_slow_roll),
+        _m(cf.M_peak_slow_roll),
+        _r(cf.r_max_full),
+        _r(cf.r_peak_full),
+        _r(cf.r_max_slow_roll),
+        _r(cf.r_peak_slow_roll),
     )
 
 
@@ -1798,16 +1801,16 @@ def _collect_doe_scalar_data(
                 "noise_phi2_max_sr":    sri_obj.noise_phi2_max  if sri_avail else None,
                 "C_max_full":           s[0],
                 "C_bar_max_full":       s[1],
-                "M_C_full_solar":       s[2],
-                "M_C_bar_full_solar":   s[3],
-                "r_max_C_full_Mpc":     s[8],
-                "r_max_C_bar_full_Mpc": s[9],
+                "M_max_full_solar":     s[2],
+                "M_peak_full_solar":    s[3],
+                "r_max_full_Mpc":       s[8],
+                "r_peak_full_Mpc":      s[9],
                 "C_max_sr":             s[4],
                 "C_bar_max_sr":         s[5],
-                "M_C_sr_solar":         s[6],
-                "M_C_bar_sr_solar":     s[7],
-                "r_max_C_sr_Mpc":       s[10],
-                "r_max_C_bar_sr_Mpc":   s[11],
+                "M_max_sr_solar":       s[6],
+                "M_peak_sr_solar":      s[7],
+                "r_max_sr_Mpc":         s[10],
+                "r_peak_sr_Mpc":        s[11],
             })
 
     return result
@@ -1982,12 +1985,20 @@ def plot_doe_scalar_summary(
         plt.close(fig1)
 
     # ── Figure 2: PBH mass and collapse radius ────────────────────────────────
-    M_f = [d["M_C_bar_full_solar"] for d in data_points]
-    M_s = [d["M_C_bar_sr_solar"] for d in data_points]
-    r_f = [d["r_max_C_bar_full_Mpc"] for d in data_points]
-    r_s = [d["r_max_C_bar_sr_Mpc"] for d in data_points]
+    M_max_f  = [d["M_max_full_solar"]  for d in data_points]
+    M_peak_f = [d["M_peak_full_solar"] for d in data_points]
+    M_max_s  = [d["M_max_sr_solar"]    for d in data_points]
+    M_peak_s = [d["M_peak_sr_solar"]   for d in data_points]
+    r_max_f  = [d["r_max_full_Mpc"]    for d in data_points]
+    r_peak_f = [d["r_peak_full_Mpc"]   for d in data_points]
+    r_max_s  = [d["r_max_sr_Mpc"]      for d in data_points]
+    r_peak_s = [d["r_peak_sr_Mpc"]     for d in data_points]
 
-    any_fig2 = any(v is not None for v in M_f + M_s + r_f + r_s)
+    any_fig2 = any(
+        v is not None
+        for v in M_max_f + M_peak_f + M_max_s + M_peak_s
+                 + r_max_f + r_peak_f + r_max_s + r_peak_s
+    )
     if any_fig2:
         fig2, (ax_M, ax_r) = plt.subplots(1, 2, figsize=(12, 5))
         vmin_dN = float(dN_arr.min())
@@ -1995,28 +2006,48 @@ def plot_doe_scalar_summary(
         if vmin_dN >= vmax_dN:
             vmax_dN = vmin_dN + 1.0
 
-        def _mass_panel(ax, full_vals, sr_vals, y_label, title):
-            f_ok = np.array([v is not None and v > 0 for v in full_vals])
-            s_ok = np.array([v is not None and v > 0 for v in sr_vals])
-            if not f_ok.any() and not s_ok.any():
+        def _mass_panel(ax, full_max_vals, sr_max_vals, full_peak_vals, sr_peak_vals, y_label, title):
+            fm_ok = np.array([v is not None and v > 0 for v in full_max_vals])
+            sm_ok = np.array([v is not None and v > 0 for v in sr_max_vals])
+            fp_ok = np.array([v is not None and v > 0 for v in full_peak_vals])
+            sp_ok = np.array([v is not None and v > 0 for v in sr_peak_vals])
+            if not fm_ok.any() and not sm_ok.any() and not fp_ok.any() and not sp_ok.any():
                 return None
             sc_ref = None
-            if f_ok.any():
-                yf = np.array([v for v in full_vals if v is not None and v > 0])
+            if fm_ok.any():
+                yf = np.array([v for v in full_max_vals if v is not None and v > 0])
                 sc_ref = ax.scatter(
-                    dns_arr[f_ok], yf, c=dN_arr[f_ok],
+                    dns_arr[fm_ok], yf, c=dN_arr[fm_ok],
                     vmin=vmin_dN, vmax=vmax_dN, cmap="coolwarm",
-                    marker="o", label="Full", zorder=3,
+                    marker="o", label=r"$M_{\rm max}$ (full)", zorder=3,
                 )
-            if s_ok.any():
-                ys = np.array([v for v in sr_vals if v is not None and v > 0])
+            if sm_ok.any():
+                ys = np.array([v for v in sr_max_vals if v is not None and v > 0])
                 sc2 = ax.scatter(
-                    dns_arr[s_ok], ys, c=dN_arr[s_ok],
+                    dns_arr[sm_ok], ys, c=dN_arr[sm_ok],
                     vmin=vmin_dN, vmax=vmax_dN, cmap="coolwarm",
-                    marker="^", label="SR", zorder=3,
+                    marker="^", label=r"$M_{\rm max}$ (SR)", zorder=3,
                 )
                 if sc_ref is None:
                     sc_ref = sc2
+            if fp_ok.any():
+                yf = np.array([v for v in full_peak_vals if v is not None and v > 0])
+                sc3 = ax.scatter(
+                    dns_arr[fp_ok], yf, c=dN_arr[fp_ok],
+                    vmin=vmin_dN, vmax=vmax_dN, cmap="coolwarm",
+                    marker="s", label=r"$M_{\rm peak}$ (full)", zorder=3,
+                )
+                if sc_ref is None:
+                    sc_ref = sc3
+            if sp_ok.any():
+                ys = np.array([v for v in sr_peak_vals if v is not None and v > 0])
+                sc4 = ax.scatter(
+                    dns_arr[sp_ok], ys, c=dN_arr[sp_ok],
+                    vmin=vmin_dN, vmax=vmax_dN, cmap="coolwarm",
+                    marker="v", label=r"$M_{\rm peak}$ (SR)", zorder=3,
+                )
+                if sc_ref is None:
+                    sc_ref = sc4
             ax.set_yscale("log")
             ax.set_xlabel(r"$\delta N_\star$")
             ax.set_ylabel(y_label)
@@ -2024,8 +2055,10 @@ def plot_doe_scalar_summary(
             ax.legend(fontsize="small")
             return sc_ref
 
-        sc_M = _mass_panel(ax_M, M_f, M_s, r"$M_{\rm PBH}\,/\,M_\odot$", "PBH mass")
-        sc_r = _mass_panel(ax_r, r_f, r_s, r"$r_{\rm PBH}\,/\,{\rm Mpc}$", "PBH collapse scale")
+        sc_M = _mass_panel(ax_M, M_max_f, M_max_s, M_peak_f, M_peak_s,
+                           r"$M_{\rm PBH}\,/\,M_\odot$", "PBH mass")
+        sc_r = _mass_panel(ax_r, r_max_f, r_max_s, r_peak_f, r_peak_s,
+                           r"$r_{\rm PBH}\,/\,{\rm Mpc}$", "PBH collapse scale")
 
         sc_cb = sc_M if sc_M is not None else sc_r
         if sc_cb is not None:
