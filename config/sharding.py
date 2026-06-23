@@ -26,6 +26,7 @@ replicated_tables = [
     "pi_value",
     "QuadraticPotential",
     "QuarticPotential",
+    "MasslessDecoupledDiffusion",
     "IntegrationSolver",
     "InflatonTrajectory",
     "InflatonTrajectoryValue",

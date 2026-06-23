@@ -73,6 +73,10 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
                     index=True,
                     nullable=False,
                 ),
+                # No FK constraint: target table is determined by diffusion_type,
+                # following the potential_serial / potential_type pattern.
+                sqla.Column("diffusion_serial", sqla.Integer, index=True, nullable=False),
+                sqla.Column("diffusion_type",   sqla.Integer, index=True, nullable=False),
                 sqla.Column("n_fields", sqla.Integer, nullable=False, default=1),
                 sqla.Column("N_total", sqla.Float(64), nullable=True),
                 sqla.Column("msr_action", sqla.Float(64), nullable=True),
@@ -96,7 +100,6 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         from ComputeTargets.FullInstanton import FullInstanton
-        from InflationConcepts.DiffusionModel import MasslessDecoupledDiffusion
 
         trajectory = payload["trajectory"]  # InflatonTrajectoryProxy
         N_init_obj = payload["N_init"]  # N_init
@@ -105,7 +108,13 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
         atol = payload["atol"]
         rtol = payload["rtol"]
         N_sample = payload.get("N_sample", None)
-        diffusion_model = payload.get("diffusion_model", MasslessDecoupledDiffusion())
+        diffusion_model = payload.get("diffusion_model")
+        if diffusion_model is None or not diffusion_model.available:
+            raise ValueError(
+                "sqla_FullInstantonFactory.build(): 'diffusion_model' must be a "
+                "persisted AbstractDiffusionModel with a valid store_id.  "
+                "Call datastore.object_get('MasslessDecoupledDiffusion') first."
+            )
         tags = payload.get("tags", [])
         do_not_populate = payload.get("_do_not_populate", False)
         label = payload.get("label", None)
@@ -131,6 +140,8 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
             table.c.delta_Nstar_serial == delta_Nstar_obj.store_id,
             table.c.atol_serial == atol.store_id,
             table.c.rtol_serial == rtol.store_id,
+            table.c.diffusion_serial == diffusion_model.store_id,
+            table.c.diffusion_type   == diffusion_model.type_id,
         )
         row_data = conn.execute(query).one_or_none()
 
@@ -260,6 +271,8 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
                 "delta_Nstar_serial": obj._delta_Nstar.store_id,
                 "atol_serial": obj._atol.store_id,
                 "rtol_serial": obj._rtol.store_id,
+                "diffusion_serial": obj._diffusion_model.store_id,
+                "diffusion_type":   obj._diffusion_model.type_id,
                 "n_fields": obj.n_fields,
                 "N_total": None,
                 "msr_action": None,
@@ -283,6 +296,8 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
             "delta_Nstar_serial": obj._delta_Nstar.store_id,
             "atol_serial": obj._atol.store_id,
             "rtol_serial": obj._rtol.store_id,
+            "diffusion_serial": obj._diffusion_model.store_id,
+            "diffusion_type":   obj._diffusion_model.type_id,
             "n_fields": obj.n_fields,
             "N_total": getattr(obj, "_N_total", None),
             "msr_action": obj._msr_action,
@@ -366,6 +381,7 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
     def read_table(self, conn, table, tables, units=None):
         from ComputeTargets.FullInstanton import FullInstanton
         from InflationConcepts.delta_Nstar import delta_Nstar as DeltaNstar
+        from InflationConcepts.DiffusionModel.registry import DIFFUSION_MODEL_REGISTRY
         from InflationConcepts.N_init import N_init as NInit
         from InflationConcepts.N_final import N_final as NFinal
 
@@ -387,6 +403,8 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
             table.c.N_init_serial,
             table.c.N_final_serial,
             table.c.delta_Nstar_serial,
+            table.c.diffusion_serial,
+            table.c.diffusion_type,
             table.c.label,
             table.c.diagnostics_json,
         ).filter(table.c.msr_action.isnot(None))
@@ -395,6 +413,12 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
         results = []
 
         for row in rows:
+            dm_info = DIFFUSION_MODEL_REGISTRY.get(row.diffusion_type)
+            diffusion_model = (
+                dm_info.factory.load_by_serial(conn, tables, row.diffusion_serial)
+                if dm_info is not None else None
+            )
+
             obj = FullInstanton(
                 store_id=row.serial,
                 trajectory=None,
@@ -404,6 +428,7 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
                 N_sample=None,
                 atol=None,
                 rtol=None,
+                diffusion_model=diffusion_model,
                 label=row.label,
             )
             obj._trajectory_serial = row.trajectory_serial

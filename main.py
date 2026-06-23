@@ -36,7 +36,6 @@ from CosmologyModels.params import Planck2018
 from Datastore.SQL.ProfileAgent import ProfileAgent
 from Datastore.SQL.ShardedPool import ShardedPool
 from InflationConcepts import (
-    MasslessDecoupledDiffusion,
     N_final,
     N_init,
     delta_Nstar,
@@ -516,7 +515,12 @@ def run_all_pipelines(
     finish before the next model's trajectory (and instanton grid) becomes
     available.
     """
-    dm = diffusion_model or MasslessDecoupledDiffusion()
+    dm = diffusion_model
+    if dm is None or not dm.available:
+        raise ValueError(
+            "run_all_pipelines(): diffusion_model must be provided and persisted. "
+            "Call pool.object_get('MasslessDecoupledDiffusion') first."
+        )
 
     ## -----------------------------------------------------------------------
     ## STAGE 1: Background inflaton trajectories — one flat queue, all models
@@ -531,7 +535,6 @@ def run_all_pipelines(
             rtol=rtol,
             samples_per_N=samples_per_N,
             tags=[],
-            diffusion_model=dm,
         )
         for model_data in model_list
     ]
@@ -581,6 +584,7 @@ def run_all_pipelines(
             atol=atol,
             rtol=rtol,
             tags=[],
+            diffusion_model=dm,
         )
 
     def full_payload(item) -> dict:
@@ -1006,7 +1010,8 @@ def execute(pool: ShardedPool, units: UnitsLike):
     ## -----------------------------------------------------------------------
     ## BUILD MODEL LIST AND RUN PIPELINE
     ## -----------------------------------------------------------------------
-    dm = MasslessDecoupledDiffusion()
+    dm = ray.get(pool.object_get("MasslessDecoupledDiffusion"))
+    print(f"\n** DIFFUSION MODEL: {dm.name} (store_id={dm.store_id})")
 
     # If multiple --stop-after stages are given, keep only the earliest in pipeline order.
     stop_after = None

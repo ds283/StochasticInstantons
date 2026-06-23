@@ -53,6 +53,9 @@ from Datastore.SQL.ObjectFactories.SlowRollInstanton import (
 from Datastore.SQL.ObjectFactories.QuadraticPotential import (
     sqla_QuadraticPotential_factory,
 )
+from Datastore.SQL.ObjectFactories.MasslessDecoupledDiffusion import (
+    sqla_MasslessDecoupledDiffusion_factory,
+)
 from Datastore.SQL.ObjectFactories.QuarticPotential import (
     sqla_QuarticPotential_factory,
 )
@@ -94,6 +97,7 @@ _factories = {
     "pi_value": sqla_dimensionful_quantity_factory(pi_value),
     "QuadraticPotential": sqla_QuadraticPotential_factory(),
     "QuarticPotential": sqla_QuarticPotential_factory(),
+    "MasslessDecoupledDiffusion": sqla_MasslessDecoupledDiffusion_factory(),
     "IntegrationSolver": sqla_IntegrationSolver_factory(),
     "InflatonTrajectory": sqla_InflatonTrajectory_factory(),
     "InflatonTrajectoryValue": sqla_InflatonTrajectoryValue_factory(),

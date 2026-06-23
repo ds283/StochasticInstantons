@@ -90,7 +90,6 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         from ComputeTargets.InflatonTrajectory import InflatonTrajectory
-        from InflationConcepts.DiffusionModel import MasslessDecoupledDiffusion
 
         phi0 = payload["phi0"]
         pi0 = payload["pi0"]
@@ -98,7 +97,6 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         atol = payload["atol"]
         rtol = payload["rtol"]
         samples_per_N = payload.get("samples_per_N", None)
-        diffusion_model = payload.get("diffusion_model", MasslessDecoupledDiffusion())
         do_not_populate = payload.get("_do_not_populate", False)
 
         query = sqla.select(
@@ -126,7 +124,6 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
                 samples_per_N=samples_per_N,
                 atol=atol,
                 rtol=rtol,
-                diffusion_model=diffusion_model,
             )
 
         obj = InflatonTrajectory(
@@ -137,7 +134,6 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             samples_per_N=samples_per_N,
             atol=atol,
             rtol=rtol,
-            diffusion_model=diffusion_model,
             timestamp=row_data.timestamp,
         )
         obj._N_end = row_data.N_end
@@ -323,6 +319,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
                 atol=None,
                 rtol=None,
             )
+
             obj._N_end = row.N_end
             obj._diagnostics = (
                 json.loads(row.diagnostics_json) if row.diagnostics_json else None

@@ -22,7 +22,6 @@ from ray import ObjectRef
 from CosmologyConcepts.FieldValues import phi_value, pi_value
 from CosmologyConcepts.Potentials.AbstractPotential import AbstractPotential
 from Datastore.object import DatastoreObject
-from InflationConcepts.DiffusionModel import AbstractDiffusionModel, MasslessDecoupledDiffusion
 from InflationConcepts.efold_value import efold_value
 from MetadataConcepts.store_tag import store_tag
 from MetadataConcepts.tolerance import tolerance
@@ -201,7 +200,6 @@ class InflatonTrajectory(DatastoreObject):
         samples_per_N: Optional[float],
         atol: tolerance,
         rtol: tolerance,
-        diffusion_model: Optional[AbstractDiffusionModel] = None,
         label: Optional[str] = None,
         tags: Optional[List[store_tag]] = None,
         timestamp: Optional[datetime] = None,
@@ -213,7 +211,6 @@ class InflatonTrajectory(DatastoreObject):
         self._samples_per_N: Optional[float] = samples_per_N
         self._atol: tolerance = atol
         self._rtol: tolerance = rtol
-        self._diffusion_model: AbstractDiffusionModel = diffusion_model or MasslessDecoupledDiffusion()
         self._label: Optional[str] = label
         self._tags: List[store_tag] = tags or []
         self._N_end: Optional[float] = None

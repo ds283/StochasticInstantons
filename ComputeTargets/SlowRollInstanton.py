@@ -36,6 +36,7 @@ from MetadataConcepts.tolerance import tolerance
 @ray.remote
 def _compute_slow_roll_instanton(
     trajectory,  # InflatonTrajectoryProxy
+    dm,          # AbstractDiffusionModel
     phi_init: float,
     phi_final: float,
     N_total: float,
@@ -81,7 +82,6 @@ def _compute_slow_roll_instanton(
 
     traj = trajectory.get()
     potential = traj._potential
-    dm = traj._diffusion_model
 
     N_GRID = max(300, len(N_sample) * 3)
     N_grid = np.linspace(0.0, N_total, N_GRID)
@@ -626,6 +626,7 @@ class SlowRollInstanton(DatastoreObject):
 
         self._compute_ref = _compute_slow_roll_instanton.remote(
             trajectory=self._trajectory,
+            dm=self._diffusion_model,
             phi_init=phi_init,
             phi_final=phi_final,
             N_total=N_total,

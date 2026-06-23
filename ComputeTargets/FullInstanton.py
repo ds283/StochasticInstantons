@@ -36,6 +36,7 @@ from MetadataConcepts.tolerance import tolerance
 @ray.remote
 def _compute_full_instanton(
     trajectory,             # InflatonTrajectoryProxy
+    dm,                     # AbstractDiffusionModel
     phi_init: float,
     pi_init: float,
     phi_final: float,
@@ -75,7 +76,6 @@ def _compute_full_instanton(
 
     traj      = trajectory.get()
     potential = traj._potential
-    dm        = traj._diffusion_model
 
     N_GRID     = max(300, len(N_sample) * 3)
     N_grid     = np.linspace(0.0, N_total, N_GRID)
@@ -656,6 +656,7 @@ class FullInstanton(DatastoreObject):
 
         self._compute_ref = _compute_full_instanton.remote(
             trajectory=self._trajectory,
+            dm=self._diffusion_model,
             phi_init=phi_init,
             pi_init=pi_init,
             phi_final=phi_final,
