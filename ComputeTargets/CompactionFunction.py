@@ -26,6 +26,13 @@ from InflationConcepts.delta_Nstar import delta_Nstar
 from MetadataConcepts.store_tag import store_tag
 from MetadataConcepts.tolerance import tolerance
 
+# Number of anchor points added beyond each endpoint of the (r, zeta) grid
+# before constructing the zeta spline, to suppress endpoint derivative artefacts.
+# Points are spaced geometrically at factors of SPLINE_ANCHOR_FACTOR from the
+# last real sample; they carry the known flat boundary value of zeta.
+_N_SPLINE_ANCHORS = 4
+_SPLINE_ANCHOR_FACTOR = 3.0   # each successive anchor is this many times further out
+
 
 def ln_k_phys_Mpc(
     N_before_end: float,
@@ -243,9 +250,34 @@ def _compute_instanton_path(
         }
 
     # ── Step D: zeta(r), C(r), C_bar(r) ─────────────────────────────────
-    zeta_spline = SplineWrapper(r_v, zeta_v, x_transform='log', k=3)
+    #
+    # Augment (r_v, zeta_v) with anchor points beyond each endpoint before
+    # building the spline.  The physical boundary conditions are:
+    #   r < r_v[0]  : zeta = delta_Nstar  (flat inner plateau)
+    #   r > r_v[-1] : zeta = 0            (flat outer background)
+    # Anchoring the spline to these known values suppresses the endpoint
+    # derivative artefacts that arise from the natural/not-a-knot condition.
+    #
+    # delta_Nstar value for the inner boundary:
+    zeta_inner = float(instanton_obj._delta_Nstar)
+
+    r_lo_anchors = np.array(
+        [r_v[0] / (_SPLINE_ANCHOR_FACTOR ** j) for j in range(1, _N_SPLINE_ANCHORS + 1)]
+    )[::-1]   # ascending order: smallest r first
+    zeta_lo_anchors = np.full(_N_SPLINE_ANCHORS, zeta_inner)
+
+    r_hi_anchors = np.array(
+        [r_v[-1] * (_SPLINE_ANCHOR_FACTOR ** j) for j in range(1, _N_SPLINE_ANCHORS + 1)]
+    )
+    zeta_hi_anchors = np.zeros(_N_SPLINE_ANCHORS)
+
+    r_aug    = np.concatenate([r_lo_anchors,    r_v,     r_hi_anchors])
+    zeta_aug = np.concatenate([zeta_lo_anchors, zeta_v,  zeta_hi_anchors])
+
+    zeta_spline = SplineWrapper(r_aug, zeta_aug, x_transform='log', k=3)
     zeta_prime = zeta_spline.derivative()
 
+    # Evaluate C and the dense integration grid only over the original r_v range.
     C_v = np.array(
         [
             (2.0 / 3.0) * (1.0 - (1.0 + r_v[i] * float(zeta_prime(r_v[i]))) ** 2)
@@ -255,7 +287,7 @@ def _compute_instanton_path(
 
     type_II = bool(np.any(C_v < -1.0))
 
-    # Dense grid for C_bar integration
+    # Dense grid for C_bar integration — span original data range only
     N_dense = max(10 * len(r_v), 500)
     r_dense = np.linspace(r_v[0], r_v[-1], N_dense)
     zeta_dense = zeta_spline(r_dense)
