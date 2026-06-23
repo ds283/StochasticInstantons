@@ -518,6 +518,114 @@ class FullInstanton(DatastoreObject):
         """Sampled state-vector values; empty until compute() succeeds."""
         return self._values
 
+    def noise_profile(
+        self,
+        diffusion_model: Optional[AbstractDiffusionModel] = None,
+    ) -> Optional[List[dict]]:
+        """
+        Compute the pointwise noise amplitude in units of the Hawking standard
+        deviation per e-fold at each stored sample point.
+
+        Uses the diffusion model supplied to this call, or falls back to
+        self._diffusion_model if none is given.  The caller is responsible for
+        ensuring the diffusion model matches the one used during the solve;
+        this cannot be verified until the diffusion model is promoted to a
+        first-class datastore object.
+
+        Returns a list of dicts, one per value in self._values, each with keys:
+            "N"          : float  — e-fold coordinate (instanton time)
+            "sigma_phi1" : float  — noise amplitude in φ1 channel (dimensionless)
+            "sigma_phi2" : Optional[float]  — noise amplitude in φ2 channel,
+                           or None if D22 = 0 at this point
+
+        Returns None if self._values is empty (object not populated, or failed).
+
+        Physical definition
+        -------------------
+        For a general diffusion matrix (D11, D12, D22):
+
+            σ_φ1 = √(2 D11) |P1| + [2 D12 / √(2 D11)] |P2|
+            σ_φ2 = [2 D12 / √(2 D22)] |P1| + √(2 D22) |P2|
+
+        Both are dimensionless.  σ_φ2 = None when D22 = 0 (e.g.
+        MasslessDecoupledDiffusion).
+        """
+        if not self._values:
+            return None
+
+        dm = diffusion_model if diffusion_model is not None else self._diffusion_model
+        traj = self._trajectory.get()
+        potential = traj._potential
+
+        result = []
+        for v in self._values:
+            phi1 = v.phi1
+            phi2 = v.phi2
+            P1   = v.P1
+            P2   = v.P2
+
+            D11, D12, D22 = dm.D_matrix(phi1, phi2, potential)
+
+            abs_P1 = abs(P1)
+            abs_P2 = abs(P2)
+
+            if D11 > 0.0:
+                sqrt_2D11 = (2.0 * D11) ** 0.5
+                sigma_phi1 = sqrt_2D11 * abs_P1 + (2.0 * D12 / sqrt_2D11) * abs_P2
+            else:
+                sigma_phi1 = None
+
+            if D22 > 0.0:
+                sqrt_2D22 = (2.0 * D22) ** 0.5
+                sigma_phi2 = (2.0 * D12 / sqrt_2D22) * abs_P1 + sqrt_2D22 * abs_P2
+            else:
+                sigma_phi2 = None
+
+            result.append({
+                "N":          v.N.N,
+                "sigma_phi1": sigma_phi1,
+                "sigma_phi2": sigma_phi2,
+            })
+
+        return result
+
+    def noise_profile_arrays(
+        self,
+        diffusion_model: Optional[AbstractDiffusionModel] = None,
+    ) -> Optional[dict]:
+        """
+        Convenience wrapper around noise_profile() that returns numpy arrays
+        rather than a list of dicts, suitable for direct use in matplotlib or
+        further numerical work.
+
+        Returns a dict with keys:
+            "N"          : np.ndarray, shape (n_samples,)
+            "sigma_phi1" : np.ndarray, shape (n_samples,), dtype float64
+                           NaN where sigma_phi1 is None
+            "sigma_phi2" : np.ndarray, shape (n_samples,), dtype float64
+                           NaN where sigma_phi2 is None
+
+        Returns None if noise_profile() returns None.
+        """
+        import numpy as np
+
+        profile = self.noise_profile(diffusion_model=diffusion_model)
+        if profile is None:
+            return None
+
+        N_arr  = np.array([p["N"] for p in profile], dtype=float)
+        s1_arr = np.array(
+            [p["sigma_phi1"] if p["sigma_phi1"] is not None else float("nan")
+             for p in profile],
+            dtype=float,
+        )
+        s2_arr = np.array(
+            [p["sigma_phi2"] if p["sigma_phi2"] is not None else float("nan")
+             for p in profile],
+            dtype=float,
+        )
+        return {"N": N_arr, "sigma_phi1": s1_arr, "sigma_phi2": s2_arr}
+
     def compute(self, label: Optional[str] = None, verbose: bool = False) -> ObjectRef:
         """
         Dispatch the MSR instanton BVP solve as a Ray remote task.

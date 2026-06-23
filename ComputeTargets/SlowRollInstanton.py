@@ -522,6 +522,79 @@ class SlowRollInstanton(DatastoreObject):
         """Sampled {φ, P₁} values; empty until compute() succeeds."""
         return self._values
 
+    def noise_profile(
+        self,
+        diffusion_model: Optional[AbstractDiffusionModel] = None,
+    ) -> Optional[List[dict]]:
+        """
+        Compute the pointwise noise amplitude in units of the Hawking standard
+        deviation per e-fold at each stored sample point.
+
+        In the slow-roll approximation P2 = 0 identically, so the φ2 noise
+        channel does not exist and sigma_phi2 is always None.
+
+            σ_φ1 = √(2 D11) |P1|
+
+        (the D12 term vanishes because P2 = 0, not because D12 = 0, so this
+        remains correct for any diffusion model.)
+
+        Returns a list of dicts, one per value in self._values, each with keys:
+            "N"          : float
+            "sigma_phi1" : Optional[float] — None if D11 = 0 at this point
+            "sigma_phi2" : None            — φ2 channel absent in slow-roll
+
+        Returns None if self._values is empty.
+        """
+        if not self._values:
+            return None
+
+        dm = diffusion_model if diffusion_model is not None else self._diffusion_model
+        traj = self._trajectory.get()
+        potential = traj._potential
+
+        result = []
+        for v in self._values:
+            phi = v.phi
+            P1  = v.P1
+
+            D11, _D12, _D22 = dm.D_matrix(phi, 0.0, potential)
+
+            if D11 > 0.0:
+                sigma_phi1 = (2.0 * D11) ** 0.5 * abs(P1)
+            else:
+                sigma_phi1 = None
+
+            result.append({
+                "N":          v.N.N,
+                "sigma_phi1": sigma_phi1,
+                "sigma_phi2": None,
+            })
+
+        return result
+
+    def noise_profile_arrays(
+        self,
+        diffusion_model: Optional[AbstractDiffusionModel] = None,
+    ) -> Optional[dict]:
+        """
+        Convenience wrapper returning numpy arrays.  See FullInstanton.noise_profile_arrays
+        for the return format.  sigma_phi2 is always an array of NaN.
+        """
+        import numpy as np
+
+        profile = self.noise_profile(diffusion_model=diffusion_model)
+        if profile is None:
+            return None
+
+        N_arr  = np.array([p["N"] for p in profile], dtype=float)
+        s1_arr = np.array(
+            [p["sigma_phi1"] if p["sigma_phi1"] is not None else float("nan")
+             for p in profile],
+            dtype=float,
+        )
+        s2_arr = np.full_like(N_arr, float("nan"))
+        return {"N": N_arr, "sigma_phi1": s1_arr, "sigma_phi2": s2_arr}
+
     def compute(self, label: Optional[str] = None, verbose: bool = False) -> ObjectRef:
         """
         Dispatch the slow-roll instanton BVP solve as a Ray remote task.
