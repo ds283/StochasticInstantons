@@ -6,8 +6,8 @@ import sqlalchemy as sqla
 from InflationConcepts.delta_Nstar import delta_Nstar
 from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
 from config.defaults import (
-    DEFAULT_DIMENSIONLESS_QUANTITY_PRECISION,
-    DEFAULT_DIMENSIONLESS_QUANTITY_RELATIVE_PRECISION,
+    DEFAULT_EFOLD_PRECISION,
+    DEFAULT_EFOLD_RELATIVE_PRECISION,
 )
 
 
@@ -30,12 +30,12 @@ class sqla_delta_Nstar_factory(SQLAFactoryBase):
         if fabs(value) == 0:
             query = sqla.select(table.c.serial, table.c.timestamp).filter(
                 sqla.func.abs(table.c.value - value)
-                < DEFAULT_DIMENSIONLESS_QUANTITY_PRECISION
+                < DEFAULT_EFOLD_PRECISION
             )
         else:
             query = sqla.select(table.c.serial, table.c.timestamp).filter(
                 sqla.func.abs((table.c.value - value) / value)
-                < DEFAULT_DIMENSIONLESS_QUANTITY_RELATIVE_PRECISION
+                < DEFAULT_EFOLD_RELATIVE_PRECISION
             )
 
         row_data = conn.execute(query).one_or_none()
