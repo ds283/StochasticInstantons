@@ -101,6 +101,13 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
                 sqla.Column("V_end_downflow_slow_roll_PlanckMass4", sqla.Float(64), nullable=True),
                 sqla.Column("N_end_downflow_slow_roll",    sqla.Float(64), nullable=True),
                 sqla.Column("failure_slow_roll", sqla.Integer, nullable=False, default=1),
+                # Per-path C_min and perturbation-type flags
+                sqla.Column("C_min_full",          sqla.Float(64), nullable=True),
+                sqla.Column("compensated_full",    sqla.Integer,   nullable=True),
+                sqla.Column("type_II_full",        sqla.Integer,   nullable=True),
+                sqla.Column("C_min_slow_roll",     sqla.Float(64), nullable=True),
+                sqla.Column("compensated_slow_roll", sqla.Integer, nullable=True),
+                sqla.Column("type_II_slow_roll",   sqla.Integer,   nullable=True),
                 sqla.Column("metadata", sqla.Text, nullable=True),
                 sqla.Column(
                     "validated",
@@ -150,6 +157,12 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
             table.c.C_bar_peak_slow_roll,
             table.c.V_end_downflow_slow_roll_PlanckMass4,
             table.c.N_end_downflow_slow_roll,
+            table.c.C_min_full,
+            table.c.compensated_full,
+            table.c.type_II_full,
+            table.c.C_min_slow_roll,
+            table.c.compensated_slow_roll,
+            table.c.type_II_slow_roll,
             table.c.metadata,
         ).filter(
             table.c.validated == True,
@@ -235,6 +248,42 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
         obj._C_bar_peak_slow_roll      = row.C_bar_peak_slow_roll
         obj._V_end_downflow_slow_roll = _restore_V(row.V_end_downflow_slow_roll_PlanckMass4)
         obj._N_end_downflow_slow_roll = row.N_end_downflow_slow_roll
+
+        obj._C_min_full              = row.C_min_full
+        obj._compensated_full        = bool(row.compensated_full) if row.compensated_full is not None else None
+        obj._type_II_full            = bool(row.type_II_full) if row.type_II_full is not None else None
+        obj._C_min_slow_roll         = row.C_min_slow_roll
+        obj._compensated_slow_roll   = bool(row.compensated_slow_roll) if row.compensated_slow_roll is not None else None
+        obj._type_II_slow_roll       = bool(row.type_II_slow_roll) if row.type_II_slow_roll is not None else None
+
+        dns_val = float(delta_Nstar_obj) if delta_Nstar_obj is not None else "?"
+        sid = row.serial
+        if obj._type_II_full:
+            print(
+                f"!! WARNING: CompactionFunction(id={sid}, delta_Nstar={dns_val}): "
+                f"full instanton is type-II (C_min={obj._C_min_full:.3g} < -1). "
+                f"Collapse threshold comparison using C_peak alone may be unreliable."
+            )
+        elif obj._compensated_full:
+            print(
+                f"!! WARNING: CompactionFunction(id={sid}, delta_Nstar={dns_val}): "
+                f"full instanton is compensated (C_min={obj._C_min_full:.3g} < 0). "
+                f"Underdense shell present; C_peak threshold criterion may overestimate "
+                f"collapse probability."
+            )
+        if obj._type_II_slow_roll:
+            print(
+                f"!! WARNING: CompactionFunction(id={sid}, delta_Nstar={dns_val}): "
+                f"slow-roll instanton is type-II (C_min={obj._C_min_slow_roll:.3g} < -1). "
+                f"Collapse threshold comparison using C_peak alone may be unreliable."
+            )
+        elif obj._compensated_slow_roll:
+            print(
+                f"!! WARNING: CompactionFunction(id={sid}, delta_Nstar={dns_val}): "
+                f"slow-roll instanton is compensated (C_min={obj._C_min_slow_roll:.3g} < 0). "
+                f"Underdense shell present; C_peak threshold criterion may overestimate "
+                f"collapse probability."
+            )
 
         do_not_populate = payload.get("_do_not_populate", False)
         if not do_not_populate:
@@ -332,6 +381,20 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
         def _plain(result, key):
             return result.get(key) if result is not None else None
 
+        def _plain_diag(result, key):
+            """Extract a scalar from result["diagnostics"][key], or None."""
+            if result is None:
+                return None
+            diag = result.get("diagnostics")
+            if diag is None:
+                return None
+            return diag.get(key)
+
+        def _plain_diag_bool(result, key):
+            """Extract a bool from result["diagnostics"][key]; default False."""
+            v = _plain_diag(result, key)
+            return bool(v) if v is not None else False
+
         store_id = inserter(conn, {
             "trajectory_serial": obj._trajectory.store_id,
             "full_instanton_serial": full_serial,
@@ -359,6 +422,12 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
             "V_end_downflow_slow_roll_PlanckMass4": _V(sr_result, "V_end_downflow"),
             "N_end_downflow_slow_roll":            _plain(sr_result, "N_end_downflow"),
             "failure_slow_roll": 1 if (sr_result is None or sr_result.get("failure", True)) else 0,
+            "C_min_full":            _plain_diag(full_result,  "C_min"),
+            "compensated_full":      int(_plain_diag_bool(full_result,  "compensated")),
+            "type_II_full":          int(_plain_diag_bool(full_result,  "type_II")),
+            "C_min_slow_roll":       _plain_diag(sr_result,    "C_min"),
+            "compensated_slow_roll": int(_plain_diag_bool(sr_result,    "compensated")),
+            "type_II_slow_roll":     int(_plain_diag_bool(sr_result,    "type_II")),
             "metadata": metadata_json,
             "validated": False,
         })

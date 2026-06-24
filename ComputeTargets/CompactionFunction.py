@@ -26,6 +26,12 @@ from InflationConcepts.delta_Nstar import delta_Nstar
 from MetadataConcepts.store_tag import store_tag
 from MetadataConcepts.tolerance import tolerance
 
+# Absolute tolerance on ζ for safe boundary pinning in Step D.
+# The dense-grid endpoint is only overridden with the known physical
+# boundary value when the spline already agrees within this tolerance,
+# to avoid introducing a false discontinuity in the gradient.
+_ZETA_PIN_ATOL = 0.01
+
 
 def ln_k_phys_Mpc(
     N_before_end: float,
@@ -244,54 +250,48 @@ def _compute_instanton_path(
 
     # ── Step D: zeta(r), C(r), C_bar(r) ─────────────────────────────────
     #
-    # Strategy: evaluate zeta on a dense grid via the spline (for smoothing),
-    # then augment with the exact boundary values at both endpoints before
-    # computing zeta' by finite differences in log-r space.  This avoids
-    # spline endpoint-derivative artefacts while preserving the smoothing
-    # benefit of the spline in the interior.
+    # Strategy:
+    #   1. Fit a spline to (r_v, zeta_v) in log-r space for smoothing.
+    #   2. Evaluate on a log-uniform dense grid (geomspace) — essential
+    #      because r spans many decades; linspace concentrates all points
+    #      at large r, making np.gradient wildly inaccurate at small r.
+    #   3. Pin the dense grid endpoints to the known physical boundary
+    #      values, but only when the spline value is already close (within
+    #      _ZETA_PIN_ATOL) to avoid introducing a false discontinuity.
+    #   4. Compute dζ/dr by finite differences (np.gradient in log-r space,
+    #      then divide by r) — no spline derivative is used.
+    #   5. Interpolate dζ/dr back to r_v via np.interp in log-r space.
 
     zeta_spline = SplineWrapper(r_v, zeta_v, x_transform='log', k=3)
 
-    # Dense grid spanning the sample range (interior only at this stage)
     N_dense = max(10 * len(r_v), 500)
-    r_dense_interior = np.linspace(r_v[0], r_v[-1], N_dense)
-    zeta_dense_interior = zeta_spline(r_dense_interior)
+    r_dense = np.geomspace(r_v[0], r_v[-1], N_dense)   # log-uniform spacing
+    log_r_dense = np.log(r_dense)
+    zeta_dense = zeta_spline(r_dense)
 
-    # Augment with exact boundary values.
-    # By construction: zeta(r_v[0]) = delta_Nstar, zeta(r_v[-1]) = 0.
-    # Replace the first and last points of the dense grid with these exact
-    # values so that np.gradient sees the correct slope at each end.
+    # Safe boundary pinning: only override when the spline already
+    # agrees with the physical boundary value to within _ZETA_PIN_ATOL.
     zeta_inner = float(instanton_obj._delta_Nstar)
+    if abs(zeta_dense[0] - zeta_inner) < _ZETA_PIN_ATOL:
+        zeta_dense[0] = zeta_inner
+    if abs(zeta_dense[-1]) < _ZETA_PIN_ATOL:
+        zeta_dense[-1] = 0.0
 
-    r_aug    = r_dense_interior.copy()
-    zeta_aug = zeta_dense_interior.copy()
-    zeta_aug[0]  = zeta_inner   # exact left boundary
-    zeta_aug[-1] = 0.0          # exact right boundary
+    # Finite-difference dζ/dr: gradient in log-r then divide by r.
+    dzeta_dlogr = np.gradient(zeta_dense, log_r_dense)
+    zeta_prime_dense = dzeta_dlogr / r_dense
 
-    # Finite-difference dζ/d(log r) on the augmented grid, then convert to
-    # dζ/dr = [dζ/d(log r)] / r.
-    log_r_aug = np.log(r_aug)
-    dzeta_dlogr_aug = np.gradient(zeta_aug, log_r_aug)
-    zeta_prime_aug  = dzeta_dlogr_aug / r_aug   # dζ/dr in original coords
+    # Evaluate dζ/dr at sample points via linear interpolation in log-r.
+    log_r_v = np.log(r_v)
+    zeta_prime_v = np.interp(log_r_v, log_r_dense, zeta_prime_dense)
 
-    # Interpolate dζ/dr back to the sample points r_v for C(r).
-    zeta_prime_at_rv = SplineWrapper(r_aug, zeta_prime_aug, x_transform='log', k=3)
+    C_v = (2.0 / 3.0) * (1.0 - (1.0 + r_v * zeta_prime_v) ** 2)
 
-    C_v = np.array(
-        [
-            (2.0 / 3.0) * (1.0 - (1.0 + r_v[i] * float(zeta_prime_at_rv(r_v[i]))) ** 2)
-            for i in range(len(r_v))
-        ]
-    )
+    C_min     = float(np.nanmin(C_v))
+    type_II   = C_min < -1.0
+    compensated = C_min < 0.0
 
-    type_II = bool(np.any(C_v < -1.0))
-
-    # C_bar integration uses the dense grid directly — zeta and zeta_prime
-    # are already available on r_aug / zeta_prime_aug.
-    r_dense       = r_aug
-    zeta_dense    = zeta_aug
-    zeta_prime_dense = zeta_prime_aug
-
+    # C_bar integration — reuse r_dense / zeta_dense / zeta_prime_dense
     rz_dense = r_dense * zeta_prime_dense
     integrand = (
         r_dense**2
@@ -352,6 +352,8 @@ def _compute_instanton_path(
         "N_end_downflow": N_end_downflow,
         "diagnostics": {
             "type_II": type_II,
+            "compensated": compensated,
+            "C_min": C_min,
             "n_valid_points": int(np.sum(valid_mask)),
             "n_total_points": len(values),
             "r_max_at_grid_edge": r_max_at_grid_edge,
@@ -620,6 +622,30 @@ class CompactionFunction(DatastoreObject):
     def N_end_downflow_slow_roll(self) -> Optional[float]:
         return getattr(self, "_N_end_downflow_slow_roll", None)
 
+    @property
+    def C_min_full(self) -> Optional[float]:
+        return getattr(self, "_C_min_full", None)
+
+    @property
+    def compensated_full(self) -> Optional[bool]:
+        return getattr(self, "_compensated_full", None)
+
+    @property
+    def type_II_full(self) -> Optional[bool]:
+        return getattr(self, "_type_II_full", None)
+
+    @property
+    def C_min_slow_roll(self) -> Optional[float]:
+        return getattr(self, "_C_min_slow_roll", None)
+
+    @property
+    def compensated_slow_roll(self) -> Optional[bool]:
+        return getattr(self, "_compensated_slow_roll", None)
+
+    @property
+    def type_II_slow_roll(self) -> Optional[bool]:
+        return getattr(self, "_type_II_slow_roll", None)
+
     def compute(self, label: Optional[str] = None, verbose: bool = False) -> ObjectRef:
         """
         Dispatch the compaction function computation as a Ray remote task.
@@ -702,6 +728,9 @@ class CompactionFunction(DatastoreObject):
             self._C_bar_peak_full = full.get("C_bar_max")
             self._V_end_downflow_full = full.get("V_end_downflow")
             self._N_end_downflow_full = full.get("N_end_downflow")
+            self._C_min_full        = full["diagnostics"].get("C_min")
+            self._compensated_full  = full["diagnostics"].get("compensated")
+            self._type_II_full      = full["diagnostics"].get("type_II")
         else:
             self._full_result = None
 
@@ -724,6 +753,9 @@ class CompactionFunction(DatastoreObject):
             self._C_bar_peak_slow_roll = slow_roll.get("C_bar_max")
             self._V_end_downflow_slow_roll = slow_roll.get("V_end_downflow")
             self._N_end_downflow_slow_roll = slow_roll.get("N_end_downflow")
+            self._C_min_slow_roll        = slow_roll["diagnostics"].get("C_min")
+            self._compensated_slow_roll  = slow_roll["diagnostics"].get("compensated")
+            self._type_II_slow_roll      = slow_roll["diagnostics"].get("type_II")
         else:
             self._slow_roll_result = None
 
