@@ -243,23 +243,54 @@ def _compute_instanton_path(
         }
 
     # ── Step D: zeta(r), C(r), C_bar(r) ─────────────────────────────────
+    #
+    # Strategy: evaluate zeta on a dense grid via the spline (for smoothing),
+    # then augment with the exact boundary values at both endpoints before
+    # computing zeta' by finite differences in log-r space.  This avoids
+    # spline endpoint-derivative artefacts while preserving the smoothing
+    # benefit of the spline in the interior.
+
     zeta_spline = SplineWrapper(r_v, zeta_v, x_transform='log', k=3)
-    zeta_prime = zeta_spline.derivative()
+
+    # Dense grid spanning the sample range (interior only at this stage)
+    N_dense = max(10 * len(r_v), 500)
+    r_dense_interior = np.linspace(r_v[0], r_v[-1], N_dense)
+    zeta_dense_interior = zeta_spline(r_dense_interior)
+
+    # Augment with exact boundary values.
+    # By construction: zeta(r_v[0]) = delta_Nstar, zeta(r_v[-1]) = 0.
+    # Replace the first and last points of the dense grid with these exact
+    # values so that np.gradient sees the correct slope at each end.
+    zeta_inner = float(instanton_obj._delta_Nstar)
+
+    r_aug    = r_dense_interior.copy()
+    zeta_aug = zeta_dense_interior.copy()
+    zeta_aug[0]  = zeta_inner   # exact left boundary
+    zeta_aug[-1] = 0.0          # exact right boundary
+
+    # Finite-difference dζ/d(log r) on the augmented grid, then convert to
+    # dζ/dr = [dζ/d(log r)] / r.
+    log_r_aug = np.log(r_aug)
+    dzeta_dlogr_aug = np.gradient(zeta_aug, log_r_aug)
+    zeta_prime_aug  = dzeta_dlogr_aug / r_aug   # dζ/dr in original coords
+
+    # Interpolate dζ/dr back to the sample points r_v for C(r).
+    zeta_prime_at_rv = SplineWrapper(r_aug, zeta_prime_aug, x_transform='log', k=3)
 
     C_v = np.array(
         [
-            (2.0 / 3.0) * (1.0 - (1.0 + r_v[i] * float(zeta_prime(r_v[i]))) ** 2)
+            (2.0 / 3.0) * (1.0 - (1.0 + r_v[i] * float(zeta_prime_at_rv(r_v[i]))) ** 2)
             for i in range(len(r_v))
         ]
     )
 
     type_II = bool(np.any(C_v < -1.0))
 
-    # Dense grid for C_bar integration
-    N_dense = max(10 * len(r_v), 500)
-    r_dense = np.linspace(r_v[0], r_v[-1], N_dense)
-    zeta_dense = zeta_spline(r_dense)
-    zeta_prime_dense = zeta_prime(r_dense)
+    # C_bar integration uses the dense grid directly — zeta and zeta_prime
+    # are already available on r_aug / zeta_prime_aug.
+    r_dense       = r_aug
+    zeta_dense    = zeta_aug
+    zeta_prime_dense = zeta_prime_aug
 
     rz_dense = r_dense * zeta_prime_dense
     integrand = (
