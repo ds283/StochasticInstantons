@@ -42,6 +42,23 @@ python3 config/generate_lhc_grid.py \
     --seed             42                            \
     --output           lhc_grid_500.csv
 
+Usage (fixed-K mode: iso-mass min-action locus)
+────────────────────────────────────────────────
+Sample (delta_Nstar, ΔN) freely and set N_final = K − ΔN − delta_Nstar, keeping
+N_final + ΔN + delta_Nstar = K fixed.  This holds the PBH mass approximately
+constant across the grid (since log M ∝ K), so the minimum of S_MSR over the
+grid traces the most-probable formation pathway at that mass.
+
+python3 config/generate_lhc_grid.py \
+    --K                43.0          \
+    --delta-nstar-low   0.5  --delta-nstar-high 18.0 \
+    --delta-N-low       0.5  --delta-N-high     14.0 \
+    --N-final-min       5.0                          \
+    --n-points         512                           \
+    --method           sobol                         \
+    --seed             42                            \
+    --output           iso_mass_K43.csv
+
 Usage (Cartesian product, Step 1 validation)
 ─────────────────────────────────────────────
 python3 config/generate_lhc_grid.py \
@@ -167,6 +184,29 @@ def _build_parser() -> argparse.ArgumentParser:
              "Requires --delta-nstar-values and --delta-N-values.",
     )
 
+    # Fixed-K (iso-mass) mode
+    km = p.add_argument_group(
+        "Fixed-K mode (iso-mass min-action locus)",
+        "When --K is given, N_final is computed as K - ΔN - delta_Nstar for each "
+        "point and the N_final axis arguments above are ignored.  The sampler "
+        "operates in 2D (delta_Nstar, ΔN) only.",
+    )
+    km.add_argument(
+        "--K",
+        type=float,
+        default=None,
+        metavar="FLOAT",
+        help="Fix N_final + ΔN + delta_Nstar = K.  Activates fixed-K mode.",
+    )
+    km.add_argument(
+        "--N-final-min",
+        type=float,
+        default=5.0,
+        metavar="FLOAT",
+        help="In fixed-K mode, drop rows where the implied N_final = K - ΔN - "
+             "delta_Nstar falls below this value.",
+    )
+
     # Boundary guards
     bnd = p.add_argument_group("Boundary guards")
     bnd.add_argument(
@@ -233,13 +273,19 @@ def _build_parser() -> argparse.ArgumentParser:
 
 # ── Sampler ────────────────────────────────────────────────────────────────────
 
-def _sample_unit_cube(n: int, method: str, seed: int):
+def _sample_unit_cube(n: int, method: str, seed: int, ndim: int = 3):
     """
-    Return an (n, 3) array of samples in [0, 1)^3 using the chosen method.
+    Return an (n, ndim) array of samples in [0, 1)^ndim using the chosen method.
 
-    Column 0 → delta_Nstar dimension
-    Column 1 → ΔN dimension
-    Column 2 → N_final dimension
+    Standard 3D mode (ndim=3):
+      Column 0 -> delta_Nstar dimension
+      Column 1 -> ΔN dimension
+      Column 2 -> N_final dimension
+
+    Fixed-K 2D mode (ndim=2):
+      Column 0 -> delta_Nstar dimension
+      Column 1 -> ΔN dimension
+      (N_final is derived as K - ΔN - delta_Nstar)
     """
     from scipy.stats.qmc import LatinHypercube, Sobol
 
@@ -250,14 +296,14 @@ def _sample_unit_cube(n: int, method: str, seed: int):
             n_rounded = 2 ** round(log2_n)
             print(
                 f"  [info] Sobol sequences perform best for n = 2^k.  "
-                f"Rounding {n} → {n_rounded}.",
+                f"Rounding {n} -> {n_rounded}.",
                 file=sys.stderr,
             )
             n = n_rounded
-        sampler = Sobol(d=3, scramble=True, seed=seed)
+        sampler = Sobol(d=ndim, scramble=True, seed=seed)
         samples = sampler.random(n)
     else:  # lhc
-        sampler = LatinHypercube(d=3, seed=seed)
+        sampler = LatinHypercube(d=ndim, seed=seed)
         samples = sampler.random(n)
 
     return samples, n
@@ -360,7 +406,55 @@ def build_grid(
     return rows, n_dropped_N_init, n_dropped_dns
 
 
-# ── CSV output ─────────────────────────────────────────────────────────────────
+def build_grid_fixed_K(
+    samples,                  # (n, 2) unit-cube samples in (delta_Nstar, ΔN)
+    K: float,
+    delta_nstar_low: float,
+    delta_nstar_high: float,
+    delta_N_low: float,
+    delta_N_high: float,
+    N_final_min: float,
+    delta_nstar_min: float,
+) -> tuple:
+    """
+    Fixed-K mode: for each (delta_Nstar, ΔN) sample set N_final = K - ΔN - delta_Nstar.
+
+    This keeps N_final + ΔN + delta_Nstar = K constant across the grid, so that
+    log(M_PBH) is approximately fixed (up to the small residual ΔN dependence in
+    the mass calibration).  The result is a 2D grid in (delta_Nstar, ΔN) space
+    suitable for tracing the minimum-action formation locus at fixed mass.
+
+    Rows are dropped when:
+      • delta_Nstar < delta_nstar_min
+      • N_final = K - ΔN - delta_Nstar < N_final_min  (unphysically short trajectory)
+
+    Returns (rows, n_dropped_N_final, n_dropped_dns).
+    """
+    rows = []
+    n_dropped_N_final = 0
+    n_dropped_dns = 0
+
+    for (u_dns, u_dN) in samples:
+        dns = delta_nstar_low + u_dns * (delta_nstar_high - delta_nstar_low)
+        dN  = delta_N_low    + u_dN  * (delta_N_high    - delta_N_low)
+
+        if dns < delta_nstar_min:
+            n_dropped_dns += 1
+            continue
+
+        N_final = K - dN - dns
+        if N_final < N_final_min:
+            n_dropped_N_final += 1
+            continue
+
+        N_init = N_final + dN
+        rows.append({
+            "N_init":      N_init,
+            "N_final":     N_final,
+            "delta_Nstar": dns,
+        })
+
+    return rows, n_dropped_N_final, n_dropped_dns
 
 def _write_csv(path: Path, rows: list, args, n_samples_actual: int, use_cartesian: bool) -> None:
     """Write rows to CSV with a provenance comment header."""
@@ -368,6 +462,8 @@ def _write_csv(path: Path, rows: list, args, n_samples_actual: int, use_cartesia
 
     if use_cartesian:
         N_final_desc = str(sorted(args.N_final_values))
+    elif args.K is not None:
+        N_final_desc = f"derived: N_final = {args.K} - ΔN - delta_Nstar  (N_final_min={args.N_final_min})"
     else:
         N_final_desc = (
             f"[{args.N_final_low}, {args.N_final_high}] "
@@ -384,9 +480,12 @@ def _write_csv(path: Path, rows: list, args, n_samples_actual: int, use_cartesia
         f"# delta_nstar_range: [{args.delta_nstar_low}, {args.delta_nstar_high}]",
         f"# delta_N_range: [{args.delta_N_low}, {args.delta_N_high}]",
         f"# N_final: {N_final_desc}",
-        f"# N_init_max: {args.N_init_max}",
-        f"# total_rows: {len(rows)}",
     ]
+    if args.K is not None:
+        comment_lines.append(f"# K (= N_final + ΔN + delta_Nstar): {args.K}")
+    else:
+        comment_lines.append(f"# N_init_max: {args.N_init_max}")
+    comment_lines.append(f"# total_rows: {len(rows)}")
 
     with path.open("w", newline="") as fh:
         for line in comment_lines:
@@ -417,13 +516,54 @@ def main():
     )
 
     # ── Choose generation mode ────────────────────────────────────────────────
+    use_fixed_K = args.K is not None
     use_cartesian = (
-        args.delta_nstar_values is not None
-        or args.delta_N_values is not None
-        or args.N_final_values is not None
+        not use_fixed_K
+        and (
+            args.delta_nstar_values is not None
+            or args.delta_N_values is not None
+            or args.N_final_values is not None
+        )
     )
 
-    if use_cartesian:
+    if use_fixed_K and use_cartesian:
+        parser.error("--K cannot be combined with --delta-nstar-values / "
+                     "--delta-N-values / --N-final-values.")
+
+    if use_fixed_K:
+        # Validate 2D bounds only
+        if args.delta_nstar_low >= args.delta_nstar_high:
+            parser.error(
+                f"--delta-nstar-low ({args.delta_nstar_low}) must be < "
+                f"--delta-nstar-high ({args.delta_nstar_high})"
+            )
+        if args.delta_N_low >= args.delta_N_high:
+            parser.error(
+                f"--delta-N-low ({args.delta_N_low}) must be < "
+                f"--delta-N-high ({args.delta_N_high})"
+            )
+        if args.delta_N_low <= 0.0:
+            parser.error(
+                f"--delta-N-low ({args.delta_N_low}) must be > 0."
+            )
+        print(
+            f"Generating {args.n_points} {args.method.upper()} samples "
+            f"(seed={args.seed}) in fixed-K={args.K} mode ..."
+        )
+        samples, n_actual = _sample_unit_cube(args.n_points, args.method, args.seed, ndim=2)
+        print(f"  -> {n_actual} unit-cube samples generated.")
+        rows, n_dropped_N_final, n_dropped_dns = build_grid_fixed_K(
+            samples,
+            K=args.K,
+            delta_nstar_low=args.delta_nstar_low,
+            delta_nstar_high=args.delta_nstar_high,
+            delta_N_low=args.delta_N_low,
+            delta_N_high=args.delta_N_high,
+            N_final_min=args.N_final_min,
+            delta_nstar_min=delta_nstar_min,
+        )
+        n_dropped_N_init = n_dropped_N_final  # reuse variable for summary below
+    elif use_cartesian:
         # All three explicit-values flags must be present together.
         missing = [
             name for name, val in [
@@ -501,15 +641,25 @@ def main():
     print()
     print("Grid summary")
     print("────────────")
-    if use_cartesian:
+    if use_fixed_K:
+        print(f"  Mode               : fixed-K = {args.K}")
+        print(f"  Sampling method    : {args.method}")
+        print(f"  Seed               : {args.seed}")
+        print(f"  Samples generated  : {n_actual}")
+        print(f"  N_final_min        : {args.N_final_min}")
+        print(f"  Dropped (N_final<min): {n_dropped_N_init}")
+        print(f"  Dropped (dns<min)  : {n_dropped_dns}")
+    elif use_cartesian:
         print(f"  Mode               : Cartesian product")
+        print(f"  Dropped (N_init>max): {n_dropped_N_init}")
+        print(f"  Dropped (dns<min)  : {n_dropped_dns}")
     else:
         print(f"  Sampling method    : {args.method}")
         print(f"  Seed               : {args.seed}")
         print(f"  Samples generated  : {n_actual}")
         print(f"  N_final range      : [{args.N_final_low}, {args.N_final_high}]")
-    print(f"  Dropped (N_init>max): {n_dropped_N_init}")
-    print(f"  Dropped (dns<min)  : {n_dropped_dns}")
+        print(f"  Dropped (N_init>max): {n_dropped_N_init}")
+        print(f"  Dropped (dns<min)  : {n_dropped_dns}")
     print(f"  Output rows        : {len(rows)}")
     if rows:
         dns_vals = [r["delta_Nstar"] for r in rows]
