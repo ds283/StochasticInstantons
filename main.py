@@ -176,11 +176,10 @@ def _persist_pipeline_item(item: PipelineWorkItem, pool: ShardedPool, no_store_v
     # the factory's store() will read the correct FK serials automatically.
     if cf is None:
         # Both fi and sri failed — no CF to store. fi and sri were already
-        # persisted above to prevent re-computation on subsequent runs.
-        raise RuntimeError(
-            "PipelineWorkItem: both FullInstanton and SlowRollInstanton failed; "
-            "CompactionFunction cannot be computed for this grid point."
-        )
+        # persisted above. Return ray.put(fi) so RayWorkPool can complete its
+        # store→validate bookkeeping; fi.available is True and a second call to
+        # pool.object_validate(fi) is idempotent for failed records.
+        return ray.put(fi)
 
     if no_store_values:
         cf.set_store_full_values(False)
