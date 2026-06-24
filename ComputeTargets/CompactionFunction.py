@@ -119,9 +119,9 @@ def _compute_instanton_path(
     """
     import numpy as np
     from scipy.optimize import brentq
-    from Interpolation.spline_wrapper import SplineWrapper
 
     from InflationConcepts.noiseless_equations import integrate_noiseless_trajectory
+    from Interpolation.spline_wrapper import SplineWrapper
 
     Mp = units.PlanckMass
     N_end_traj = traj.N_end
@@ -278,9 +278,12 @@ def _compute_instanton_path(
     # physical boundary value zeta_inner = delta_Nstar.  No right-endpoint
     # override is needed: the spline is smooth there and np.gradient gives
     # the correct result.
-    zeta_inner = float(instanton_obj._delta_Nstar)
     dzeta_dlogr = np.gradient(zeta_dense, log_r_dense)
-    dzeta_dlogr[0] = (zeta_dense[1] - zeta_inner) / (log_r_dense[1] - log_r_dense[0])
+
+    # zeta_v[0] is the exact computed zeta at the first sample point,
+    # which equals delta_Nstar only approximately. Using the actual value
+    # avoids a spurious derivative from the discrepancy.
+    dzeta_dlogr[0] = (zeta_dense[1] - zeta_v[0]) / (log_r_dense[1] - log_r_dense[0])
     zeta_prime_dense = dzeta_dlogr / r_dense
 
     # Evaluate dζ/dr at sample points via linear interpolation in log-r.
