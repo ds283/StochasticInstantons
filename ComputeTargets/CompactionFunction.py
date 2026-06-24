@@ -255,9 +255,9 @@ def _compute_instanton_path(
     #   2. Evaluate on a log-uniform dense grid (geomspace) — essential
     #      because r spans many decades; linspace concentrates all points
     #      at large r, making np.gradient wildly inaccurate at small r.
-    #   3. Pin the dense grid endpoints to the known physical boundary
-    #      values, but only when the spline value is already close (within
-    #      _ZETA_PIN_ATOL) to avoid introducing a false discontinuity.
+    #   3. Overwrite the left-endpoint derivative after np.gradient using
+    #      a two-point forward difference anchored to the exact physical
+    #      boundary value ζ = δN★.  The right endpoint needs no correction.
     #   4. Compute dζ/dr by finite differences (np.gradient in log-r space,
     #      then divide by r) — no spline derivative is used.
     #   5. Interpolate dζ/dr back to r_v via np.interp in log-r space.
@@ -269,16 +269,18 @@ def _compute_instanton_path(
     log_r_dense = np.log(r_dense)
     zeta_dense = zeta_spline(r_dense)
 
-    # Safe boundary pinning: only override when the spline already
-    # agrees with the physical boundary value to within _ZETA_PIN_ATOL.
-    zeta_inner = float(instanton_obj._delta_Nstar)
-    if abs(zeta_dense[0] - zeta_inner) < _ZETA_PIN_ATOL:
-        zeta_dense[0] = zeta_inner
-    if abs(zeta_dense[-1]) < _ZETA_PIN_ATOL:
-        zeta_dense[-1] = 0.0
-
     # Finite-difference dζ/dr: gradient in log-r then divide by r.
+    # np.gradient uses a three-point one-sided stencil at the endpoints,
+    # which is sensitive to the values of the neighbouring points.  Pinning
+    # zeta_dense[0] before the gradient call creates a discontinuity that
+    # corrupts the stencil.  Instead, overwrite dzeta_dlogr[0] after the
+    # gradient using a two-point forward difference anchored to the exact
+    # physical boundary value zeta_inner = delta_Nstar.  No right-endpoint
+    # override is needed: the spline is smooth there and np.gradient gives
+    # the correct result.
+    zeta_inner = float(instanton_obj._delta_Nstar)
     dzeta_dlogr = np.gradient(zeta_dense, log_r_dense)
+    dzeta_dlogr[0] = (zeta_dense[1] - zeta_inner) / (log_r_dense[1] - log_r_dense[0])
     zeta_prime_dense = dzeta_dlogr / r_dense
 
     # Evaluate dζ/dr at sample points via linear interpolation in log-r.
