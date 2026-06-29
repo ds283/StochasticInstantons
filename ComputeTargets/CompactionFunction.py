@@ -117,11 +117,15 @@ def _compute_instanton_path(
     r_peak, M_max, M_peak, C_max, C_bar_max, V_end_downflow, N_end_downflow,
     diagnostics.
     """
+    import time
+
     import numpy as np
     from scipy.optimize import brentq
 
     from InflationConcepts.noiseless_equations import integrate_noiseless_trajectory
     from Interpolation.spline_wrapper import SplineWrapper
+
+    compute_start = time.perf_counter()
 
     Mp = units.PlanckMass
     N_end_traj = traj.N_end
@@ -139,7 +143,7 @@ def _compute_instanton_path(
     values = instanton_obj.values
     if not values:
         print(f"[{label or 'CompactionFunction'}] no sample values from instanton")
-        return {"failure": True, "diagnostics": {"reason": "no sample values"}}
+        return {"failure": True, "diagnostics": {"compute_time": time.perf_counter() - compute_start, "reason": "no sample values"}}
 
     # Build per-sample arrays
     N_inst_arr = np.array([float(v.N.N) for v in values])
@@ -164,7 +168,7 @@ def _compute_instanton_path(
         print(f"[{label or 'CompactionFunction'}] downflow integration failed (trajectory did not reach end of inflation)")
         return {
             "failure": True,
-            "diagnostics": {"reason": "downflow integration failed"},
+            "diagnostics": {"compute_time": time.perf_counter() - compute_start, "reason": "downflow integration failed"},
         }
 
     N_end_downflow = float(sol_down.t_events[0][0])
@@ -234,7 +238,7 @@ def _compute_instanton_path(
         print(f"[{label or 'CompactionFunction'}] no valid scale assignments")
         return {
             "failure": True,
-            "diagnostics": {"reason": "no valid scale assignments"},
+            "diagnostics": {"compute_time": time.perf_counter() - compute_start, "reason": "no valid scale assignments"},
         }
 
     sort_idx = np.argsort(r_arr[valid_mask])
@@ -245,7 +249,7 @@ def _compute_instanton_path(
         print(f"[{label or 'CompactionFunction'}] fewer than 2 valid sample points (got {len(r_v)})")
         return {
             "failure": True,
-            "diagnostics": {"reason": "fewer than 2 valid sample points"},
+            "diagnostics": {"compute_time": time.perf_counter() - compute_start, "reason": "fewer than 2 valid sample points"},
         }
 
     # ── Step D: zeta(r), C(r), C_bar(r) ─────────────────────────────────
@@ -356,6 +360,7 @@ def _compute_instanton_path(
         "V_end_downflow": V_end_downflow,
         "N_end_downflow": N_end_downflow,
         "diagnostics": {
+            "compute_time": time.perf_counter() - compute_start,
             "type_II": type_II,
             "compensated": compensated,
             "C_min": C_min,
@@ -388,6 +393,10 @@ def _compute_compaction_function(
     Returns a dict with keys "full", "slow_roll" (each a result dict or None)
     and "cosmo_store_id".
     """
+    import time
+
+    compute_start = time.perf_counter()
+
     traj = trajectory_proxy.get()
     potential = traj._potential
     units = potential._units
@@ -440,6 +449,7 @@ def _compute_compaction_function(
         "full": full_result,
         "slow_roll": slow_roll_result,
         "cosmo_store_id": cosmo_store_id,
+        "compute_time": time.perf_counter() - compute_start,
     }
 
 
@@ -706,6 +716,7 @@ class CompactionFunction(DatastoreObject):
         if full_failed and slow_roll_failed:
             self._failure = True
             self._diagnostics = {
+                "compute_time": data.get("compute_time"),
                 "full": full.get("diagnostics") if full else None,
                 "slow_roll": slow_roll.get("diagnostics") if slow_roll else None,
             }
@@ -713,6 +724,7 @@ class CompactionFunction(DatastoreObject):
 
         self._failure = False
         self._diagnostics = {
+            "compute_time": data.get("compute_time"),
             "full": full.get("diagnostics") if full else None,
             "slow_roll": slow_roll.get("diagnostics") if slow_roll else None,
         }
