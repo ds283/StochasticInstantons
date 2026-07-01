@@ -64,6 +64,7 @@ from Datastore.SQL.ObjectFactories.delta_Nstar import sqla_delta_Nstar_factory
 from Datastore.SQL.ObjectFactories.N_init import sqla_N_init_factory
 from Datastore.SQL.ObjectFactories.N_final import sqla_N_final_factory
 from Datastore.SQL.ObjectFactories.efold import sqla_efold_factory
+from Datastore.SQL.ObjectFactories.y import sqla_y_factory
 from Datastore.SQL.ObjectFactories.integration_metadata import (
     sqla_IntegrationSolver_factory,
 )
@@ -88,6 +89,7 @@ _factories = {
     "redshift": sqla_redshift_factory(),
     "tolerance": sqla_tolerance_factory(),
     "efold_value": sqla_efold_factory(),
+    "y_value": sqla_y_factory(),
     "delta_Nstar": sqla_delta_Nstar_factory(),
     "N_init": sqla_N_init_factory(),
     "N_final": sqla_N_final_factory(),

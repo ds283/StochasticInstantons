@@ -29,6 +29,7 @@ _default_serial_batch_size = {
     "phi_value": 200,
     "pi_value": 200,
     "efold_value": 500,
+    "y_value": 500,
     "delta_Nstar": 10,
     "N_init": 10,
     "N_final": 10,
