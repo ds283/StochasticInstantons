@@ -1,0 +1,1638 @@
+\documentclass[a4paper,11pt]{article}
+\pdfoutput=1
+
+\usepackage[table]{xcolor}
+\usepackage{lmodern}
+\usepackage{jcappub}
+\usepackage[toc,page]{appendix}
+\usepackage{subcaption}
+\usepackage{mathtools}
+\usepackage{orcidlink}
+\usepackage{multirow}
+\usepackage[T1]{fontenc}
+\usepackage{float}
+\usepackage{bm}
+\usepackage{tcolorbox}
+
+\tcbuselibrary{skins}
+\tcbuselibrary{breakable}
+
+\newcommand{\semibold}[1]{{\fontseries{b}\selectfont{#1}}}
+\newcommand{\sansbold}[1]{{\sffamily\fontseries{sbc}\selectfont{#1}}}
+
+\newcommand{\para}[1]{\par\vspace{2mm}\noindent\semibold{{#1.}---}\ignorespaces}
+
+\DeclareMathOperator{\Or}{O}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\NewRe}{Re}
+\DeclareMathOperator{\NewIm}{Im}
+\renewcommand{\Re}{\NewRe}
+\renewcommand{\Im}{\NewIm}
+
+\newcommand{\transpose}{\mathsf{T}}
+
+\renewcommand{\leq}{\leqslant}
+\renewcommand{\geq}{\geqslant}
+
+\definecolor{SussexCobaltBlue}{HTML}{1d4289}
+\definecolor{SussexDeepAquamarine}{HTML}{007a78}
+\definecolor{SussexPowderBlue}{HTML}{7da1c4}
+\definecolor{SussexCornYellow}{HTML}{f2c75c}
+\definecolor{SussexChinaRose}{HTML}{be84a3}
+\definecolor{SussexBurntOrange}{HTML}{dc582a}
+
+\hypersetup{colorlinks=true,citecolor=SussexDeepAquamarine,linkcolor=SussexCobaltBlue,urlcolor=SussexBurntOrange}
+
+\newcommand{\etal}{\emph{et al.}}
+
+\renewcommand{\d}{\mathrm{d}}
+\newcommand{\e}[1]{\mathrm{e}^{{#1}}}
+\newcommand{\im}{\mathrm{i}}
+\newcommand{\Mp}{M_{\mathrm{P}}}
+\newcommand{\vect}[1]{\bm{\mathrm{{#1}}}}
+
+\DeclareMathOperator{\grad}{\nabla}
+\DeclareMathOperator{\sinc}{sinc}
+
+\newcommand{\GeV}{\text{GeV}}
+
+% spread out arrays / text
+\renewcommand{\arraystretch}{1.15}
+\renewcommand{\baselinestretch}{1.1}
+
+\newenvironment{panel}{\begin{tcolorbox}[enhanced,breakable,colback=gray!10,colframe=gray!30]\small}{\end{tcolorbox}}
+\newenvironment{todo}{\begin{tcolorbox}[enhanced,breakable,colback=SussexBurntOrange!10,colframe=SussexBurntOrange!40]\small{\textsf{\textbf{Open issue:} }}}{\end{tcolorbox}}
+\newenvironment{calculation}{\begin{tcolorbox}[enhanced,breakable,colback=SussexPowderBlue!10,colframe=SussexCobaltBlue!30]\small}{\end{tcolorbox}}
+
+%
+% ----------------------------------------------------------------------
+% Notation macros. Collected here so that definitions can be changed
+% in one place. Grouped by role.
+% ----------------------------------------------------------------------
+%
+
+% -- e-folding time and background quantities --
+\newcommand{\Ny}{N}                          % e-fold "time" variable
+\newcommand{\Ninit}{N_{\mathrm{init}}}       % start of instanton transition
+\newcommand{\Nfinal}{N_{\mathrm{final}}}     % end of instanton transition
+\newcommand{\DN}{\Delta N}                   % duration of transition, N_init - N_final on background
+\newcommand{\dNstar}{\delta N_\star}         % instanton excess e-folds
+\newcommand{\epsSR}{\epsilon_1}              % first slow-roll parameter
+\newcommand{\Hub}{H}                         % Hubble rate
+\newcommand{\sfactor}{a}                     % scale factor
+\newcommand{\atloc}{(\field,\mom)}           % shorthand: evaluated at the local phase-space
+                                              % point (field,mom); distinguishes the LOCAL,
+                                              % dynamical use of H, eps_1 (Friedmann-equation
+                                              % functions of the local trajectory, exactly as
+                                              % in AbstractPotential.H_sq/epsilon) from the
+                                              % GLOBAL background aH(N) used only to define
+                                              % the coordinate y and the gradient-term prefactor
+
+% -- field content --
+\newcommand{\field}{\phi}                    % inflaton field
+\newcommand{\mom}{\pi}                       % conjugate momentum, d(field)/dN
+\newcommand{\Vpot}{V}                        % potential
+\newcommand{\phinl}{\field_{\mathrm{nl}}}    % noiseless background trajectory
+\newcommand{\pinl}{\mom_{\mathrm{nl}}}       % noiseless background momentum
+\newcommand{\phiinit}{\field_{\mathrm{init}}}
+\newcommand{\phiend}{\field_{\mathrm{end}}}
+
+% -- noise / MSR response fields --
+\newcommand{\noise}[1]{\xi_{#1}}             % generic noise, e.g. \noise{\field}
+\newcommand{\rfield}{\widetilde\field}       % MSR response field conjugate to \field
+\newcommand{\rmom}{\widetilde\mom}           % MSR response field conjugate to \mom
+
+% -- shell / layer bookkeeping --
+\newcommand{\Nlay}[1]{N_{#1}}                % comoving population of shell i, N_i
+\newcommand{\rad}{r}                         % comoving radial coordinate
+
+% -- the onion coordinate y and its complement u --
+\newcommand{\yco}{y}                         % onion coordinate, y=-1 fixed outer edge,
+                                              % y=+1 current horizon (exterior-only, log-radial)
+\newcommand{\uco}{u}                         % u = 1-y (legacy; unused in current coordinate)
+\newcommand{\rout}{\rad_{\mathrm{out}}}      % comoving radius of outer edge of overdensity
+\newcommand{\rphys}{\rad_{\mathrm{phys}}}    % present-day physical scale (Leach-Liddle), distinct
+                                              % from comoving \rad and areal R (Section~\ref{sec:scale-assignment})
+\newcommand{\aHo}{(\sfactor \Hub)_0}         % aH evaluated at N_init
+\newcommand{\aH}[1][]{(\sfactor \Hub)#1}     % aH, optionally with an argument e.g. \aH{(N)}
+\newcommand{\aHloc}{\sfactor(\Ny)\Hub\atloc} % LOCAL comoving-Hubble-rate quantity for the
+                                              % gradient (Laplacian) coupling term: a(N) is a
+                                              % pure function of the grid N (N is itself each
+                                              % shell's own e-fold clock, so a(N)=a_0 e^{N-Ninit}
+                                              % is exact, not tied to any trajectory), while H
+                                              % is local, H(field,mom). Contrast \aH[(\Ny)],
+                                              % retained for the coordinate/geometric roles
+                                              % (defining y, aHo, n(y,N), k_sigma) where a single
+                                              % shared comoving map is required.
+\newcommand{\rH}{\rad_H}                     % current horizon radius, evaluated at the CORE's
+                                              % own local field values: rH(N) = 1/[a(N)H(1,N)]
+\newcommand{\Deltas}{\Delta s}                % Deltas(N) = ln(rout/rH(N)): log-radial extent
+                                              % of the resolved (exterior) domain
+\newcommand{\epscore}{\epsSR^{\mathrm{core}}} % epsilon_1 evaluated at the core, y=+1
+\newcommand{\measure}{\mu}                   % self-adjoint measure for Lop(y,N): exponential
+                                              % in y, N-dependent through Deltas(N)
+\newcommand{\advcoef}{A}                     % advection coefficient in (y,N) coordinates,
+                                              % nonzero for the log-radial horizon-excising map
+\newcommand{\weightfn}{w}                    % w(y) = mu(y,N)*p(y), where p=e^{Deltas y} is the
+                                              % coefficient of Q'' in Lop; equivalently mu = w^3.
+                                              % Used in the self-adjointness check (Section~\ref{sec:msr-action})
+
+% -- LEGACY: sinc-eigenfunction spectral expansion, superseded by the
+% collocation scheme (Section~\ref{sec:collocation-scheme}). Retained,
+% unused, only because a handful of macro names below are reused for
+% collocation-grid quantities with a different meaning; do not rely on
+% the "mode coefficient" comments below, which describe the old scheme.
+\newcommand{\Lop}{\mathcal{L}_\yco}          % radial mean-field Laplacian in y (now the
+                                              % log-radial, horizon-excising operator of
+                                              % Section~\ref{sec:coordinate}, not the old sinc one)
+\newcommand{\modeidx}{n}                     % mode index
+\newcommand{\basisfn}{f_\modeidx}            % sinc basis function
+\newcommand{\basisfnx}[1]{f_{#1}}            % sinc basis function, explicit index
+\newcommand{\eigval}{\kappa_\modeidx}        % eigenvalue of \Lop, = -(n pi)^2
+\newcommand{\modenorm}{N_\modeidx}           % norm of basis function f_n in the (1-y)^2 dy measure
+
+% -- mode coefficients --
+\newcommand{\coefa}{a_\modeidx}              % mode coefficient of (field - noiseless)
+\newcommand{\coefax}[1]{a_{#1}}              % mode coefficient of (field - noiseless), explicit index
+\newcommand{\coefb}{b_\modeidx}              % mode coefficient of (mom - noiseless)
+\newcommand{\rcoefa}{\widetilde{a}_\modeidx} % mode coefficient of response field \rfield
+\newcommand{\rcoefax}[1]{\widetilde{a}_{#1}} % mode coefficient of \rfield, explicit index
+\newcommand{\rcoefb}{\widetilde{b}_\modeidx} % mode coefficient of response field \rmom
+
+\newcommand{\rcoefbx}[1]{\widetilde{b}_{#1}} % mode coefficient of \rmom, explicit index
+\newcommand{\projone}{[1]_\modeidx}          % projection of the constant function 1 onto
+                                              % mode n in the u^2 du measure; = 2(-1)^{n+1}
+% -- noise amplitude / covariance functions --
+\newcommand{\Dnoise}[1]{D_{#1}}              % D_field(y,N), D_mom(y,N), D_{field mom}(y,N):
+                                              % shell-averaged noise variance/covariance
+                                              % densities (the "2D" convention: matches the
+                                              % factor of 2 multiplying D11,D12,D22 in the
+                                              % existing FullInstanton forward-pass equations)
+\newcommand{\Dcm}[1]{\mathsf{D}_{#1}}        % single-patch (undiluted) diffusion matrix
+                                              % element in the codebase convention, i.e.
+                                              % DiffusionModel.D_matrix(phi,pi) -> (D11,D12,D22);
+                                              % \Pspec{fg} = 2\,\Dcm{fg}\atloc
+\newcommand{\Pspec}[1]{P_{#1}}               % reduced power spectra of Briaud et al.
+\newcommand{\ncount}{n}                      % Hubble-volume count per unit shell, n(y,N)
+
+% -- misc --
+\newcommand{\lag}{\lambda}                   % Lagrange multiplier for core endpoint condition
+\newcommand{\zprofile}{\zeta}                % curvature perturbation profile
+
+\title{The onion model: a mean-field gradient-corrected instanton\\
+for the spacetime embedding of PBH-forming trajectories}
+
+\author{David Seery}
+\affiliation{Astronomy Centre, University of Sussex, Brighton BN1 9QH, United Kingdom}
+\emailAdd{D.Seery@sussex.ac.uk}
+
+\begin{document}
+\maketitle
+
+% \begin{abstract}
+% \noindent
+% These notes record the derivation of a mean-field, gradient-corrected
+% extension of the instanton method used elsewhere in this project to compute
+% primordial black hole (PBH) formation probabilities in stochastic inflation.
+% In the existing prescription (`\texttt{FullInstanton}'/`\texttt{SlowRollInstanton}'),
+% a single instanton trajectory is assumed to describe the assembly of the
+% central region of a spherically symmetric overdensity, while surrounding
+% Hubble volumes are assumed to detach and evolve noiselessly once they exit
+% the active core. This neglects the gradient coupling between the detaching
+% shell and the central region identified by Briaud \etal\ in their treatment
+% of gradient corrections to stochastic inflation. Here we build a mean-field
+% `onion model': angle-averaged Langevin equations for the field and momentum
+% in concentric comoving shells, including the leading gradient coupling
+% between shells, converted to a Martin--Siggia--Rose (MSR) representation,
+% with the gradient-corrected instanton found as the saddle point of a global
+% boundary value problem. We derive the appropriate comoving coordinate for
+% the shell structure, construct the MSR action with the correct volume
+% measure, derive the instanton (Euler--Lagrange) equations and their
+% boundary conditions, construct an analytic eigenbasis for the spatial
+% operator, and set out a spectral collocation scheme for the numerical
+% solution. Two open theoretical issues are flagged explicitly and are not
+% yet resolved: the correct probabilistic interpretation of the two-dimensional
+% MSR action relative to the existing single-trajectory instanton, and the
+% precise sense in which the terminal (`largest time') boundary condition on
+% the MSR response fields can be placed at an arbitrary time later than the
+% end of the transition.
+% \end{abstract}
+
+\tableofcontents
+
+% ======================================================================
+\section{Motivation}
+\label{sec:motivation}
+% ======================================================================
+
+In the existing instanton approach to PBH formation, a single trajectory
+$\field(\Ny)$, $\mom(\Ny) = \d\field/\d\Ny$ is found as the saddle point of
+the Martin--Siggia--Rose (MSR) action for the central Hubble patch, subject
+to boundary conditions fixing the initial field value $\phiinit$, the final
+field value $\phiend$, and the duration $\dNstar$ of the anomalous
+(noise-driven) excursion relative to the noiseless background. The
+resulting curvature perturbation profile $\zprofile(\rad)$ is built by
+assuming that, at each step of the assembly, the current Hubble volume
+splits into a central region --- which continues to be described by the
+instanton --- and a surrounding shell, which detaches and thereafter
+evolves \emph{noiselessly} along the background trajectory.
+
+This is a reasonable first approximation, but it neglects the gradient
+coupling between the detaching shell and the central region. Briaud
+\etal\ have shown that adjacent Hubble volumes do not decouple completely
+upon separation: the noise driving neighbouring patches is correlated on
+the coarse-graining scale, and this correlation sources a residual gradient
+interaction that persists for of order one $e$-fold after separation. This
+coupling makes it more costly, in the sense of MSR action, to build a
+sharply peaked (`Cerro Torre') profile than the noiseless-detachment
+prescription would suggest, because the detaching shell resists being left
+behind by the central assembly.
+
+\begin{panel}
+The Briaud \etal\ formalism itself is not directly applicable to the
+rare-event geometry we are interested in, because it is built for
+statistically typical patches relaxing towards the background, whereas here
+the central patch is conditioned to be an extreme fluctuation. The
+construction below is therefore not simply an import of their results:
+we use their identification of the leading gradient coupling and noise
+correlation structure, but the conditioning is handled correctly by
+extremizing a single joint action for the whole configuration, rather than
+by substituting an unconditional noise correlation function into a Langevin
+equation by hand.
+\end{panel}
+
+The goal of the `onion model' developed here is to replace the ad hoc
+noiseless-detachment rule with a dynamical boundary condition derived from
+an action principle, so that the cost of assembling a sharp profile ---
+and the associated smoothing of the profile by gradient coupling to the
+surrounding shells --- emerges from the saddle point rather than being
+imposed by hand.
+
+% ======================================================================
+\section{Single-patch Langevin system and shell averaging}
+\label{sec:shell-averaging}
+% ======================================================================
+
+\subsection{The un-coarse-grained system}
+
+Working to the order in the gradient expansion retained by Briaud \etal,
+the Langevin equations for the coarse-grained field at a comoving point
+$\vect{x}$ are
+\begin{subequations}
+\label{eq:patch-langevin}
+\begin{align}
+    \frac{\d \field}{\d \Ny}(\vect{x}, \Ny)
+    & =
+    \mom(\vect{x}, \Ny) + \noise{\field}(\vect{x}, \Ny) ,
+    \\
+    \frac{\d \mom}{\d \Ny}(\vect{x}, \Ny)
+    & =
+    -(3-\epsSR) \mom(\vect{x},\Ny)
+    - \frac{\Vpot'(\field)}{\Hub^2}
+    + \frac{1}{\aHloc^2} \grad^2 \field(\vect{x}, \Ny)
+    + \noise{\mom}(\vect{x}, \Ny) ,
+\end{align}
+\end{subequations}
+where $\grad^2$ is the comoving spatial Laplacian and the noises have
+covariance
+\begin{equation}
+    \big\langle \noise{f}(\vect{x}, \Ny) \, \noise{g}(\vect{y}, \Ny') \big\rangle
+    =
+    \Pspec{fg}(\Ny) \, \delta_D(\Ny - \Ny') \, (1-\epsSR) \,
+    \sinc\!\big( k_\sigma |\vect{x}-\vect{y}| \big) ,
+    \qquad f, g \in \{\field, \mom\} ,
+    \label{eq:noise-covariance}
+\end{equation}
+with $k_\sigma = \sigma \aH$ the coarse-graining scale ($\sigma \ll 1$) and
+$\Pspec{fg}$ the reduced power spectra. The noise is white in $\Ny$ and
+correlated between comoving points only within the coarse-graining radius
+$k_\sigma^{-1}$.
+
+\subsection{Shell averaging}
+\begin{panel}
+\semibold{$H$, $\epsSR$, $\Pspec{fg}$ here are local, not background,
+quantities -- and so is $H$ inside the gradient-term coefficient.}
+Throughout \eqref{eq:patch-langevin}--\eqref{eq:noise-covariance}
+$\Hub$, $\epsSR$, and $\Pspec{fg}$ should be read as the usual
+Friedmann-equation functions of the local phase-space point
+$\field(\vect{x},\Ny),\mom(\vect{x},\Ny)$ -- exactly as in the single-patch
+stochastic-$\delta N$ formalism this section is built on, and as
+\texttt{AbstractPotential.H\_sq}/\texttt{epsilon} and
+\texttt{DiffusionModel.D\_matrix} already treat them in the codebase --
+\emph{not} as fixed background values. This is unremarkable at the
+single-patch level, where there is only one field value in play, but it
+matters once shells with genuinely different field content are compared
+below and, later, once the shell/mode structure is built in
+$(\yco,\Ny)$: see the explicit local-evaluation prescription in
+Section~\ref{sec:noise-y} and the corrected equations of
+Section~\ref{sec:instanton-eqs}, which this un-coarse-grained system should
+be understood to feed into consistently. The same applies to the $\aH$
+appearing in the gradient term $\aHloc^{-2}\grad^2\field$: $a(\Ny)$ is a
+pure function of the grid $\Ny$ (exact, not an approximation, since $\Ny$
+is by construction each patch's own e-fold clock -- $a(\Ny)=a_0\e{\Ny-\Ninit}$
+regardless of trajectory), but $H$ there is the same local
+$H\atloc$, not a value pinned to any reference trajectory. This is
+distinct from the genuinely background $\aHo,\aH[(\Ny)]$ used later purely
+to define the comoving coordinate $\yco$
+(Section~\ref{sec:coordinate}), which necessarily stay
+tied to a single global choice since they set up one shared comoving
+labelling for the whole configuration -- see the discussion following
+\eqref{eq:gradient-term-y}.
+\end{panel}
+
+
+Define the shell-averaged field for the set of comoving patches making up
+shell $i$ as
+\begin{equation}
+    \field_i(\Ny) \equiv \frac{1}{\Nlay{i}} \sum_{\vect{x} \in i} \field(\vect{x}, \Ny) ,
+\end{equation}
+where $\Nlay{i}$ is the number of coarse-graining patches contained in
+shell $i$. Averaging \eqref{eq:patch-langevin} over the shell, and
+dropping the difference between $\langle \Vpot'(\field)\rangle$ and
+$\Vpot'(\field_i)$ as a higher-order mean-field correction (suppressed by
+$\Vpot''' \times \mathrm{Var}[\field]/\Nlay{i}$, itself already
+$\Or(1/\Nlay{i})$ -- and, by the same argument, similarly approximating
+$H^2,\epsSR$ evaluated on the shell by their value at the shell-mean
+$\field_i,\mom_i$), gives
+\begin{subequations}
+\begin{align}
+    \frac{\d \field_i}{\d \Ny}
+    & =
+    \mom_i + \overline{\noise{\field}}^{(i)} ,
+    \\
+    \frac{\d \mom_i}{\d \Ny}
+    & =
+    -\big(3-\epsSR(\field_i,\mom_i)\big)\mom_i - \frac{\Vpot'(\field_i)}{\Hub^2(\field_i,\mom_i)}
+    + \frac{1}{\sfactor(\Ny)^2\Hub^2(\field_i,\mom_i)}\big\langle \grad^2\field \big\rangle_i
+    + \overline{\noise{\mom}}^{(i)} .
+\end{align}
+\end{subequations}
+
+\subsection{Central limit suppression of the shell-averaged noise}
+
+The variance of the shell-averaged noise is
+\begin{equation}
+    \mathrm{Var}\big[\overline{\noise{\field}}^{(i)}\big]
+    =
+    \frac{1}{\Nlay{i}^2} \sum_{\vect{x},\vect{y} \in i}
+    \Pspec{\field\field} \, \delta_D(\Ny-\Ny') \, \sinc(k_\sigma|\vect{x}-\vect{y}|) .
+\end{equation}
+If shell $i$ has linear comoving extent much larger than the
+coarse-graining radius $k_\sigma^{-1}$, the double sum is dominated by
+$\Or(\Nlay{i})$ correlated pairs out of $\Nlay{i}^2$ total, giving the
+central-limit-theorem result
+\begin{equation}
+    \mathrm{Var}\big[\overline{\noise{\field}}^{(i)}\big]
+    \; \approx \;
+    \frac{c \, \Pspec{\field\field}}{\Nlay{i}} \, \delta_D(\Ny-\Ny') ,
+    \label{eq:CLT-suppression}
+\end{equation}
+for some $\Or(1)$ geometric constant $c$, and similarly for
+$\overline{\noise{\mom}}^{(i)}$.
+
+\subsection{Inter-shell correlation is nearest-neighbour and subleading}
+
+The covariance between the averaged noise in shells $i$ and $j$ is
+\begin{equation}
+    \mathrm{Cov}\big[\overline{\noise{\field}}^{(i)}, \overline{\noise{\field}}^{(j)}\big]
+    =
+    \frac{1}{\Nlay{i}\Nlay{j}} \sum_{\vect{x}\in i, \vect{y} \in j}
+    \Pspec{\field\field} \, \delta_D(\Ny-\Ny') \, \sinc(k_\sigma|\vect{x}-\vect{y}|) .
+\end{equation}
+Since the sinc kernel connects only points within the coarse-graining
+radius $k_\sigma^{-1}$, and the shell-to-shell separation is set by the
+comoving Hubble radius --- parametrically larger than $k_\sigma^{-1}$
+because $\sigma \ll 1$ --- this covariance vanishes for non-adjacent shells,
+and for adjacent shells is suppressed both by the CLT factor
+$1/\sqrt{\Nlay{i}\Nlay{j}}$ and by the fraction, $\Or(\Nlay{i}^{-1/3})$, of a
+shell's patches that lie within the coarse-graining radius of its boundary.
+
+\begin{panel}
+Counting more carefully: the correlated part of the double sum has
+$\Or(\Nlay{i}^{2/3})$ contributing pairs (those within a coarse-graining
+length of the shared boundary) rather than $\Or(\Nlay{i}^2)$. Relative to
+the leading CLT term \eqref{eq:CLT-suppression}, the correlation correction
+within a single shell is therefore suppressed by an additional power
+$\Nlay{i}^{-1/3}$. The inter-shell noise correlation is thus a genuinely
+subleading effect once shells are averaged; the surviving inter-shell
+coupling that matters at leading order is the \emph{deterministic} gradient
+(Laplacian) term, discussed next.
+\end{panel}
+
+\subsection{The mean-field gradient (Laplacian) coupling}
+
+The shell-averaged Laplacian, for a spherically decomposed field, is the
+standard radial Laplacian,
+\begin{equation}
+    \big\langle \grad^2 \field \big\rangle_\mathrm{shell}
+    \; \approx \;
+    \frac{1}{\rad^2} \partial_\rad\!\big( \rad^2 \partial_\rad \field \big) .
+    \label{eq:radial-laplacian-r}
+\end{equation}
+This deterministic coupling survives even in the strict large-shell limit
+in which the noise correlation of the previous subsection vanishes: it is
+the leading $\Or(\sigma^2)$ term in the gradient expansion and carries no
+extra CLT suppression.
+
+% ======================================================================
+\section{Comoving shell geometry}
+\label{sec:geometry}
+% ======================================================================
+
+Label shells by the step $i$ at which they detach from the active core.
+With scale factor normalized so that $\sfactor(\Ninit) = \sfactor_0$, the
+outer radius of shell $i$ is the comoving Hubble radius at step $i$,
+\begin{equation}
+    \rad_i = \frac{1}{\sfactor(i)\Hub(i)} ,
+\end{equation}
+and the shell width is $\Delta_i = \rad_i - \rad_{i+1}$. Because
+$\d(\aH[^{-1}])/\d\Ny = -(1-\epsSR)\aH[^{-1}]$, the shell widths are not
+uniform in comoving coordinates: outer shells (small $i$, born early, when
+the comoving Hubble radius was larger) are wider than inner shells. The
+comoving population of shell $i$ is fixed for all time once the shell is
+created; what changes at later steps is only the field value it carries.
+
+\begin{panel}
+A discrete implementation along these lines --- a fixed number of
+`active' stochastic shells (small enough that the CLT suppression
+\eqref{eq:CLT-suppression} has not yet made the noise negligible), coupled
+to an outer set of shells evolving under the deterministic gradient-coupled
+equation only --- is a viable, and probably cheaper, alternative to the
+continuum construction of Sections~\ref{sec:coordinate}--\ref{sec:collocation-scheme}.
+The discrete and continuum treatments are two numerical schemes for the
+\emph{same} underlying mean-field action, not different physical models. We
+record only the continuum route in detail here, since it is the one
+adopted for the first implementation, but the discrete route remains
+available as a cross-check and may in the end prove more tractable; see
+Section~\ref{sec:open-issues} and the companion planning document.
+\end{panel}
+
+% ======================================================================
+\section{The onion coordinate $\yco$}
+\label{sec:coordinate}
+% ======================================================================
+
+\subsection{Definition}
+
+We wish to describe the geometry exterior to the horizon
+volume that forms the core of the instanton.
+First, determine
+the current horizon using the core's own local field
+values,
+\begin{equation}
+    \rH(\Ny) \equiv \frac{1}{a(\Ny)\,\Hub\big[\field(1,\Ny),\mom(1,\Ny)\big]} ,
+    \label{eq:rH-definition}
+\end{equation}
+the same local Friedmann-equation evaluation used throughout this
+construction, now applied at the domain's own inner edge. The outer edge
+of the assembling overdensity is at a fixed comoving radius,
+\begin{equation}
+    \rout \equiv \frac{1+\alpha}{\aHo} ,
+    \qquad \alpha \geq 0 ,
+    \label{eq:rout-alpha}
+\end{equation}
+a small, controlled deformation of the naive choice $\rout=1/\aHo$ used in
+an earlier draft, for reasons given in the panel below. We define the
+radial variable $s \equiv \ln(\rad/\rout)$ --- motivated by the density
+profile computed in the gradient-free approximation being close to a
+power law in $\rad$, hence close to linear (and smooth) in $s$ --- and
+write
+\begin{equation}
+    \Deltas(\Ny) \equiv \ln\!\left(\frac{\rout}{\rH(\Ny)}\right) ,
+    \qquad
+    \yco \equiv -\frac{2s}{\Deltas(\Ny)} - 1 ,
+    \qquad
+    \rad(\yco,\Ny) = \rout \exp\!\left[-\frac{(\yco+1)\Deltas(\Ny)}{2}\right] .
+    \label{eq:y-definition}
+\end{equation}
+so that $\yco=-1$ is the fixed outer edge $\rout$ (which
+will turn out to satisfy
+a Dirichlet boundary condition),
+and $\yco=+1$ is the current horizon $\rH(\Ny)$ (which
+will turn out to satisfy
+a Neumann boundary condition). The
+domain is therefore $\yco\in[-1,1]$ throughout, matching the natural range
+of Legendre/Chebyshev collocation nodes (Section~\ref{sec:collocation-basis}).
+Since $\rH(\Ninit)=1/\aHo$ exactly (the core has not yet deviated from the
+noiseless trajectory at $\Ninit$),
+\begin{equation}
+    \Deltas(\Ninit) = \ln(1+\alpha) ,
+    \label{eq:Deltas-init}
+\end{equation}
+strictly positive for $\alpha>0$: the resolved domain starts with a small
+but finite log-radial extent, rather than as a single point.
+
+\begin{panel}
+\semibold{Why $\alpha>0$: the naive $\rout=1/\aHo$ choice is singular at $\Ninit$.}
+With $\alpha=0$, $\Deltas(\Ninit)=0$ exactly, and the Laplacian coefficients
+$4/\Deltas^2$, $2/\Deltas$ (eq. 4.6), the advection coefficient $A\propto1/\Deltas$,
+and the noise dilution $\ncount\propto\Deltas$ (Section~\ref{sec:noise-y},
+so $\Dnoise{ij}\propto1/\Deltas$) all diverge there. A Frobenius-type check
+of the forward sector ($\delta\field\equiv\field-\phinl=\Deltas(\Ny)h(\yco)+\Or(\Deltas^2)$)
+shows the leading $1/\Deltas$ divergences in the gradient and advection
+terms cancel against each other, consistent with the singularity being an
+artefact of rescaling a shrinking physical domain onto the fixed range
+$[-1,1]$ (transparent if one works instead in $s$, which has no such
+prefactor and simply ranges over the perfectly regular, if shrinking,
+interval $[-\Deltas(\Ny),0]$) rather than a genuine breakdown of the
+physics. But the response-field sector, which carries boundary data from
+$\Nfinal$ and couples through the equally-divergent $\Dnoise{ij}\propto1/\Deltas$
+noise terms, has not been checked with the same rigor, and there is no
+guarantee its divergences cancel as cleanly.
+
+Rather than complete that analysis, decouple $\rout$ from $\rH(\Ninit)$ by
+the small amount $\alpha$ in \eqref{eq:rout-alpha}. Since
+$\Deltas_\alpha(\Ny) = \ln(1+\alpha) + \Deltas_0(\Ny)$ (with $\Deltas_0$ the
+original, unregularized quantity) is just an additive constant shift, every
+divergent coefficient above is regularized identically, with no change to
+any functional form --- and since the computed profiles already have
+$\Deltas_0(\Nfinal)\sim9$--$21$, the shift is negligible almost immediately
+after $\Ninit$ for any small $\alpha$, so late-time behaviour is
+essentially unaffected. The physical content added is minimal: the thin
+shell between $\rH(\Ninit)$ and the new $\rout$ is asserted to sit exactly
+on the noiseless trajectory, extending an approximation already made
+everywhere beyond $\rout$ slightly further in, not introducing a new kind
+of assumption. Smaller $\alpha$ makes the (now finite) coefficients larger
+near $\Ninit$, so there is a real stiffness trade-off in the choice; the
+recommended approach is to run at a spread of $\alpha$ values (e.g.\
+geometrically spaced) and check for the expected negligible sensitivity,
+extrapolating to $\alpha\to0$ if any residual dependence remains, rather
+than committing to a single value a priori.
+\end{panel}
+
+\begin{panel}
+\semibold{This was the previously-rejected alternative --- now viable.} An
+earlier version of this document considered exactly this construction
+(anchoring the inner edge to the current horizon) and rejected it, on the
+grounds that the resulting $\Ny$-dependent operator has no time-independent
+eigenbasis, forcing re-diagonalization at every step. That objection is
+specific to an \emph{explicit spectral method} (solving for coefficients
+in an eigenfunction expansion); it does not apply to a \emph{collocation}
+method, where the coupling introduced by an $\Ny$-dependent operator is no
+worse in kind than the coupling already present from the potential and
+noise terms (Section~\ref{sec:collocation-scheme}). Having settled on
+collocation for other reasons, the original objection to this coordinate
+no longer holds, and it directly resolves the sub-horizon-noise problem
+(previously Section~13.1 in an earlier draft) by construction: there is no
+region interior to the current horizon left in the domain to source
+spurious independent fluctuations.
+\end{panel}
+
+\subsection{The advection term}
+
+This
+map is genuinely time-dependent at fixed $\rad$, since $\Deltas(\Ny)$
+evolves. Writing $s=-(\yco+1)\Deltas(\Ny)/2$ at fixed $\rad$ (i.e.\ fixed
+$s$) and differentiating,
+\begin{equation}
+    \left.\frac{\partial \yco}{\partial \Ny}\right|_\rad
+    =
+    -\frac{(\yco+1)}{\Deltas(\Ny)}\,\frac{\d\Deltas(\Ny)}{\d\Ny} ,
+    \qquad
+    \frac{\d\Deltas(\Ny)}{\d\Ny} = -\frac{\d\ln\rH(\Ny)}{\d\Ny} = 1-\epscore(\Ny) ,
+    \label{eq:Deltas-derivative}
+\end{equation}
+using the standard identity $\d\ln(\aH)/\d\Ny = 1-\epsSR$ applied to
+$\rH(\Ny)=1/\aH$, evaluated along the core's own trajectory --- valid for
+\emph{any} trajectory, since it is essentially the definition of
+$\epsSR$, not a background-specific fact. Define the advection coefficient
+\begin{equation}
+    \advcoef(\yco,\Ny) \equiv \frac{\yco+1}{\Deltas(\Ny)}\big(1-\epscore(\Ny)\big) ,
+\end{equation}
+so that
+\begin{equation}
+    \left.\frac{\partial}{\partial \Ny}\right|_\rad
+    =
+    \left.\frac{\partial}{\partial \Ny}\right|_\yco
+    -
+    \advcoef(\yco,\Ny)\,\partial_\yco .
+    \label{eq:advection-operator}
+\end{equation}
+$\advcoef$ vanishes at $\yco=-1$ (the fixed outer edge is correctly
+undisturbed) and is largest at $\yco=+1$ (the moving horizon).
+
+\subsection{The gradient operator in $\yco$}
+\label{sec:gradient-operator}
+
+Using the standard log-radial identity $\nabla^2\field = \rad^{-2}(\field_{ss}+\field_s)$
+and $\partial_s = -2 [ \Deltas(\Ny) ]^{-1} \partial_\yco$ (constant at fixed
+$\Ny$, so no further chain-rule correction is needed for the second
+derivative),
+\begin{equation}
+    \nabla^2\field
+    =
+    \rout^{-2}\,\e{\Deltas(\Ny)}\,\e{\Deltas(\Ny)\,\yco}
+    \left[\frac{4}{\Deltas(\Ny)^2}\partial_\yco^2\field - \frac{2}{\Deltas(\Ny)}\partial_\yco\field\right]
+    \equiv
+    \rout^{-2}\,\Lop\field ,
+    \label{eq:Lop-definition}
+\end{equation}
+using $1/\rad(\yco,\Ny)^2 = \rout^{-2}\,\e{\Deltas(\Ny)}\e{\Deltas(\Ny)\yco}$
+from \eqref{eq:y-definition} --- note this uses $\rout$ itself, \emph{not}
+$\aHo$: with $\alpha>0$ (eq. 4.1a) these are no longer reciprocals of each
+other, $\rout=(1+\alpha)/\aHo$, and using $\aHo^2$ here (as an earlier
+draft did, implicitly assuming $\alpha=0$) would be wrong by a factor of
+$(1+\alpha)^2$. This operator
+carries an explicit first-derivative (drift) term and depends on $\Ny$
+through $\Deltas(\Ny)$, not just through an overall $\yco$-independent
+prefactor. The gradient term in the $\mom$ equation of motion is
+\begin{equation}
+    \frac{1}{\aHloc^2}\big\langle\grad^2\field\big\rangle
+    =
+    \frac{1}{\rout^2\aHloc^2}\,\Lop\field ,
+    \label{eq:gradient-term-y}
+\end{equation}
+with $\aHloc$ the same local quantity as before (Section~\ref{sec:noise-y}).
+
+\subsubsection{Self-adjoint measure}
+
+Writing $\Lop$ in $p(\yco)\field''+q(\yco)\field'$ form (dropping the
+$\yco$-independent prefactor $\rout^{-2}\e{\Deltas}\cdot4/\Deltas^2$ for
+clarity, and absorbing it back at the end), $p=\e{\Deltas\yco}$,
+$q=-\tfrac12\Deltas\,\e{\Deltas\yco}$. The Sturm--Liouville reduction
+$\measure^{-1}(\measure p\,\field')'$ requires $\measure'/\measure=(q-p')/p$;
+here $(q-p')/p = -\tfrac32\Deltas(\Ny)$, a genuine constant (not a function
+of $\yco$), so the reduction is exact and closed-form:
+\begin{equation}
+    \measure(\yco,\Ny) = \e{-\frac32\Deltas(\Ny)\,\yco} ,
+    \qquad
+    \Lop\field
+    \;\propto\;
+    \e{\Deltas(\Ny)\yco}\left(\e{-\frac32\Deltas(\Ny)\yco}\right)^{-1}\frac{\d}{\d\yco}\!\left(\e{-\frac12\Deltas(\Ny)\yco}\,\frac{\d\field}{\d\yco}\right) .
+    \label{eq:self-adjoint-measure}
+\end{equation}
+As a consistency check, $\rad(\yco,\Ny)^3 \propto \e{-\frac32\Deltas(\Ny)\yco}$
+--- $\measure(\yco,\Ny)$ is, up to normalization, exactly the physical
+comoving volume measure, as it must be: $\nabla^2$ is self-adjoint with
+respect to $\rad^2\,\d\rad$ in \emph{any} radial parametrization, by
+Green's theorem, so recovering it here from the Sturm--Liouville reduction
+is a check on the algebra rather than a new input.
+
+\begin{panel}
+\semibold{Flat-measure (Schrödinger normal) form: explored and set aside.}
+The further Liouville substitution that removes $q(\yco)$ \emph{and}
+brings the measure to flat $\d\yco$ (rather than the weighted
+$\measure(\yco,\Ny)\,\d\yco$ above) was worked through explicitly. It
+succeeds algebraically --- the residual potential term vanishes exactly,
+an exactly-solvable special case, since the exponential coefficients here
+play the same role as in an Euler-type ODE --- but the new independent
+variable $x(\yco)=\tfrac{2}{\Deltas(\Ny)}(1-\e{-\Deltas(\Ny)\yco/2})$ maps
+$\yco\in[-1,1]$ onto a badly asymmetric interval whose width grows like
+$\e{\Deltas(\Ny)/2}$: for the wide ($\dNstar=13$) profile already computed
+in the gradient-free approximation, $\Deltas\approx20.7$ gives a domain
+width $\sim3\times10^3$; even the narrower ($\dNstar\approx1.5$) case gives
+$\Deltas\approx9.2$ and a width $\sim22$. This reintroduces, in the
+transformed coordinate, essentially the same exponential compression the
+logarithmic radial variable was adopted to remove. \textbf{Conclusion:}
+retain the \emph{weighted} measure \eqref{eq:self-adjoint-measure} and
+build the self-adjoint discrete structure (Section~\ref{sec:collocation-scheme})
+directly for it, rather than transforming to a flat measure.
+\end{panel}
+
+This removes the previous $\S4.4$ exponential-mode-resolution concern
+structurally, not by mitigation: the logarithmic radial variable is
+precisely what turns the exponentially-compressed near-horizon structure
+(in linear $\rad$) into $\Or(1)$ structure in $\yco$ --- consistent with
+the density profile already computed in the gradient-free approximation
+being close to a power law in $\rad$, hence smooth and close to linear in
+$s=\ln(\rad/\rout)$. A first implementation should confirm this
+empirically once collocation-point convergence can be checked, but there
+is no longer a structural reason to expect the mode/point count needed to
+grow exponentially with elapsed $e$-folds.
+
+% ======================================================================
+\section{Noise statistics in $\yco$ coordinates}
+\label{sec:noise-y}
+% ======================================================================
+
+
+The number of coarse-graining (current-Hubble-volume) patches per unit
+$\yco$-shell can be computed purely in comoving terms. From
+\eqref{eq:y-definition}, $\d\rad/\d\yco = -\tfrac12\Deltas(\Ny)\,\rad(\yco,\Ny)$
+at fixed $\Ny$, so a shell of coordinate width $\d\yco$ has comoving volume
+$4\pi\rad^2|\d\rad| = 2\pi\Deltas(\Ny)\,\rad(\yco,\Ny)^3\,\d\yco$. The
+comoving volume of the current Hubble patch \emph{local to that shell} ---
+which is what matters, since noise is a spatially local process --- is
+$\tfrac43\pi/\aHloc^3$, using the same local $\aHloc$ as the gradient term
+(Section~\ref{sec:gradient-operator}). The number of patches per unit
+$\yco$ is the ratio of these volumes,
+\begin{equation}
+    \ncount(\yco,\Ny)
+    =
+    \frac32\Deltas(\Ny)\,\big[\rad(\yco,\Ny)\,\aHloc\big]^3
+    =
+    \frac32\Deltas(\Ny)\,\big[\rout\,\aHloc\big]^3 \, \e{-\frac32(\yco+1)\Deltas(\Ny)} ,
+    \label{eq:ncount}
+\end{equation}
+using $\rad(\yco,\Ny) = \rout\,\e{-(\yco+1)\Deltas(\Ny)/2}$ directly from
+\eqref{eq:y-definition} --- note this is written in terms of $\rout$, not
+$\aHo$: since $\rout=(1+\alpha)/\aHo$, these differ once $\alpha>0$, and
+the combination $\rout\aHloc$ is the one that appears without extra
+factors of $(1+\alpha)$. As before, the $\aH$ inside $\aHloc$ is the local
+quantity used throughout Section~\ref{sec:instanton-eqs}, while $\rout$
+retains its fixed, coordinate-defining role. At the outer edge
+($\yco=-1$, where $\field=\phinl$ is pinned), $\aHloc\to a(\Ny)\Hub[\phinl(\Ny),\pinl(\Ny)]$,
+generically $\gg\aHo$ (hence $\rout\aHloc\gg1$, since $\rout=\Or(1/\aHo)$)
+at late $\Ny$, so $\ncount$ is large there (many patches, as expected). At
+the horizon itself ($\yco=+1$), $\aHloc$ is by \eqref{eq:rH-definition}
+exactly $1/\rH(\Ny)$, so $\rout\aHloc = \rout/\rH(\Ny) = \e{\Deltas(\Ny)}$
+directly from the definition of $\Deltas(\Ny)$, and the two exponential
+factors cancel: $\ncount(1,\Ny) = \tfrac32\Deltas(\Ny)$
+--- an $\Or(10)$, not $\Or(1)$, quantity for the profiles already computed
+($\Deltas\sim9$--$21$ depending on $\dNstar$): the exterior-only domain no
+longer approaches the single-patch limit $\ncount\to1$ at its inner edge,
+because the excised sub-horizon interior --- not the last resolved shell
+--- is where that single remaining patch now lives, outside the domain
+entirely.
+
+\begin{panel}
+\semibold{$\ncount(\yco,\Ny)$ as a density, not a shell count.}
+\eqref{eq:ncount} is a \emph{density} $\d N_{\mathrm{patches}}/\d\yco$, not
+the (dimensionless) patch count in a shell of finite width: the count in a
+shell of coordinate width $\d\yco$ is $\ncount(\yco,\Ny)\,\d\yco$, and it
+is the density that enters $\Dnoise{\field}=\Pspec{\field\field}/\ncount$
+below, consistently with the $\delta(\yco-\yco')$ noise correlation of
+\eqref{eq:langevin-y}, which requires a density on the right-hand side
+rather than a quantity that vanishes as $\d\yco\to0$.
+\end{panel}
+
+\begin{panel}
+\semibold{Geometric dilution versus local amplitude.} $\ncount(\yco,\Ny)$
+above is \emph{not} purely a coordinate/gauge quantity, unlike $\aHo,\rH(\Ny)$
+as used to define $\yco$ itself: it uses $\aHloc$, the same local $aH$ as
+the gradient term, because ``how big is the current Hubble patch at this
+shell'' is a genuinely local physical statement, not a bookkeeping choice
+about the comoving coordinate map. The single-patch \emph{amplitude}
+entering the average, $\Dcm{ij}(\field,\mom)$, is a separate object with
+its own local dependence: the codebase already treats the diffusion matrix
+as a local function of the phase-space point --
+\texttt{DiffusionModel.D\_matrix(phi,pi)} returns $(\Dcm{11},\Dcm{12},\Dcm{22})$
+evaluated at $(\field,\mom)$, exactly as \texttt{AbstractPotential} does for
+$V$, $H^2$, $\epsilon_1$ -- and the existing single-trajectory equations of
+motion (\texttt{ComputeTargets/FullInstanton.py}) use it that way,
+e.g.\ $\dot\field = \mom + 2\Dcm{11}\rfield + 2\Dcm{12}\rmom$.
+\end{panel}
+
+Using $\Pspec{fg}\atloc = 2\,\Dcm{fg}\atloc$ (the identification implicit in
+$\Pspec{}/2 = H^2/8\pi^2$ in the slow-roll, decoupled-diffusion case), the
+correctly local shell-averaged noise variance/covariance densities are
+\begin{equation}
+    \Dnoise{\field}(\yco,\Ny) \equiv \frac{2\,\Dcm{11}\big(\field(\yco,\Ny),\mom(\yco,\Ny)\big)}{\ncount(\yco,\Ny)} ,
+    \qquad
+    \Dnoise{\mom}(\yco,\Ny) \equiv \frac{2\,\Dcm{22}\big(\field(\yco,\Ny),\mom(\yco,\Ny)\big)}{\ncount(\yco,\Ny)} ,
+    \label{eq:Dnoise-diag}
+\end{equation}
+together with the cross term,
+\begin{equation}
+    \Dnoise{\field\mom}(\yco,\Ny) \equiv \frac{2\,\Dcm{12}\big(\field(\yco,\Ny),\mom(\yco,\Ny)\big)}{\ncount(\yco,\Ny)} .
+    \label{eq:Dnoise-cross}
+\end{equation}
+All three are evaluated pointwise on the same $\yco$-grid, using the same
+reconstructed $\field(\yco,\Ny)$, $\mom(\yco,\Ny)$, by the same procedure
+used for every other nonlinear, solution-dependent coefficient in this
+scheme (Section~\ref{sec:collocation-scheme}). Since $\ncount$ no longer
+approaches $1$ anywhere in the resolved domain, treating
+$\Dnoise{\field}(\yco,\Ny)$ as a pointwise, $\delta(\yco-\yco')$-correlated
+density is on safer footing throughout $\yco\in[-1,1]$ than it was for the
+previous, interior-covering coordinate.
+% ======================================================================
+\section{The Langevin system in $(\yco,\Ny)$}
+\label{sec:langevin-y}
+% ======================================================================
+
+Collecting the results of Sections~\ref{sec:coordinate}--\ref{sec:noise-y},
+the mean-field Langevin system is
+\begin{subequations}
+\label{eq:langevin-y}
+\begin{align}
+    \frac{\partial \field}{\partial \Ny}
+    & =
+    \mom + \advcoef(\yco,\Ny)\,\partial_\yco\field + \noise{\field}(\yco,\Ny) ,
+    \\
+    \frac{\partial \mom}{\partial \Ny}
+    & =
+    -\big(3-\epsSR\atloc\big)\mom - \frac{\Vpot'(\field)}{\Hub^2\atloc}
+    + \frac{1}{\rout^2\aHloc^2} \Lop \field
+    + \advcoef(\yco,\Ny)\,\partial_\yco\mom
+    + \noise{\mom}(\yco,\Ny) ,
+\end{align}
+\end{subequations}
+where the derivatives on the left are now at fixed $\yco$
+(\eqref{eq:advection-operator} converts the original fixed-$\rad$ equations),
+and the advection term $\advcoef\,\partial_\yco(\cdot)$ --- absent for the
+previous coordinate, present here because the map itself is
+$\Ny$-dependent (Section~\ref{sec:coordinate}) --- appears in \emph{both}
+equations, since both were originally written at fixed $\rad$. As before,
+$\Hub^2\atloc$ and $\epsSR\atloc$ denote $H_{\mathrm{sq}}[\field(\yco,\Ny),\mom(\yco,\Ny)]$
+and $\epsilon[\field(\yco,\Ny),\mom(\yco,\Ny)]$, the same local
+Friedmann-equation functions used elsewhere, distinct from the genuinely
+background $\aHo,\rH(\Ny)$ used to define $\yco$ itself and
+$\ncount(\yco,\Ny)$. On the fixed rectangular domain $\yco\in[-1,1]$,
+$\Ny\in[\Ninit,\Nfinal]$, the noises have covariance
+\begin{equation}
+    \big\langle \noise{\field}(\yco,\Ny)\noise{\field}(\yco',\Ny')\big\rangle
+    =
+    \Dnoise{\field}(\yco,\Ny)\,\delta_D(\Ny-\Ny')\,\delta(\yco-\yco') ,
+\end{equation}
+similarly for $\big\langle\noise{\mom}\noise{\mom}\big\rangle$ with
+$\Dnoise{\mom}$, and
+\begin{equation}
+    \big\langle \noise{\field}(\yco,\Ny)\noise{\mom}(\yco',\Ny')\big\rangle
+    =
+    \Dnoise{\field\mom}(\yco,\Ny)\,\delta_D(\Ny-\Ny')\,\delta(\yco-\yco') ,
+\end{equation}
+where the $\delta(\yco-\yco')$ reflects the result of
+Section~\ref{sec:shell-averaging} that inter-shell noise correlations are
+subleading once the CLT suppression has been accounted for. Unlike the
+previous coordinate, there is no longer any sub-horizon region within the
+domain to worry about: $\yco=+1$ \emph{is} the current horizon by
+construction, so the domain boundary and the physical boundary between
+``many independent patches'' and ``at most one patch's worth of freedom''
+coincide exactly, at every $\Ny$.
+
+% ======================================================================
+\section{The MSR action}
+\label{sec:msr-action}
+% ======================================================================
+
+\subsection{Choice of measure}
+
+A generic MSR action for the Langevin system \eqref{eq:langevin-y} could be
+written with a flat $\d\yco$ measure. However, the physically correct
+measure is the one that makes $\Lop$ self-adjoint. This is
+\begin{equation}
+    \measure(\yco,\Ny) = \e{-\frac32\Deltas(\Ny)\,\yco} ,
+\end{equation}
+which, per the discussion following \eqref{eq:self-adjoint-measure}, is
+(up to normalization) exactly the physical comoving volume element in this
+coordinate.
+We write the MSR action with this measure,
+introducing response fields $\rfield$, $\rmom$ conjugate to $\field$,
+$\mom$, and including the advection terms from \eqref{eq:advection-operator}
+in both bracketed equations of motion:
+\begin{multline}
+    S
+    =
+    \int_{\Ninit}^{\Nfinal}\! \d\Ny \int_{-1}^1\! \measure(\yco,\Ny)\,\d\yco \; \Bigg[
+    \rfield \Big( \dot\field - \mom - \advcoef\,\partial_\yco\field \Big)
+    \\
+    +
+    \rmom \left( \dot\mom + \big(3-\epsSR\atloc\big)\mom + \frac{\Vpot'(\field)}{\Hub^2\atloc}
+    - \frac{1}{\rout^2\aHloc^2}\Lop\field - \advcoef\,\partial_\yco\mom \right)
+    -
+    \frac{\Dnoise{\field}}{2}\rfield^2
+    -
+    \Dnoise{\field\mom}\,\rfield\,\rmom
+    -
+    \frac{\Dnoise{\mom}}{2}\rmom^2
+    \Bigg] ,
+    \label{eq:msr-action}
+\end{multline}
+where an overdot denotes $\partial/\partial\Ny$ at fixed $\yco$, and the
+cross term $-\Dnoise{\field\mom}\rfield\rmom$ has coefficient $1$, not
+$\tfrac12$, being the off-diagonal part of $-\tfrac12\rfield_i\Dnoise{ij}\rfield_j$.
+
+\begin{panel}
+\semibold{Check of self-adjointness, with the drift term.} Writing $\Lop$
+(dropping the $\Ny$-dependent overall constant $\rout^{-2}\e{\Deltas}\cdot4/\Deltas^2$
+from \eqref{eq:Lop-definition}, which factors out of the check) as
+$p(\yco)\,Q''+q(\yco)\,Q'$ with $p(\yco)=e^{\Deltas\yco}$,
+$q(\yco)=-\tfrac12\Deltas e^{\Deltas\yco}$, and writing
+$\weightfn(\yco)\equiv \measure(\yco,\Ny)\,p(\yco) = e^{-\Deltas\yco/2}$
+(the product of the self-adjoint measure with the coefficient of $Q''$,
+\emph{not} its inverse: $\measure=\weightfn^3$, and $\weightfn'=-\tfrac12\Deltas\,\weightfn$),
+\begin{align*}
+    \int \measure\,\d\yco\; P\,\Lop Q
+    & \propto
+    \int \weightfn\,\d\yco\;P\,Q'' \;-\; \frac{\Deltas}{2}\int\weightfn\,\d\yco\;P\,Q'
+    \\
+    & =
+    \Big[\weightfn P Q'\Big]_{\mathrm{bdry}} - \int \weightfn'\,P\,Q'\,\d\yco - \int\weightfn\,P'\,Q'\,\d\yco - \frac{\Deltas}{2}\int\weightfn\,P\,Q'\,\d\yco
+    \\
+    & =
+    \Big[\weightfn P Q'\Big]_{\mathrm{bdry}} - \int \weightfn\, P'\,Q'\,\d\yco ,
+\end{align*}
+using $\weightfn'=-\tfrac12\Deltas\weightfn$ to cancel the two
+$\weightfn'PQ'$-type terms exactly. The bulk term $-\int\weightfn P'Q'\,\d\yco$
+is manifestly symmetric in $P,Q$; self-adjointness therefore requires only
+that the boundary term $\big[\weightfn(PQ'-QP')\big]_{\mathrm{bdry}}$
+vanish.
+At $\yco=+1$, the regularity conditions $\partial_\yco\field=0$,
+$\partial_\yco\rmom=0$ (Section~\ref{sec:bcs}) give $P'=Q'=0$ there,
+killing the boundary term directly.
+At $\yco=-1$, $\rfield=\rmom=0$ (no response where the outer data
+is pinned), giving $P=Q=0$ there.
+\end{panel}
+
+% ======================================================================
+\section{Instanton equations}
+\label{sec:instanton-eqs}
+% ======================================================================
+
+Extremizing \eqref{eq:msr-action} with respect to $\rfield,\rmom,\field,\mom$
+gives the coupled instanton system
+\begin{subequations}
+\label{eq:instanton-eqs}
+\begin{align}
+    \dot\field
+    & =
+    \mom + \advcoef\,\partial_\yco\field + \Dnoise{\field}\,\rfield + \Dnoise{\field\mom}\,\rmom ,
+    \label{eq:inst-phi}
+    \\
+    \dot\mom
+    & =
+    -\big(3-\epsSR\atloc\big)\mom - \frac{\Vpot'(\field)}{\Hub^2\atloc}
+    + \frac{1}{\rout^2\aHloc^2}\Lop\field
+    + \advcoef\,\partial_\yco\mom
+    + \Dnoise{\mom}\,\rmom + \Dnoise{\field\mom}\,\rfield ,
+    \label{eq:inst-pi}
+    \\
+    \dot{\rfield}
+    & =
+    -\frac{\Vpot''(\field)}{\Hub^2\atloc}\rmom
+    + \frac{1}{\rout^2\aHloc^2}\Lop\rmom
+    - \frac{1}{\measure}\partial_\yco\big(\measure\,\advcoef\,\rfield\big) ,
+    \label{eq:inst-rphi}
+    \\
+    \dot{\rmom}
+    & =
+    \rfield - \big(3-\epsSR\atloc\big)\rmom
+    - \frac{1}{\measure}\partial_\yco\big(\measure\,\advcoef\,\rmom\big) .
+    \label{eq:inst-rpi}
+\end{align}
+\end{subequations}
+The response fields $\rfield,\rmom$ take the place of the noises
+$\noise{\field}, \noise{\mom}$ in \eqref{eq:inst-phi}--\eqref{eq:inst-pi},
+with the cross term $\Dnoise{\field\mom}$ coupling each
+response field to the \emph{other} noise channel. Both
+$\dot\field$ and $\dot\mom$ pick up the
+advection term $\advcoef\partial_\yco(\cdot)$ directly (from
+\eqref{eq:advection-operator}), and \emph{both} response-field equations
+pick up a term $-\measure^{-1}\partial_\yco(\measure\,\advcoef\,X)$
+built from that \emph{same} response field $X\in\{\rfield,\rmom\}$ ---
+the standard MSR result that forward advection $+\advcoef\partial_\yco$
+becomes its negative adjoint (w.r.t.\ $\measure$) in the backward/response
+equations, rather than mixing $\rfield$ and $\rmom$ the way the potential
+and gradient terms do. Expanding,
+\begin{equation}
+    \frac{1}{\measure}\partial_\yco\big(\measure\,\advcoef\,X\big)
+    =
+    \advcoef\,\partial_\yco X + X\,(1-\epscore)\left[\frac{1}{\Deltas} - \frac32(\yco+1)\right] ,
+\end{equation}
+using $\partial_\yco\advcoef = (1-\epscore)/\Deltas$ and
+$\partial_\yco\measure/\measure = -\tfrac32\Deltas$, both constants at
+fixed $\Ny$.
+
+\begin{panel}
+\semibold{Status of this derivation.} The advection/response-field coupling
+above was worked out in this pass rather than carried over from earlier,
+independently-checked material, and has not had the same scrutiny as the
+rest of this section. The structure matches the standard MSR result for
+advection-diffusion (forward $+A\partial_\yco$, backward
+$-\measure^{-1}\partial_\yco(\measure A\,\cdot)$), which is a useful
+consistency check but not a substitute for redoing the derivation
+independently before relying on it numerically.
+\end{panel}
+
+\begin{panel}
+\semibold{What is \emph{not} corrected here.} Equations \eqref{eq:inst-rphi}--\eqref{eq:inst-rpi}
+are obtained by varying \eqref{eq:msr-action} with respect to $\field,\mom$.
+Since $\Hub^2\atloc$, $\epsSR\atloc$, $\Dnoise{ij}\atloc$, and now
+$\advcoef(\yco,\Ny)$ (through $\epscore(\Ny)$ and $\Deltas(\Ny)$, both
+built from the core values $\field(1,\Ny),\mom(1,\Ny)$) are local functions
+of $\field,\mom$, a fully consistent variation would generate additional
+terms proportional to $\partial\Hub^2/\partial\field$,
+$\partial\Dnoise{ij}/\partial\field$, $\partial\advcoef/\partial\field$,
+etc., alongside the $\Vpot''(\field)$ term already present. These are
+dropped here, consistently with the fact that \texttt{FullInstanton}'s
+\texttt{bwd\_rhs} does not include the analogous $H^2,\epsSR$ feedback
+terms either (only the $V''$ term appears): a higher-order effect in the
+same sense as other terms already truncated in the gradient expansion, not
+a new omission. The gradient term needs the same truncation applied
+slightly more carefully, since $\aHloc$ sits \emph{inside} $\Lop$'s
+argument: treat $\aHloc$ (and now $\advcoef$) as frozen --- evaluated at
+the current reconstructed $\field,\mom$, but not differentiated through
+--- when varying to obtain \eqref{eq:inst-rphi}--\eqref{eq:inst-rpi}. With
+that understood, the self-adjointness check above guarantees the stated
+structure only \emph{at this truncation}, not as an exact consequence of
+$\Lop$'s self-adjointness once its coefficients are $\yco$-dependent.
+\end{panel}
+
+\section{Boundary conditions}
+\label{sec:bcs}
+% ======================================================================
+
+\subsection{Spatial boundary conditions}
+
+\para{At $\yco=-1$ (fixed outer edge)} The field is pinned to the known
+noiseless trajectory,
+\begin{equation}
+    \field(-1,\Ny) = \phinl(\Ny) ,
+    \qquad
+    \mom(-1,\Ny) = \pinl(\Ny) ,
+    \label{eq:bc-outer}
+\end{equation}
+and correspondingly $\rfield(-1,\Ny) = \rmom(-1,\Ny) = 0$ (no response
+where the field is pinned).
+
+\para{At $\yco=+1$ (current horizon)} We impose
+\begin{equation}
+    \partial_\yco \field \big|_{\yco=1} = 0 ,
+    \qquad
+    \partial_\yco \rmom \big|_{\yco=1} = 0 .
+    \label{eq:bc-core}
+\end{equation}
+The reason for imposing this condition
+is the physical
+content of excising the sub-horizon interior in the first place --- that
+it carries no independent structure of its own, so the field attaches
+smoothly to whatever lies beyond the domain, with no preferred direction
+singled out at the point of attachment. This is a physical assumption
+restated as a smoothness condition, rather than a geometric necessity;
+compare Section~\ref{sec:coordinate}. As before, $\field(1,\Ny)$ itself
+--- read off as the trajectory --- is left free by this condition and is
+an output of the solution, not an input.
+
+\begin{panel}
+\semibold{A rejected alternative.} One might instead impose \emph{both}
+Dirichlet and Neumann data at $\yco=-1$,
+$\field(-1,\Ny)=\phinl(\Ny)$ and $\partial_\yco\field(-1,\Ny)=0$, leaving
+no condition at $\yco=+1$, so that the presence or absence of a cusp at
+the horizon becomes an output rather than an input. This is a Cauchy
+problem in $\yco$ for what is, at fixed $\Ny$, an elliptic operator
+($\Lop$), and Cauchy problems for elliptic operators are generically
+ill-posed in the sense of Hadamard: small perturbations of the data at
+$\yco=-1$ can grow uncontrollably on integration towards $\yco=+1$. Mixed
+conditions at the two distinct ends --- Dirichlet at $\yco=-1$, Neumann at
+$\yco=+1$ --- is the well-posed configuration, exactly as before.
+\end{panel}
+
+\subsection{Temporal boundary conditions}
+
+\begin{align}
+    \field(\yco,\Ninit) & = \phiinit ,
+    &
+    \mom(\yco,\Ninit) & = \mom_{\mathrm{SR,init}} ,
+    &
+    \text{(all } \yco \text{)}
+    \label{eq:bc-init}
+    \\
+    \field(1,\Nfinal) & = \phiend ,
+    & & &
+    \label{eq:bc-final-core}
+    \\
+    \rfield(\yco,\Nfinal) & = 0 ,
+    &
+    \rmom(\yco,\Nfinal) & = 0 ,
+    &
+    \text{(}\yco<1\text{, free)}
+    \label{eq:bc-final-free}
+\end{align}
+with the constraint \eqref{eq:bc-final-core} enforced via a Lagrange
+multiplier $\lag$ that sources $\rfield(\yco,\Nfinal)$ as a point
+contribution at $\yco=1$; see Section~\ref{sec:collocation-scheme} for
+the resulting terminal condition, considerably simpler here than in the
+mode-expansion scheme it replaces (Section~\ref{sec:collocation-scheme}).
+No boundary condition is imposed at $\yco<1$ forcing $\field$ to reach
+$\phiend$: we do \emph{not} impose an explicit `freezing' of
+$\field(\yco,\Ny)$ once it crosses $\phiend$ (see
+Section~\ref{sec:zeta-extraction}).
+
+% ======================================================================
+\section{No explicit freezing; extraction of $\zprofile(\yco)$}
+\label{sec:zeta-extraction}
+% ======================================================================
+
+In the single-trajectory instanton, `end of inflation' is a single event.
+Here, different $\yco$ reach $\phiend$ at different times
+$\Ny_{\mathrm{stop}}(\yco)$, with $\Ny_{\mathrm{stop}}(-1) = $ (the noiseless
+crossing time) and $\Ny_{\mathrm{stop}}(1) = \Nfinal$. Treating
+$\Ny_{\mathrm{stop}}(\yco)$ as an a priori stopping boundary makes this a
+free-boundary problem: the domain of \eqref{eq:instanton-eqs} would have a
+curved upper edge that is itself part of the solution.
+
+We avoid this by \emph{not} imposing any stopping or freezing condition:
+the system \eqref{eq:instanton-eqs} is integrated over the full rectangle
+$\yco\in[-1,1]$, $\Ny\in[\Ninit,\Nfinal]$, with the single core condition
+\eqref{eq:bc-final-core}, and $\zprofile(\yco)$ is read off as a
+\emph{post-processing} step applied to the resulting $\field(\yco,\Nfinal),
+\mom(\yco,\Nfinal)$.
+
+\par\vspace{0.5em}\noindent
+\semibold{Scale assignment: density matching, not a crossing scan.}
+The instanton can, in principle, leave each shell with its own
+isocurvature perturbation relative to the others (small and rapidly
+decaying in a single-field model, but not exactly zero), so the physically
+correct radius assignment compares surfaces of \emph{fixed energy density}
+between the shell and the background, not surfaces of fixed field value on
+a fixed-$\Ny$ (flat-gauge-like) slicing -- these differ once $\zprofile$ is
+$\Or(1)$, in the same way uniform-density and flat time-slicings differ in
+the standard $\delta N$ formalism. Concretely, for each $\yco$:
+\begin{enumerate}
+    \item Take the reconstructed state $\big(\field(\yco,\Nfinal),\mom(\yco,\Nfinal)\big)$
+    at the \emph{shared} final time $\Nfinal$ -- the same $\Ny$ for every
+    $\yco$, read directly off the global solution, with no per-shell
+    crossing search.
+    \item Continue \emph{that shell's own} trajectory noiselessly forward
+    from this state until $\epsSR=1$ (genuine end of inflation), giving an
+    endpoint $e$-fold $\Ny_{\mathrm{end}}(\yco)$ and an energy density
+    $\rho_{\mathrm{end}}(\yco) \equiv \rho\big[\field_{\downarrow}(\yco,\Ny_{\mathrm{end}}),
+    \mom_{\downarrow}(\yco,\Ny_{\mathrm{end}})\big]$ there, where the
+    $\downarrow$ subscript denotes this per-shell noiseless downflow.
+    \item Density-match against the background: find $\Ny_{\mathrm{nl}}(\rho_{\mathrm{end}}(\yco))$,
+    the $e$-fold at which the noiseless trajectory itself has energy
+    density $\rho_{\mathrm{end}}(\yco)$.
+    \item
+    \begin{equation}
+        \zprofile(\yco) = \Ny_{\mathrm{end}}(\yco) - \Ny_{\mathrm{nl}}\big(\rho_{\mathrm{end}}(\yco)\big) .
+        \label{eq:zeta-extraction}
+    \end{equation}
+\end{enumerate}
+This is the same construction \texttt{CompactionFunction} already uses for
+the single-trajectory case (downflow to $\epsSR=1$, then match against the
+background).
+Applying it pointwise in $\yco$ here is the natural generalization,
+sidesteps needing to surface-find $\Ny_{\mathrm{stop}}(\yco)$ at all
+(addressing the free-boundary concern above by a different route than
+originally intended: the downflow does the work that the crossing scan
+was trying to do, without needing $\field(\yco,\Nfinal)$ to already be at
+or past $\phiend$), and is expected to give monotonically ordered radii
+across shells provided $\zprofile$ is not increasing so rapidly with
+$\yco$ that it produces a Type~II perturbation.
+
+
+% ======================================================================
+\section{Physical and comoving scale assignment}
+\label{sec:scale-assignment}
+% ======================================================================
+
+The construction above gives $\zprofile(\yco)$, a genuine profile rather
+than the single number the existing single-trajectory pipeline produces.
+Turning this into radius and mass estimates for
+\texttt{CompactionFunction} (or the equivalent
+container for \texttt{GradientCoupledInstanton})
+requires distinguishing three different
+notions of ``scale'' that the single-trajectory case did not need to
+separate, because there a single comoving radius played all three roles
+at once.
+
+\subsection{Comoving radius}
+
+$\rad(\yco,\Ny)$ is already known for every $\yco$, directly from the
+coordinate map \eqref{eq:y-definition} evaluated at $\Ny=\Nfinal$ once
+$\Deltas(\Nfinal)$ has been solved for --- no separate calculation. Being
+comoving, it carries none of the metric perturbation: it is a coordinate
+label, unperturbed by construction, in the same sense any comoving
+coordinate is.
+
+\subsection{Areal radius}
+
+The GR-meaningful radius, and the one entering the standard compaction
+function formula (Yoo 2022),
+\begin{equation}
+    C(\rad) = \frac23\Big[1-\big(1+\rad\,\zprofile'(\rad)\big)^2\Big] ,
+    \label{eq:compaction-yoo}
+\end{equation}
+is the areal radius $R(\rad) = a\,\rad\,e^{\zprofile(\rad)}$: this formula
+is derived directly from $\d R/\d\rad = a\,e^{\zprofile}(1+\rad\zprofile')$,
+so the areal-radius relation is already built into it. Note
+\eqref{eq:compaction-yoo} takes $\zprofile(\rad)$ and
+$\zprofile'(\rad)\equiv\d\zprofile/\d\rad$ --- comoving derivatives --- as
+input, \emph{not} $\zprofile(R)$: using the areal coordinate here would be
+a genuine mismatch, not an equivalent relabelling. Since
+$\zprofile(\yco_j)$ is already known at every collocation node and
+$\rad(\yco_j,\Nfinal)$ from the coordinate map, $\zprofile'(\rad)$ follows
+by the chain rule, $\zprofile'(\rad) = (\d\zprofile/\d\yco)/(\d\rad/\d\yco)$,
+using the collocation differentiation matrix for the numerator and the
+analytic $\d\rad/\d\yco=-\tfrac12\Deltas(\Nfinal)\rad(\yco,\Nfinal)$ for the
+denominator --- no new derivative machinery.
+Alternatively, since we will extract $\zeta(r)$ anyway, the
+deriative can be computed directly.
+
+$R(\rad)$ is not itself an observable; its role is as the correctly
+GR-translated input against which a numerical-relativity-calibrated
+threshold $C_{\rm th}$ can be compared, since NR collapse simulations
+(Musco, Escriv\'a, Young, and collaborators) are set up and calibrated
+directly in areal-radius/compaction-function language. As $\rad$ shrinks
+towards the interior, if $\zprofile(\rad)$ grows steeply enough $R(\rad)$
+can stop being monotonic in $\rad$ --- the Type~II perturbation regime
+already flagged (Section~\ref{sec:zeta-extraction}), corresponding to
+$C_{\max}\to2/3$, and the reason the existing pipeline computes $r_{\max}$
+and $r_{\rm peak}$ from $C(\rad)$ alone rather than from any
+$\bar C$-based estimate sensitive to the $e^{3\zprofile}$ volume
+weighting.
+
+\subsection{Physical (present-day) scale}
+
+A third, independent notion: the wavelength a given comoving mode
+corresponds to today, needed for the mass/scale axis of the final PBH
+mass function. This uses the existing Leach--Liddle scale-matching
+equation (astro-ph/0305263), solved \emph{once}, anchored at the fixed
+outer edge $\rout$ --- exactly as for the single-trajectory case, since
+$\yco=-1$ sits exactly on the noiseless background by construction
+(eq. 9.1), giving a physical scale $\rad_{\mathrm{phys,out}}$. Since comoving
+wavenumber satisfies $k\propto1/\rad$, every other shell's physical scale
+follows by a fixed ratio,
+\begin{equation}
+    \rphys(\yco) = \frac{\rad(\yco,\Nfinal)}{\rout}\;\rad_{\mathrm{phys,out}} ,
+    \label{eq:rphys-ratio}
+\end{equation}
+with no further per-shell Leach--Liddle solve and no per-shell inversion
+of the background expansion history: comoving-ness already fixes the
+today's-scale conversion to a single universal constant, common to every
+mode regardless of when it crossed the horizon, and that constant is
+exactly what solving Leach--Liddle once determines. The genuine
+per-shell/isocurvature-sensitive calculation --- the downflow from each
+shell's own instanton endpoint to $\epsSR=1$, giving that shell's own
+$V_{\rm end,\,downflow}$ and hence its own duration in the sense already
+used for $\zprofile(\yco)$ (Section~\ref{sec:zeta-extraction}) --- is
+unaffected and answers a different physical question (how long \emph{that
+particular shell} takes to finish inflating) from "which comoving scale is
+this" (a purely geometric fact, answered once and for all by
+\eqref{eq:rphys-ratio}).
+
+\begin{panel}
+\textbf{A candidate refinement, considered and rejected.} One might
+instead try to assign each shell its own horizon-crossing $e$-fold by
+inverting $a(\Ny')\Hub(\Ny')=k[\rad(\yco,\Nfinal)]$ against the
+\emph{background} trajectory. This was considered and is unnecessary: it
+answers a question (``which $e$-fold did this comoving scale cross the
+horizon'') that plays no role once $\rad$ is already comoving, since the
+comoving-to-today conversion is a single constant for every mode by
+definition, not something that depends on horizon-crossing time
+individually. The single global ratio \eqref{eq:rphys-ratio} already
+contains everything the inversion would have supplied.
+\end{panel}
+
+\subsection{Equivalence check against the discrete (peeling) scheme}
+
+Applying \eqref{eq:rphys-ratio} to the core, $\yco=1$: since
+$\rad(1,\Ny)\equiv\rH(\Ny)$ by the definition of the coordinate's inner
+edge \eqref{eq:rH-definition}, this gives
+$\rad_{\mathrm{phys,core}} = \rad_{\mathrm{phys},H}(\Nfinal)$ directly. In the discrete
+peeling construction (Section~\ref{sec:geometry}), the innermost shell at
+step $\Nfinal$ has comoving radius $\rad_i=1/[a(\Nfinal)\Hub(\Nfinal)]$ by
+the \emph{same} defining formula used for every layer there --- the same
+geometric object, playing the same role, so the two schemes assign the
+core the same physical scale by construction, not merely in numerical
+agreement. This holds exactly as $\alpha\to0$ (Section~\ref{sec:coordinate}),
+with $\Or(\alpha)$ corrections at finite $\alpha$, consistent with $\alpha$
+being a small, controlled deformation whose effects are expected to
+extrapolate away.
+
+\begin{todo}
+This equivalence assumes the discrete construction's $\rad_i=1/[a(i)\Hub(i)]$
+uses the instanton's own local trajectory (the actual, possibly
+noise-driven core), matching how $\rH(\Ny)$ is defined here via
+$\Hub[\field(1,\Ny),\mom(1,\Ny)]$. This has not been checked against the
+existing implementation of the discrete/peeling scheme; if that code in
+fact uses the background trajectory's $a,\Hub$ for $\rad_i$, the two
+schemes would agree only in the noiseless limit, not in general, and this
+section's equivalence claim would need revisiting.
+\end{todo}
+% ======================================================================
+\section{Collocation basis: Legendre--Gauss--Lobatto nodes}
+\label{sec:collocation-basis}
+% ======================================================================
+
+Rather than expand in eigenfunctions of $\Lop$ (not available in closed
+form once $\Lop$ carries the drift term of Section~\ref{sec:gradient-operator}),
+we
+represent $\field,\mom,\rfield,\rmom$ by their values on a fixed grid of
+collocation points and work directly with differentiation matrices. This
+was chosen over Chebyshev collocation specifically so that the
+self-adjoint structure of $\Lop$ (Section~\ref{sec:msr-action}) can be
+preserved numerically via a summation-by-parts (SBP) operator with a
+\emph{diagonal} norm matrix --- the standard construction for
+Legendre--Gauss--Lobatto (LGL) nodes, not available for Chebyshev without
+retrofitting a non-diagonal norm.
+
+\subsection{Nodes, weights, and differentiation matrices}
+
+The $\modeidx_{\max}+1$ LGL nodes $\{\yco_j\}$ on $[-1,1]$ are $\pm1$
+together with the interior roots of $P_{\modeidx_{\max}}'(x)=0$ (the
+derivative of the Legendre polynomial of degree $\modeidx_{\max}$),
+computed via the eigenvalues of a symmetric tridiagonal Jacobi matrix ---
+standard, tabulated, and readily available (e.g.\ the Golub--Welsch-type
+routines in \texttt{FastGaussQuadrature.jl}, or the reference Python
+implementation at \texttt{sphglltools}); no closed form exists, unlike the
+Chebyshev $\cos(j\pi/\modeidx_{\max})$ nodes, but this is a solved problem
+requiring no new derivation. The associated LGL quadrature weights are
+\begin{equation}
+    w_j = \frac{2}{\modeidx_{\max}(\modeidx_{\max}+1)\,\big[P_{\modeidx_{\max}}(\yco_j)\big]^2} ,
+    \label{eq:lgl-weights}
+\end{equation}
+with $w_j\cdot\measure(\yco_j,\Ny)$ the discrete quadrature weight for any
+integral against the physical measure $\measure(\yco,\Ny)\,\d\yco$ of
+Section~\ref{sec:msr-action} --- in particular for the endpoint,
+$w_{\modeidx_{\max}} = 2/[\modeidx_{\max}(\modeidx_{\max}+1)]$, using
+$P_{\modeidx_{\max}}(1)=1$: a known, finite number, needed below for the
+terminal condition. Standard LGL differentiation matrices $D,D^{(2)}$
+(first and second derivative on the nodes) are built once from the grid
+alone --- they do not depend on $\Deltas(\Ny)$ or any other physics input,
+so are computed once at the start and reused at every $\Ny$.
+
+\subsection{Discretizing $\Lop$}
+
+$\Lop$ (\eqref{eq:Lop-definition}) has $\Ny$-dependent, but not
+$\Ny$-dependent-\emph{basis}, coefficients: at each $\Ny$, discretizing it
+is
+\begin{equation}
+    \big(\Lop\field\big)_j
+    =
+    \e{\Deltas(\Ny)}\e{\Deltas(\Ny)\yco_j}
+    \left[\frac{4}{\Deltas(\Ny)^2}\big(D^{(2)}\field\big)_j - \frac{2}{\Deltas(\Ny)}\big(D\field\big)_j\right] ,
+\end{equation}
+matching \eqref{eq:Lop-definition} --- note $\Lop$ itself does \emph{not}
+carry the $1/\rout^2$ prefactor; that is applied separately, together with
+$1/\aHloc^2$, wherever $\Lop$ appears in the equations of motion (e.g.\
+eq. 8.1b).
+i.e.\ $D,D^{(2)}$ applied to the node-value vector, then multiplied by
+node-dependent \emph{scalar} coefficients recomputed at each $\Ny$ --- the
+same pattern already used for every other solution-dependent coefficient
+in this scheme ($\Hub^2\atloc$, $\epsSR\atloc$, $\Dcm{ij}\atloc$), no new
+numerical primitive. The advection term $\advcoef(\yco,\Ny)\partial_\yco(\cdot)$
+is likewise just $\mathrm{diag}(\advcoef(\yco_j,\Ny))\,D$ applied to the
+node-value vector.
+
+\subsection{Boundary conditions}
+
+At $\yco=-1$ ($j=0$): ordinary Dirichlet rows for $\field,\mom$ (fixed to
+$\phinl(\Ny),\pinl(\Ny)$) and $\rfield,\rmom$ (fixed to $0$) --- trivial.
+
+At $\yco=+1$ ($j=\modeidx_{\max}$): Neumann rows for $\field,\rmom$
+($\partial_\yco\field=0$, $\partial_\yco\rmom=0$), via \emph{hard
+elimination}: solve $\sum_k D_{\modeidx_{\max},k}\,\field_k=0$ for the
+boundary value itself,
+\begin{equation}
+    \field_{\modeidx_{\max}} = -\frac{1}{D_{\modeidx_{\max},\modeidx_{\max}}}\sum_{k\neq\modeidx_{\max}} D_{\modeidx_{\max},k}\,\field_k ,
+\end{equation}
+and substitute wherever $\field_{\modeidx_{\max}}$ appears in the interior
+rows of $D^{(2)}$ (dense, so it appears in all of them). $\mom(1,\Ny)$ and
+$\rfield(1,\Ny)$ are left unconstrained at this node --- they are read off
+/ determined by the shooting problem (Section~\ref{sec:shooting}), not
+fixed by a boundary row.
+
+\begin{panel}
+\semibold{Numerical scheme: hard elimination first.} Plain elimination on
+the untransformed $\field,\mom,\rfield,\rmom$ gives no stability
+guarantee, but is the cheap thing to try first --- build it, check
+empirically whether stiff, spurious, or complex eigenvalues actually show
+up in practice (the generic risk with Legendre/Chebyshev-type second-order
+differentiation matrices under explicit time-stepping). If it works,
+stop, until a case is found where it fails. If it fails, keep it as a
+cross-check and build the alternative below.
+\end{panel}
+
+\begin{panel}
+\semibold{Alternative: weighted SBP with SAT boundary terms.} A discrete
+operator $D$ is SBP with respect to a norm matrix $H$ if
+$HD+(HD)^T=\mathrm{diag}(-1,0,\dots,0,1)$ --- the discrete mirror of
+integration by parts. For LGL nodes with the \emph{flat} measure, $H$ is
+simply $\mathrm{diag}(w_j)$ and the SBP property holds essentially for
+free; this is the standard reason LGL is the default choice where
+provable stability matters. Our operator, however, is self-adjoint with
+respect to the \emph{weighted}, $\Ny$-dependent measure $\measure(\yco,\Ny)\,\d\yco$
+(Section~\ref{sec:msr-action}), not the flat one --- so $H$ here would
+need to be $\mathrm{diag}(w_j\,\measure(\yco_j,\Ny))$, itself
+$\Ny$-dependent, and the SBP property would need re-verifying (or the
+operator re-derived in weighted form) at every $\Ny$, not just its
+coefficients updated. This is more work than the flat-measure case makes
+it look, though still standard technique (weighted/generalized SBP
+operators are documented in the literature) rather than a research
+problem. Boundary conditions would then be imposed weakly via
+simultaneous approximation terms (SAT): rather than eliminating a
+boundary unknown, add a penalty term to its RHS with strength fixed by the
+SBP energy method, so that the discrete construction inherits a stability
+estimate mirroring the continuum one. Build this only if plain elimination
+turns out to need it.
+\end{panel}
+
+% ======================================================================
+\section{Collocation scheme}
+\label{sec:collocation-scheme}
+% ======================================================================
+
+\subsection{Grid representation}
+
+$\field,\mom,\rfield,\rmom$ are represented directly by their node values
+$\field_j(\Ny)\equiv\field(\yco_j,\Ny)$, etc. --- no mode expansion, and no
+lift against the noiseless trajectory is structurally required.
+Instead, in
+collocation, the Dirichlet boundary row simply sets $\field_0(\Ny)=\phinl(\Ny)$
+(Section~\ref{sec:collocation-basis}) --- no vanishing-basis obstruction
+to work around. Tracking the deviation $\field_j-\phinl$ rather than
+$\field_j$ directly may still be worth doing for numerical conditioning
+(staying close to a well-behaved reference trajectory rather than
+absolute field values that can range over many orders of magnitude), but
+this is an optional implementation choice, and is deferred to the companion planning document.
+
+\subsection{Equations of motion}
+
+Substituting the grid representation into \eqref{eq:instanton-eqs} gives,
+at each interior node $j$,
+\begin{subequations}
+\label{eq:colloc-eqs}
+\begin{align}
+    \dot\field_j
+    & =
+    \mom_j + \big(\mathrm{diag}(\advcoef)D\field\big)_j + \Dnoise{\field}(\yco_j,\Ny)\,\rfield_j + \Dnoise{\field\mom}(\yco_j,\Ny)\,\rmom_j ,
+    \\
+    \dot\mom_j
+    & =
+    -\big(3-\epsSR(\yco_j,\Ny)\big)\mom_j - \frac{\Vpot'(\field_j)}{\Hub^2(\yco_j,\Ny)}
+    + \frac{1}{\rout^2\aHloc(\yco_j,\Ny)^2}\big(\Lop\field\big)_j
+    + \big(\mathrm{diag}(\advcoef)D\mom\big)_j
+    + \Dnoise{\mom}(\yco_j,\Ny)\,\rmom_j + \Dnoise{\field\mom}(\yco_j,\Ny)\,\rfield_j ,
+    \\
+    \dot{\rfield}_j
+    & =
+    -\frac{\Vpot''(\field_j)}{\Hub^2(\yco_j,\Ny)}\rmom_j
+    + \frac{1}{\rout^2\aHloc(\yco_j,\Ny)^2}\big(\Lop\rmom\big)_j
+    - \big(\mathrm{diag}(\advcoef)D\rfield\big)_j
+    - \rfield_j\,\big(1-\epscore(\Ny)\big)\left[\frac{1}{\Deltas(\Ny)}-\frac32(\yco_j+1)\right] ,
+    \\
+    \dot{\rmom}_j
+    & =
+    \rfield_j - \big(3-\epsSR(\yco_j,\Ny)\big)\rmom_j
+    - \big(\mathrm{diag}(\advcoef)D\rmom\big)_j
+    - \rmom_j\,\big(1-\epscore(\Ny)\big)\left[\frac{1}{\Deltas(\Ny)}-\frac32(\yco_j+1)\right] ,
+\end{align}
+\end{subequations}
+where $H^2(\yco_j,\Ny)\equiv\Hub^2[\field_j,\mom_j]$,
+$\epsSR(\yco_j,\Ny)\equiv\epsSR[\field_j,\mom_j]$ --- ordinary pointwise
+evaluation at each node, no reconstruct/project round-trip needed: 
+the grid values \emph{are} already point
+values.
+
+\subsection{Terminal condition on the boundary node}
+\label{sec:terminal-collocation}
+
+The Lagrange-multiplier construction of Section~\ref{sec:bcs} carries
+over directly, and is strikingly simple.
+Varying $S_{\mathrm{tot}}=S+\lag(\field_{\modeidx_{\max}}(\Nfinal)-\phiend)$
+with respect to the node values $\{\field_j(\Nfinal)\}$ gives, using the
+quadrature weights of \eqref{eq:lgl-weights},
+\begin{equation}
+    \sum_j w_j\,\measure(\yco_j,\Nfinal)\,\rfield_j(\Nfinal)\,\delta\field_j
+    + \lag\,\delta\field_{\modeidx_{\max}}
+    = 0
+    \qquad \text{for all admissible } \{\delta\field_j\} .
+\end{equation}
+Since $\{\delta\field_j\}$ are already independent, ordinary
+finite-dimensional variables,
+this holds for every $j$ separately:
+\begin{equation}
+    \rfield_j(\Nfinal) = 0 \quad (j\neq\modeidx_{\max}) ,
+    \qquad
+    \rfield_{\modeidx_{\max}}(\Nfinal) = -\frac{\lag}{w_{\modeidx_{\max}}\,\measure(1,\Nfinal)} ,
+    \label{eq:terminal-colloc}
+\end{equation}
+using $w_{\modeidx_{\max}}=2/[\modeidx_{\max}(\modeidx_{\max}+1)]$ from
+\eqref{eq:lgl-weights}. Eq.~\eqref{eq:terminal-colloc} is
+the exact, complete terminal condition, not an asymptotic or truncated
+approximation to one.
+
+\subsection{Shooting problem}
+\label{sec:shooting}
+
+Closed by a single scalar shooting condition: adjust $\lag$ so that
+\begin{equation}
+    \field_{\modeidx_{\max}}(\Nfinal) = \phiend .
+\end{equation}
+Structurally identical to the shooting problem already solved for the
+single-trajectory instanton.
+
+\subsection{Picard iteration}
+
+\begin{enumerate}
+    \item Forward pass: integrate $(\field_j,\mom_j)$ forward from
+    \eqref{eq:bc-init} with $\rfield_j=\rmom_j=0$ (zeroth iterate).
+    \item Backward pass: integrate $(\rfield_j,\rmom_j)$ backward from
+    \eqref{eq:terminal-colloc}, using the current forward-pass solution to
+    evaluate the nonlinear coupling $\propto\Vpot''(\field)$ and the
+    local $\Hub^2,\epsSR,\Dcm{ij},\advcoef$ coefficients.
+    \item Forward pass: re-integrate $(\field_j,\mom_j)$ using the
+    updated response-field values as sources.
+    \item Repeat to convergence; adjust $\lag$ via an outer scalar
+    root-find to satisfy the shooting condition.
+\end{enumerate}
+
+% ======================================================================
+\section{Open issues}
+\label{sec:open-issues}
+% ======================================================================
+
+\subsection{Sub-horizon noise: resolved}
+
+An earlier draft carried this as the first, blocking open issue: treating
+every $\yco$ interior to the current horizon as an independently
+$\delta(\yco-\yco')$-correlated noise source manufactures degrees of
+freedom that do not physically exist, since $\ncount(\yco,\Ny)\to0$ there
+(fewer than one coarse-graining patch per shell). Three options were
+weighed --- switching off noise there (fails the reduction-limit
+cross-check), enforcing a single shared noise realization there (a hard,
+time-varying shape constraint on the solution), and restricting $\yco$ to
+the exterior of the horizon (previously rejected due to a
+time-dependent eigenbasis) --- and a rank-1 shared-noise-channel
+modification of the MSR action was proposed as a leading candidate,
+explicitly flagged as unpropagated through the full equation set.
+
+That proposal is now retired. Adopting the exterior-only, logarithmic
+onion coordinate of Section~\ref{sec:coordinate}, combined with a
+collocation (rather than explicit spectral) numerical method, removes the
+objection to horizon-exclusion that motivated rejecting it originally,
+and the problem is resolved \emph{by construction} rather than patched:
+there is no sub-horizon region left in the domain to source spurious
+independent fluctuations, so no special noise treatment is needed at all.
+See Section~\ref{sec:coordinate} for the coordinate definition and the
+panel explicitly narrating this reversal.
+
+\subsection{Probability interpretation of $S_{\mathrm{MSR}}$ for the 2D configuration}
+
+\begin{todo}
+The single-trajectory instanton action $S_{\mathrm{MSR}}^{\mathrm{1D}}$
+computes the probability of a specific event: the central Hubble patch
+follows a given trajectory, \emph{with the surrounding shells assumed to
+evolve noiselessly} (zero action cost by assumption). The two-dimensional
+action $S_{\mathrm{MSR}}$ of \eqref{eq:msr-action} computes the probability
+of the joint configuration $\field(\yco,\Ny)$ across the whole overdensity,
+core and shells together. These are not simply refinements of the same
+number: they are probabilities for two different events. Naively, one
+might attempt to interpret the difference $S_{\mathrm{MSR}} -
+S_{\mathrm{MSR}}^{\mathrm{1D}}$ as `the additional cost of the gradient
+correction', but it was pointed out (correctly) in discussion that the
+outer shells are not passive bystanders: they participate directly in the
+compaction function and hence in the collapse criterion, exactly as they
+do in the existing (noiseless-detachment) construction. So it is not
+obviously right to think of the 1D action as already including a
+`for-free' contribution from the outer layers that the 2D calculation
+merely refines --- rather, the 1D action already implicitly describes the
+joint configuration too, just with the outer-layer part of that
+configuration fixed to be exactly noiseless. The correct comparison, and
+the correct interpretation of what $S_{\mathrm{MSR}}$ computes once the
+gradient coupling is switched on, has not yet been fully resolved and
+needs further thought before results can be presented as `the corrected
+PBH formation probability'.
+\end{todo}
+
+\subsection{The largest time equation for a stochastic (MSR) path integral}
+
+\begin{todo}
+The terminal condition $\rfield(\yco,\Nfinal)=0$ (Section~\ref{sec:bcs})
+was justified heuristically by an analogue of the CTP `largest time
+equation': placing the true response-field terminal condition at some
+$\Ny_{\mathrm{turn}} > \Nfinal$ should not change the solution for
+$\Ny \leq \Nfinal$, provided the interval $[\Nfinal,\Ny_{\mathrm{turn}}]$ is
+genuinely noiseless and gradient-free, because the response-field
+equations of motion are then linear and homogeneous there and, starting
+from zero at $\Ny_{\mathrm{turn}}$, remain zero all the way back to
+$\Nfinal$. This is physically reasonable and was checked at the level of
+the linearized equations here, but the underlying general statement ---
+that a Schwinger--Keldysh-type path integral, cut open at an intermediate
+time with no later operator insertions, collapses to a functional delta
+function enforcing agreement of the forward and backward fields at that
+time --- does not appear to have a fully satisfactory published derivation
+even in the standard quantum CTP case (see the parallel discussion in the
+companion notes on the Dyson equation and the $\delta N$/Schwinger--Keldysh
+correspondence), and has certainly not been established here for the
+\emph{stochastic} (MSR) path integral in the presence of nonlinear noise
+and gradient coupling. The quantum-case argument relies on unitarity of
+the $[\Nfinal,\Ny_{\mathrm{turn}}]$ evolution; the analogous statement in
+the stochastic case would rest on probability conservation, but the
+precise functional-integral statement of this, and whether it implies the
+same clean factorization, has not been derived carefully here. A
+worthwhile check, cheaper than a full derivation: solve the existing
+single-trajectory (1D) instanton with the terminal condition placed at
+several $\Ny_{\mathrm{turn}} > \Nfinal$ and verify numerically that the
+solution for $\Ny \leq \Nfinal$ is insensitive to the choice, before
+relying on the same argument in the 2D case.
+\end{todo}
+
+% ======================================================================
+\section{Summary}
+\label{sec:summary}
+% ======================================================================
+
+The gradient-corrected instanton is the saddle point of the action
+\eqref{eq:msr-action} on the fixed rectangle $\yco\in[-1,1]$
+(exterior to the current horizon only), $\Ny\in[\Ninit,\Nfinal]$,
+equivalently the collocation system \eqref{eq:colloc-eqs} with boundary
+conditions \eqref{eq:bc-init}--\eqref{eq:terminal-colloc} and shooting
+parameter $\lag$, solved by Picard iteration
+(Section~\ref{sec:collocation-scheme}). The corrected core trajectory
+$\field(1,\Ny)$ and the full profile $\zprofile(\yco)$ of
+\eqref{eq:zeta-extraction} are outputs of the solution, to be compared
+against the existing noiseless-detachment construction. Two theoretical
+issues (Section~\ref{sec:open-issues}) remain open and should be resolved,
+or at least understood well enough to bound their impact, before
+quantitative results are reported: the probability interpretation of the
+2D action, and the largest-time-equation justification of the terminal
+boundary condition. The previously-blocking sub-horizon-noise issue is
+resolved by the exterior-only coordinate itself, not by a separate
+numerical patch. A discrete (finite-shell) implementation
+(Section~\ref{sec:geometry}) remains available as an independent numerical
+cross-check on the collocation scheme of
+Sections~\ref{sec:collocation-basis}--\ref{sec:collocation-scheme}.
+
+\end{document}
