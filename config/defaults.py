@@ -31,3 +31,9 @@ DEFAULT_EFOLD_RELATIVE_PRECISION = 1e-8
 
 DEFAULT_ABS_TOLERANCE = 1e-8
 DEFAULT_REL_TOLERANCE = 1e-8
+
+# LGL collocation point count for the onion model (GradientCoupledInstanton).
+# 17 points <=> polynomial degree n_max = 16. This is a starting point for the
+# mandatory n_max convergence scan (onion_model_planning.md), not a value to
+# be trusted as final without that scan.
+DEFAULT_N_COLLOCATION_POINTS = 17
