@@ -44,7 +44,12 @@ class AbstractPotential(DatastoreObject, ABC):
 
     @abstractmethod
     def dV_dphi(self, phi: float) -> float:
-        """First derivative V′(φ)."""
+        """
+        First derivative V′(φ).
+
+        Must accept and correctly broadcast over numpy.ndarray input for phi,
+        not just a Python scalar -- relied on by vectorized callers.
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -75,6 +80,9 @@ class AbstractPotential(DatastoreObject, ABC):
 
         Derived from 3H²Mp² = ½φ̇² + V with φ̇ = πH, giving H²(3Mp² - π²/(2Mp²)) = V.
         Override in subclasses for non-canonical kinetic terms or modified gravity.
+
+        Must accept and correctly broadcast over numpy.ndarray inputs for
+        phi/pi, not just Python scalars -- relied on by vectorized callers.
         """
         Mp = self._units.PlanckMass
         return self.V(phi) / (3.0 * Mp * Mp - 0.5 * pi * pi / (Mp * Mp))
@@ -85,6 +93,9 @@ class AbstractPotential(DatastoreObject, ABC):
 
         Takes (phi, pi) so subclasses can override for models where ε depends
         on the full field configuration.
+
+        Must accept and correctly broadcast over numpy.ndarray inputs for
+        phi/pi, not just Python scalars -- relied on by vectorized callers.
         """
         Mp = self._units.PlanckMass
         return 0.5 * pi * pi / (Mp * Mp)
