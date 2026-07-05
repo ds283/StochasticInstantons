@@ -23,13 +23,13 @@ from Numerics.OnionCoordinate import (
 def test_delta_s_at_N_init_equals_log1p_alpha(alpha):
     H_sq = 3.7
     result = delta_s(
-        N=2.0, N_init=2.0, H_sq_core=H_sq, H_sq_nl_init=H_sq, alpha=alpha
+        N=2.0, N_init=2.0, H_sq_local=H_sq, H_sq_nl_init=H_sq, alpha=alpha
     )
     assert result == pytest.approx(np.log(1.0 + alpha), abs=1e-14)
 
 
 def test_delta_s_at_N_init_alpha_zero_is_exactly_zero():
-    result = delta_s(N=5.0, N_init=5.0, H_sq_core=1.0, H_sq_nl_init=1.0, alpha=0.0)
+    result = delta_s(N=5.0, N_init=5.0, H_sq_local=1.0, H_sq_nl_init=1.0, alpha=0.0)
     assert result == 0.0
 
 
@@ -43,12 +43,12 @@ def test_delta_s_full_formula_exponential_decay(k, alpha):
     H_sq_nl_init = 4.0
     N = N_init + 3.25
 
-    H_sq_core = H_sq_nl_init * np.exp(-2.0 * k * (N - N_init))
+    H_sq_local = H_sq_nl_init * np.exp(-2.0 * k * (N - N_init))
 
     result = delta_s(
         N=N,
         N_init=N_init,
-        H_sq_core=H_sq_core,
+        H_sq_local=H_sq_local,
         H_sq_nl_init=H_sq_nl_init,
         alpha=alpha,
     )
@@ -62,7 +62,7 @@ def test_delta_s_full_formula_exponential_decay(k, alpha):
 @pytest.mark.parametrize("alpha", [-1e-9, -0.1, -5.0])
 def test_delta_s_rejects_negative_alpha(alpha):
     with pytest.raises(ValueError, match="alpha"):
-        delta_s(N=1.0, N_init=1.0, H_sq_core=1.0, H_sq_nl_init=1.0, alpha=alpha)
+        delta_s(N=1.0, N_init=1.0, H_sq_local=1.0, H_sq_nl_init=1.0, alpha=alpha)
 
 
 # --- delta_s_derivative --------------------------------------------------

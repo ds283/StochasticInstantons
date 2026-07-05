@@ -20,7 +20,7 @@ Standalone, physics-adjacent module: every function here takes
 already-evaluated scalars (or arrays) and returns a plain number/array --
 no dependence on AbstractPotential, InflatonTrajectory, DatastoreObject, or
 anything under Datastore/. Field/momentum reconstruction and the calls into
-AbstractPotential that produce H_sq_core, H_sq_nl_init, epsilon_core belong
+AbstractPotential that produce H_sq_local, H_sq_nl_init, epsilon_core belong
 to the caller.
 
 By design, no function here computes an absolute-valued r_H(N) or r_out --
@@ -36,15 +36,22 @@ import numpy as np
 def delta_s(
     N: float,
     N_init: float,
-    H_sq_core: float,
+    H_sq_local: float,
     H_sq_nl_init: float,
     alpha: float,
 ) -> float:
     """
-    Delta_s(N) = ln(1+alpha) + (N - N_init) + 0.5*ln(H_sq_core(N) / H_sq_nl_init).
+    Delta_s(N) = ln(1+alpha) + (N - N_init) + 0.5*ln(H_sq_local(N) / H_sq_nl_init).
 
-    H_sq_core is the current core state H^2, evaluated at the top
-    collocation node (y=+1) at whatever N the RHS is being evaluated at.
+    H_sq_local is used two ways by callers of this function: (1) the
+    core's own H^2, evaluated at the top collocation node (y=+1) at
+    whatever N the RHS is being evaluated at, giving the coordinate-
+    defining Delta_s(N) used to build the y-domain itself; or (2) an
+    arbitrary node's own local H^2, giving Delta_s_loc(y,N), needed
+    elsewhere for the (aH)_loc-based prefactor in the gradient term. This
+    function's formula is identical either way -- only the value passed
+    in differs.
+
     H_sq_nl_init is a single fixed reference, computed once elsewhere from
     the noiseless trajectory at N_init.
 
@@ -57,7 +64,7 @@ def delta_s(
     return (
         np.log(1.0 + alpha)
         + (N - N_init)
-        + 0.5 * np.log(H_sq_core / H_sq_nl_init)
+        + 0.5 * np.log(H_sq_local / H_sq_nl_init)
     )
 
 
