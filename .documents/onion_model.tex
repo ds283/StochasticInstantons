@@ -48,6 +48,7 @@
 \renewcommand{\d}{\mathrm{d}}
 \newcommand{\e}[1]{\mathrm{e}^{{#1}}}
 \newcommand{\im}{\mathrm{i}}
+\newcommand{\Dm}[1]{\mathcal{D}#1}            % functional-integral measure, e.g. \Dm\hat\field
 \newcommand{\Mp}{M_{\mathrm{P}}}
 \newcommand{\vect}[1]{\bm{\mathrm{{#1}}}}
 
@@ -99,8 +100,17 @@
 
 % -- noise / MSR response fields --
 \newcommand{\noise}[1]{\xi_{#1}}             % generic noise, e.g. \noise{\field}
-\newcommand{\rfield}{\widetilde\field}       % MSR response field conjugate to \field
-\newcommand{\rmom}{\widetilde\mom}           % MSR response field conjugate to \mom
+\newcommand{\rfield}{\widetilde\field}       % Real saddle-point response field conjugate to
+                                              % \field. NOT literally the naive delta-functional
+                                              % auxiliary field \hat\field from the MSR
+                                              % construction: related by \hat\field=i\rfield
+                                              % (Section~\ref{sec:msr-action}); \rfield is the
+                                              % field rotated onto the imaginary axis, real by
+                                              % construction, and is what appears in the action,
+                                              % the instanton equations, and the code (P1).
+\newcommand{\rmom}{\widetilde\mom}           % Real saddle-point response field conjugate to
+                                              % \mom, with the same caveat: \hat\mom=i\rmom.
+                                              % Corresponds to P2 in the code.
 
 % -- shell / layer bookkeeping --
 \newcommand{\Nlay}[1]{N_{#1}}                % comoving population of shell i, N_i
@@ -644,6 +654,32 @@ prefactor. The gradient term in the $\mom$ equation of motion is
 \end{equation}
 with $\aHloc$ the same local quantity as before (Section~\ref{sec:noise-y}).
 
+\begin{panel}
+\semibold{The prefactor as a ``local $\Deltas$''.} Since
+$\Deltas(\Ny)=\ln(\rout/\rH(\Ny))=\ln\big(\rout\,a(\Ny)\,\Hub[\field(1,\Ny),\mom(1,\Ny)]\big)$
+(core $\Hub$, Section~\ref{sec:coordinate}), define the local analogue
+\begin{equation}
+    \Deltas_{\rm loc}(\yco,\Ny)
+    \equiv
+    \ln\big(\rout\,a(\Ny)\,\Hub[\field(\yco,\Ny),\mom(\yco,\Ny)]\big)
+    =
+    \ln\big(\rout\,\aHloc(\yco,\Ny)\big) ,
+\end{equation}
+same functional form as $\Deltas(\Ny)$ with the core Hubble rate replaced
+by the local (shell-$\yco$) one. Then directly
+$\rout^{-2}\aHloc^{-2}=\e{-2\Deltas_{\rm loc}(\yco,\Ny)}$, so the prefactor
+in \eqref{eq:gradient-term-y} is exactly a local-$\Deltas$ exponential.
+Consistency check: at $\yco=1$, $\aHloc(1,\Ny)=1/\rH(\Ny)$ exactly
+(Section~\ref{sec:noise-y}), so $\Deltas_{\rm loc}(1,\Ny)=\Deltas(\Ny)$,
+recovering the global definition at the core as it must. This is purely a
+notational simplification for the \emph{prefactor} multiplying $\Lop$; it
+must \emph{not} be confused with the (genuinely global, core-based)
+$\Deltas(\Ny)$ baked into $\Lop$ itself via \eqref{eq:Lop-definition},
+which comes from the $\rad\to\yco$ coordinate map and is necessarily
+shared by every shell, since $\yco$ is a single coordinate label common to
+the whole domain.
+\end{panel}
+
 \subsubsection{Self-adjoint measure}
 
 Writing $\Lop$ in $p(\yco)\field''+q(\yco)\field'$ form (dropping the
@@ -840,6 +876,7 @@ $\Dnoise{\mom}$, and
     \big\langle \noise{\field}(\yco,\Ny)\noise{\mom}(\yco',\Ny')\big\rangle
     =
     \Dnoise{\field\mom}(\yco,\Ny)\,\delta_D(\Ny-\Ny')\,\delta(\yco-\yco') ,
+    \label{eq:noise-corr}
 \end{equation}
 where the $\delta(\yco-\yco')$ reflects the result of
 Section~\ref{sec:shell-averaging} that inter-shell noise correlations are
@@ -866,6 +903,58 @@ measure is the one that makes $\Lop$ self-adjoint. This is
 which, per the discussion following \eqref{eq:self-adjoint-measure}, is
 (up to normalization) exactly the physical comoving volume element in this
 coordinate.
+
+\subsection{Response fields and the anomalous factor of $\im$}
+\label{sec:response-rotation}
+
+Before writing the action, it is worth being explicit about a factor of
+$\im$ that is otherwise easy to lose, since it fixes the sign convention
+used throughout the rest of this section (Section~\ref{sec:instanton-eqs}
+in particular). The standard Janssen--De~Dominicis construction introduces
+response fields via the Fourier representation of the functional
+delta-function enforcing the Langevin equations of motion
+\eqref{eq:langevin-y},
+\begin{equation}
+    \delta\big[\dot\field-\mom-\advcoef\partial_\yco\field-\noise{\field}\big]
+    =
+    \int \Dm{\hat\field} \,
+    \exp\!\left[\im\!\int_{\Ninit}^{\Nfinal}\!\!\d\Ny\int_{-1}^1\!\measure\,\d\yco\;
+    \hat\field\big(\dot\field-\mom-\advcoef\partial_\yco\field-\noise{\field}\big)\right] ,
+\end{equation}
+and similarly for the $\mom$-equation with a genuine auxiliary field
+$\hat\mom$; $\hat\field,\hat\mom$ here are real-contour fields, dual to
+$\field,\mom$. Averaging over the Gaussian noise
+\eqref{eq:noise-corr} produces the weight $\e{-\mathcal S}$ with
+\begin{equation}
+    \mathcal S
+    =
+    -\im\!\int\!\big(\hat\field(\dot\field-\mom-\advcoef\partial_\yco\field)
+    + \hat\mom(\ldots)\big)
+    +
+    \tfrac12\!\int\!\big(\Dnoise{\field}\hat\field^2 + 2\Dnoise{\field\mom}\hat\field\hat\mom + \Dnoise{\mom}\hat\mom^2\big) ,
+\end{equation}
+which is manifestly complex for real $\hat\field,\hat\mom$: this is the
+anomalous factor of $\im$. Extremizing $\mathcal S$ with respect to
+$\hat\field$ (at fixed real $\field,\mom$) shows the saddle point is pure
+imaginary, $\hat\field^\star\propto\im\times(\text{real})$, so the
+instanton does not lie on the real $\hat\field$-contour. We therefore
+rotate onto the imaginary axis,
+\begin{equation}
+    \hat\field \equiv \im\,\rfield , \qquad \hat\mom \equiv \im\,\rmom ,
+    \label{eq:response-rotation}
+\end{equation}
+with $\rfield,\rmom$ real. This is the substitution that makes the
+saddle-point equations real, and $\rfield,\rmom$ --- \emph{not}
+$\hat\field,\hat\mom$ --- are the fields appearing everywhere below and in
+the numerical implementation (\texttt{FullInstanton}'s $P_1,P_2$).
+Substituting \eqref{eq:response-rotation} into $\mathcal S$ turns the
+linear term into $+\rfield(\dot\field-\mom-\advcoef\partial_\yco\field)$
+(the two factors of $\im$ cancelling against the overall $-\im$) and the
+quadratic term into
+$-\tfrac12(\Dnoise{\field}\rfield^2+2\Dnoise{\field\mom}\rfield\rmom+\Dnoise{\mom}\rmom^2)$
+(each factor of $\hat X$ contributing $\im^2=-1$), reproducing exactly the
+action written below.
+
 We write the MSR action with this measure,
 introducing response fields $\rfield$, $\rmom$ conjugate to $\field$,
 $\mom$, and including the advection terms from \eqref{eq:advection-operator}
@@ -949,15 +1038,17 @@ gives the coupled instanton system
     \\
     \dot{\rfield}
     & =
-    -\frac{\Vpot''(\field)}{\Hub^2\atloc}\rmom
-    + \frac{1}{\rout^2\aHloc^2}\Lop\rmom
-    - \frac{1}{\measure}\partial_\yco\big(\measure\,\advcoef\,\rfield\big) ,
+    \advcoef\,\partial_\yco\rfield
+    + \rfield\,(1-\epscore)\left[\frac{1}{\Deltas}-\frac32\right]
+    + \frac{\Vpot''(\field)}{\Hub^2\atloc}\rmom
+    - \frac{1}{\rout^2\aHloc^2}\Lop\rmom ,
     \label{eq:inst-rphi}
     \\
     \dot{\rmom}
     & =
-    \rfield - \big(3-\epsSR\atloc\big)\rmom
-    - \frac{1}{\measure}\partial_\yco\big(\measure\,\advcoef\,\rmom\big) .
+    \advcoef\,\partial_\yco\rmom
+    + \rmom\,(1-\epscore)\left[\frac{1}{\Deltas}-\frac32\right]
+    - \rfield + \big(3-\epsSR\atloc\big)\rmom .
     \label{eq:inst-rpi}
 \end{align}
 \end{subequations}
@@ -967,32 +1058,81 @@ with the cross term $\Dnoise{\field\mom}$ coupling each
 response field to the \emph{other} noise channel. Both
 $\dot\field$ and $\dot\mom$ pick up the
 advection term $\advcoef\partial_\yco(\cdot)$ directly (from
-\eqref{eq:advection-operator}), and \emph{both} response-field equations
-pick up a term $-\measure^{-1}\partial_\yco(\measure\,\advcoef\,X)$
-built from that \emph{same} response field $X\in\{\rfield,\rmom\}$ ---
-the standard MSR result that forward advection $+\advcoef\partial_\yco$
-becomes its negative adjoint (w.r.t.\ $\measure$) in the backward/response
-equations, rather than mixing $\rfield$ and $\rmom$ the way the potential
-and gradient terms do. Expanding,
+\eqref{eq:advection-operator}).
+
+\begin{calculation}
+\semibold{Response-field equations: direct re-derivation.} Varying
+\eqref{eq:msr-action} with respect to $\field$ requires two integrations
+by parts: in $\Ny$ for the $\rfield\dot\field$ term (picking up a measure
+derivative, since $\measure$ depends on $\Ny$ explicitly through
+$\Deltas(\Ny)$, not only through $\field,\mom$), and in $\yco$ for the
+advection and gradient terms (using $\Lop$'s self-adjointness). Term by
+term:
+\begin{itemize}
+    \item $\rfield\dot\field$: $\int\d\Ny\,\measure\,\rfield\dot\field
+        \to -\partial_\Ny(\measure\,\rfield) = -\dot\measure\,\rfield-\measure\,\dot{\rfield}$;
+    \item $-\advcoef\,\rfield\,\partial_\yco\field$: integrating by parts
+        in $\yco$ gives $+\partial_\yco(\measure\,\advcoef\,\rfield)$;
+    \item $\rmom\,\Vpot'(\field)/\Hub^2$: gives $\measure\,\rmom\,\Vpot''(\field)/\Hub^2$ directly;
+    \item $-\rmom\,\Lop\field/(\rout^2\aHloc^2)$: self-adjointness of $\Lop$
+        moves the operator onto $\rmom$, giving $-\measure\,\Lop\rmom/(\rout^2\aHloc^2)$.
+\end{itemize}
+Setting the sum to zero and dividing by $\measure$,
+\begin{equation}
+    \dot{\rfield}
+    =
+    -\frac{\dot\measure}{\measure}\rfield
+    + \frac{1}{\measure}\partial_\yco\big(\measure\,\advcoef\,\rfield\big)
+    + \frac{\Vpot''(\field)}{\Hub^2\atloc}\rmom
+    - \frac{1}{\rout^2\aHloc^2}\Lop\rmom ,
+\end{equation}
+and the analogous variation with respect to $\mom$ gives
+\begin{equation}
+    \dot{\rmom}
+    =
+    -\frac{\dot\measure}{\measure}\rmom
+    + \frac{1}{\measure}\partial_\yco\big(\measure\,\advcoef\,\rmom\big)
+    - \rfield + \big(3-\epsSR\atloc\big)\rmom .
+\end{equation}
+\emph{Every} term here is opposite in sign to an earlier pass at these
+equations (advection/adjoint term, potential/gradient term, and the
+$\rfield\leftrightarrow\rmom$ coupling term were all flipped), and the
+$-\dot\measure/\measure\,X$ term was missing entirely --- an artefact of
+$\measure(\yco,\Ny)=\e{-\frac32\Deltas(\Ny)\yco}$ depending on $\Ny$
+explicitly, which vanishes in the 1D limit ($\advcoef=0$, no
+$\yco$-dependence) and so was never exercised by the existing
+single-trajectory code.
+
+\semibold{Cross-check against \texttt{FullInstanton}.} In the 1D limit
+($\advcoef=0$, $\dot\measure/\measure=0$) these reduce to
+$\dot{\rfield}=\Vpot''(\field)\rmom/\Hub^2$,
+$\dot{\rmom}=-\rfield+(3-\epsSR)\rmom$, which is exactly what
+\texttt{FullInstanton.py}'s \texttt{bwd\_rhs} already implements
+(\texttt{P2 * d2V\_dphi2(phi1) / Hsq}, \texttt{-P1 + (3-eps)*P2}) --- an
+independent, already-exercised confirmation of the corrected sign.
+
+\semibold{Expanding the adjoint term and combining with the measure
+derivative.} Using $\d\Deltas(\Ny)/\d\Ny=1-\epscore(\Ny)$
+(Section~\ref{sec:coordinate}) --- already computed to build $\advcoef$,
+so this costs nothing extra numerically --- together with
 \begin{equation}
     \frac{1}{\measure}\partial_\yco\big(\measure\,\advcoef\,X\big)
     =
     \advcoef\,\partial_\yco X + X\,(1-\epscore)\left[\frac{1}{\Deltas} - \frac32(\yco+1)\right] ,
+    \qquad
+    -\frac{\dot\measure}{\measure} = \frac32\dot{\Deltas}\,\yco = \frac32(1-\epscore)\,\yco ,
 \end{equation}
-using $\partial_\yco\advcoef = (1-\epscore)/\Deltas$ and
-$\partial_\yco\measure/\measure = -\tfrac32\Deltas$, both constants at
-fixed $\Ny$.
-
-\begin{panel}
-\semibold{Status of this derivation.} The advection/response-field coupling
-above was worked out in this pass rather than carried over from earlier,
-independently-checked material, and has not had the same scrutiny as the
-rest of this section. The structure matches the standard MSR result for
-advection-diffusion (forward $+A\partial_\yco$, backward
-$-\measure^{-1}\partial_\yco(\measure A\,\cdot)$), which is a useful
-consistency check but not a substitute for redoing the derivation
-independently before relying on it numerically.
-\end{panel}
+the two $\yco$-dependent pieces combine as
+\begin{equation}
+    \frac32(1-\epscore)\,\yco\,X + X\,(1-\epscore)\left[\frac{1}{\Deltas}-\frac32(\yco+1)\right]
+    =
+    X\,(1-\epscore)\left[\frac{1}{\Deltas}-\frac32\right] ,
+\end{equation}
+i.e.\ the $\yco$-dependence cancels exactly, leaving the compact bracket
+$(1-\epscore)[1/\Deltas-\tfrac32]$ used in \eqref{eq:inst-rphi}--\eqref{eq:inst-rpi}
+above --- a single scalar per $\Ny$, cheaper to evaluate than the
+$\yco$-dependent bracket it replaces, not more expensive.
+\end{calculation}
 
 \begin{panel}
 \semibold{What is \emph{not} corrected here.} Equations \eqref{eq:inst-rphi}--\eqref{eq:inst-rpi}
@@ -1346,7 +1486,14 @@ is
 matching \eqref{eq:Lop-definition} --- note $\Lop$ itself does \emph{not}
 carry the $1/\rout^2$ prefactor; that is applied separately, together with
 $1/\aHloc^2$, wherever $\Lop$ appears in the equations of motion (e.g.\
-eq. 8.1b).
+eq. 8.1b). This separately-applied prefactor is evaluated node-by-node as
+$\aHloc(\yco_j,\Ny)$ throughout the collocation scheme, i.e.\ it is already
+the local-$\Deltas$ object of the panel in Section~\ref{sec:coordinate}
+($1/[\rout^2\aHloc(\yco_j,\Ny)^2]=\e{-2\Deltas_{\rm loc}(\yco_j,\Ny)}$); no
+change to the numerics follows from that remark, it is purely a
+bookkeeping identification. The $\Deltas(\Ny)$ appearing \emph{inside}
+$\Lop$ above, by contrast, is the single core-based value shared by every
+node.
 i.e.\ $D,D^{(2)}$ applied to the node-value vector, then multiplied by
 node-dependent \emph{scalar} coefficients recomputed at each $\Ny$ --- the
 same pattern already used for every other solution-dependent coefficient
@@ -1447,18 +1594,25 @@ at each interior node $j$,
     \\
     \dot{\rfield}_j
     & =
-    -\frac{\Vpot''(\field_j)}{\Hub^2(\yco_j,\Ny)}\rmom_j
-    + \frac{1}{\rout^2\aHloc(\yco_j,\Ny)^2}\big(\Lop\rmom\big)_j
-    - \big(\mathrm{diag}(\advcoef)D\rfield\big)_j
-    - \rfield_j\,\big(1-\epscore(\Ny)\big)\left[\frac{1}{\Deltas(\Ny)}-\frac32(\yco_j+1)\right] ,
+    \big(\mathrm{diag}(\advcoef)D\rfield\big)_j
+    + \rfield_j\,\big(1-\epscore(\Ny)\big)\left[\frac{1}{\Deltas(\Ny)}-\frac32\right]
+    + \frac{\Vpot''(\field_j)}{\Hub^2(\yco_j,\Ny)}\rmom_j
+    - \frac{1}{\rout^2\aHloc(\yco_j,\Ny)^2}\big(\Lop\rmom\big)_j ,
     \\
     \dot{\rmom}_j
     & =
-    \rfield_j - \big(3-\epsSR(\yco_j,\Ny)\big)\rmom_j
-    - \big(\mathrm{diag}(\advcoef)D\rmom\big)_j
-    - \rmom_j\,\big(1-\epscore(\Ny)\big)\left[\frac{1}{\Deltas(\Ny)}-\frac32(\yco_j+1)\right] ,
+    \big(\mathrm{diag}(\advcoef)D\rmom\big)_j
+    + \rmom_j\,\big(1-\epscore(\Ny)\big)\left[\frac{1}{\Deltas(\Ny)}-\frac32\right]
+    - \rfield_j + \big(3-\epsSR(\yco_j,\Ny)\big)\rmom_j ,
 \end{align}
 \end{subequations}
+matching the corrected \eqref{eq:inst-rphi}--\eqref{eq:inst-rpi}: signs on
+the advection, potential/gradient, and cross-coupling terms are flipped
+relative to an earlier pass, and the bracket term's $\yco$-dependence
+cancels against the (previously missing) measure-friction term as shown in
+the calculation panel of Section~\ref{sec:instanton-eqs}, leaving the
+single $\Ny$-dependent scalar $(1-\epscore(\Ny))[1/\Deltas(\Ny)-\tfrac32]$
+above rather than a $\yco_j$-dependent vector.
 where $H^2(\yco_j,\Ny)\equiv\Hub^2[\field_j,\mom_j]$,
 $\epsSR(\yco_j,\Ny)\equiv\epsSR[\field_j,\mom_j]$ --- ordinary pointwise
 evaluation at each node, no reconstruct/project round-trip needed: 
