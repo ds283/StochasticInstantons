@@ -302,21 +302,6 @@ class InflatonTrajectory(DatastoreObject):
         Mp  = self._potential._units.PlanckMass
         return 3.0 * (Mp ** 2) * self._potential.H_sq(phi, pi)
 
-    def phi_before_end(self, N: float) -> float:
-        """phi_at(N_end - N) -- the backward-counted-N convenience used
-        throughout GradientCoupledInstanton for the outer boundary row."""
-        return self.phi_at(self._N_end - N)
-
-    def pi_before_end(self, N: float) -> float:
-        """pi_at(N_end - N)."""
-        return self.pi_at(self._N_end - N)
-
-    def rho_before_end(self, N: float) -> float:
-        """rho_at(N_end - N) -- provided now since it's the same pattern,
-        even though this prompt doesn't use it (needed by the later
-        zeta-profile-extraction prompt)."""
-        return self.rho_at(self._N_end - N)
-
     def compute(self, label: Optional[str] = None) -> ObjectRef:
         """
         Dispatch the background trajectory integration as a Ray remote task.

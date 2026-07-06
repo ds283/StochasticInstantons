@@ -65,6 +65,29 @@ def test_delta_s_rejects_negative_alpha(alpha):
         delta_s(N=1.0, N_init=1.0, H_sq_local=1.0, H_sq_nl_init=1.0, alpha=alpha)
 
 
+# --- delta_s: N < N_init domain guard ------------------------------------
+
+
+@pytest.mark.parametrize("N_init", [0.0, 1.5, -3.0])
+@pytest.mark.parametrize("shortfall", [1e-9, 0.1, 5.0])
+def test_delta_s_rejects_N_less_than_N_init(N_init, shortfall):
+    with pytest.raises(ValueError, match="N_init"):
+        delta_s(
+            N=N_init - shortfall,
+            N_init=N_init,
+            H_sq_local=1.0,
+            H_sq_nl_init=1.0,
+            alpha=0.05,
+        )
+
+
+def test_delta_s_accepts_N_equal_to_N_init():
+    # N == N_init is the boundary case (Delta_s(N_init) = ln(1+alpha)), not
+    # a domain violation.
+    result = delta_s(N=2.0, N_init=2.0, H_sq_local=1.0, H_sq_nl_init=1.0, alpha=0.05)
+    assert result == pytest.approx(np.log(1.05), abs=1e-14)
+
+
 # --- delta_s_derivative --------------------------------------------------
 
 

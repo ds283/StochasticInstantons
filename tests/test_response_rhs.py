@@ -69,7 +69,6 @@ def _make_grid(n_collocation_points=9):
 
 
 _N = 2.0
-_N_INIT = 0.0
 _ALPHA = 0.05
 _H_SQ_NL_INIT = 1.0
 
@@ -234,7 +233,7 @@ def test_response_rhs_end_to_end_runs_and_matches_manual_assembly():
     pi_splines = [_ConstantSpline(v) for v in pi_values]
 
     result = response_rhs(
-        _N, response_state, _N_INIT, _ALPHA, _H_SQ_NL_INIT, grid,
+        _N, response_state, _ALPHA, _H_SQ_NL_INIT, grid,
         phi_splines, pi_splines, potential,
     )
 

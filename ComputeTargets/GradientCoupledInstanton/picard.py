@@ -26,19 +26,28 @@ shooting parameter lambda), generalized from scalar (phi, pi, P1, P2) arrays
 over N to grid-valued arrays over (N, y) of shape
 (len(N_grid), n_collocation_points).
 
-N convention. N_init/N_final/delta_Nstar are supplied in the same
-"e-folds before the end of inflation" convention as FullInstanton's own
-constructor parameters (N_init > N_final; delta_Nstar the excess duration
-added on top of the naive N_init-N_final span). Numerics/OnionCoordinate.py's
-delta_s(N, N_init, ...) requires its own running N argument to *increase*
-away from N_init for Delta_s(N) to grow from ln(1+alpha) (at the transition
-start) to the O(10) values reached by the transition end (Numerics/
-OnionCoordinate.py and the onion-model notes' Delta_s(N_init) identity), so
-the actual domain used here is [N_init, N_init + N_total] with
-N_total = (N_init - N_final) + delta_Nstar -- the same N_total FullInstanton
-computes, just used as an additive offset from N_init rather than a reset to
-zero, so that forward_rhs's own N_init parameter and the domain's lower
-bound coincide exactly.
+N convention -- matches FullInstanton exactly. N_init/N_final/delta_Nstar
+are supplied in the same "e-folds before the end of inflation" convention
+as FullInstanton's own constructor parameters (N_init > N_final;
+delta_Nstar the excess duration added on top of the naive N_init-N_final
+span), and N_total = (N_init - N_final) + delta_Nstar is the same quantity
+FullInstanton computes. But the running N actually integrated over here is
+local and zero-based, exactly like FullInstanton's own t_span: it starts at
+0.0 (the transition start) and increases to N_total (the transition end),
+matching Numerics/OnionCoordinate.py's delta_s(N, N_init, ...), which
+requires its own running N argument to *increase* away from N_init for
+Delta_s(N) to grow from ln(1+alpha) (at N=N_init) to the O(10) values
+reached by the transition end -- so every delta_s() call anywhere in this
+module or in forward_rhs.py/response_rhs.py passes a literal 0.0 for that
+N_init argument.
+
+Trajectory lookups (InflatonTrajectory.phi_at/pi_at) use InflatonTrajectory's
+own absolute N (0.0 at its own initial condition, increasing to N_end at the
+end of inflation), which is a different coordinate from the local N above.
+N_offset = trajectory.N_end - N_init converts between them, computed once
+here from the compute target's raw parameters and threaded through to every
+forward_rhs call as absolute_N = N_offset + local_N. response_rhs has no
+trajectory dependency, so it needs no N_offset.
 """
 
 import time
@@ -63,7 +72,7 @@ from ComputeTargets.GradientCoupledInstanton.response_rhs import (
 MAX_OUTER = 50
 MAX_INNER = 30
 
-# Number of temporal sample points spanning [N_init, N_init + N_total];
+# Number of temporal sample points spanning the local domain [0.0, N_total];
 # matches FullInstanton's own floor value (N_GRID = max(300, ...)).
 N_GRID_SIZE = 300
 
@@ -99,9 +108,9 @@ def solve_picard(
     by Picard iteration with an outer Newton correction on the shooting
     parameter lambda = P1-equivalent terminal Lagrange multiplier.
 
-    Boundary conditions:
-        phi(y_j, N_init) = phi_init, pi(y_j, N_init) = pi_init  (uniform in y)
-        phi(y=+1, N_stop) = phi_end   [shooting condition on lambda]
+    Boundary conditions (local N; see module docstring for the N convention):
+        phi(y_j, N=0.0) = phi_init, pi(y_j, N=0.0) = pi_init  (uniform in y)
+        phi(y=+1, N=N_total) = phi_end   [shooting condition on lambda]
 
     Returns a dict with keys:
         "N_total", "N_grid", "phi_grid", "pi_grid", "rfield_grid",
@@ -118,15 +127,16 @@ def solve_picard(
     OUTER_TOL = max(atol * 100.0, 1e-6)
     INNER_TOL = atol * 10.0
 
+    N_offset = trajectory.N_end - N_init
     N_total = (N_init - N_final) + delta_Nstar
-    N_start = N_init
-    N_stop = N_init + N_total
+    N_start = 0.0
+    N_stop = N_total
 
     N_grid = np.linspace(N_start, N_stop, N_GRID_SIZE)
     N_grid_rev = N_grid[::-1]
 
-    phi_init = trajectory.phi_before_end(N_start)
-    pi_init = trajectory.pi_before_end(N_start)
+    phi_init = trajectory.phi_at(N_offset + N_start)
+    pi_init = trajectory.pi_at(N_offset + N_start)
 
     # Uniform-in-y initial condition (eq. bc-init): the core has not yet
     # deviated from the noiseless background anywhere on the grid.
@@ -137,7 +147,7 @@ def solve_picard(
         pi_grid = np.empty((len(N_values), n_nodes))
         for i, N_i in enumerate(N_values):
             phi_full_i, pi_full_i = unpack_state(
-                y_matrix[:, i], N_i, N_init, alpha, H_sq_nl_init, grid, trajectory, potential
+                y_matrix[:, i], N_i, N_offset, alpha, H_sq_nl_init, grid, trajectory, potential
             )
             phi_grid[i] = phi_full_i
             pi_grid[i] = pi_full_i
@@ -154,14 +164,14 @@ def solve_picard(
 
     def _fwd_rhs(N, y, rfield_splines, rmom_splines):
         return forward_rhs(
-            N, y, N_init, alpha, H_sq_nl_init, grid, trajectory, potential,
+            N, y, N_offset, alpha, H_sq_nl_init, grid, trajectory, potential,
             rfield_splines, rmom_splines, diffusion_model,
             disable_spatial_coupling=disable_spatial_coupling,
         )
 
     def _bwd_rhs(N, y, phi_splines, pi_splines):
         return response_rhs(
-            N, y, N_init, alpha, H_sq_nl_init, grid, phi_splines, pi_splines, potential,
+            N, y, alpha, H_sq_nl_init, grid, phi_splines, pi_splines, potential,
         )
 
     def _failure_diagnostics(outer_iterations, newton_fallback_count,
@@ -228,7 +238,7 @@ def solve_picard(
 
             # Backward pass: terminal condition at N_stop (eq. terminal-colloc).
             H_sq_core_final = potential.H_sq(phi_grid[-1, -1], pi_grid[-1, -1])
-            delta_s_N_final = delta_s(N_stop, N_init, H_sq_core_final, H_sq_nl_init, alpha)
+            delta_s_N_final = delta_s(N_total, 0.0, H_sq_core_final, H_sq_nl_init, alpha)
             terminal_state = terminal_response_state(lam, grid, delta_s_N_final)
 
             bp = solve_ivp(

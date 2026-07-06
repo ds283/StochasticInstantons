@@ -156,7 +156,6 @@ def _assemble_response_derivatives(
 def response_rhs(
     N: float,
     response_state: np.ndarray,
-    N_init: float,
     alpha: float,
     H_sq_nl_init: float,
     grid,
@@ -175,10 +174,16 @@ def response_rhs(
     solution is the caller's job (the Picard driver); this function just
     consumes them.
 
-    Integrated backward in N from N_final down to N_init, same convention
-    as FullInstanton's bwd_rhs: this function itself still computes the
-    literal d/dN derivative (forward sense); it is solve_ivp's t_span that
-    runs in reverse, handled by the caller.
+    N is the local, zero-based running coordinate shared with forward_rhs
+    (0.0 at the transition start, N_total at the transition end -- see
+    picard.py's module docstring), so every delta_s() call below passes a
+    literal 0.0 for N_init. Integrated backward in N from N_total down to
+    0.0, same convention as FullInstanton's bwd_rhs: this function itself
+    still computes the literal d/dN derivative (forward sense); it is
+    solve_ivp's t_span that runs in reverse, handled by the caller. Unlike
+    forward_rhs, response_rhs has no trajectory dependency (the outer-edge
+    response condition is a trivial constant zero), so it needs no
+    N_offset parameter.
     """
     phi_full = np.array([spline(N) for spline in phi_splines])
     pi_full = np.array([spline(N) for spline in pi_splines])
@@ -187,7 +192,7 @@ def response_rhs(
 
     # Core-only Delta_s(N), defining the coordinate map itself.
     H_sq_core = potential.H_sq(phi_full[-1], pi_full[-1])
-    delta_s_N = delta_s(N, N_init, H_sq_core, H_sq_nl_init, alpha)
+    delta_s_N = delta_s(N, 0.0, H_sq_core, H_sq_nl_init, alpha)
 
     epsilon_core = potential.epsilon(phi_full[-1], pi_full[-1])
     c_N = _c_of_N(epsilon_core, delta_s_N)
@@ -200,7 +205,7 @@ def response_rhs(
     # Gradient term: L applied to rmom (not rfield) -- self-adjointness of L
     # moves the operator onto the other response field.
     L_rmom_array = L_operator(rmom_full, delta_s_N, grid.nodes, grid.D, grid.D2)
-    delta_s_loc_array = delta_s(N, N_init, H_sq_loc_array, H_sq_nl_init, alpha)
+    delta_s_loc_array = delta_s(N, 0.0, H_sq_loc_array, H_sq_nl_init, alpha)
     gradient_term = np.exp(-2.0 * delta_s_loc_array) * L_rmom_array
 
     A_array = advection_coefficient(grid.nodes, delta_s_N, epsilon_core)

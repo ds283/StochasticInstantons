@@ -52,10 +52,16 @@ class _StubPotential:
 
 class _BackgroundTrackingTrajectory:
     """
-    Duck-typed trajectory stub whose phi_before_end/pi_before_end trace out
-    the *noiseless* background ODE (dphi/dN = pi,
-    dpi/dN = -(3-eps)*pi - dV/Hsq -- FullInstanton's own bg_rhs) over
-    [N_start, N_stop], reconstructed via SplineWrapper.
+    Duck-typed trajectory stub whose phi_at/pi_at trace out the *noiseless*
+    background ODE (dphi/dN = pi, dpi/dN = -(3-eps)*pi - dV/Hsq --
+    FullInstanton's own bg_rhs) over the local domain [0.0, N_total],
+    reconstructed via SplineWrapper.
+
+    N_end is set equal to N_init, so that solve_picard's own
+    N_offset = trajectory.N_end - N_init is exactly 0.0 -- i.e. this stub's
+    absolute N axis coincides with solve_picard's local N axis, letting the
+    background be integrated directly over [0.0, N_total] rather than
+    needing to also reconstruct InflatonTrajectory's own absolute-N bookkeeping.
 
     Used for the reduction-limit test: with disable_spatial_coupling=True
     and identically-zero response-field sourcing, every collocation node
@@ -65,7 +71,7 @@ class _BackgroundTrackingTrajectory:
     from the other, background-tracking nodes) reduces to it too.
     """
 
-    def __init__(self, potential, phi_init, pi_init, N_start, N_stop, atol, rtol):
+    def __init__(self, potential, phi_init, pi_init, N_total, atol, rtol, N_end):
         def bg_rhs(N, y):
             phi, pi = y
             return [
@@ -74,20 +80,25 @@ class _BackgroundTrackingTrajectory:
                 - potential.dV_dphi(phi) / potential.H_sq(phi, pi),
             ]
 
-        N_grid = np.linspace(N_start, N_stop, 400)
+        N_grid = np.linspace(0.0, N_total, 400)
         sol = solve_ivp(
-            bg_rhs, (N_start, N_stop), [phi_init, pi_init],
+            bg_rhs, (0.0, N_total), [phi_init, pi_init],
             method="RK45", t_eval=N_grid, atol=atol, rtol=rtol,
         )
         assert sol.success
 
         self._phi_spline = SplineWrapper(N_grid, sol.y[0], k=3)
         self._pi_spline = SplineWrapper(N_grid, sol.y[1], k=3)
+        self._N_end = N_end
 
-    def phi_before_end(self, N: float) -> float:
+    @property
+    def N_end(self) -> float:
+        return self._N_end
+
+    def phi_at(self, N: float) -> float:
         return float(self._phi_spline(N))
 
-    def pi_before_end(self, N: float) -> float:
+    def pi_at(self, N: float) -> float:
         return float(self._pi_spline(N))
 
 
@@ -132,7 +143,6 @@ def test_solve_picard_reduction_limit_matches_full_instanton():
     N_final = 2.0
     delta_Nstar = 1.0
     N_total = (N_init - N_final) + delta_Nstar
-    N_stop = N_init + N_total
 
     phi_init = 10.0
     pi_init = -0.01
@@ -140,9 +150,9 @@ def test_solve_picard_reduction_limit_matches_full_instanton():
     rtol = 1.0e-9
 
     trajectory = _BackgroundTrackingTrajectory(
-        potential, phi_init, pi_init, N_init, N_stop, atol, rtol
+        potential, phi_init, pi_init, N_total, atol, rtol, N_end=N_init
     )
-    phi_end = trajectory.phi_before_end(N_stop)
+    phi_end = trajectory.phi_at(N_total)
 
     alpha = 0.05
     H_sq_nl_init = potential.H_sq(phi_init, pi_init)
@@ -157,8 +167,10 @@ def test_solve_picard_reduction_limit_matches_full_instanton():
     assert result["failure"] is False
     assert result["diagnostics"]["converged"] is True
 
-    N_grid = np.array(result["N_grid"])
-    t_grid = (N_grid - N_init).tolist()
+    # result["N_grid"] is already the local, zero-based grid over
+    # [0.0, N_total] -- matching FullInstanton's own t_span exactly, no
+    # shift by N_init needed (unlike before this fix).
+    t_grid = result["N_grid"]
 
     fi_data = _compute_full_instanton._function(
         trajectory=_TrajectoryProxyStub(potential),
@@ -198,7 +210,7 @@ def test_solve_picard_diagnostics_match_full_instanton_shape():
     N_init = 5.0
     N_final = 2.0
     delta_Nstar = 1.0
-    N_stop = N_init + (N_init - N_final) + delta_Nstar
+    N_total = (N_init - N_final) + delta_Nstar
 
     phi_init = 10.0
     pi_init = -0.01
@@ -206,9 +218,9 @@ def test_solve_picard_diagnostics_match_full_instanton_shape():
     rtol = 1.0e-8
 
     trajectory = _BackgroundTrackingTrajectory(
-        potential, phi_init, pi_init, N_init, N_stop, atol, rtol
+        potential, phi_init, pi_init, N_total, atol, rtol, N_end=N_init
     )
-    phi_end = trajectory.phi_before_end(N_stop)
+    phi_end = trajectory.phi_at(N_total)
 
     grid = LGLCollocationGrid(5)
     result = solve_picard(
@@ -248,7 +260,7 @@ def test_solve_picard_non_convergence_returns_failure_dict(monkeypatch):
     N_init = 5.0
     N_final = 2.0
     delta_Nstar = 1.0
-    N_stop = N_init + (N_init - N_final) + delta_Nstar
+    N_total = (N_init - N_final) + delta_Nstar
 
     phi_init = 10.0
     pi_init = -0.01
@@ -256,10 +268,10 @@ def test_solve_picard_non_convergence_returns_failure_dict(monkeypatch):
     rtol = 1.0e-8
 
     trajectory = _BackgroundTrackingTrajectory(
-        potential, phi_init, pi_init, N_init, N_stop, atol, rtol
+        potential, phi_init, pi_init, N_total, atol, rtol, N_end=N_init
     )
     # Deliberately unreachable in a single outer iteration.
-    phi_end = trajectory.phi_before_end(N_stop) + 0.5
+    phi_end = trajectory.phi_at(N_total) + 0.5
 
     grid = LGLCollocationGrid(5)
     result = picard_module.solve_picard(

@@ -30,7 +30,7 @@ State vector layout. Not all 2(n_max+1) raw grid values are independently
 integrated:
 
   - phi_0, pi_0 (outer edge, y=-1): Dirichlet-pinned to
-    trajectory.phi_before_end(N)/.pi_before_end(N) -- not integrated,
+    trajectory.phi_at(N_offset + N)/.pi_at(N_offset + N) -- not integrated,
     recomputed fresh at every RHS call.
   - phi_{n_max} (core, y=+1): Neumann-eliminated via neumann_boundary_value
     (Numerics/DiscretizedOperators.py, boundary_index=-1) -- not integrated.
@@ -66,7 +66,7 @@ def pack_state(phi_full: np.ndarray, pi_full: np.ndarray) -> np.ndarray:
 def unpack_state(
     state: np.ndarray,
     N: float,
-    N_init: float,
+    N_offset: float,
     alpha: float,
     H_sq_nl_init: float,
     grid,
@@ -78,7 +78,7 @@ def unpack_state(
     pi_full) grid arrays, each of length n_max+1.
 
     Index 0 (y=-1): Dirichlet-pinned from the noiseless background,
-    trajectory.phi_before_end(N)/.pi_before_end(N).
+    trajectory.phi_at(N_offset + N)/.pi_at(N_offset + N).
 
     Index n_max (y=+1): pi_full[n_max] is the free, integrated core
     momentum, taken directly from the state vector. phi_full[n_max] is
@@ -87,17 +87,17 @@ def unpack_state(
     neumann_boundary_value ignores whatever placeholder sits at the boundary
     index itself).
 
-    N_init, alpha, H_sq_nl_init, and potential are threaded through for a
-    signature shared with forward_rhs's local context; unpack_state itself
-    does not need them.
+    alpha, H_sq_nl_init, and potential are threaded through for a signature
+    shared with forward_rhs's local context; unpack_state itself only needs
+    N_offset (for the trajectory lookup).
     """
     n_max = grid.n_max
 
     phi_full = np.empty(n_max + 1)
     pi_full = np.empty(n_max + 1)
 
-    phi_full[0] = trajectory.phi_before_end(N)
-    pi_full[0] = trajectory.pi_before_end(N)
+    phi_full[0] = trajectory.phi_at(N_offset + N)
+    pi_full[0] = trajectory.pi_at(N_offset + N)
 
     n_phi_interior = n_max - 1
     phi_full[1:n_max] = state[:n_phi_interior]
@@ -111,7 +111,7 @@ def unpack_state(
 def forward_rhs(
     N: float,
     state: np.ndarray,
-    N_init: float,
+    N_offset: float,
     alpha: float,
     H_sq_nl_init: float,
     grid,
@@ -143,13 +143,14 @@ def forward_rhs(
     P1/P2 sourcing terms regardless of gradient coupling).
     """
     phi_full, pi_full = unpack_state(
-        state, N, N_init, alpha, H_sq_nl_init, grid, trajectory, potential
+        state, N, N_offset, alpha, H_sq_nl_init, grid, trajectory, potential
     )
     n_nodes = phi_full.shape[0]
 
-    # Core-only Delta_s(N), defining the coordinate map itself.
+    # Core-only Delta_s(N), defining the coordinate map itself. N is the
+    # local, zero-based running coordinate, so N_init is always 0.0 here.
     H_sq_core = potential.H_sq(phi_full[-1], pi_full[-1])
-    delta_s_N = delta_s(N, N_init, H_sq_core, H_sq_nl_init, alpha)
+    delta_s_N = delta_s(N, 0.0, H_sq_core, H_sq_nl_init, alpha)
 
     # Per-node H^2_loc, epsilon_loc, V' -- vectorized over the full array.
     H_sq_loc_array = potential.H_sq(phi_full, pi_full)
@@ -160,7 +161,7 @@ def forward_rhs(
     # prefactor (when spatial coupling is enabled) and by n_count below
     # (always, regardless of disable_spatial_coupling), so this is computed
     # unconditionally rather than only inside the spatial-coupling branch.
-    delta_s_loc_array = delta_s(N, N_init, H_sq_loc_array, H_sq_nl_init, alpha)
+    delta_s_loc_array = delta_s(N, 0.0, H_sq_loc_array, H_sq_nl_init, alpha)
 
     if disable_spatial_coupling:
         gradient_term = np.zeros_like(phi_full)

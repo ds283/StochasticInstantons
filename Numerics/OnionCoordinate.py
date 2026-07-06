@@ -57,9 +57,19 @@ def delta_s(
 
     Raises ValueError if alpha < 0. alpha == 0 is a valid, well-defined
     input (giving Delta_s(N_init) = 0 exactly); no guard against it here.
+
+    Raises ValueError if N < N_init: the tautology a(N)/a(N_init) =
+    exp(N - N_init) that this formula is derived from only holds for N
+    increasing away from N_init, so N < N_init is a configuration/usage
+    error at the call site, not a convergence failure.
     """
     if alpha < 0:
         raise ValueError(f"delta_s: alpha must be >= 0, got {alpha!r}")
+    if N < N_init:
+        raise ValueError(
+            f"delta_s: N ({N!r}) must be >= N_init ({N_init!r}) -- Delta_s(N) "
+            f"is only defined for N increasing away from N_init"
+        )
 
     return (
         np.log(1.0 + alpha)

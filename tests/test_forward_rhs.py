@@ -9,7 +9,6 @@ import numpy as np
 import pytest
 
 from CosmologyConcepts.Potentials.AbstractPotential import AbstractPotential
-from ComputeTargets.InflatonTrajectory import InflatonTrajectory
 from ComputeTargets.GradientCoupledInstanton.forward_rhs import (
     pack_state,
     unpack_state,
@@ -26,12 +25,12 @@ from Numerics.OnionCoordinate import delta_s
 
 
 class _StubTrajectory:
-    """Closed-form phi_before_end/pi_before_end -- no real ODE integration."""
+    """Closed-form phi_at/pi_at -- no real ODE integration."""
 
-    def phi_before_end(self, N: float) -> float:
+    def phi_at(self, N: float) -> float:
         return 1.0 + 0.3 * N
 
-    def pi_before_end(self, N: float) -> float:
+    def pi_at(self, N: float) -> float:
         return -0.2 * N + 0.05 * N ** 2
 
 
@@ -74,7 +73,7 @@ class _ConstantSpline:
 
 
 _N = 2.0
-_N_INIT = 0.0
+_N_OFFSET = 0.0
 _ALPHA = 0.05
 _H_SQ_NL_INIT = 1.0
 
@@ -101,77 +100,6 @@ def test_abstract_potential_docstrings_note_vectorization(method_name):
 
 
 # ---------------------------------------------------------------------------
-# Part B -- InflatonTrajectory before-end convenience methods
-# ---------------------------------------------------------------------------
-
-
-def _make_bare_trajectory():
-    return InflatonTrajectory(
-        store_id=None,
-        phi0=None,
-        pi0=None,
-        potential=None,
-        samples_per_N=None,
-        atol=None,
-        rtol=None,
-    )
-
-
-def test_phi_before_end_calls_phi_at_at_N_end_minus_N():
-    traj = _make_bare_trajectory()
-    traj._N_end = 10.0
-
-    calls = []
-
-    def fake_phi_at(N):
-        calls.append(N)
-        return 42.0
-
-    traj.phi_at = fake_phi_at
-
-    result = traj.phi_before_end(3.5)
-
-    assert calls == [10.0 - 3.5]
-    assert result == 42.0
-
-
-def test_pi_before_end_calls_pi_at_at_N_end_minus_N():
-    traj = _make_bare_trajectory()
-    traj._N_end = 7.25
-
-    calls = []
-
-    def fake_pi_at(N):
-        calls.append(N)
-        return -1.5
-
-    traj.pi_at = fake_pi_at
-
-    result = traj.pi_before_end(1.0)
-
-    assert calls == [7.25 - 1.0]
-    assert result == -1.5
-
-
-def test_rho_before_end_calls_rho_at_at_N_end_minus_N():
-    traj = _make_bare_trajectory()
-    traj._N_end = 5.0
-
-    calls = []
-
-    def fake_rho_at(N):
-        calls.append(N)
-        return 0.75
-
-    traj.rho_at = fake_rho_at
-
-    result = traj.rho_before_end(2.0)
-
-    assert calls == [5.0 - 2.0]
-    assert result == 0.75
-
-
-# ---------------------------------------------------------------------------
 # Pack/unpack round trip
 # ---------------------------------------------------------------------------
 
@@ -186,7 +114,7 @@ def test_pack_unpack_round_trip():
     state = rng.uniform(-0.5, 0.5, size=2 * n_max - 1)
 
     phi_full, pi_full = unpack_state(
-        state, _N, _N_INIT, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential
+        state, _N, _N_OFFSET, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential
     )
     recovered = pack_state(phi_full, pi_full)
 
@@ -208,14 +136,53 @@ def test_unpack_state_boundary_handling():
     state = rng.uniform(-0.5, 0.5, size=2 * n_max - 1)
 
     phi_full, pi_full = unpack_state(
-        state, _N, _N_INIT, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential
+        state, _N, _N_OFFSET, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential
     )
 
-    assert phi_full[0] == trajectory.phi_before_end(_N)
-    assert pi_full[0] == trajectory.pi_before_end(_N)
+    assert phi_full[0] == trajectory.phi_at(_N_OFFSET + _N)
+    assert pi_full[0] == trajectory.pi_at(_N_OFFSET + _N)
 
     neumann_residual = grid.D[-1, :] @ phi_full
     assert neumann_residual == pytest.approx(0.0, abs=1e-9)
+
+
+# ---------------------------------------------------------------------------
+# Delta_s(N=0) = ln(1+alpha) for the zeroth Picard iterate
+# ---------------------------------------------------------------------------
+
+
+def test_delta_s_at_N_zero_equals_log1p_alpha_for_zeroth_picard_iterate():
+    """
+    Concrete, checkable consequence of the N-convention fix: forward_rhs's
+    own core-only Delta_s(N) computation (unpack_state then
+    potential.H_sq(phi_core, pi_core) then delta_s(N, 0.0, ...)) must equal
+    exactly ln(1+alpha) at N=0.0 when the full state's core node is set to
+    the trajectory's own initial values -- i.e. the zeroth Picard iterate,
+    where the state is uniform in y and equal to
+    trajectory.phi_at(N_offset)/.pi_at(N_offset), and H_sq_nl_init is
+    computed from those same values, so H_sq_core == H_sq_nl_init exactly.
+    """
+    grid = _make_grid()
+    n_max = grid.n_max
+    n_nodes = n_max + 1
+    trajectory = _StubTrajectory()
+    potential = _StubPotential()
+
+    N_offset = 3.0
+    phi_init = trajectory.phi_at(N_offset)
+    pi_init = trajectory.pi_at(N_offset)
+    H_sq_nl_init = potential.H_sq(phi_init, pi_init)
+
+    state_init = pack_state(np.full(n_nodes, phi_init), np.full(n_nodes, pi_init))
+
+    phi_full, pi_full = unpack_state(
+        state_init, 0.0, N_offset, _ALPHA, H_sq_nl_init, grid, trajectory, potential
+    )
+
+    H_sq_core = potential.H_sq(phi_full[-1], pi_full[-1])
+    delta_s_N = delta_s(0.0, 0.0, H_sq_core, H_sq_nl_init, _ALPHA)
+
+    assert delta_s_N == pytest.approx(np.log(1.0 + _ALPHA), abs=1e-12)
 
 
 # ---------------------------------------------------------------------------
@@ -251,16 +218,16 @@ def test_disable_spatial_coupling_matches_full_instanton_fwd_rhs():
     state = rng.uniform(-0.7, 0.7, size=2 * n_max - 1)
 
     phi_full, pi_full = unpack_state(
-        state, _N, _N_INIT, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential
+        state, _N, _N_OFFSET, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential
     )
 
     P1_target = 0.42
     P2_target = -0.17
 
     H_sq_core = potential.H_sq(phi_full[-1], pi_full[-1])
-    delta_s_N = delta_s(_N, _N_INIT, H_sq_core, _H_SQ_NL_INIT, _ALPHA)
+    delta_s_N = delta_s(_N, 0.0, H_sq_core, _H_SQ_NL_INIT, _ALPHA)
     H_sq_loc_array = potential.H_sq(phi_full, pi_full)
-    delta_s_loc_array = delta_s(_N, _N_INIT, H_sq_loc_array, _H_SQ_NL_INIT, _ALPHA)
+    delta_s_loc_array = delta_s(_N, 0.0, H_sq_loc_array, _H_SQ_NL_INIT, _ALPHA)
     n_count_array = (
         1.5 * delta_s_N
         * np.exp(3.0 * delta_s_loc_array)
@@ -271,7 +238,7 @@ def test_disable_spatial_coupling_matches_full_instanton_fwd_rhs():
     rmom_splines = [_ConstantSpline(P2_target * n_count_array[j]) for j in range(n_nodes)]
 
     result = forward_rhs(
-        _N, state, _N_INIT, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential,
+        _N, state, _N_OFFSET, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential,
         rfield_splines, rmom_splines, diffusion_model,
         disable_spatial_coupling=True,
     )
@@ -316,7 +283,7 @@ def test_disable_spatial_coupling_decouples_interior_nodes():
     rng = np.random.default_rng(555)
     base_state = rng.uniform(-0.5, 0.5, size=2 * n_max - 1)
     base_result = forward_rhs(
-        _N, base_state, _N_INIT, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential,
+        _N, base_state, _N_OFFSET, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential,
         rfield_splines, rmom_splines, diffusion_model,
         disable_spatial_coupling=True,
     )
@@ -331,7 +298,7 @@ def test_disable_spatial_coupling_decouples_interior_nodes():
     perturbed_state = base_state.copy()
     perturbed_state[pi_state_index] += 0.37
     perturbed_result = forward_rhs(
-        _N, perturbed_state, _N_INIT, _ALPHA, _H_SQ_NL_INIT, grid, trajectory,
+        _N, perturbed_state, _N_OFFSET, _ALPHA, _H_SQ_NL_INIT, grid, trajectory,
         potential, rfield_splines, rmom_splines, diffusion_model,
         disable_spatial_coupling=True,
     )
@@ -357,7 +324,7 @@ def test_disable_spatial_coupling_decouples_interior_nodes():
     perturbed_state2 = base_state.copy()
     perturbed_state2[phi_block_index] += 0.11
     perturbed_result2 = forward_rhs(
-        _N, perturbed_state2, _N_INIT, _ALPHA, _H_SQ_NL_INIT, grid, trajectory,
+        _N, perturbed_state2, _N_OFFSET, _ALPHA, _H_SQ_NL_INIT, grid, trajectory,
         potential, rfield_splines, rmom_splines, diffusion_model,
         disable_spatial_coupling=True,
     )
