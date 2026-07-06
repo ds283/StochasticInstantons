@@ -176,6 +176,15 @@ def _compute_instanton_path(
     V_end_downflow = potential.V(phi_end_downflow)
 
     # ── Step B: zeta at each sample point ────────────────────────────────
+    # Note: this matches rho directly at the instanton's own sample point,
+    # with no downflow to epsilon=1 first (contrast Step A above, and
+    # contrast GradientCoupledInstanton/extraction.py's per-shell
+    # extract_zeta_profile, which does downflow before matching). That is a
+    # single-field simplification -- the two constructions agree exactly
+    # when every point lies on one shared trajectory, and the difference is
+    # a negligible, decaying isocurvature-type correction in a single-field
+    # model -- and would need revisiting if this model ever gains genuine
+    # isocurvature degrees of freedom.
     rho_start = 3.0 * Mp**2 * potential.H_sq(traj.phi_at(0.0), traj.pi_at(0.0))
     rho_end = (
         3.0 * Mp**2 * potential.H_sq(traj.phi_at(N_end_traj), traj.pi_at(N_end_traj))
