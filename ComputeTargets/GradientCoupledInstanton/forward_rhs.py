@@ -108,6 +108,68 @@ def unpack_state(
     return phi_full, pi_full
 
 
+def noise_source_terms(
+    phi_full: np.ndarray,
+    pi_full: np.ndarray,
+    rfield_full: np.ndarray,
+    rmom_full: np.ndarray,
+    delta_s_N: float,
+    delta_s_loc_array: np.ndarray,
+    grid,
+    potential,
+    diffusion_model,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Diluted noise-source terms sourcing the forward equations (eq. Dnoise-diag,
+    Dnoise-cross), factored out of forward_rhs's own assembly so the noise
+    summary-statistics columns (noise_field_min/mean/max, noise_mom_min/
+    mean/max) can call it directly at every row of the dense solver grid, not
+    just inside a single RHS evaluation.
+
+    Steps 2-3 of forward_rhs's own assembly: the shell-dilution factor
+    n_count(y_j,N) (eq. ncount), the per-node diffusion matrix D_matrix loop,
+    the diluted noise coefficients, and the two source terms themselves --
+    D_phi*rfield + D_phipi*rmom (sourcing dphi_full) and
+    D_pi*rmom + D_phipi*rfield (sourcing dpi_full).
+
+    delta_s_N is the core-only Delta_s(N) (defines the coordinate map itself);
+    delta_s_loc_array is the per-node Delta_s_loc(y_j,N) -- both already
+    computed by the caller, passed through rather than recomputed here.
+
+    Returns (noise_field_array, noise_mom_array), each shape (n_nodes,).
+    """
+    n_nodes = phi_full.shape[0]
+
+    # Shell-dilution factor n_count(y_j,N) (eq. ncount).
+    n_count_array = (
+        1.5 * delta_s_N
+        * np.exp(3.0 * delta_s_loc_array)
+        * np.exp(-1.5 * (grid.nodes + 1.0) * delta_s_N)
+    )
+
+    # Diffusion matrix, per node -- D_matrix is scalar-only (confirmed via
+    # MasslessDecoupledDiffusion's bare-float off-diagonal zeros, which would
+    # not broadcast correctly over an array phi), so this is a Python-level
+    # loop, not a vectorized call.
+    D11_arr = np.empty(n_nodes)
+    D12_arr = np.empty(n_nodes)
+    D22_arr = np.empty(n_nodes)
+    for j in range(n_nodes):
+        D11_arr[j], D12_arr[j], D22_arr[j] = diffusion_model.D_matrix(
+            phi_full[j], pi_full[j], potential
+        )
+
+    # Sourced (shell-diluted) noise coefficients (eq. Dnoise-diag, Dnoise-cross).
+    D_phi_arr = 2.0 * D11_arr / n_count_array
+    D_pi_arr = 2.0 * D22_arr / n_count_array
+    D_phipi_arr = 2.0 * D12_arr / n_count_array
+
+    noise_field_array = D_phi_arr * rfield_full + D_phipi_arr * rmom_full
+    noise_mom_array = D_pi_arr * rmom_full + D_phipi_arr * rfield_full
+
+    return noise_field_array, noise_mom_array
+
+
 def forward_rhs(
     N: float,
     state: np.ndarray,
@@ -145,7 +207,6 @@ def forward_rhs(
     phi_full, pi_full = unpack_state(
         state, N, N_offset, alpha, H_sq_nl_init, grid, trajectory, potential
     )
-    n_nodes = phi_full.shape[0]
 
     # Core-only Delta_s(N), defining the coordinate map itself. N is the
     # local, zero-based running coordinate, so N_init is always 0.0 here.
@@ -175,50 +236,30 @@ def forward_rhs(
         advection_phi_array = advection_term(phi_full, A_array, grid.D)
         advection_pi_array = advection_term(pi_full, A_array, grid.D)
 
-    # Shell-dilution factor n_count(y_j,N) (eq. ncount), reusing delta_s_N
-    # and delta_s_loc_array already computed above rather than recomputing
-    # delta_s() a third time.
-    n_count_array = (
-        1.5 * delta_s_N
-        * np.exp(3.0 * delta_s_loc_array)
-        * np.exp(-1.5 * (grid.nodes + 1.0) * delta_s_N)
-    )
-
     # Response-field values at the current N, reconstructed node-by-node from
     # the current backward-pass splines.
     rfield_full = np.array([spline(N) for spline in rfield_splines])
     rmom_full = np.array([spline(N) for spline in rmom_splines])
 
-    # Diffusion matrix, per node -- D_matrix is scalar-only (confirmed via
-    # MasslessDecoupledDiffusion's bare-float off-diagonal zeros, which would
-    # not broadcast correctly over an array phi), so this is a Python-level
-    # loop, not a vectorized call.
-    D11_arr = np.empty(n_nodes)
-    D12_arr = np.empty(n_nodes)
-    D22_arr = np.empty(n_nodes)
-    for j in range(n_nodes):
-        D11_arr[j], D12_arr[j], D22_arr[j] = diffusion_model.D_matrix(
-            phi_full[j], pi_full[j], potential
-        )
-
-    # Sourced (shell-diluted) noise coefficients (eq. Dnoise-diag, Dnoise-cross).
-    D_phi_arr = 2.0 * D11_arr / n_count_array
-    D_pi_arr = 2.0 * D22_arr / n_count_array
-    D_phipi_arr = 2.0 * D12_arr / n_count_array
+    # Diluted noise-source terms (eq. ncount, Dnoise-diag, Dnoise-cross),
+    # reusing delta_s_N and delta_s_loc_array already computed above rather
+    # than recomputing delta_s() a third time.
+    noise_field_array, noise_mom_array = noise_source_terms(
+        phi_full, pi_full, rfield_full, rmom_full, delta_s_N, delta_s_loc_array,
+        grid, potential, diffusion_model,
+    )
 
     dphi_full = (
         pi_full
         + advection_phi_array
-        + D_phi_arr * rfield_full
-        + D_phipi_arr * rmom_full
+        + noise_field_array
     )
     dpi_full = (
         -(3.0 - epsilon_loc_array) * pi_full
         - dV_array / H_sq_loc_array
         + gradient_term
         + advection_pi_array
-        + D_pi_arr * rmom_full
-        + D_phipi_arr * rfield_full
+        + noise_mom_array
     )
 
     return pack_state(dphi_full, dpi_full)

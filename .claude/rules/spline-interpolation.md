@@ -69,6 +69,11 @@ root-finder.
 | `ComputeTargets/SlowRollInstanton.py` | `P1_sp` | `linear` | `sinh` | same growing-mode argument as FullInstanton P₁ |
 | `ComputeTargets/CompactionFunction.py` | `zeta_spline` | `log` | `linear` | r = 2π/k spans exp(N_total) ≈ 10²⁶; ζ is O(1) |
 | `ComputeTargets/CompactionFunction.py` | `cumulative_at_r` | `log` | `linear` | same log-r motivation |
+| `ComputeTargets/GradientCoupledInstanton/picard.py` | `phi_splines`, `pi_splines` | `linear` | `linear` | modest range, matches FullInstanton's phi1/phi2 |
+| `ComputeTargets/GradientCoupledInstanton/picard.py` | `rfield_splines`, `rmom_splines` | `linear` | `sinh` | response fields, same growing-mode argument as FullInstanton P₁/P₂ |
+| `ComputeTargets/GradientCoupledInstanton/GradientCoupledInstanton.py` | onto-`N_sample` interpolation of `phi`/`pi` (reuses `picard._build_node_splines`) | `linear` | `linear` | same as picard.py's own phi/pi splines above |
+| `ComputeTargets/GradientCoupledInstanton/GradientCoupledInstanton.py` | onto-`N_sample` interpolation of `rfield`/`rmom` (reuses `picard._build_node_splines`) | `linear` | `sinh` | same as picard.py's own rfield/rmom splines above |
+| `ComputeTargets/GradientCoupledInstanton/GradientCoupledInstanton.py` | `zeta_C_r_at_time`'s per-node phi/pi reconstruction splines | `linear` | `linear` | same rationale as picard.py's own phi/pi splines; built over the (typically short) stored `N_sample` grid rather than the dense solver grid |
 
 ---
 

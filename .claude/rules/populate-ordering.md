@@ -77,6 +77,8 @@ some other ascending order), **STOP and ask the user** before implementing
 | `sqla_FullInstantonFactory` | `FullInstantonValue` (joined to `efold_value`) | `efold_value.N` |
 | `sqla_SlowRollInstantonFactory` | `SlowRollInstantonValue` (joined to `efold_value`) | `efold_value.N` |
 | `sqla_CompactionFunctionFactory` | `CompactionFunctionSamples` | `source`, `r_Mpc` |
+| `sqla_GradientCoupledInstantonFactory` | `GradientCoupledInstantonValue` (joined to `efold_value`) | `efold_value.N` |
+| `sqla_GradientCoupledInstantonFactory` | `GradientCoupledInstantonProfile` | `node_index` |
 
 When adding a new factory with a child value/sample table, add a row to this
 table and implement the `ORDER BY` + monotonicity assertion above.

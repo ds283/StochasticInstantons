@@ -74,6 +74,7 @@ remain in working units, breaking dimensional consistency across the code.
 | `sqla_FullInstantonFactory` | `obj._trajectory.units` (from `InflatonTrajectoryProxy`) |
 | `sqla_SlowRollInstantonFactory` | `obj._trajectory.units` |
 | `sqla_CompactionFunctionFactory` | `obj._trajectory.units` (store/populate); `payload["trajectory"].units` (build) |
+| `sqla_GradientCoupledInstantonFactory` | `obj._trajectory.units` (store); `trajectory.units` where `trajectory = payload["trajectory"]` (build/populate) |
 
 `InflatonTrajectoryProxy` carries `self._units = model._potential._units` set in
 `__init__` and exposed via `@property units`. This is the only unit-carrying scalar

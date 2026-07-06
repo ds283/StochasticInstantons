@@ -69,6 +69,8 @@ the schema hasn't been migrated yet.
 | `sqla_FullInstantonFactory` | `FullInstanton`      | `FullInstantonValue`     | `instanton_serial`       |
 | `sqla_SlowRollInstantonFactory` | `SlowRollInstanton` | `SlowRollInstantonValue` | `instanton_serial`    |
 | `sqla_CompactionFunctionFactory` | `CompactionFunction` | `CompactionFunctionSamples` | `parent_serial`     |
+| `sqla_GradientCoupledInstantonFactory` | `GradientCoupledInstanton` | `GradientCoupledInstantonValue` | `instanton_serial` |
+| `sqla_GradientCoupledInstantonFactory` | `GradientCoupledInstanton` | `GradientCoupledInstantonProfile` | `parent_serial`  |
 
 When adding a new factory that has both a parent table and a child value/sample
 table, add a row to this table and implement the cascade delete pattern above.

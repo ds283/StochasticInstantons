@@ -42,6 +42,11 @@ from Datastore.SQL.ObjectFactories.FullInstanton import (
     sqla_FullInstantonFactory,
     sqla_FullInstantonValue_factory,
 )
+from Datastore.SQL.ObjectFactories.GradientCoupledInstanton import (
+    sqla_GradientCoupledInstantonFactory,
+    sqla_GradientCoupledInstantonValue_factory,
+    sqla_GradientCoupledInstantonProfileFactory,
+)
 from Datastore.SQL.ObjectFactories.InflatonTrajectory import (
     sqla_InflatonTrajectory_factory,
     sqla_InflatonTrajectoryValue_factory,
@@ -112,6 +117,9 @@ _factories = {
     "CosmologicalParams": sqla_cosmological_params_factory(),
     "FullInstanton": sqla_FullInstantonFactory(),
     "FullInstantonValue": sqla_FullInstantonValue_factory(),
+    "GradientCoupledInstanton": sqla_GradientCoupledInstantonFactory(),
+    "GradientCoupledInstantonValue": sqla_GradientCoupledInstantonValue_factory(),
+    "GradientCoupledInstantonProfile": sqla_GradientCoupledInstantonProfileFactory(),
     "SlowRollInstanton": sqla_SlowRollInstantonFactory(),
     "SlowRollInstantonValue": sqla_SlowRollInstantonValue_factory(),
     "CompactionFunction": sqla_CompactionFunctionFactory(),

@@ -280,6 +280,22 @@ def create_argument_parser():
             "sensitivity-analysis runs."
         ),
     )
+    inst.add_argument(
+        "--no-store-gradient-instanton-values",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip writing per-sample GradientCoupledInstantonValue rows (the "
+            "dense (phi, pi, rfield, rmom) grid). Only scalar summary columns "
+            "and the always-persisted GradientCoupledInstantonProfile rows "
+            "(zeta/r_ratio/C/r_phys at the final row) are stored. Also skips "
+            "the (expensive) interpolation of the dense solver grid onto "
+            "N_sample inside the compute worker itself, not just the database "
+            "write. GradientCoupledInstanton.zeta_C_r_at_time() is unavailable "
+            "on instances stored this way. Recommended for sparse-sampling / "
+            "sensitivity-analysis runs."
+        ),
+    )
 
     # Output sampling
     samp = parser.add_argument_group("Output sampling")

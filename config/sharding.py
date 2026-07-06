@@ -47,6 +47,9 @@ sharded_tables = {
     "SlowRollInstantonValue": "delta_Nstar",
     "CompactionFunction": "delta_Nstar",
     "CompactionFunctionSamples": "delta_Nstar",
+    "GradientCoupledInstanton": "delta_Nstar",
+    "GradientCoupledInstantonValue": "delta_Nstar",
+    "GradientCoupledInstantonProfile": "delta_Nstar",
 }
 
 # Configuration for pool.read_table() calls.
