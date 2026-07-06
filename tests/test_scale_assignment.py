@@ -10,11 +10,19 @@ import pytest
 
 from ComputeTargets.CompactionFunction import _classify_radii, ln_k_phys_Mpc
 from ComputeTargets.GradientCoupledInstanton.extraction import extract_zeta_profile
+from ComputeTargets.GradientCoupledInstanton.picard import solve_picard
 from ComputeTargets.GradientCoupledInstanton.scale_assignment import assign_scales
+from InflationConcepts.DiffusionModel import MasslessDecoupledDiffusion
 from InflationConcepts.noiseless_equations import integrate_noiseless_trajectory
 from Numerics.LGLCollocation import LGLCollocationGrid
-from Numerics.OnionCoordinate import comoving_radius_ratio
+from Numerics.OnionCoordinate import comoving_radius_ratio, delta_s
 from Units.Planck_units import Planck_units
+
+# Prompt 06's own reduction-test fixture (potential stub + trajectory stub
+# that tracks the noiseless background exactly), reused directly rather than
+# re-implemented -- see test_r_phys_matches_independent_core_downflow below.
+from test_picard import _StubPotential as _PicardStubPotential
+from test_picard import _BackgroundTrackingTrajectory
 
 
 # ---------------------------------------------------------------------------
@@ -191,29 +199,26 @@ def test_r_max_r_peak_reuse_classify_radii_directly():
 # ---------------------------------------------------------------------------
 
 
-def test_r_phys_core_reduction_matches_compaction_function_step_c():
+def test_r_phys_ln_k_linearity_self_consistency():
     """
-    Reduction-limit check for r_phys, in the same spirit as picard.py's own
-    reduction-limit test (test_solve_picard_reduction_limit_matches_full_
-    instanton): built from a genuine noiseless background trajectory (not
-    arbitrary numbers), using a non-trivial (non-zero) delta_s_N_final --
-    unlike zeta (prompt 08), r_phys involves no downflow-before-matching
-    refinement, so its reduction to CompactionFunction's own Step C formula
-    (ln_k_phys_Mpc, reused directly rather than re-derived) is exact, not
-    approximate.
-
-    eq:rphys-ratio reuses the *same* ("stuff": V, epsilon, V_end_downflow)
-    Leach-Liddle inputs from the single outer-edge anchor for every node --
-    by design, no per-shell re-solve (see eq:rphys-ratio's own "single
-    global ratio" argument in onion_model_planning.md). Expanding
-    r_phys[-1] = exp(-delta_s_N_final) * r_phys_out algebraically through
-    ln_k_phys_Mpc's own formula (lnk = -N_before_end + stuff) shows this is
-    *identically* what ln_k_phys_Mpc would give if called directly with
+    NOT an independent physics/reduction check -- see
+    test_r_phys_matches_independent_core_downflow below for that. This test
+    only confirms that assign_scales' ratio construction applies
+    ln_k_phys_Mpc's own linear-in-N_before_end structure (lnk = -N_before_end
+    + stuff) consistently: since eq:rphys-ratio reuses the *same* ("stuff":
+    V, epsilon, V_end_downflow) Leach-Liddle inputs from the single
+    outer-edge anchor for every node (by design, no per-shell re-solve -- see
+    eq:rphys-ratio's own "single global ratio" argument in
+    onion_model_planning.md), expanding r_phys[-1] = exp(-delta_s_N_final) *
+    r_phys_out algebraically through ln_k_phys_Mpc's own formula shows this
+    is *identically* what ln_k_phys_Mpc would give if called directly with
     N_before_end reduced by exactly delta_s_N_final and the *same* outer-edge
-    "stuff" -- i.e. CompactionFunction's own Step C formula, evaluated at the
-    core's own (geometrically shifted) reference point. This is checked here
-    by direct, independent re-evaluation of ln_k_phys_Mpc with that shifted
-    N_before_end, not by re-deriving assign_scales' own ratio arithmetic.
+    "stuff". This equality holds by construction of ln_k_phys_Mpc's own
+    shape, regardless of whether assign_scales' underlying physics is
+    correct -- it cannot catch a wrong node index, a sign error in
+    comoving_radius_ratio, or r_phys_out being anchored to the wrong state,
+    because the reference value here is algebraically derived from the same
+    computation it's checking, just with re-arranged arguments.
     """
     potential = _StubPotential()
     units = Planck_units()
@@ -287,3 +292,173 @@ def test_r_phys_core_reduction_matches_compaction_function_step_c():
     r_phys_core_ref = 2.0 * np.pi / np.exp(lnk_core_ref)
 
     assert result["r_phys"][-1] == pytest.approx(r_phys_core_ref, rel=1.0e-12)
+
+
+# ---------------------------------------------------------------------------
+# Genuine independent reduction check -- core's own downflow vs the pipeline
+# ---------------------------------------------------------------------------
+
+
+def _r_phys_pipeline_and_independent_core_reference(
+    alpha: float, N_init: float, N_final: float, delta_Nstar: float,
+    phi_init: float, pi_init: float, atol: float, rtol: float,
+):
+    """
+    Shared body for test_r_phys_matches_independent_core_downflow: runs
+    solve_picard (disable_spatial_coupling=True, prompt 06's own mechanism)
+    to convergence, feeds the converged grid through the real
+    extract_zeta_profile + assign_scales pipeline, and separately computes
+    the core node's r_phys by downflowing *its own* converged state directly
+    -- without going through assign_scales' ratio arithmetic at all. Returns
+    (r_phys_pipeline, r_phys_core_independent).
+    """
+    potential = _PicardStubPotential()
+    diffusion_model = MasslessDecoupledDiffusion()
+    units = Planck_units()
+    cosmo = _make_cosmo()
+
+    N_total = (N_init - N_final) + delta_Nstar
+    trajectory = _BackgroundTrackingTrajectory(
+        potential, phi_init, pi_init, N_total, atol, rtol, N_end=N_init,
+    )
+    phi_end = trajectory.phi_at(N_total)
+
+    H_sq_nl_init = potential.H_sq(phi_init, pi_init)
+    grid = LGLCollocationGrid(5)
+
+    result = solve_picard(
+        N_init, N_final, delta_Nstar, alpha, H_sq_nl_init, grid,
+        trajectory, potential, diffusion_model, atol, rtol, phi_end,
+        disable_spatial_coupling=True,
+    )
+    assert result["failure"] is False, result["diagnostics"]
+    assert result["diagnostics"]["converged"] is True
+
+    phi_grid = np.array(result["phi_grid"])
+    pi_grid = np.array(result["pi_grid"])
+    phi_final = phi_grid[-1, :]
+    pi_final = pi_grid[-1, :]
+
+    # ── Run the actual pipeline on the full converged grid ────────────────
+    N_offset = trajectory.N_end - N_init
+    extraction = extract_zeta_profile(
+        phi_final, pi_final, N_offset=N_offset, N_total=N_total,
+        trajectory=trajectory, potential=potential, atol=atol, rtol=rtol,
+        units=units,
+    )
+    H_sq_core_final = potential.H_sq(phi_final[-1], pi_final[-1])
+    delta_s_N_final = delta_s(N_total, 0.0, H_sq_core_final, H_sq_nl_init, alpha)
+
+    # zeta is irrelevant to r_phys (only feeds C/r_max/r_peak); zeroed here
+    # exactly as the self-consistency test above does, so that a density-
+    # match edge case in extract_zeta_profile's own Step 4 (unrelated to
+    # r_phys) can't crash _classify_radii.
+    scale_result = assign_scales(
+        phi_final, pi_final, np.zeros(grid.n_collocation_points),
+        extraction["N_end_downflow"], extraction["phi_end_downflow"],
+        delta_s_N_final, grid, potential, units, cosmo,
+    )
+    r_phys_pipeline = scale_result["r_phys"][-1]
+
+    # ── Independent reference: downflow the core's *own* converged state ──
+    # directly, without touching assign_scales or the outer edge at all.
+    phi_core = float(phi_final[-1])
+    pi_core = float(pi_final[-1])
+    sol_down, _, attempts = integrate_noiseless_trajectory(
+        phi_core, pi_core, potential, atol, rtol,
+    )
+    assert sol_down is not None, f"core downflow failed: {attempts}"
+    N_end_downflow_core = float(sol_down.t_events[0][0])
+    phi_end_downflow_core = float(sol_down.y_events[0][0][0])
+
+    lnk_core = ln_k_phys_Mpc(
+        N_end_downflow_core,
+        potential.V(phi_core),
+        potential.epsilon(phi_core, pi_core),
+        potential.V(phi_end_downflow_core),
+        units, cosmo,
+    )
+    r_phys_core_independent = 2.0 * np.pi / np.exp(lnk_core)
+
+    return r_phys_pipeline, r_phys_core_independent
+
+
+def test_r_phys_matches_independent_core_downflow():
+    """
+    Genuine independent reduction check, unlike
+    test_r_phys_ln_k_linearity_self_consistency above: the reference value
+    here comes from downflowing the *core's own* converged state
+    (integrate_noiseless_trajectory, called directly, the same way
+    extraction.py's own Step 1 does) -- not from re-deriving assign_scales'
+    outer-edge ratio arithmetic with shifted arguments. Reuses prompt 06's
+    own reduction-test fixture classes (_StubPotential,
+    _BackgroundTrackingTrajectory, imported directly from test_picard.py)
+    and its disable_spatial_coupling=True mechanism, run to convergence via
+    the real solve_picard -> extract_zeta_profile -> assign_scales pipeline,
+    exactly as a real solve would.
+
+    Choice of N_total -- an empirical finding, not a free parameter picked
+    for convenience. Numerically probing this (see the prompt-10 session
+    that added this test) shows delta_s_N_final = ln(1+alpha) + N_total +
+    0.5*ln(H^2_ratio): with disable_spatial_coupling=True and phi_end tuned
+    to the trivial background match, every grid node -- including the core
+    -- collapses to the *same* shared trajectory (an exact consequence of
+    ODE uniqueness: uniform initial data + a per-node RHS with no residual
+    y-dependence once gradient/advection are both zeroed). In that
+    degenerate limit the core's own downflow is numerically identical to the
+    outer edge's, so the *only* difference between r_phys_pipeline and
+    r_phys_core_independent is the geometric ratio factor exp(-delta_s_N_final)
+    itself. Using prompt 06's own N_total (~4) makes that factor
+    exp(-4) =~ 0.02 regardless of alpha -- confirmed by direct computation,
+    at alpha spanning 0.05 down to 1e-9 the ratio is pinned at ~0.0197,
+    *not* approaching 1 -- because delta_s_N_final is then dominated by
+    N_total, not by alpha, and the O(alpha) equivalence claimed in
+    onion_model.tex's "Equivalence check" section is therefore not the
+    effect being measured at all. Choosing N_total itself far smaller than
+    the alpha values under test (N_total ~ 1.5e-3, alpha >= 5e-3) makes
+    ln(1+alpha) the dominant term in delta_s_N_final instead, so this
+    *does* isolate and exercise the intended O(alpha) correction. This is a
+    deliberate departure from prompt 06's own N_init/N_final/delta_Nstar
+    values (which are otherwise reused unchanged, along with the potential,
+    trajectory stub, and disable_spatial_coupling mechanism): reusing them
+    verbatim would make this test assert a floor set by N_total instead of
+    the O(alpha) property it is meant to check.
+
+    Tolerance -- not floating-point equality. r_phys_pipeline is expected to
+    agree with r_phys_core_independent only up to O(alpha) corrections (per
+    onion_model.tex's own "Equivalence check against the discrete (peeling)
+    scheme" section: exact as alpha->0, with O(alpha) corrections at finite
+    alpha) -- mirroring how the core zeta check (prompt 08) documented its
+    own approximate tolerance. Direct computation at alpha=0.05 gives a
+    relative discrepancy of ~4.9% and at alpha=0.005 gives ~0.65%, i.e.
+    tracking alpha itself to within a factor of a few (not more, and not
+    less) -- so rel=0.1 and rel=0.02 below are deliberately generous (2x
+    the observed discrepancy) rather than tight enough to make a future
+    editor's re-tightening attempt look reasonable; don't tighten these
+    without re-deriving the expected discrepancy from delta_s_N_final's own
+    formula first.
+    """
+    N_init = 5.0
+    N_final = 4.999
+    delta_Nstar = 0.0005
+    phi_init = 10.0
+    pi_init = -0.01
+    atol = 1.0e-9
+    rtol = 1.0e-9
+
+    r_phys_pipeline_1, r_phys_core_ref_1 = _r_phys_pipeline_and_independent_core_reference(
+        0.05, N_init, N_final, delta_Nstar, phi_init, pi_init, atol, rtol,
+    )
+    assert r_phys_pipeline_1 == pytest.approx(r_phys_core_ref_1, rel=0.1)
+
+    # Bonus: at a smaller alpha, the discrepancy should shrink (not just be
+    # "small enough" once) -- a stronger, more diagnostic check of the actual
+    # O(alpha) claim than a single fixed tolerance.
+    r_phys_pipeline_2, r_phys_core_ref_2 = _r_phys_pipeline_and_independent_core_reference(
+        0.005, N_init, N_final, delta_Nstar, phi_init, pi_init, atol, rtol,
+    )
+    assert r_phys_pipeline_2 == pytest.approx(r_phys_core_ref_2, rel=0.02)
+
+    discrepancy_1 = abs(r_phys_pipeline_1 / r_phys_core_ref_1 - 1.0)
+    discrepancy_2 = abs(r_phys_pipeline_2 / r_phys_core_ref_2 - 1.0)
+    assert discrepancy_2 < discrepancy_1
