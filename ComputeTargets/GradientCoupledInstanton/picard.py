@@ -223,13 +223,24 @@ def solve_picard(
     phi_grid0, pi_grid0 = _unpack_grid(bg_sol.y, N_grid)
 
     def picard_inner(lam: float, phi_grid_in: np.ndarray, pi_grid_in: np.ndarray):
-        """Run Picard iteration for fixed lambda. Returns grids or Nones."""
+        """
+        Run Picard iteration for fixed lambda. Returns grids or Nones, plus
+        the dense-output (`dense_output=True`) solve_ivp solutions of the
+        *last* inner iteration's forward/backward passes -- fp_sol maps
+        N -> packed forward state (unpack via forward_rhs.unpack_state),
+        bp_sol maps N -> packed response state (unpack via
+        response_rhs.unpack_response_state). Exposed so callers (the MSR
+        action convergence diagnostic) can resample at an arbitrary, finer
+        N resolution without re-solving any ODE.
+        """
         nonlocal ode_solve_count
         phi_grid = phi_grid_in.copy()
         pi_grid = pi_grid_in.copy()
         rfield_grid = np.zeros((N_GRID_SIZE, n_nodes))
         rmom_grid = np.zeros((N_GRID_SIZE, n_nodes))
         n_inner_iters = 0
+        fp_sol = None
+        bp_sol = None
 
         for _ in range(MAX_INNER):
             n_inner_iters += 1
@@ -244,11 +255,11 @@ def solve_picard(
             bp = solve_ivp(
                 lambda N, y: _bwd_rhs(N, y, phi_splines, pi_splines),
                 (N_stop, N_start), terminal_state, method="RK45",
-                t_eval=N_grid_rev, atol=atol, rtol=rtol,
+                t_eval=N_grid_rev, dense_output=True, atol=atol, rtol=rtol,
             )
             ode_solve_count += 1
             if not bp.success:
-                return None, None, None, None, n_inner_iters
+                return None, None, None, None, n_inner_iters, None, None
 
             response_y = bp.y[:, ::-1]
             rfield_grid, rmom_grid = _unpack_response_grid(response_y, N_grid)
@@ -260,25 +271,28 @@ def solve_picard(
             fp = solve_ivp(
                 lambda N, y: _fwd_rhs(N, y, rfield_splines, rmom_splines),
                 (N_start, N_stop), state_init, method="RK45",
-                t_eval=N_grid, atol=atol, rtol=rtol,
+                t_eval=N_grid, dense_output=True, atol=atol, rtol=rtol,
             )
             ode_solve_count += 1
             if not fp.success:
-                return None, None, None, None, n_inner_iters
+                return None, None, None, None, n_inner_iters, None, None
 
             phi_grid_new, pi_grid_new = _unpack_grid(fp.y, N_grid)
             inner_res = np.max(np.abs(phi_grid_new - phi_grid))
             phi_grid, pi_grid = phi_grid_new, pi_grid_new
+            fp_sol, bp_sol = fp.sol, bp.sol
             if inner_res < INNER_TOL:
                 break
 
-        return phi_grid, pi_grid, rfield_grid, rmom_grid, n_inner_iters
+        return phi_grid, pi_grid, rfield_grid, rmom_grid, n_inner_iters, fp_sol, bp_sol
 
     # ── Outer Newton loop on lambda ────────────────────────────────────────
     lam = 0.0
     phi_grid_f, pi_grid_f = phi_grid0, pi_grid0
     rfield_grid_f = np.zeros((N_GRID_SIZE, n_nodes))
     rmom_grid_f = np.zeros((N_GRID_SIZE, n_nodes))
+    fp_sol_f = None
+    bp_sol_f = None
     converged = False
     final_residual = None
     outer_iterations = 0
@@ -290,7 +304,7 @@ def solve_picard(
     for outer in range(MAX_OUTER):
         outer_iterations = outer + 1
         picard_start = time.perf_counter()
-        pg, pig, rfg, rmg, n_inner = picard_inner(lam, phi_grid_f, pi_grid_f)
+        pg, pig, rfg, rmg, n_inner, fp_sol, bp_sol = picard_inner(lam, phi_grid_f, pi_grid_f)
         picard_time_total += time.perf_counter() - picard_start
         picard_iters_total += n_inner
         picard_iterations_per_outer.append(n_inner)
@@ -303,6 +317,7 @@ def solve_picard(
         final_residual = abs(residual)
 
         phi_grid_f, pi_grid_f, rfield_grid_f, rmom_grid_f = pg, pig, rfg, rmg
+        fp_sol_f, bp_sol_f = fp_sol, bp_sol
 
         if abs(residual) < OUTER_TOL:
             converged = True
@@ -311,7 +326,7 @@ def solve_picard(
         # Finite-difference Newton step.
         dlam = max(abs(lam) * 1e-4, 1e-6)
         picard_start = time.perf_counter()
-        pg_p, _, _, _, n_inner_p = picard_inner(lam + dlam, phi_grid_f, pi_grid_f)
+        pg_p, _, _, _, n_inner_p, _, _ = picard_inner(lam + dlam, phi_grid_f, pi_grid_f)
         picard_time_total += time.perf_counter() - picard_start
         picard_iters_total += n_inner_p
         picard_iterations_per_outer.append(n_inner_p)
@@ -359,4 +374,15 @@ def solve_picard(
         "rmom_grid": rmom_grid_f.tolist(),
         "final_lambda": lam,
         "diagnostics": diagnostics,
+        # Dense-output (continuous, not just N_grid-sampled) forward/response
+        # solutions of the converged final Picard iteration -- scipy
+        # OdeSolution callables, N -> packed state vector (unpack via
+        # forward_rhs.unpack_state / response_rhs.unpack_response_state).
+        # Exposed so a caller can resample at an arbitrary finer N resolution
+        # (e.g. the MSR action's empirical N-quadrature convergence
+        # diagnostic) without re-solving any ODE. Not JSON-serializable and
+        # not consumed by the Ray remote function's own returned dict -- a
+        # test-only / direct-solve_picard-caller convenience.
+        "phi_pi_dense_solution": fp_sol_f,
+        "response_dense_solution": bp_sol_f,
     }

@@ -34,11 +34,12 @@ same role it plays for ``CompactionFunction``. This mirrors
 ``CompactionFunction``'s own ``cosmo`` constructor parameter and
 ``cosmo_serial`` FK column.
 
-Scope boundary: the numerical MSR action ($S_{\rm MSR}$) is deliberately
-out of scope here -- ``msr_action`` exists as a nullable column (matching
-``FullInstanton``'s own column) but is never populated. Nothing in prompts
-01-13 derived the action-functional evaluation for this model; it is
-deferred to a dedicated follow-up prompt.
+``msr_action`` is populated via
+``ComputeTargets.GradientCoupledInstanton.msr_action.compute_msr_action`` --
+the full three-term on-shell quadratic form (eq. msr-action), not just the
+single ``D_phi`` term ``FullInstanton``'s own code computes; see that
+module's docstring for why the extra terms must not be dropped by analogy
+with ``FullInstanton``.
 """
 
 from datetime import datetime
@@ -116,6 +117,7 @@ def _compute_gradient_coupled_instanton(
 
     from ComputeTargets.GradientCoupledInstanton.extraction import extract_zeta_profile
     from ComputeTargets.GradientCoupledInstanton.forward_rhs import diluted_diffusion_coefficients
+    from ComputeTargets.GradientCoupledInstanton.msr_action import compute_msr_action
     from ComputeTargets.GradientCoupledInstanton.picard import solve_picard
     from ComputeTargets.GradientCoupledInstanton.scale_assignment import assign_scales
 
@@ -159,6 +161,7 @@ def _compute_gradient_coupled_instanton(
             "N_sample": [],
             "phi": [], "pi": [], "rfield": [], "rmom": [],
             "zeta": [], "r_ratio": [], "C": [], "r_phys": [],
+            "msr_action": None,
             "noise_field_min": None, "noise_field_mean": None, "noise_field_max": None,
             "noise_mom_min": None, "noise_mom_mean": None, "noise_mom_max": None,
             "diagnostics": diagnostics,
@@ -252,6 +255,18 @@ def _compute_gradient_coupled_instanton(
         noise_mom_mean = float(sigma_mom.mean())
         noise_mom_max  = float(sigma_mom.max())
 
+    # ── Step 8b: MSR saddle-point action (eq. msr-action) ────────────────────
+    # Full three-term on-shell quadratic form (D_phi/2 rfield^2 + D_phipi
+    # rfield rmom + D_pi/2 rmom^2, y-integrated against grid.weights and the
+    # self-adjoint measure, then N-integrated via trapezoid over the dense
+    # solver grid) -- see ComputeTargets/GradientCoupledInstanton/msr_action.py's
+    # own module docstring for why this must NOT be reduced to a single
+    # D_phi term by analogy with FullInstanton's own msr_action.
+    msr_action_value = compute_msr_action(
+        N_grid, phi_grid, pi_grid, rfield_grid, rmom_grid, grid, potential, dm,
+        H_sq_nl_init, alpha,
+    )
+
     # ── Step 9: interpolate onto N_sample, only if the caller wants full values ──
     # Gated on store_full_values *inside the worker* (unlike FullInstanton,
     # where this interpolation is always cheap) because building
@@ -306,6 +321,7 @@ def _compute_gradient_coupled_instanton(
         "r_ratio": scales["r_ratio"].tolist(),
         "C": scales["C"].tolist(),
         "r_phys": scales["r_phys"].tolist(),
+        "msr_action": msr_action_value,
         "noise_field_min": noise_field_min,
         "noise_field_mean": noise_field_mean,
         "noise_field_max": noise_field_max,
@@ -446,7 +462,7 @@ class GradientCoupledInstanton(DatastoreObject):
         self._diffusion_model: AbstractDiffusionModel = diffusion_model or MasslessDecoupledDiffusion()
         self._label: Optional[str] = label
         self._tags: List[store_tag] = tags or []
-        self._msr_action: Optional[float] = None  # deferred -- see module docstring
+        self._msr_action: Optional[float] = None  # populated by compute()/store()
         self._noise_field_min: Optional[float] = None
         self._noise_field_mean: Optional[float] = None
         self._noise_field_max: Optional[float] = None
@@ -499,7 +515,7 @@ class GradientCoupledInstanton(DatastoreObject):
 
     @property
     def msr_action(self) -> Optional[float]:
-        """MSR saddle-point action; deliberately unpopulated -- see module docstring."""
+        """MSR saddle-point action (eq. msr-action); see module docstring."""
         return self._msr_action
 
     @property
@@ -623,6 +639,7 @@ class GradientCoupledInstanton(DatastoreObject):
             return
         self._failure = False
         self._N_total = data["N_total"]
+        self._msr_action = data.get("msr_action")
         self._noise_field_min = data.get("noise_field_min")
         self._noise_field_mean = data.get("noise_field_mean")
         self._noise_field_max = data.get("noise_field_max")

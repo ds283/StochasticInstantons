@@ -99,8 +99,10 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
                 ),
                 sqla.Column("n_fields", sqla.Integer, nullable=False, default=1),
                 sqla.Column("N_total", sqla.Float(64), nullable=True),
-                # Deliberately unpopulated -- see GradientCoupledInstanton.py's module
-                # docstring for the scope boundary (S_MSR deferred to a follow-up prompt).
+                # Dimensionless (eq. msr-action already has no unit-carrying prefactor
+                # in Mp=1 units) -- no unit conversion needed at store()/_populate().
+                # nullable=True retained for parity with FullInstanton's own column
+                # (a failed compute leaves it unset).
                 sqla.Column("msr_action", sqla.Float(64), nullable=True),
                 # Dimensionless noise amplitude in units of Hawking standard
                 # deviations, evaluated at the core node (y=+1) -- same

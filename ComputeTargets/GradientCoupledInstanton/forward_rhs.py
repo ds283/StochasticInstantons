@@ -108,6 +108,35 @@ def unpack_state(
     return phi_full, pi_full
 
 
+def n_count(
+    delta_s_N: float,
+    delta_s_loc_array: np.ndarray,
+    grid,
+) -> np.ndarray:
+    """
+    Shell-dilution factor n_count(y_j,N) (eq. ncount):
+    (3/2) Delta_s(N) e^{3 Delta_s_loc(y,N)} e^{-3/2 (y+1) Delta_s(N)}.
+
+    Factored out of diluted_diffusion_coefficients's own body (which is its
+    only production caller) so it is independently, directly testable
+    against eq:ncount's closed form -- every existing test touching
+    n_count previously constructed its own reference value from this same
+    formula, so a wrong exponent/prefactor/node-indexing here would have
+    cancelled identically on both sides and never been caught. Purely
+    additive: no behavior change to diluted_diffusion_coefficients.
+
+    delta_s_N is the core-only Delta_s(N) (defines the coordinate map
+    itself); delta_s_loc_array is the per-node Delta_s_loc(y_j,N).
+
+    Returns an array shape (n_nodes,).
+    """
+    return (
+        1.5 * delta_s_N
+        * np.exp(3.0 * delta_s_loc_array)
+        * np.exp(-1.5 * (grid.nodes + 1.0) * delta_s_N)
+    )
+
+
 def diluted_diffusion_coefficients(
     phi_full: np.ndarray,
     pi_full: np.ndarray,
@@ -139,12 +168,7 @@ def diluted_diffusion_coefficients(
     """
     n_nodes = phi_full.shape[0]
 
-    # Shell-dilution factor n_count(y_j,N) (eq. ncount).
-    n_count_array = (
-        1.5 * delta_s_N
-        * np.exp(3.0 * delta_s_loc_array)
-        * np.exp(-1.5 * (grid.nodes + 1.0) * delta_s_N)
-    )
+    n_count_array = n_count(delta_s_N, delta_s_loc_array, grid)
 
     # Diffusion matrix, per node -- D_matrix is scalar-only (confirmed via
     # MasslessDecoupledDiffusion's bare-float off-diagonal zeros, which would
