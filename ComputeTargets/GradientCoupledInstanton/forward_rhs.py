@@ -15,7 +15,11 @@
 
 """
 Forward-sector collocation right-hand side for the gradient-coupled instanton
-model, response fields identically zero (the "zeroth Picard iterate").
+model, with mandatory response-field sourcing (eq. ncount, Dnoise-diag,
+Dnoise-cross): response fields are always sourced into the forward equations,
+never omitted -- the "zeroth Picard iterate" (response fields zero) is now
+just a particular input (all-zero rfield/rmom splines), not a special code
+path.
 
 Unlike Numerics/, which is deliberately physics-free, this is the first module
 in the GradientCoupledInstanton subpackage allowed to depend directly on
@@ -113,20 +117,35 @@ def forward_rhs(
     grid,
     trajectory,
     potential,
+    rfield_splines,
+    rmom_splines,
+    diffusion_model,
     disable_spatial_coupling: bool = False,
 ) -> np.ndarray:
     """
-    Forward-sector RHS (eq. inst-phi/inst-pi), response fields zero.
+    Forward-sector RHS (eq. inst-phi/inst-pi), always sourced by the current
+    response fields.
+
+    rfield_splines/rmom_splines are one SplineWrapper per grid node (length
+    n_max+1 each), reconstructing the current backward-pass response-field
+    solution rfield_full(N)/rmom_full(N) at whatever N the forward integrator
+    is currently at -- built by the caller (the Picard driver) from the most
+    recent response_rhs solve. The all-zero-response "zeroth Picard iterate"
+    is just a particular choice of these splines (constant zero), not a
+    separate code path.
 
     disable_spatial_coupling=True zeroes both the gradient term and both
     advection contributions together -- zeroing only the gradient term would
     leave nodes coupled through advection (which doesn't vanish at the core),
     so the reduction to a decoupled single trajectory needs both zeroed at
-    once.
+    once. It does NOT zero the response-field sourcing terms, which remain
+    active (matching FullInstanton's own fwd_rhs, which always includes its
+    P1/P2 sourcing terms regardless of gradient coupling).
     """
     phi_full, pi_full = unpack_state(
         state, N, N_init, alpha, H_sq_nl_init, grid, trajectory, potential
     )
+    n_nodes = phi_full.shape[0]
 
     # Core-only Delta_s(N), defining the coordinate map itself.
     H_sq_core = potential.H_sq(phi_full[-1], pi_full[-1])
@@ -137,27 +156,68 @@ def forward_rhs(
     epsilon_loc_array = potential.epsilon(phi_full, pi_full)
     dV_array = potential.dV_dphi(phi_full)
 
+    # Per-node Delta_s_loc(y_j,N) -- needed both by the gradient-term
+    # prefactor (when spatial coupling is enabled) and by n_count below
+    # (always, regardless of disable_spatial_coupling), so this is computed
+    # unconditionally rather than only inside the spatial-coupling branch.
+    delta_s_loc_array = delta_s(N, N_init, H_sq_loc_array, H_sq_nl_init, alpha)
+
     if disable_spatial_coupling:
         gradient_term = np.zeros_like(phi_full)
         advection_phi_array = np.zeros_like(phi_full)
         advection_pi_array = np.zeros_like(pi_full)
     else:
         L_phi_array = L_operator(phi_full, delta_s_N, grid.nodes, grid.D, grid.D2)
-
-        # Per-node Delta_s_loc(y_j,N), using the full H^2_loc array.
-        delta_s_loc_array = delta_s(N, N_init, H_sq_loc_array, H_sq_nl_init, alpha)
         gradient_term = np.exp(-2.0 * delta_s_loc_array) * L_phi_array
 
         A_array = advection_coefficient(grid.nodes, delta_s_N, epsilon_loc_array[-1])
         advection_phi_array = advection_term(phi_full, A_array, grid.D)
         advection_pi_array = advection_term(pi_full, A_array, grid.D)
 
-    dphi_full = pi_full + advection_phi_array
+    # Shell-dilution factor n_count(y_j,N) (eq. ncount), reusing delta_s_N
+    # and delta_s_loc_array already computed above rather than recomputing
+    # delta_s() a third time.
+    n_count_array = (
+        1.5 * delta_s_N
+        * np.exp(3.0 * delta_s_loc_array)
+        * np.exp(-1.5 * (grid.nodes + 1.0) * delta_s_N)
+    )
+
+    # Response-field values at the current N, reconstructed node-by-node from
+    # the current backward-pass splines.
+    rfield_full = np.array([spline(N) for spline in rfield_splines])
+    rmom_full = np.array([spline(N) for spline in rmom_splines])
+
+    # Diffusion matrix, per node -- D_matrix is scalar-only (confirmed via
+    # MasslessDecoupledDiffusion's bare-float off-diagonal zeros, which would
+    # not broadcast correctly over an array phi), so this is a Python-level
+    # loop, not a vectorized call.
+    D11_arr = np.empty(n_nodes)
+    D12_arr = np.empty(n_nodes)
+    D22_arr = np.empty(n_nodes)
+    for j in range(n_nodes):
+        D11_arr[j], D12_arr[j], D22_arr[j] = diffusion_model.D_matrix(
+            phi_full[j], pi_full[j], potential
+        )
+
+    # Sourced (shell-diluted) noise coefficients (eq. Dnoise-diag, Dnoise-cross).
+    D_phi_arr = 2.0 * D11_arr / n_count_array
+    D_pi_arr = 2.0 * D22_arr / n_count_array
+    D_phipi_arr = 2.0 * D12_arr / n_count_array
+
+    dphi_full = (
+        pi_full
+        + advection_phi_array
+        + D_phi_arr * rfield_full
+        + D_phipi_arr * rmom_full
+    )
     dpi_full = (
         -(3.0 - epsilon_loc_array) * pi_full
         - dV_array / H_sq_loc_array
         + gradient_term
         + advection_pi_array
+        + D_pi_arr * rmom_full
+        + D_phipi_arr * rfield_full
     )
 
     return pack_state(dphi_full, dpi_full)

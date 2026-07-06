@@ -1,6 +1,6 @@
 """
-Unit tests for the forward-sector collocation RHS (response fields zero),
-ComputeTargets/GradientCoupledInstanton/forward_rhs.py.
+Unit tests for the forward-sector collocation RHS, with mandatory
+response-field sourcing, ComputeTargets/GradientCoupledInstanton/forward_rhs.py.
 """
 
 import inspect
@@ -15,7 +15,9 @@ from ComputeTargets.GradientCoupledInstanton.forward_rhs import (
     unpack_state,
     forward_rhs,
 )
+from InflationConcepts.DiffusionModel import MasslessDecoupledDiffusion
 from Numerics.LGLCollocation import LGLCollocationGrid
+from Numerics.OnionCoordinate import delta_s
 
 
 # ---------------------------------------------------------------------------
@@ -60,6 +62,17 @@ class _StubPotential:
         return 0.5 * pi ** 2
 
 
+class _ConstantSpline:
+    """Trivial N-independent stand-in for SplineWrapper: returns the same
+    value at any N. Matches the stub used in tests/test_response_rhs.py."""
+
+    def __init__(self, value: float):
+        self._value = value
+
+    def __call__(self, N):
+        return self._value
+
+
 _N = 2.0
 _N_INIT = 0.0
 _ALPHA = 0.05
@@ -68,6 +81,10 @@ _H_SQ_NL_INIT = 1.0
 
 def _make_grid(n_collocation_points=9):
     return LGLCollocationGrid(n_collocation_points)
+
+
+def _zero_splines(n_nodes):
+    return [_ConstantSpline(0.0) for _ in range(n_nodes)]
 
 
 # ---------------------------------------------------------------------------
@@ -207,10 +224,28 @@ def test_unpack_state_boundary_handling():
 
 
 def test_disable_spatial_coupling_matches_full_instanton_fwd_rhs():
+    """
+    Strengthened reduction-limit test: constant (in N), nonzero,
+    per-node response-field values and a real diffusion model, compared
+    against FullInstanton's actual fwd_rhs formula
+    (dphi1 = phi2 + 2*D11*P1 + 2*D12*P2,
+     dphi2 = -(3-eps)*phi2 - dV/Hsq + 2*D12*P1 + 2*D22*P2)
+    with matching nonzero P1, P2 values, to floating-point precision.
+
+    forward_rhs's own sourcing is diluted by n_count(y_j,N) -- a genuinely
+    y-dependent geometric factor that is never 1 identically, even for
+    uniform phi/pi -- so the response-field splines are constructed as
+    P1_target * n_count(y_j,N) (per node j) rather than a single scalar
+    P1_target broadcast to every node; this exactly cancels the dilution
+    and reduces forward_rhs's sourcing term to FullInstanton's undiluted
+    2*D11*P1 + 2*D12*P2 term at every node.
+    """
     grid = _make_grid()
     n_max = grid.n_max
+    n_nodes = n_max + 1
     trajectory = _StubTrajectory()
     potential = _StubPotential()
+    diffusion_model = MasslessDecoupledDiffusion()
 
     rng = np.random.default_rng(2024)
     state = rng.uniform(-0.7, 0.7, size=2 * n_max - 1)
@@ -219,19 +254,47 @@ def test_disable_spatial_coupling_matches_full_instanton_fwd_rhs():
         state, _N, _N_INIT, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential
     )
 
+    P1_target = 0.42
+    P2_target = -0.17
+
+    H_sq_core = potential.H_sq(phi_full[-1], pi_full[-1])
+    delta_s_N = delta_s(_N, _N_INIT, H_sq_core, _H_SQ_NL_INIT, _ALPHA)
+    H_sq_loc_array = potential.H_sq(phi_full, pi_full)
+    delta_s_loc_array = delta_s(_N, _N_INIT, H_sq_loc_array, _H_SQ_NL_INIT, _ALPHA)
+    n_count_array = (
+        1.5 * delta_s_N
+        * np.exp(3.0 * delta_s_loc_array)
+        * np.exp(-1.5 * (grid.nodes + 1.0) * delta_s_N)
+    )
+
+    rfield_splines = [_ConstantSpline(P1_target * n_count_array[j]) for j in range(n_nodes)]
+    rmom_splines = [_ConstantSpline(P2_target * n_count_array[j]) for j in range(n_nodes)]
+
     result = forward_rhs(
         _N, state, _N_INIT, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential,
+        rfield_splines, rmom_splines, diffusion_model,
         disable_spatial_coupling=True,
     )
 
-    expected_dphi_full = pi_full
+    D_matrix_vals = [
+        diffusion_model.D_matrix(phi_full[j], pi_full[j], potential) for j in range(n_nodes)
+    ]
+    D11_arr = np.array([v[0] for v in D_matrix_vals])
+    D12_arr = np.array([v[1] for v in D_matrix_vals])
+    D22_arr = np.array([v[2] for v in D_matrix_vals])
+
+    expected_dphi_full = (
+        pi_full + 2.0 * D11_arr * P1_target + 2.0 * D12_arr * P2_target
+    )
     expected_dpi_full = (
         -(3.0 - potential.epsilon(phi_full, pi_full)) * pi_full
         - potential.dV_dphi(phi_full) / potential.H_sq(phi_full, pi_full)
+        + 2.0 * D12_arr * P1_target
+        + 2.0 * D22_arr * P2_target
     )
     expected = pack_state(expected_dphi_full, expected_dpi_full)
 
-    np.testing.assert_allclose(result, expected, rtol=1e-13, atol=1e-13)
+    np.testing.assert_allclose(result, expected, rtol=1e-12, atol=1e-12)
 
 
 # ---------------------------------------------------------------------------
@@ -242,14 +305,19 @@ def test_disable_spatial_coupling_matches_full_instanton_fwd_rhs():
 def test_disable_spatial_coupling_decouples_interior_nodes():
     grid = _make_grid()
     n_max = grid.n_max
+    n_nodes = n_max + 1
     n_phi_interior = n_max - 1
     trajectory = _StubTrajectory()
     potential = _StubPotential()
+    diffusion_model = MasslessDecoupledDiffusion()
+    rfield_splines = _zero_splines(n_nodes)
+    rmom_splines = _zero_splines(n_nodes)
 
     rng = np.random.default_rng(555)
     base_state = rng.uniform(-0.5, 0.5, size=2 * n_max - 1)
     base_result = forward_rhs(
         _N, base_state, _N_INIT, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential,
+        rfield_splines, rmom_splines, diffusion_model,
         disable_spatial_coupling=True,
     )
 
@@ -264,7 +332,8 @@ def test_disable_spatial_coupling_decouples_interior_nodes():
     perturbed_state[pi_state_index] += 0.37
     perturbed_result = forward_rhs(
         _N, perturbed_state, _N_INIT, _ALPHA, _H_SQ_NL_INIT, grid, trajectory,
-        potential, disable_spatial_coupling=True,
+        potential, rfield_splines, rmom_splines, diffusion_model,
+        disable_spatial_coupling=True,
     )
 
     expected_changed = {pi_state_index}
@@ -289,7 +358,8 @@ def test_disable_spatial_coupling_decouples_interior_nodes():
     perturbed_state2[phi_block_index] += 0.11
     perturbed_result2 = forward_rhs(
         _N, perturbed_state2, _N_INIT, _ALPHA, _H_SQ_NL_INIT, grid, trajectory,
-        potential, disable_spatial_coupling=True,
+        potential, rfield_splines, rmom_splines, diffusion_model,
+        disable_spatial_coupling=True,
     )
 
     dpi_own_index = n_phi_interior + (node_j2 - 1)
