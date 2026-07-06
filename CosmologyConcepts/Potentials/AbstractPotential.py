@@ -54,7 +54,12 @@ class AbstractPotential(DatastoreObject, ABC):
 
     @abstractmethod
     def d2V_dphi2(self, phi: float) -> float:
-        """Second derivative V′′(φ)."""
+        """
+        Second derivative V′′(φ).
+
+        Must accept and correctly broadcast over numpy.ndarray input for phi,
+        not just a Python scalar -- relied on by vectorized callers.
+        """
         raise NotImplementedError
 
     def log_V(self, phi: float) -> float:
