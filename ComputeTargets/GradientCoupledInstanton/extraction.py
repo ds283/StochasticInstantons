@@ -96,12 +96,16 @@ def extract_zeta_profile(
     raising and without affecting any other node.
 
     Returns a dict with keys:
-        "zeta"            -- array, nan where extraction failed for a node
-        "rho_end"         -- array, nan where the downflow itself failed
-        "N_end_downflow"  -- array, raw relative downflow durations (nan
-                              where the downflow itself failed); kept for
-                              diagnostics
-        "failure_mask"    -- bool array, True where extraction failed
+        "zeta"              -- array, nan where extraction failed for a node
+        "rho_end"           -- array, nan where the downflow itself failed
+        "N_end_downflow"    -- array, raw relative downflow durations (nan
+                                where the downflow itself failed); kept for
+                                diagnostics
+        "phi_end_downflow"  -- array, the downflow's terminal phi value per
+                                node (nan where the downflow itself failed);
+                                needed downstream for V_end,downflow in scale
+                                assignment (scale_assignment.py)
+        "failure_mask"      -- bool array, True where extraction failed
     """
     phi_final = np.asarray(phi_final, dtype=float)
     pi_final = np.asarray(pi_final, dtype=float)
@@ -112,6 +116,7 @@ def extract_zeta_profile(
     zeta = np.full(n_nodes, np.nan)
     rho_end = np.full(n_nodes, np.nan)
     N_end_downflow = np.full(n_nodes, np.nan)
+    phi_end_downflow = np.full(n_nodes, np.nan)
     failure_mask = np.zeros(n_nodes, dtype=bool)
 
     # Background density range, used for the Step-4 sanity check below --
@@ -135,6 +140,7 @@ def extract_zeta_profile(
         N_end_downflow_j = float(sol_down.t_events[0][0])
         phi_down, pi_down = sol_down.y_events[0][0]
         N_end_downflow[j] = N_end_downflow_j
+        phi_end_downflow[j] = float(phi_down)
 
         # ── Step 2: rho at the downflow's terminal state ─────────────────
         rho_end_j = 3.0 * Mp**2 * potential.H_sq(float(phi_down), float(pi_down))
@@ -169,5 +175,6 @@ def extract_zeta_profile(
         "zeta": zeta,
         "rho_end": rho_end,
         "N_end_downflow": N_end_downflow,
+        "phi_end_downflow": phi_end_downflow,
         "failure_mask": failure_mask,
     }

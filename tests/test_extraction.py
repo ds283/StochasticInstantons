@@ -163,6 +163,14 @@ def test_extract_zeta_profile_outer_edge_is_zero():
     assert not result["failure_mask"][0]
     assert result["zeta"][0] == pytest.approx(0.0, abs=1.0e-6)
 
+    # phi_end_downflow: continuing the outer edge's (already-background)
+    # state noiselessly to epsilon=1 just continues the *same* background
+    # curve to its own end -- so the terminal phi should match the
+    # background trajectory's own value at its own N_end.
+    assert result["phi_end_downflow"][0] == pytest.approx(
+        trajectory.phi_at(trajectory.N_end), abs=1.0e-6
+    )
+
 
 # ---------------------------------------------------------------------------
 # Core reduction check -- approximate, not exact (see docstring below)
@@ -304,6 +312,8 @@ def test_extract_zeta_profile_failure_handling_does_not_corrupt_other_nodes(monk
 
     assert not result["failure_mask"][0]
     assert not np.isnan(result["zeta"][0])
+    assert not np.isnan(result["phi_end_downflow"][0])
 
     assert result["failure_mask"][1]
     assert np.isnan(result["zeta"][1])
+    assert np.isnan(result["phi_end_downflow"][1])
