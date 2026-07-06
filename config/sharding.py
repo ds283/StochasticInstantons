@@ -20,6 +20,8 @@ replicated_tables = [
     "delta_Nstar",
     "N_init",
     "N_final",
+    "n_collocation_points",
+    "alpha_regularization",
     "inflaton_mass",
     "quartic_coupling",
     "phi_value",
@@ -53,6 +55,8 @@ sharded_tables = {
 read_table_config = {
     "InflatonTrajectory": {"tables_arg": True},
     "delta_Nstar": {"tables_arg": False},
+    "n_collocation_points": {"tables_arg": False},
+    "alpha_regularization": {"tables_arg": False},
     "efold_value": {"tables_arg": False},
     "inflaton_mass": {"tables_arg": False},
     "quartic_coupling": {"tables_arg": False},

@@ -32,6 +32,8 @@ _default_serial_batch_size = {
     "delta_Nstar": 10,
     "N_init": 10,
     "N_final": 10,
+    "n_collocation_points": 5,
+    "alpha_regularization": 5,
     "inflaton_mass": 10,
     "quartic_coupling": 10,
     "QuadraticPotential": 10,

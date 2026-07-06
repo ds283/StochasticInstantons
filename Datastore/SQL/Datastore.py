@@ -63,6 +63,12 @@ from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
 from Datastore.SQL.ObjectFactories.delta_Nstar import sqla_delta_Nstar_factory
 from Datastore.SQL.ObjectFactories.N_init import sqla_N_init_factory
 from Datastore.SQL.ObjectFactories.N_final import sqla_N_final_factory
+from Datastore.SQL.ObjectFactories.n_collocation_points import (
+    sqla_n_collocation_points_factory,
+)
+from Datastore.SQL.ObjectFactories.alpha_regularization import (
+    sqla_alpha_regularization_factory,
+)
 from Datastore.SQL.ObjectFactories.efold import sqla_efold_factory
 from Datastore.SQL.ObjectFactories.integration_metadata import (
     sqla_IntegrationSolver_factory,
@@ -91,6 +97,8 @@ _factories = {
     "delta_Nstar": sqla_delta_Nstar_factory(),
     "N_init": sqla_N_init_factory(),
     "N_final": sqla_N_final_factory(),
+    "n_collocation_points": sqla_n_collocation_points_factory(),
+    "alpha_regularization": sqla_alpha_regularization_factory(),
     "inflaton_mass": sqla_dimensionful_quantity_factory(inflaton_mass),
     "quartic_coupling": sqla_dimensionless_quantity_factory(quartic_coupling),
     "phi_value": sqla_dimensionful_quantity_factory(phi_value),
