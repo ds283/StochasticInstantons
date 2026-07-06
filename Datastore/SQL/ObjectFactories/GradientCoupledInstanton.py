@@ -102,18 +102,18 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
                 # Deliberately unpopulated -- see GradientCoupledInstanton.py's module
                 # docstring for the scope boundary (S_MSR deferred to a follow-up prompt).
                 sqla.Column("msr_action", sqla.Float(64), nullable=True),
-                # noise_field/noise_mom source dphi/dN, dpi/dN respectively (mass
-                # dimension +1, same as phi/pi themselves -- see
-                # .claude/rules/datastore-units.md) -- NOT the dimensionless
-                # "Hawking standard deviation" ratio FullInstanton's own
-                # noise_phi1/phi2 columns store; that's a different, normalized
-                # construction, not what Part C step 8 asks for here.
-                sqla.Column("noise_field_min_PlanckMass",  sqla.Float(64), nullable=True),
-                sqla.Column("noise_field_mean_PlanckMass", sqla.Float(64), nullable=True),
-                sqla.Column("noise_field_max_PlanckMass",  sqla.Float(64), nullable=True),
-                sqla.Column("noise_mom_min_PlanckMass",  sqla.Float(64), nullable=True),
-                sqla.Column("noise_mom_mean_PlanckMass", sqla.Float(64), nullable=True),
-                sqla.Column("noise_mom_max_PlanckMass",  sqla.Float(64), nullable=True),
+                # Dimensionless noise amplitude in units of Hawking standard
+                # deviations, evaluated at the core node (y=+1) -- same
+                # construction and no-suffix convention as FullInstanton's own
+                # noise_phi1_*/noise_phi2_* columns (ComputeTargets/FullInstanton.py
+                # lines ~303-326); no unit conversion needed at this factory
+                # boundary since the quantity is dimensionless by construction.
+                sqla.Column("noise_field_min",  sqla.Float(64), nullable=True),
+                sqla.Column("noise_field_mean", sqla.Float(64), nullable=True),
+                sqla.Column("noise_field_max",  sqla.Float(64), nullable=True),
+                sqla.Column("noise_mom_min",  sqla.Float(64), nullable=True),
+                sqla.Column("noise_mom_mean", sqla.Float(64), nullable=True),
+                sqla.Column("noise_mom_max",  sqla.Float(64), nullable=True),
                 sqla.Column("label", sqla.Text, nullable=True),
                 sqla.Column("diagnostics_json", sqla.Text, nullable=True),
                 sqla.Column(
@@ -157,12 +157,12 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
             table.c.timestamp,
             table.c.N_total,
             table.c.msr_action,
-            table.c.noise_field_min_PlanckMass,
-            table.c.noise_field_mean_PlanckMass,
-            table.c.noise_field_max_PlanckMass,
-            table.c.noise_mom_min_PlanckMass,
-            table.c.noise_mom_mean_PlanckMass,
-            table.c.noise_mom_max_PlanckMass,
+            table.c.noise_field_min,
+            table.c.noise_field_mean,
+            table.c.noise_field_max,
+            table.c.noise_mom_min,
+            table.c.noise_mom_mean,
+            table.c.noise_mom_max,
             table.c.label,
             table.c.diagnostics_json,
         ).filter(
@@ -228,35 +228,16 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
         obj._trajectory_serial = trajectory.store_id
         obj._delta_Nstar_serial = delta_Nstar_obj.store_id
         units = trajectory.units
-        PlanckMass = units.PlanckMass
         if row_data.N_total is not None:
             obj._N_total = row_data.N_total
         if row_data.msr_action is not None:
             obj._msr_action = row_data.msr_action
-        obj._noise_field_min  = (
-            row_data.noise_field_min_PlanckMass * PlanckMass
-            if row_data.noise_field_min_PlanckMass is not None else None
-        )
-        obj._noise_field_mean = (
-            row_data.noise_field_mean_PlanckMass * PlanckMass
-            if row_data.noise_field_mean_PlanckMass is not None else None
-        )
-        obj._noise_field_max  = (
-            row_data.noise_field_max_PlanckMass * PlanckMass
-            if row_data.noise_field_max_PlanckMass is not None else None
-        )
-        obj._noise_mom_min  = (
-            row_data.noise_mom_min_PlanckMass * PlanckMass
-            if row_data.noise_mom_min_PlanckMass is not None else None
-        )
-        obj._noise_mom_mean = (
-            row_data.noise_mom_mean_PlanckMass * PlanckMass
-            if row_data.noise_mom_mean_PlanckMass is not None else None
-        )
-        obj._noise_mom_max  = (
-            row_data.noise_mom_max_PlanckMass * PlanckMass
-            if row_data.noise_mom_max_PlanckMass is not None else None
-        )
+        obj._noise_field_min  = row_data.noise_field_min
+        obj._noise_field_mean = row_data.noise_field_mean
+        obj._noise_field_max  = row_data.noise_field_max
+        obj._noise_mom_min  = row_data.noise_mom_min
+        obj._noise_mom_mean = row_data.noise_mom_mean
+        obj._noise_mom_max  = row_data.noise_mom_max
         obj._diagnostics = (
             json.loads(row_data.diagnostics_json) if row_data.diagnostics_json else None
         )
@@ -392,12 +373,12 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
                 "n_fields": obj.n_fields,
                 "N_total": None,
                 "msr_action": None,
-                "noise_field_min_PlanckMass": None,
-                "noise_field_mean_PlanckMass": None,
-                "noise_field_max_PlanckMass": None,
-                "noise_mom_min_PlanckMass": None,
-                "noise_mom_mean_PlanckMass": None,
-                "noise_mom_max_PlanckMass": None,
+                "noise_field_min": None,
+                "noise_field_mean": None,
+                "noise_field_max": None,
+                "noise_mom_min": None,
+                "noise_mom_mean": None,
+                "noise_mom_max": None,
                 "label": obj._label,
                 "diagnostics_json": diagnostics_json,
                 "validated": False,
@@ -408,9 +389,6 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
         units = obj._trajectory.units
         PlanckMass = units.PlanckMass
         Mpc = units.Mpc
-
-        def _inv_pm(val):
-            return val / PlanckMass if val is not None else None
 
         store_id = inserter(conn, {
             "trajectory_serial": obj._trajectory.store_id,
@@ -427,12 +405,12 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
             "n_fields": obj.n_fields,
             "N_total": getattr(obj, "_N_total", None),
             "msr_action": obj.msr_action,
-            "noise_field_min_PlanckMass":  _inv_pm(obj.noise_field_min),
-            "noise_field_mean_PlanckMass": _inv_pm(obj.noise_field_mean),
-            "noise_field_max_PlanckMass":  _inv_pm(obj.noise_field_max),
-            "noise_mom_min_PlanckMass":  _inv_pm(obj.noise_mom_min),
-            "noise_mom_mean_PlanckMass": _inv_pm(obj.noise_mom_mean),
-            "noise_mom_max_PlanckMass":  _inv_pm(obj.noise_mom_max),
+            "noise_field_min":  obj.noise_field_min,
+            "noise_field_mean": obj.noise_field_mean,
+            "noise_field_max":  obj.noise_field_max,
+            "noise_mom_min":  obj.noise_mom_min,
+            "noise_mom_mean": obj.noise_mom_mean,
+            "noise_mom_max":  obj.noise_mom_max,
             "label": obj._label,
             "diagnostics_json": diagnostics_json,
             "validated": False,

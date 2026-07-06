@@ -99,13 +99,23 @@ def _compute_gradient_coupled_instanton(
         "failure", "N_total", "N_sample",
         "phi", "pi", "rfield", "rmom"                  (per (N_sample, node), empty if not store_full_values)
         "zeta", "r_ratio", "C", "r_phys"                (per node, at the final row)
-        "noise_field_min/mean/max", "noise_mom_min/mean/max",
+        "noise_field_min/mean/max", "noise_mom_min/mean/max"
+            -- dimensionless noise amplitude in units of Hawking standard
+            deviations per e-fold, evaluated at the core node (y=+1) across
+            every row of the dense solver grid, mirroring FullInstanton's own
+            noise_phi1_*/noise_phi2_* construction exactly (see
+            ComputeTargets/FullInstanton.py's own comment near its analogous
+            computation) but generalized to this model's field/mom
+            vocabulary and its shell-diluted diffusion coefficients. None if
+            the corresponding diagonal diffusion coefficient is zero
+            everywhere (e.g. noise_mom_* for MasslessDecoupledDiffusion,
+            whose D22 is identically zero).
         "diagnostics"
     """
     import time
 
     from ComputeTargets.GradientCoupledInstanton.extraction import extract_zeta_profile
-    from ComputeTargets.GradientCoupledInstanton.forward_rhs import noise_source_terms
+    from ComputeTargets.GradientCoupledInstanton.forward_rhs import diluted_diffusion_coefficients
     from ComputeTargets.GradientCoupledInstanton.picard import solve_picard
     from ComputeTargets.GradientCoupledInstanton.scale_assignment import assign_scales
 
@@ -188,10 +198,25 @@ def _compute_gradient_coupled_instanton(
         potential, units, cosmo, C_threshold=_C_THRESHOLD,
     )
 
-    # ── Step 8: noise summary stats over the whole dense (N, node) grid ──────
-    noise_field_all = np.empty_like(phi_grid)
-    noise_mom_all = np.empty_like(phi_grid)
-    for i in range(phi_grid.shape[0]):
+    # ── Step 8: noise summary stats at the core node (y=+1), across every
+    # row of the dense solver grid -- physically analogous to FullInstanton's
+    # own single reported trajectory (the reconstructed core/horizon
+    # trajectory), not an aggregate over every shell. Dimensionless, in units
+    # of Hawking standard deviations, mirroring FullInstanton's own
+    # noise_phi1_*/noise_phi2_* construction (ComputeTargets/FullInstanton.py
+    # lines ~303-326) exactly -- same sqrt/cross-term formula and the same
+    # "None if the diagonal coefficient is zero everywhere" guard -- but
+    # using the shell-diluted D_phi/D_pi/D_phipi (the coefficients that
+    # actually dress rfield/rmom in forward_rhs's own sourcing term) rather
+    # than the raw, undiluted D_matrix output FullInstanton uses (that
+    # simpler model has no shell dilution to begin with).
+    rfield_core = rfield_grid[:, -1]
+    rmom_core = rmom_grid[:, -1]
+
+    D_phi_core = np.empty(len(N_grid))
+    D_pi_core = np.empty(len(N_grid))
+    D_phipi_core = np.empty(len(N_grid))
+    for i in range(len(N_grid)):
         N_i = float(N_grid[i])
         phi_i = phi_grid[i]
         pi_i = pi_grid[i]
@@ -199,19 +224,33 @@ def _compute_gradient_coupled_instanton(
         delta_s_N_i = delta_s(N_i, 0.0, H_sq_core_i, H_sq_nl_init, alpha)
         H_sq_loc_i = potential.H_sq(phi_i, pi_i)
         delta_s_loc_i = delta_s(N_i, 0.0, H_sq_loc_i, H_sq_nl_init, alpha)
-        noise_field_i, noise_mom_i = noise_source_terms(
-            phi_i, pi_i, rfield_grid[i], rmom_grid[i], delta_s_N_i, delta_s_loc_i,
-            grid, potential, dm,
+        D_phi_i, D_pi_i, D_phipi_i = diluted_diffusion_coefficients(
+            phi_i, pi_i, delta_s_N_i, delta_s_loc_i, grid, potential, dm,
         )
-        noise_field_all[i] = noise_field_i
-        noise_mom_all[i] = noise_mom_i
+        D_phi_core[i] = D_phi_i[-1]
+        D_pi_core[i] = D_pi_i[-1]
+        D_phipi_core[i] = D_phipi_i[-1]
 
-    noise_field_min = float(np.min(noise_field_all))
-    noise_field_mean = float(np.mean(noise_field_all))
-    noise_field_max = float(np.max(noise_field_all))
-    noise_mom_min = float(np.min(noise_mom_all))
-    noise_mom_mean = float(np.mean(noise_mom_all))
-    noise_mom_max = float(np.max(noise_mom_all))
+    abs_rfield_core = np.abs(rfield_core)
+    abs_rmom_core = np.abs(rmom_core)
+
+    if np.any(D_phi_core == 0.0):
+        noise_field_min = noise_field_mean = noise_field_max = None
+    else:
+        sqrt_2Dphi = np.sqrt(2.0 * D_phi_core)
+        sigma_field = sqrt_2Dphi * abs_rfield_core + (2.0 * D_phipi_core / sqrt_2Dphi) * abs_rmom_core
+        noise_field_min  = float(sigma_field.min())
+        noise_field_mean = float(sigma_field.mean())
+        noise_field_max  = float(sigma_field.max())
+
+    if np.any(D_pi_core == 0.0):
+        noise_mom_min = noise_mom_mean = noise_mom_max = None
+    else:
+        sqrt_2Dpi = np.sqrt(2.0 * D_pi_core)
+        sigma_mom = (2.0 * D_phipi_core / sqrt_2Dpi) * abs_rfield_core + sqrt_2Dpi * abs_rmom_core
+        noise_mom_min  = float(sigma_mom.min())
+        noise_mom_mean = float(sigma_mom.mean())
+        noise_mom_max  = float(sigma_mom.max())
 
     # ── Step 9: interpolate onto N_sample, only if the caller wants full values ──
     # Gated on store_full_values *inside the worker* (unlike FullInstanton,

@@ -14,6 +14,7 @@ from ComputeTargets.GradientCoupledInstanton.forward_rhs import (
     unpack_state,
     forward_rhs,
     noise_source_terms,
+    diluted_diffusion_coefficients,
 )
 from InflationConcepts.DiffusionModel import MasslessDecoupledDiffusion
 from Numerics.LGLCollocation import LGLCollocationGrid
@@ -240,6 +241,68 @@ def test_noise_source_terms_matches_forward_rhs_assembly():
     D_pi_arr = 2.0 * D22_arr / n_count_array
     D_phipi_arr = 2.0 * D12_arr / n_count_array
 
+    expected_noise_field = D_phi_arr * rfield_full + D_phipi_arr * rmom_full
+    expected_noise_mom = D_pi_arr * rmom_full + D_phipi_arr * rfield_full
+
+    np.testing.assert_allclose(noise_field_array, expected_noise_field, rtol=1e-14)
+    np.testing.assert_allclose(noise_mom_array, expected_noise_mom, rtol=1e-14)
+
+
+def test_diluted_diffusion_coefficients_decomposes_noise_source_terms():
+    """
+    diluted_diffusion_coefficients() was factored out of noise_source_terms's
+    own body (to let GradientCoupledInstanton's Hawking-sigma noise summary
+    stats reuse just the coefficients, without any particular rfield/rmom).
+    Confirm it reproduces the exact D_phi/D_pi/D_phipi values against a hand
+    computation, and that combining them with rfield/rmom via
+    noise_source_terms's own formula reproduces noise_source_terms's output
+    exactly -- i.e. the refactor is a pure decomposition, not a behavior change.
+    """
+    grid = _make_grid()
+    n_max = grid.n_max
+    n_nodes = n_max + 1
+    trajectory = _StubTrajectory()
+    potential = _StubPotential()
+    diffusion_model = MasslessDecoupledDiffusion()
+
+    rng = np.random.default_rng(11)
+    state = rng.uniform(-0.5, 0.5, size=2 * n_max - 1)
+
+    phi_full, pi_full = unpack_state(
+        state, _N, _N_OFFSET, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential
+    )
+    rfield_full = rng.uniform(-0.4, 0.4, size=n_nodes)
+    rmom_full = rng.uniform(-0.4, 0.4, size=n_nodes)
+
+    H_sq_core = potential.H_sq(phi_full[-1], pi_full[-1])
+    delta_s_N = delta_s(_N, 0.0, H_sq_core, _H_SQ_NL_INIT, _ALPHA)
+    H_sq_loc_array = potential.H_sq(phi_full, pi_full)
+    delta_s_loc_array = delta_s(_N, 0.0, H_sq_loc_array, _H_SQ_NL_INIT, _ALPHA)
+
+    D_phi_arr, D_pi_arr, D_phipi_arr = diluted_diffusion_coefficients(
+        phi_full, pi_full, delta_s_N, delta_s_loc_array, grid, potential, diffusion_model,
+    )
+
+    D_matrix_vals = [
+        diffusion_model.D_matrix(phi_full[j], pi_full[j], potential) for j in range(n_nodes)
+    ]
+    D11_arr = np.array([v[0] for v in D_matrix_vals])
+    D12_arr = np.array([v[1] for v in D_matrix_vals])
+    D22_arr = np.array([v[2] for v in D_matrix_vals])
+    n_count_array = (
+        1.5 * delta_s_N
+        * np.exp(3.0 * delta_s_loc_array)
+        * np.exp(-1.5 * (grid.nodes + 1.0) * delta_s_N)
+    )
+
+    np.testing.assert_allclose(D_phi_arr, 2.0 * D11_arr / n_count_array, rtol=1e-14)
+    np.testing.assert_allclose(D_pi_arr, 2.0 * D22_arr / n_count_array, rtol=1e-14)
+    np.testing.assert_allclose(D_phipi_arr, 2.0 * D12_arr / n_count_array, rtol=1e-14)
+
+    noise_field_array, noise_mom_array = noise_source_terms(
+        phi_full, pi_full, rfield_full, rmom_full, delta_s_N, delta_s_loc_array,
+        grid, potential, diffusion_model,
+    )
     expected_noise_field = D_phi_arr * rfield_full + D_phipi_arr * rmom_full
     expected_noise_mom = D_pi_arr * rmom_full + D_phipi_arr * rfield_full
 

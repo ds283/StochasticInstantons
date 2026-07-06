@@ -269,11 +269,16 @@ def test_compute_gradient_coupled_instanton_end_to_end_full_values():
     assert len(result["r_phys"]) == n_colloc
     assert all(np.isfinite(result["r_phys"]))
 
-    for key in (
-        "noise_field_min", "noise_field_mean", "noise_field_max",
-        "noise_mom_min", "noise_mom_mean", "noise_mom_max",
-    ):
+    # MasslessDecoupledDiffusion has D12=D22=0 identically, so the noise_mom_*
+    # channel is degenerate (mirrors FullInstanton's own noise_phi2_*=None
+    # convention for this same diffusion model). noise_field_* stays finite
+    # since D11 (and hence the diluted D_phi) is nonzero.
+    for key in ("noise_field_min", "noise_field_mean", "noise_field_max"):
+        assert result[key] is not None
         assert np.isfinite(result[key])
+        assert result[key] >= 0.0
+    for key in ("noise_mom_min", "noise_mom_mean", "noise_mom_max"):
+        assert result[key] is None
 
     assert len(result["N_sample"]) == len(result["phi"]) == len(result["pi"])
     assert all(len(row) == n_colloc for row in result["phi"])
@@ -448,6 +453,16 @@ class TestGradientCoupledInstantonPersistence:
         ))
         assert len(gci_read.values) == len(_N_SAMPLES)
         assert len(gci_read.profile) == _N_COLLOC_VAL
+
+        # noise_field_*/noise_mom_* are dimensionless (Hawking standard
+        # deviations) and round-trip with no unit conversion at all -- exact
+        # equality, not just approx.
+        assert gci_read.noise_field_min == gci._noise_field_min
+        assert gci_read.noise_field_mean == gci._noise_field_mean
+        assert gci_read.noise_field_max == gci._noise_field_max
+        assert gci_read.noise_mom_min == gci._noise_mom_min
+        assert gci_read.noise_mom_mean == gci._noise_mom_mean
+        assert gci_read.noise_mom_max == gci._noise_mom_max
 
         # Round-trip numerical fidelity (Planck_units has PlanckMass=1.0, so
         # phi/pi/rfield/rmom conversions are identity; r_phys goes through a

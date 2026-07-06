@@ -108,35 +108,34 @@ def unpack_state(
     return phi_full, pi_full
 
 
-def noise_source_terms(
+def diluted_diffusion_coefficients(
     phi_full: np.ndarray,
     pi_full: np.ndarray,
-    rfield_full: np.ndarray,
-    rmom_full: np.ndarray,
     delta_s_N: float,
     delta_s_loc_array: np.ndarray,
     grid,
     potential,
     diffusion_model,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Diluted noise-source terms sourcing the forward equations (eq. Dnoise-diag,
-    Dnoise-cross), factored out of forward_rhs's own assembly so the noise
-    summary-statistics columns (noise_field_min/mean/max, noise_mom_min/
-    mean/max) can call it directly at every row of the dense solver grid, not
-    just inside a single RHS evaluation.
+    Shell-diluted diffusion coefficients (D_phi, D_pi, D_phipi) -- the same
+    coefficients that dress rfield/rmom in noise_source_terms's own sourcing
+    terms below. Factored out as its own function so noise summary-statistics
+    constructions (e.g. GradientCoupledInstanton's own dimensionless,
+    Hawking-standard-deviation noise_field/noise_mom columns, which need the
+    coefficients alone, not sourced by any particular rfield/rmom) can reuse
+    them without duplicating the n_count/D_matrix loop.
 
     Steps 2-3 of forward_rhs's own assembly: the shell-dilution factor
-    n_count(y_j,N) (eq. ncount), the per-node diffusion matrix D_matrix loop,
-    the diluted noise coefficients, and the two source terms themselves --
-    D_phi*rfield + D_phipi*rmom (sourcing dphi_full) and
-    D_pi*rmom + D_phipi*rfield (sourcing dpi_full).
+    n_count(y_j,N) (eq. ncount) and the per-node diffusion matrix D_matrix
+    loop, combined into the diluted coefficients D_phi = 2*D11/n_count,
+    D_pi = 2*D22/n_count, D_phipi = 2*D12/n_count.
 
     delta_s_N is the core-only Delta_s(N) (defines the coordinate map itself);
     delta_s_loc_array is the per-node Delta_s_loc(y_j,N) -- both already
     computed by the caller, passed through rather than recomputed here.
 
-    Returns (noise_field_array, noise_mom_array), each shape (n_nodes,).
+    Returns (D_phi_arr, D_pi_arr, D_phipi_arr), each shape (n_nodes,).
     """
     n_nodes = phi_full.shape[0]
 
@@ -163,6 +162,41 @@ def noise_source_terms(
     D_phi_arr = 2.0 * D11_arr / n_count_array
     D_pi_arr = 2.0 * D22_arr / n_count_array
     D_phipi_arr = 2.0 * D12_arr / n_count_array
+
+    return D_phi_arr, D_pi_arr, D_phipi_arr
+
+
+def noise_source_terms(
+    phi_full: np.ndarray,
+    pi_full: np.ndarray,
+    rfield_full: np.ndarray,
+    rmom_full: np.ndarray,
+    delta_s_N: float,
+    delta_s_loc_array: np.ndarray,
+    grid,
+    potential,
+    diffusion_model,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Diluted noise-source terms sourcing the forward equations (eq. Dnoise-diag,
+    Dnoise-cross), factored out of forward_rhs's own assembly so the noise
+    summary-statistics columns (noise_field_min/mean/max, noise_mom_min/
+    mean/max) can call it directly at every row of the dense solver grid, not
+    just inside a single RHS evaluation.
+
+    D_phi*rfield + D_phipi*rmom (sourcing dphi_full) and
+    D_pi*rmom + D_phipi*rfield (sourcing dpi_full), where D_phi/D_pi/D_phipi
+    are diluted_diffusion_coefficients's own output.
+
+    delta_s_N is the core-only Delta_s(N) (defines the coordinate map itself);
+    delta_s_loc_array is the per-node Delta_s_loc(y_j,N) -- both already
+    computed by the caller, passed through rather than recomputed here.
+
+    Returns (noise_field_array, noise_mom_array), each shape (n_nodes,).
+    """
+    D_phi_arr, D_pi_arr, D_phipi_arr = diluted_diffusion_coefficients(
+        phi_full, pi_full, delta_s_N, delta_s_loc_array, grid, potential, diffusion_model,
+    )
 
     noise_field_array = D_phi_arr * rfield_full + D_phipi_arr * rmom_full
     noise_mom_array = D_pi_arr * rmom_full + D_phipi_arr * rfield_full
