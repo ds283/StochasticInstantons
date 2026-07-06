@@ -41,6 +41,31 @@ file:
    r_phys(y_j) = [r(y_j,N_final)/r_out] * r_phys_out -- no per-shell
    Leach-Liddle solve.
 
+   The anchor is evaluated at the transition's *start* (local N=0, absolute
+   N_offset), not at its own downflow-from-endpoint: y=-1 is Dirichlet-
+   pinned to the noiseless background throughout, so its "downflow from
+   the endpoint" is guaranteed to just be the remaining noiseless
+   trajectory -- no integration needed. The number of e-folds from the
+   transition's start to the true end of inflation is N_init itself
+   (arithmetic, already known), combined with the noiseless trajectory's
+   own local (V, epsilon) at the start and its own true endpoint V:
+
+       V_start       = potential.V(trajectory.phi_at(N_offset))
+       epsilon_start = potential.epsilon(trajectory.phi_at(N_offset),
+                                          trajectory.pi_at(N_offset))
+       V_end_bg      = potential.V(trajectory.phi_at(trajectory.N_end))
+       lnk_outer     = ln_k_phys_Mpc(N_init, V_start, epsilon_start, V_end_bg,
+                                      units, cosmo)
+       r_phys_out    = (1.0 + alpha) * 2.0 * pi / exp(lnk_outer)
+
+   The (1+alpha) factor is required because r_out is deliberately (1+alpha)
+   larger than the true horizon at N_init (that's the whole point of the
+   regularization) -- without it, r_phys_out would drift as alpha is
+   varied rather than staying stable. See
+   .prompts/gradient-coupled-instanton/11-fix-scale-assignment-anchor.md
+   for the full derivation of why the previous (endpoint-downflow-based)
+   anchor was wrong.
+
 r_max/r_peak reuse CompactionFunction's own _classify_radii helper directly
 (not reimplemented), fed r_phys (not the dimensionless ratio) since that is
 the "r"-like quantity _classify_radii and its M_max/M_peak-adjacent callers
@@ -62,13 +87,13 @@ from Numerics.OnionCoordinate import comoving_radius_ratio
 
 
 def assign_scales(
-    phi_final: np.ndarray,
-    pi_final: np.ndarray,
     zeta: np.ndarray,
-    N_end_downflow: np.ndarray,
-    phi_end_downflow: np.ndarray,
     delta_s_N_final: float,
     grid,
+    trajectory,
+    N_init: float,
+    N_offset: float,
+    alpha: float,
     potential,
     units,
     cosmo,
@@ -76,9 +101,12 @@ def assign_scales(
 ) -> dict:
     """
     Assign comoving, areal (via the compaction function), and physical
-    (present-day) scales to every collocation node, given the grid-node
-    states at the shared final time N_total (local) and the already-
+    (present-day) scales to every collocation node, given the already-
     extracted zeta(y) profile (extraction.py's extract_zeta_profile).
+
+    trajectory/N_init/N_offset/alpha anchor the physical (present-day)
+    scale at the transition's start (see module docstring, item 3) --
+    no downflow integration anywhere in this function.
 
     Returns a dict with keys:
         "r_ratio"      -- comoving r(y_j,N_final)/r_out, dimensionless
@@ -90,11 +118,7 @@ def assign_scales(
         "r_peak"       -- r_phys at which C is maximised
         "diagnostics"  -- dict with r_max_at_grid_edge / r_peak_at_grid_edge
     """
-    phi_final = np.asarray(phi_final, dtype=float)
-    pi_final = np.asarray(pi_final, dtype=float)
     zeta = np.asarray(zeta, dtype=float)
-    N_end_downflow = np.asarray(N_end_downflow, dtype=float)
-    phi_end_downflow = np.asarray(phi_end_downflow, dtype=float)
 
     y = grid.nodes
 
@@ -110,17 +134,17 @@ def assign_scales(
     C = (2.0 / 3.0) * (1.0 - (1.0 + rho_zeta_prime) ** 2)
 
     # ── Physical (present-day) scale (eq:rphys-ratio) ────────────────────────
-    # Single anchor solve at the outer edge (y=-1, node 0), reusing
-    # ln_k_phys_Mpc directly -- called once, not per node.
-    lnk_outer = ln_k_phys_Mpc(
-        float(N_end_downflow[0]),
-        potential.V(float(phi_final[0])),
-        potential.epsilon(float(phi_final[0]), float(pi_final[0])),
-        potential.V(float(phi_end_downflow[0])),
-        units,
-        cosmo,
-    )
-    r_phys_out = 2.0 * PI / exp(lnk_outer)
+    # Single anchor solve at the transition's start (local N=0, absolute
+    # N_offset) -- y=-1 is Dirichlet-pinned to the noiseless background
+    # throughout, so the number of e-folds from here to the true end of
+    # inflation is N_init itself (arithmetic; no downflow integration).
+    phi_start = trajectory.phi_at(N_offset)
+    pi_start = trajectory.pi_at(N_offset)
+    V_start = potential.V(phi_start)
+    epsilon_start = potential.epsilon(phi_start, pi_start)
+    V_end_bg = potential.V(trajectory.phi_at(trajectory.N_end))
+    lnk_outer = ln_k_phys_Mpc(N_init, V_start, epsilon_start, V_end_bg, units, cosmo)
+    r_phys_out = (1.0 + alpha) * 2.0 * PI / exp(lnk_outer)
     r_phys = r_ratio * r_phys_out
 
     # ── r_max / r_peak: reuse CompactionFunction's own helper ────────────────

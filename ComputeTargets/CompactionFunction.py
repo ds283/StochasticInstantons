@@ -211,12 +211,15 @@ def _compute_instanton_path(
         zeta_arr[i] = float(N_inst_i) - N_background_i
 
     # ── Step C: scale assignment ──────────────────────────────────────────
-    N_before_end_arr = N_end_downflow + (N_total - N_inst_arr)
-
-    # Latest-exit rule: enforce monotone non-increasing N_before_end
-    N_be_mono = N_before_end_arr.copy()
-    for i in range(1, len(N_be_mono)):
-        N_be_mono[i] = min(N_be_mono[i], N_be_mono[i - 1])
+    # Arithmetic e-folds from each sample to the true end of inflation,
+    # anchored at N_init (the transition start) -- not a per-sample
+    # downflow-from-endpoint. N_inst_arr is non-decreasing (ORDER BY
+    # efold_value.N, see .claude/rules/populate-ordering.md), so
+    # N_before_end_arr is non-increasing by construction: no separate
+    # "latest-exit rule" monotonicity pass is needed any more (confirmed by
+    # test_compaction_function_N_before_end_already_monotonic in
+    # tests/test_compaction_function_step_c.py).
+    N_before_end_arr = N_init_val - N_inst_arr
 
     ln_k_arr = np.full(len(values), float("nan"))
     r_arr = np.full(len(values), float("nan"))
@@ -227,7 +230,7 @@ def _compute_instanton_path(
             continue
         try:
             lnk = ln_k_phys_Mpc(
-                N_be_mono[i],
+                N_before_end_arr[i],
                 potential.V(float(phi1_arr[i])),
                 potential.epsilon(float(phi1_arr[i]), float(phi2_arr[i])),
                 V_end_downflow,
