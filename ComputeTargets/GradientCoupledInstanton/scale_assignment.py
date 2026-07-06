@@ -48,15 +48,16 @@ file:
    trajectory -- no integration needed. The number of e-folds from the
    transition's start to the true end of inflation is N_init itself
    (arithmetic, already known), combined with the noiseless trajectory's
-   own local (V, epsilon) at the start and its own true endpoint V:
+   own local H at the start and its own true endpoint H (via
+   AbstractPotential.H_sq -- ln_k_phys_Mpc takes H directly, not V/epsilon,
+   so the Friedmann relation is not reimplemented here):
 
-       V_start       = potential.V(trajectory.phi_at(N_offset))
-       epsilon_start = potential.epsilon(trajectory.phi_at(N_offset),
-                                          trajectory.pi_at(N_offset))
-       V_end_bg      = potential.V(trajectory.phi_at(trajectory.N_end))
-       lnk_outer     = ln_k_phys_Mpc(N_init, V_start, epsilon_start, V_end_bg,
-                                      units, cosmo)
-       r_phys_out    = (1.0 + alpha) * 2.0 * pi / exp(lnk_outer)
+       H_start   = sqrt(potential.H_sq(trajectory.phi_at(N_offset),
+                                        trajectory.pi_at(N_offset)))
+       H_end_bg  = sqrt(potential.H_sq(trajectory.phi_at(trajectory.N_end),
+                                        trajectory.pi_at(trajectory.N_end)))
+       lnk_outer = ln_k_phys_Mpc(N_init, H_start, H_end_bg, units, cosmo)
+       r_phys_out = (1.0 + alpha) * 2.0 * pi / exp(lnk_outer)
 
    The (1+alpha) factor is required because r_out is deliberately (1+alpha)
    larger than the true horizon at N_init (that's the whole point of the
@@ -77,7 +78,7 @@ smallest r), i.e. r_phys is naturally *descending* in grid order, so it must
 be re-sorted ascending here before the call.
 """
 
-from math import exp
+from math import exp, sqrt
 from math import pi as PI
 
 import numpy as np
@@ -140,10 +141,11 @@ def assign_scales(
     # inflation is N_init itself (arithmetic; no downflow integration).
     phi_start = trajectory.phi_at(N_offset)
     pi_start = trajectory.pi_at(N_offset)
-    V_start = potential.V(phi_start)
-    epsilon_start = potential.epsilon(phi_start, pi_start)
-    V_end_bg = potential.V(trajectory.phi_at(trajectory.N_end))
-    lnk_outer = ln_k_phys_Mpc(N_init, V_start, epsilon_start, V_end_bg, units, cosmo)
+    H_start = sqrt(potential.H_sq(phi_start, pi_start))
+    H_end_bg = sqrt(
+        potential.H_sq(trajectory.phi_at(trajectory.N_end), trajectory.pi_at(trajectory.N_end))
+    )
+    lnk_outer = ln_k_phys_Mpc(N_init, H_start, H_end_bg, units, cosmo)
     r_phys_out = (1.0 + alpha) * 2.0 * PI / exp(lnk_outer)
     r_phys = r_ratio * r_phys_out
 

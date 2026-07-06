@@ -308,11 +308,12 @@ def _r_phys_pipeline_and_independent_core_reference(
     Shared body: runs solve_picard (disable_spatial_coupling=True, prompt
     06's own mechanism) to convergence against a *genuine* full background
     trajectory (reaching the real end of inflation -- required by the fixed
-    anchor's V_end_bg = potential.V(trajectory.phi_at(trajectory.N_end))),
-    feeds the converged grid through assign_scales, and separately computes
-    the core node's r_phys by a *direct*, independent Leach-Liddle
-    evaluation at the core's own converged local state -- without touching
-    assign_scales's own ratio arithmetic at all.
+    anchor's H_end_bg = sqrt(potential.H_sq(trajectory.phi_at(trajectory.N_end),
+    trajectory.pi_at(trajectory.N_end)))), feeds the converged grid through
+    assign_scales, and separately computes the core node's r_phys by a
+    *direct*, independent Leach-Liddle evaluation at the core's own
+    converged local state -- without touching assign_scales's own ratio
+    arithmetic at all.
 
     zeta is zeroed rather than run through extract_zeta_profile: zeta only
     feeds the compaction function C(y) (irrelevant to r_phys), and in this
@@ -324,10 +325,7 @@ def _r_phys_pipeline_and_independent_core_reference(
     property of that unrelated machinery, not a defect in the r_phys
     construction under test here.
 
-    Returns (r_phys_pipeline, r_phys_core_ref, V_start, epsilon_start,
-    V_core, epsilon_core) -- the last four returned so callers can check the
-    closed-form correction factor derived in this test's own docstring
-    without re-deriving it from scratch.
+    Returns (r_phys_pipeline, r_phys_core_ref).
     """
     potential = _PicardStubPotential()
     diffusion_model = MasslessDecoupledDiffusion()
@@ -372,18 +370,16 @@ def _r_phys_pipeline_and_independent_core_reference(
     # assign_scales' own ratio arithmetic.
     phi_core = float(phi_final[-1])
     pi_core = float(pi_final[-1])
-    V_core = potential.V(phi_core)
-    epsilon_core = potential.epsilon(phi_core, pi_core)
-    V_end_bg = potential.V(trajectory.phi_at(trajectory.N_end))
+    H_core = np.sqrt(potential.H_sq(phi_core, pi_core))
+    H_end_bg = np.sqrt(
+        potential.H_sq(trajectory.phi_at(trajectory.N_end), trajectory.pi_at(trajectory.N_end))
+    )
     N_before_end_core = N_init - N_total
 
-    lnk_core_ref = ln_k_phys_Mpc(N_before_end_core, V_core, epsilon_core, V_end_bg, units, cosmo)
+    lnk_core_ref = ln_k_phys_Mpc(N_before_end_core, H_core, H_end_bg, units, cosmo)
     r_phys_core_ref = 2.0 * np.pi / np.exp(lnk_core_ref)
 
-    V_start = potential.V(phi_start)
-    epsilon_start = potential.epsilon(phi_start, pi_start)
-
-    return r_phys_pipeline, r_phys_core_ref, V_start, epsilon_start, V_core, epsilon_core
+    return r_phys_pipeline, r_phys_core_ref
 
 
 def test_r_phys_matches_independent_core_downflow():
@@ -394,40 +390,18 @@ def test_r_phys_matches_independent_core_downflow():
     N_total) run to convergence via the real
     solve_picard -> extract_zeta_profile -> assign_scales pipeline.
 
-    Important correction to this test's own original design (discovered
-    while implementing this fix, documented here rather than silently
-    "fixed" with a loose tolerance): a plain
-    r_phys_pipeline[-1] == r_phys_core_ref check is *not* exact at this
-    realistic N_total, and the gap is *not* controlled by alpha at all --
-    numerically confirmed alpha-independent by direct computation (identical
-    ratio at alpha = 0.05, 0.005, 0.0005, to 1e-13). Both r_phys_pipeline and
-    r_phys_core_ref are Leach-Liddle evaluations (eq:rphys-ratio's own
-    ln_k_phys_Mpc), but at *different* points along the shared background
-    trajectory: r_phys_pipeline's own anchor uses the transition-start state
-    (V_start, epsilon_start), while r_phys_core_ref (per the literal
-    "core's own local state" construction) uses the transition-end state
-    (V_core, epsilon_core). Expanding both through ln_k_phys_Mpc's formula
-    algebraically (and using delta_s_N_final's own H_sq_local/H_sq_nl_init
-    ratio, which the (1+alpha) factor exactly cancels against) gives a
-    *closed form* for the ratio between them:
-
-        r_phys_pipeline / r_phys_core_ref
-            = [V_start*(1 - epsilon_core/3) / (V_core*(1 - epsilon_start/3))]^0.25
-
-    This is an exact algebraic identity (not alpha- or tolerance-dependent),
-    confirmed here to 1e-9 relative precision against the real pipeline
-    output -- a strictly stronger, more diagnostic check than the plain
-    equality this test originally set out to confirm, and the reason a
-    genuinely realistic N_total does not, and should not, make the naive
-    comparison "exact": the two evaluations are of different (though both
-    physically meaningful) horizon-crossing epochs, separated by N_total
-    e-folds of potential/epsilon drift.
-
-    Bonus (ties back to the original reduction-limit intent): the closed
-    form -> 1 as N_total -> 0 (V_start/V_core, epsilon_start/epsilon_core
-    -> 1), confirmed below by re-running at a much smaller N_total and
-    checking the correction factor moves closer to 1, not just "is small
-    enough once."
+    With ln_k_phys_Mpc fixed to take H_k/H_end directly (rather than
+    reimplementing the Friedmann relation inline with mismatched V_k/V_end
+    powers), r_phys_pipeline[-1] (assign_scales' own outer-anchor-plus-
+    ratio-propagation construction) and r_phys_core_ref (a direct,
+    independent Leach-Liddle evaluation at the core's own converged local
+    state) agree to numerical precision -- the tautology closes exactly,
+    term by term, with no residual correction factor. (An earlier version
+    of this test, written against the buggy formula, found a genuine
+    O(10%) discrepancy here and had to introduce a closed-form correction
+    factor to explain it; that was the buggy formula's own artifact, not a
+    property of the underlying physics, and is gone now that the bug is
+    fixed.)
     """
     N_init = 5.0
     N_final = 2.0
@@ -438,41 +412,11 @@ def test_r_phys_matches_independent_core_downflow():
     rtol = 1.0e-9
     alpha = 0.05
 
-    r_phys_pipeline, r_phys_core_ref, V_start, epsilon_start, V_core, epsilon_core = (
-        _r_phys_pipeline_and_independent_core_reference(
-            alpha, N_init, N_final, delta_Nstar, phi_init, pi_init, atol, rtol,
-        )
+    r_phys_pipeline, r_phys_core_ref = _r_phys_pipeline_and_independent_core_reference(
+        alpha, N_init, N_final, delta_Nstar, phi_init, pi_init, atol, rtol,
     )
 
-    expected_ratio = (
-        V_start * (1.0 - epsilon_core / 3.0) / (V_core * (1.0 - epsilon_start / 3.0))
-    ) ** 0.25
-
-    assert r_phys_pipeline == pytest.approx(
-        r_phys_core_ref * expected_ratio, rel=1.0e-6
-    )
-
-    # The naive/original expectation (equality) is genuinely violated at
-    # this realistic N_total -- confirm the correction factor is not close
-    # to 1, so a future editor doesn't mistake the tolerance above for
-    # floating-point slack.
-    assert abs(expected_ratio - 1.0) > 0.1
-
-    # ── Reduction-limit bonus: correction factor -> 1 as N_total -> 0 ──────
-    N_final_small = N_init - 1.0e-3
-    delta_Nstar_small = 1.0e-4
-    (
-        r_phys_pipeline_small, r_phys_core_ref_small,
-        V_start_small, epsilon_start_small, V_core_small, epsilon_core_small,
-    ) = _r_phys_pipeline_and_independent_core_reference(
-        alpha, N_init, N_final_small, delta_Nstar_small, phi_init, pi_init, atol, rtol,
-    )
-    expected_ratio_small = (
-        V_start_small * (1.0 - epsilon_core_small / 3.0)
-        / (V_core_small * (1.0 - epsilon_start_small / 3.0))
-    ) ** 0.25
-
-    assert abs(expected_ratio_small - 1.0) < abs(expected_ratio - 1.0)
+    assert r_phys_pipeline == pytest.approx(r_phys_core_ref, rel=1.0e-9)
 
 
 # ---------------------------------------------------------------------------
@@ -516,19 +460,19 @@ def test_core_r_phys_matches_compaction_function_innermost_sample():
     [0, N_total], not via a real FullInstanton BVP solve, since only the
     scale-assignment agreement is under test here, not the BVP itself.
 
-    Expected residual -- corrected from this prompt's original expectation
-    of "O(alpha) only, from the (1+alpha) anchor difference": CompactionFunction
-    has no alpha at all, so its innermost sample's r is *exactly* the direct
-    Leach-Liddle evaluation at the core's own local state (confirmed below to
-    float precision) -- i.e. exactly r_phys_core_ref from
-    test_r_phys_matches_independent_core_downflow above. The residual between
-    GradientCoupledInstanton's core r_phys and this value is therefore the
-    *same* closed-form correction factor derived and confirmed there
-    (driven by (V, epsilon) drift over N_total, alpha-independent), not a
-    small O(alpha) term -- confirmed numerically: the ratio is unchanged
-    across alpha = 0.05, 0.005, 0.0005 to 1e-13, so tightening this tolerance
-    by shrinking alpha would not help, and loosening it "for O(alpha) safety
-    margin" would be solving the wrong problem.
+    Expected residual -- with ln_k_phys_Mpc's V_k/V_end power bug fixed,
+    CompactionFunction's innermost sample's r is *exactly* the direct
+    Leach-Liddle evaluation at the core's own local state (confirmed below
+    to float precision) -- i.e. exactly r_phys_core_ref from
+    test_r_phys_matches_independent_core_downflow above. GradientCoupledInstanton's
+    core r_phys agrees with this value directly (no closed-form correction
+    factor needed any more -- see that test's docstring for why the earlier,
+    buggy-formula version of this comparison needed one). The only remaining
+    discrepancy is numerical: two different methods (LGL collocation via
+    solve_picard/assign_scales vs. solve_ivp shooting via
+    _compute_instanton_path) solving the same underlying problem at
+    atol=rtol=1e-9, so the tolerance below reflects solver/discretization
+    error only, not any residual physical effect.
     """
     potential = _PicardStubPotential()
     diffusion_model = MasslessDecoupledDiffusion()
@@ -597,24 +541,18 @@ def test_core_r_phys_matches_compaction_function_innermost_sample():
     # ── Confirm the "exactly the direct core reference" claim first ───────
     phi_core = float(phi_final[-1])
     pi_core = float(pi_final[-1])
-    V_core = potential.V(phi_core)
-    epsilon_core = potential.epsilon(phi_core, pi_core)
-    phi_start = trajectory.phi_at(N_offset)
-    pi_start = trajectory.pi_at(N_offset)
-    V_start = potential.V(phi_start)
-    epsilon_start = potential.epsilon(phi_start, pi_start)
-    V_end_bg = potential.V(trajectory.phi_at(trajectory.N_end))
+    H_core = np.sqrt(potential.H_sq(phi_core, pi_core))
+    H_end_bg = np.sqrt(
+        potential.H_sq(trajectory.phi_at(trajectory.N_end), trajectory.pi_at(trajectory.N_end))
+    )
 
-    lnk_core_ref = ln_k_phys_Mpc(N_init - N_total, V_core, epsilon_core, V_end_bg, units, cosmo)
+    lnk_core_ref = ln_k_phys_Mpc(N_init - N_total, H_core, H_end_bg, units, cosmo)
     r_phys_core_ref = 2.0 * np.pi / np.exp(lnk_core_ref)
 
     assert r_cf_innermost == pytest.approx(r_phys_core_ref, rel=1.0e-8)
 
-    # ── Now confirm GCI's core matches, via the same closed-form factor ───
-    expected_ratio = (
-        V_start * (1.0 - epsilon_core / 3.0) / (V_core * (1.0 - epsilon_start / 3.0))
-    ) ** 0.25
-
-    assert r_phys_gci_core == pytest.approx(
-        r_cf_innermost * expected_ratio, rel=1.0e-6
-    )
+    # ── Now confirm GCI's core matches directly -- tolerance reflects only
+    # the numerical solver/discretization error between the two independent
+    # methods (LGL collocation vs. solve_ivp shooting), not any physical
+    # residual (see docstring above).
+    assert r_phys_gci_core == pytest.approx(r_cf_innermost, rel=1.0e-7)

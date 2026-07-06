@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from datetime import datetime
-from math import exp, log
+from math import exp, log, sqrt
 from math import pi as PI
 from typing import List, Optional
 
@@ -35,19 +35,33 @@ _ZETA_PIN_ATOL = 0.01
 
 def ln_k_phys_Mpc(
     N_before_end: float,
-    V_k: float,
-    epsilon_k: float,
-    V_end_downflow: float,
+    H_k: float,
+    H_end: float,
     units,
     cosmo,
 ) -> float:
     """
-    Log of the physical wavenumber k in working_units^-1 for a mode that exits
-    the Hubble radius N_before_end e-folds before the end of inflation.
+    Log of the physical wavenumber k in working_units^-1 for a mode that
+    exits the Hubble radius N_before_end e-folds before the end of
+    inflation.
+
+    Takes H_k (Hubble rate at horizon crossing) and H_end (Hubble rate at
+    the true end of inflation, epsilon=1) directly, rather than V/epsilon
+    -- the Friedmann relation connecting those is AbstractPotential.H_sq's
+    responsibility alone (it has proper override support for non-canonical
+    kinetics/modified gravity; this function must not reimplement it).
+    Callers already have a potential object and field/momentum state in
+    hand at the point they'd call this, so computing H_sq once there costs
+    nothing extra.
 
     Implements Leach & Liddle (astro-ph/0305263) Eq. (2) with instantaneous
-    reheating.  The result is shifted by -log(Mpc) relative to the Mpc^{-1}
-    convention so that r = 2π/exp(lnk) is in working units, not in Mpc.
+    reheating, re-expressed directly in terms of H (H_end enters via
+    rho_end = 3*Mp^2*H_end^2, from epsilon_end=1 by definition of end of
+    inflation; H_k enters directly from H_k^2 = rho_k/(3Mp^2) at horizon
+    crossing).
+
+    The result is shifted by -log(Mpc) relative to the Mpc^{-1} convention
+    so that r = 2π/exp(lnk) is in working units, not in Mpc.
 
     All dimensional arguments must be in the working unit system.
     """
@@ -60,7 +74,8 @@ def ln_k_phys_Mpc(
         + log(Mpc * Mp)
         + log(T_CMB / Mp)
         + 0.25 * log(PI**2 / 135.0)
-        + 0.25 * log(V_k / (V_end_downflow * (1.0 - epsilon_k / 3.0)))
+        - 0.25 * log(3.0 * H_end**2 / Mp**2)
+        + 0.5 * log(3.0 * H_k**2 / Mp**2)
         - log(Mpc)
     )
 
@@ -173,7 +188,9 @@ def _compute_instanton_path(
 
     N_end_downflow = float(sol_down.t_events[0][0])
     phi_end_downflow = float(sol_down.y_events[0][0][0])
+    pi_end_downflow = float(sol_down.y_events[0][0][1])
     V_end_downflow = potential.V(phi_end_downflow)
+    H_end_downflow = sqrt(potential.H_sq(phi_end_downflow, pi_end_downflow))
 
     # ── Step B: zeta at each sample point ────────────────────────────────
     # Note: this matches rho directly at the instanton's own sample point,
@@ -229,11 +246,11 @@ def _compute_instanton_path(
         if not valid_mask[i]:
             continue
         try:
+            H_k = sqrt(potential.H_sq(float(phi1_arr[i]), float(phi2_arr[i])))
             lnk = ln_k_phys_Mpc(
                 N_before_end_arr[i],
-                potential.V(float(phi1_arr[i])),
-                potential.epsilon(float(phi1_arr[i]), float(phi2_arr[i])),
-                V_end_downflow,
+                H_k,
+                H_end_downflow,
                 units,
                 cosmo,
             )
