@@ -392,6 +392,178 @@ def self_check_assembled_operator(
 
 
 # ---------------------------------------------------------------------------
+# SBP-SAT boundary closure (prompt 21)
+#
+# Phase 1 standalone prototype: split-form advection (skew under the plain
+# LGL diagonal norm H=diag(w), up to a single boundary term) plus a
+# dissipative SAT penalty at the core node, chosen via the discrete energy
+# estimate to cancel that boundary term exactly. Full derivation:
+# .documents/gradient-coupled-instanton/21-sbp-sat-design-note.md.
+#
+# State layout differs from assemble_spatial_operator's: promoting phi_core
+# from Neumann-eliminated to a free, SAT-penalized DOF requires it to be
+# part of the state vector, so this operator's state is
+# (phi_1,...,phi_{n_max}, pi_1,...,pi_{n_max}), length 2*n_max -- one entry
+# longer than the strong-BC operator's 2*n_max-1, because phi_core is now
+# integrated rather than eliminated. pi_core was already free in the
+# strong-BC layout, so nothing changes there. This is a PROTOTYPE-ONLY
+# layout choice to test the stability claim in isolation; it does not
+# commit Phase 2 to any particular production state-vector convention (an
+# implementation decision for Phase 2 itself, out of scope here). The outer
+# edge (y=-1) is untouched -- held at zero exactly as
+# assemble_spatial_operator does -- because the design note (Section 3)
+# shows A(-1)=0 exactly, so the outer edge carries no destabilizing energy
+# term and needs no SAT: a WRONG version that also added an outer-edge SAT
+# would be harmless for stability (that term is already zero) but would be
+# undocumented, unmotivated extra machinery.
+# ---------------------------------------------------------------------------
+
+
+def advection_split_matrix(A_array: np.ndarray, D: np.ndarray) -> np.ndarray:
+    """
+    A_split = 1/2 * (diag(A) @ D + D @ diag(A) - diag(D @ A)) -- the
+    product-rule-consistent split form of variable-coefficient advection
+    (design note Section 3). Continuum-identical to the plain diag(A) @ D
+    (both equal A(y) du/dy for smooth u -- substitute the continuum product
+    rule (Au)_y = A_y u + A u_y into 1/2*(A u_y + (Au)_y - A_y u) and the
+    extra terms cancel, leaving A u_y), but NOT identical as MATRICES: D
+    only differentiates polynomials up to degree n_max exactly, so
+    D @ diag(A) applied to a degree-n_max grid function differentiates an
+    effectively degree-2*n_max object and picks up an aliasing residual
+    relative to diag(A) @ D + diag(D @ A) -- the explicit "- diag(D @ A)"
+    term corrects for exactly that residual. This is what makes A_split
+    (and not the plain product) skew under H=diag(w) up to a single
+    boundary term (see advection_split_energy_defect below).
+
+    A WRONG version would use the plain product diag(A) @ D directly (no
+    correction term) -- that operator's failure signature is exactly the
+    one this prompt starts from: spectral_abscissa growing like n^1.6,
+    integrator-independent (see the module docstring's Background summary
+    and the design note Section 1).
+    """
+    return 0.5 * (
+        np.diag(A_array) @ D + D @ np.diag(A_array) - np.diag(D @ A_array)
+    )
+
+
+def advection_split_energy_defect(grid, A_array: np.ndarray) -> np.ndarray:
+    """
+    H @ A_split + A_split^T @ H, where A_split = advection_split_matrix(...)
+    and H = diag(grid.weights) -- the quantity the design note (Section 3)
+    derives a closed form for:
+
+        diag(-A_0, 0, ..., 0, A_{n_max}) - H @ diag(D @ A)
+
+    which, because A(y) is affine in y (so D @ A is the exact constant
+    a' = (1-epsilon_core)/Delta_s(N) at every node) and A_0 = A(-1) = 0
+    exactly, reduces further to -a'*H + diag(0,...,0, A_{n_max}). Exposed
+    standalone (not inlined in assemble_spatial_operator_sbp_sat) purely so
+    the closed-form energy-estimate derivation itself can be regression-
+    tested against this general definition, independent of the SAT penalty
+    built on top of it. A WRONG derivation would show up here as this
+    matrix having off-diagonal structure, or a diagonal that doesn't match
+    -a'*w_j (with the single +A_{n_max} correction at the core row) --
+    both are asserted directly in tests/test_sbp_sat_boundary_closure.py.
+    """
+    H = np.diag(grid.weights)
+    A_split = advection_split_matrix(A_array, grid.D)
+    return H @ A_split + A_split.T @ H
+
+
+def assemble_spatial_operator_sbp_sat(
+    n_max: int, alpha: float, N: float, epsilon_core: float = DEFAULT_EPSILON_CORE,
+    *, include_gradient: bool = True,
+):
+    """
+    SBP-SAT closure of the spatial operator (prompt 21 Phase 1b): split-form
+    advection (advection_split_matrix) in place of the plain product, plus a
+    dissipative SAT penalty at the core node (y=+1) on BOTH phi and pi (the
+    same A_array/tau applies to each -- advection_term dresses both fields
+    identically in forward_rhs), with tau = A(core)/2 -- the design note's
+    Section 4 exact-cancellation value. Frozen-coefficient, same convention
+    as assemble_spatial_operator (Delta_s(N)/Delta_s_loc(y,N) evaluated at
+    H_sq_local/H_sq_nl_init held at ratio 1 everywhere).
+
+    include_gradient=False isolates advection+SAT alone, for the
+    "advection-only sub-check reproduces the validated -A(core)/4 constant"
+    acceptance item (design note Section 4's "reproducing the validated
+    recipe").
+
+    Energy-estimate reference: design note Section 4. WRONG versions and
+    their failure signatures:
+      - tau=0 (no SAT): reduces to the plain split-form operator, which
+        still carries the single destabilizing diagonal entry
+        S_{core,core} ~ A(core) (design note Section 3) -- abscissa still
+        grows/stays positive at the core-dominated mode.
+      - tau < A(core)/2: partial cancellation, the u_core^2 coefficient
+        (A(core)/2 - tau) stays positive -- abscissa bounded in n but still
+        positive and non-decaying (a smaller, but still real, n-independent
+        instability) -- distinguishable from the tau=A(core)/2 case only by
+        checking the sign/value of the plateaued abscissa, not by whether
+        it grows with n.
+      - SAT applied only to pi, not phi (or vice versa): leaves the OTHER
+        field's core row with the uncancelled S_{core,core} defect --
+        because advection couples phi and pi through the SAME A_array, both
+        need the penalty independently.
+
+    Returns (matrix, delta_s_N, tau, A_core): the assembled matrix (shape
+    (2*n_max, 2*n_max) -- see module comment above this function for the
+    state-layout note), the frozen Delta_s(N), the SAT coefficient tau
+    used, and A(core) itself (so callers can check tau == A_core/2 and
+    compare abscissa against -A_core/4 in the advection-only case).
+    """
+    grid = LGLCollocationGrid(n_max + 1)
+    n_state = 2 * n_max
+
+    delta_s_N = float(delta_s(N, 0.0, 1.0, 1.0, alpha))
+    delta_s_loc_array = delta_s(N, 0.0, np.ones(n_max + 1), 1.0, alpha)
+    A_array = advection_coefficient(grid.nodes, delta_s_N, epsilon_core)
+    A_split = advection_split_matrix(A_array, grid.D)
+
+    A_core = float(A_array[-1])
+    tau = 0.5 * A_core
+    w_core = float(grid.weights[-1])
+
+    def _spatial_rhs(state: np.ndarray) -> np.ndarray:
+        phi_full = np.empty(n_max + 1)
+        pi_full = np.empty(n_max + 1)
+        phi_full[0] = 0.0
+        pi_full[0] = 0.0
+        # Both phi_core and pi_core are free, integrated DOF here -- no
+        # Neumann elimination of phi_full[-1] (contrast
+        # assemble_spatial_operator, where it is eliminated every call).
+        phi_full[1:n_max + 1] = state[:n_max]
+        pi_full[1:n_max + 1] = state[n_max:2 * n_max]
+
+        if include_gradient:
+            L_phi_array = L_operator(phi_full, delta_s_N, grid.nodes, grid.D, grid.D2)
+            gradient_term = np.exp(-2.0 * delta_s_loc_array) * L_phi_array
+        else:
+            gradient_term = np.zeros(n_max + 1)
+
+        advection_phi_array = A_split @ phi_full
+        advection_pi_array = A_split @ pi_full
+
+        dphi_full = advection_phi_array
+        dpi_full = gradient_term + advection_pi_array
+
+        # SAT penalty (design note Section 4): -tau/w_core * u_core at the
+        # core row only, for each field independently. The "-tau*g" part of
+        # the full SAT (-tau/H*(u_core-g)) is a constant additive forcing,
+        # not part of the linear map an eigenvalue analysis probes -- it
+        # shifts the fixed point, not the spectrum -- so it is correctly
+        # omitted from this linear operator assembly (see design note
+        # Section 6 for where g re-enters, in Phase 2's production RHS).
+        dphi_full[-1] -= (tau / w_core) * phi_full[-1]
+        dpi_full[-1] -= (tau / w_core) * pi_full[-1]
+
+        return np.concatenate([dphi_full[1:n_max + 1], dpi_full[1:n_max + 1]])
+
+    matrix = np.column_stack([_spatial_rhs(e) for e in np.eye(n_state)])
+    return matrix, delta_s_N, tau, A_core
+
+
+# ---------------------------------------------------------------------------
 # Discrete adjoint-consistency diagnostic (prompt 18, metric fixes in 18a)
 #
 # Measurement only, sibling to the eigenvalue sweep above: assembles the
@@ -762,15 +934,34 @@ def spectral_stability_metrics(eigvals: np.ndarray) -> dict:
     }
 
 
-def sweep_eigenvalues(n_max_values, alpha_values, N_values, epsilon_core: float = DEFAULT_EPSILON_CORE):
+def sweep_eigenvalues(
+    n_max_values, alpha_values, N_values, epsilon_core: float = DEFAULT_EPSILON_CORE,
+    closure: str = "strong",
+):
     """Computes one row per (n_max, alpha, N) combination in the Cartesian
     product of the three input lists. Returns a list of dicts with keys
-    matching CSV_FIELDNAMES."""
+    matching CSV_FIELDNAMES.
+
+    closure="strong" (default, unchanged prompt-17/20 behaviour): the
+    existing Neumann-eliminated/plain-product assemble_spatial_operator.
+    closure="sbp-sat" (prompt 21): assemble_spatial_operator_sbp_sat instead
+    -- same CSV schema either way (the two closures differ in the numbers,
+    not the columns), so before/after comparisons are two separate sweeps
+    rather than a combined column."""
     rows = []
     for n_max in n_max_values:
         for alpha in alpha_values:
             for N in N_values:
-                matrix, delta_s_N = assemble_spatial_operator(n_max, alpha, N, epsilon_core)
+                if closure == "sbp-sat":
+                    matrix, delta_s_N, _tau, _A_core = assemble_spatial_operator_sbp_sat(
+                        n_max, alpha, N, epsilon_core,
+                    )
+                elif closure == "strong":
+                    matrix, delta_s_N = assemble_spatial_operator(n_max, alpha, N, epsilon_core)
+                else:
+                    raise ValueError(
+                        f"sweep_eigenvalues: closure must be 'strong' or 'sbp-sat', got {closure!r}"
+                    )
                 eigvals = np.linalg.eigvals(matrix)
                 op_norm = float(np.linalg.norm(matrix, ord=2))
                 max_abs_re = float(np.max(np.abs(eigvals.real)))
@@ -905,6 +1096,13 @@ def create_parser() -> argparse.ArgumentParser:
              "(default: %(default)s).",
     )
     parser.add_argument(
+        "--closure", type=str, default="strong", choices=["strong", "sbp-sat"],
+        help="Only affects --mode spectrum. 'strong' (default, unchanged "
+             "prompt-17/20 behaviour): Neumann-eliminated core, plain-"
+             "product advection. 'sbp-sat' (prompt 21 Phase 1b): split-form "
+             "advection plus the core SAT penalty (default: %(default)s).",
+    )
+    parser.add_argument(
         "--output", type=str, default="stiffness_spectrum.csv",
         help="Output CSV path (default: %(default)s).",
     )
@@ -961,12 +1159,19 @@ def main(argv=None) -> int:
           f"spectral_abscissa = {check_metrics['spectral_abscissa']:.3e}, "
           f"n_rhp = {check_metrics['n_rhp']}")
 
-    rows = sweep_eigenvalues(n_max_values, alpha_values, N_values, args.epsilon_core)
+    rows = sweep_eigenvalues(n_max_values, alpha_values, N_values, args.epsilon_core, args.closure)
     output_path = Path(args.output)
     write_csv(rows, output_path)
-    print(f"Wrote {len(rows)} sweep points to {output_path}")
+    print(f"Wrote {len(rows)} sweep points to {output_path} (closure={args.closure})")
 
     if args.plot:
+        if args.closure != "strong":
+            print(
+                f"Note: --plot's scatter/abscissa plots always use the 'strong' "
+                f"closure's assemble_spatial_operator (unaffected by --closure) -- "
+                f"pass --closure sbp-sat and compare the written CSVs directly for "
+                f"a closure-vs-closure comparison."
+            )
         plot_path = output_path.with_suffix(f".{args.plot_format}")
         plot_spectrum_scatter(
             n_max_values, max(alpha_values), max(N_values), args.epsilon_core, plot_path,
