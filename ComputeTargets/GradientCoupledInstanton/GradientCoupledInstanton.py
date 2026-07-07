@@ -90,11 +90,25 @@ def _compute_gradient_coupled_instanton(
     atol: float,
     rtol: float,
     store_full_values: bool,
+    instrument_stiffness: bool = True,
     label: Optional[str] = None,
 ) -> dict:
     """
     Solve the gradient-coupled instanton BVP and extract its physical
     profile, per the ten-step pipeline in prompt 14 Part C.
+
+    instrument_stiffness (prompt 17 Part B; default True): threaded straight
+    through to solve_picard, which instruments every RK45 solve_ivp call it
+    makes (see solve_picard's own docstring) and folds the aggregated
+    step-count/step-size/wall-clock statistics into the "diagnostics" dict
+    below under "rk45_forward_*"/"rk45_backward_*"/
+    "picard_sweep_wallclock_min/mean/max". Gates measurement overhead only:
+    with instrument_stiffness=False the physics result (phi/pi/rfield/rmom,
+    zeta/r_ratio/C/r_phys, msr_action, noise_*) is unchanged, only those
+    extra diagnostics keys go unpopulated. Expected to eventually default to
+    False once the stiffness envelope characterized by prompt 17 Part A is
+    understood, to avoid per-solve instrumentation overhead on production
+    runs.
 
     Returns a dict with keys:
         "failure", "N_total", "N_sample",
@@ -171,6 +185,7 @@ def _compute_gradient_coupled_instanton(
     result = solve_picard(
         N_init, N_final, delta_Nstar, alpha, H_sq_nl_init, grid,
         traj, potential, dm, atol, rtol, phi_end,
+        instrument_stiffness=instrument_stiffness,
         label=_lbl,
     )
 

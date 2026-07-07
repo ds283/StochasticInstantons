@@ -51,9 +51,11 @@ trajectory dependency, so it needs no N_offset.
 """
 
 import time
+from contextlib import contextmanager
 from typing import Optional
 
 import numpy as np
+import scipy.integrate._ivp.rk as _scipy_rk
 from scipy.integrate import solve_ivp
 
 from Interpolation.spline_wrapper import SplineWrapper
@@ -75,6 +77,127 @@ MAX_INNER = 30
 # Number of temporal sample points spanning the local domain [0.0, N_total];
 # matches FullInstanton's own floor value (N_GRID = max(300, ...)).
 N_GRID_SIZE = 300
+
+
+# ---------------------------------------------------------------------------
+# Prompt 17 Part B -- per-solve RK45 instrumentation. Pure measurement: none
+# of this changes solve_ivp's method, tolerances, grid, or output values.
+# ---------------------------------------------------------------------------
+
+
+@contextmanager
+def _count_rk45_step_attempts():
+    """
+    Counts every call to scipy's module-level ``rk_step`` helper -- one call
+    per *attempted* RK45 step, whether that step is ultimately accepted or
+    rejected (see ``scipy.integrate._ivp.rk.RungeKutta._step_impl``, whose
+    inner ``while not step_accepted:`` retry loop calls ``rk_step`` exactly
+    once per trial). ``RungeKutta._step_impl`` looks up the name
+    ``rk_step`` in its own module's globals at call time, so temporarily
+    replacing ``scipy.integrate._ivp.rk.rk_step`` redirects those calls
+    without touching ``RK45`` itself.
+
+    This is a pure observability hook: the wrapped function is a thin
+    pass-through to the original ``rk_step``, so step selection, accepted
+    step sizes, and every numerical output are completely unaffected --
+    only a call counter increments. Restored in a ``finally`` block so a
+    solver exception never leaves the patch in place.
+
+    Combined with ``len(sol.sol.interpolants)`` (the number of *accepted*
+    steps, available whenever ``dense_output=True``), this gives an exact
+    rejected = total - accepted count without needing to duplicate any of
+    RK45's own step-acceptance logic.
+    """
+    counter = {"attempts": 0}
+    original = _scipy_rk.rk_step
+
+    def _wrapped(*args, **kwargs):
+        counter["attempts"] += 1
+        return original(*args, **kwargs)
+
+    _scipy_rk.rk_step = _wrapped
+    try:
+        yield counter
+    finally:
+        _scipy_rk.rk_step = original
+
+
+def _solve_ivp_instrumented(instrument: bool, *args, **kwargs):
+    """
+    Thin wrapper around ``solve_ivp``. If ``instrument`` is False, calls
+    ``solve_ivp`` completely unchanged and returns ``(sol, None)`` -- no
+    monkeypatching, no extra work, so the non-instrumented path costs
+    nothing beyond whatever ``dense_output``/``t_eval`` the caller already
+    requested.
+
+    If ``instrument`` is True, wraps the call with
+    ``_count_rk45_step_attempts`` and returns ``(sol, step_stats)``, where
+    ``step_stats`` is a dict with keys ``accepted``, ``rejected``, ``total``,
+    ``step_sizes`` (list of accepted step sizes, ``abs(t_max - t_min)`` per
+    dense-output interpolant). The caller must pass ``dense_output=True``
+    for ``accepted``/``step_sizes`` to be populated; without it ``sol.sol``
+    is ``None`` and this falls back to ``accepted=0``, ``step_sizes=[]``
+    (every current call site in ``solve_picard`` passes ``dense_output=True``
+    whenever it instruments, so this fallback is not expected to trigger in
+    production use).
+    """
+    if not instrument:
+        return solve_ivp(*args, **kwargs), None
+
+    with _count_rk45_step_attempts() as counter:
+        sol = solve_ivp(*args, **kwargs)
+
+    interpolants = sol.sol.interpolants if sol.sol is not None else []
+    accepted = len(interpolants)
+    total = counter["attempts"]
+    rejected = total - accepted
+    step_sizes = [abs(ip.t - ip.t_old) for ip in interpolants]
+
+    return sol, {
+        "accepted": accepted,
+        "rejected": rejected,
+        "total": total,
+        "step_sizes": step_sizes,
+    }
+
+
+def _aggregate_rk45_stats(stats_list: list, label: str, N_total: float) -> dict:
+    """
+    Aggregates a list of per-solve step-stats dicts (as produced by
+    ``_solve_ivp_instrumented``) across every forward- or backward-direction
+    ``solve_ivp`` call made during one whole ``solve_picard`` invocation --
+    the zeroth Picard iterate's background pass plus every inner-Picard
+    forward/backward solve across every outer Newton iteration -- into the
+    six columns the diagnostics dict exposes for that direction:
+    ``rk45_{label}_total_steps``, ``_accepted_steps``, ``_rejected_steps``,
+    ``_min_step``, ``_max_step``, ``_steps_per_efold`` (total steps /
+    N_total).
+
+    Returns a dict of all-``None`` values if ``stats_list`` is empty (e.g.
+    ``instrument_stiffness=False``, or a direction that made no solve_ivp
+    calls before an early failure).
+    """
+    keys = (
+        f"rk45_{label}_total_steps", f"rk45_{label}_accepted_steps",
+        f"rk45_{label}_rejected_steps", f"rk45_{label}_min_step",
+        f"rk45_{label}_max_step", f"rk45_{label}_steps_per_efold",
+    )
+    if not stats_list:
+        return {k: None for k in keys}
+
+    total_steps = sum(s["total"] for s in stats_list)
+    accepted_steps = sum(s["accepted"] for s in stats_list)
+    rejected_steps = sum(s["rejected"] for s in stats_list)
+    all_step_sizes = [sz for s in stats_list for sz in s["step_sizes"]]
+
+    return {
+        f"rk45_{label}_total_steps": total_steps,
+        f"rk45_{label}_accepted_steps": accepted_steps,
+        f"rk45_{label}_rejected_steps": rejected_steps,
+        f"rk45_{label}_min_step": min(all_step_sizes) if all_step_sizes else None,
+        f"rk45_{label}_max_step": max(all_step_sizes) if all_step_sizes else None,
+        f"rk45_{label}_steps_per_efold": (total_steps / N_total) if N_total else None,
+    }
 
 
 def _build_node_splines(N_grid: np.ndarray, values_grid: np.ndarray, y_transform: str) -> list:
@@ -101,6 +224,7 @@ def solve_picard(
     rtol: float,
     phi_end: float,
     disable_spatial_coupling: bool = False,
+    instrument_stiffness: bool = True,
     label: Optional[str] = None,
 ) -> dict:
     """
@@ -112,12 +236,34 @@ def solve_picard(
         phi(y_j, N=0.0) = phi_init, pi(y_j, N=0.0) = pi_init  (uniform in y)
         phi(y=+1, N=N_total) = phi_end   [shooting condition on lambda]
 
+    instrument_stiffness (prompt 17 Part B; default True): when True,
+    every forward/backward RK45 solve_ivp call made during this solve (the
+    zeroth Picard iterate's background pass, plus every inner-Picard
+    forward/backward solve across every outer Newton iteration) is
+    instrumented via _solve_ivp_instrumented/_count_rk45_step_attempts, and
+    the aggregated step-count/step-size/wall-clock statistics are folded
+    into the returned "diagnostics" dict under "rk45_forward_*",
+    "rk45_backward_*", and "picard_sweep_wallclock_min/mean/max" (see
+    _aggregate_rk45_stats's own docstring for the exact keys). This gates
+    *measurement overhead only* -- it never changes solve_ivp's method,
+    tolerances, grid, or the physics result (bg_sol's own dense_output flag
+    is the only call-site difference; dense_output requests extra
+    per-step interpolant bookkeeping but does not alter step selection or
+    output values). When False, these diagnostics keys are simply absent.
+
     Returns a dict with keys:
         "N_total", "N_grid", "phi_grid", "pi_grid", "rfield_grid",
         "rmom_grid", "final_lambda", "failure", "diagnostics"
     """
     compute_start = time.perf_counter()
     ode_solve_count = 0
+
+    # Prompt 17 Part B -- shared accumulators mutated (via .append(), never
+    # reassigned) by picard_inner's closure below; aggregated into
+    # "diagnostics" at every return point via _instrumentation_diagnostics().
+    fwd_rk45_stats: list = []
+    bwd_rk45_stats: list = []
+    picard_sweep_wallclocks: list = []
 
     _lbl = label if label else f"phi_end={phi_end:.4g} N_init={N_init:.3g} N_final={N_final:.3g}"
 
@@ -174,6 +320,23 @@ def solve_picard(
             N, y, alpha, H_sq_nl_init, grid, phi_splines, pi_splines, potential,
         )
 
+    def _instrumentation_diagnostics() -> dict:
+        """Folds the accumulated rk45_*/picard_sweep_wallclock_* keys into
+        whatever diagnostics dict is about to be returned (success or
+        failure) -- empty dict if instrument_stiffness is False, so those
+        keys are simply absent rather than populated with placeholder
+        values."""
+        if not instrument_stiffness:
+            return {}
+        out = _aggregate_rk45_stats(fwd_rk45_stats, "forward", N_total)
+        out.update(_aggregate_rk45_stats(bwd_rk45_stats, "backward", N_total))
+        out["picard_sweep_wallclock_min"] = min(picard_sweep_wallclocks) if picard_sweep_wallclocks else None
+        out["picard_sweep_wallclock_mean"] = (
+            sum(picard_sweep_wallclocks) / len(picard_sweep_wallclocks) if picard_sweep_wallclocks else None
+        )
+        out["picard_sweep_wallclock_max"] = max(picard_sweep_wallclocks) if picard_sweep_wallclocks else None
+        return out
+
     def _failure_diagnostics(outer_iterations, newton_fallback_count,
                               picard_iterations_per_outer, picard_time_total,
                               picard_iters_total, final_residual):
@@ -195,6 +358,7 @@ def solve_picard(
             "mean_time_per_picard_iteration": (
                 picard_time_total / picard_iters_total if picard_iters_total else None
             ),
+            **_instrumentation_diagnostics(),
         }
 
     def _failure_result(diagnostics):
@@ -211,11 +375,15 @@ def solve_picard(
     # ── Zeroth Picard iterate: background pass, response fields zero ──────
     zero_splines = _build_node_splines(N_grid, np.zeros((N_GRID_SIZE, n_nodes)), y_transform='sinh')
 
-    bg_sol = solve_ivp(
+    bg_sol, bg_step_stats = _solve_ivp_instrumented(
+        instrument_stiffness,
         lambda N, y: _fwd_rhs(N, y, zero_splines, zero_splines),
         (N_start, N_stop), state_init, method="RK45", t_eval=N_grid, atol=atol, rtol=rtol,
+        dense_output=instrument_stiffness,
     )
     ode_solve_count += 1
+    if bg_step_stats is not None:
+        fwd_rk45_stats.append(bg_step_stats)
     if not bg_sol.success:
         print(f"[{_lbl}] background ODE failed for zeroth Picard iterate")
         return _failure_result(_failure_diagnostics(0, 0, [], 0.0, 0, None))
@@ -243,6 +411,7 @@ def solve_picard(
         bp_sol = None
 
         for _ in range(MAX_INNER):
+            sweep_start = time.perf_counter() if instrument_stiffness else None
             n_inner_iters += 1
             phi_splines = _build_node_splines(N_grid, phi_grid, y_transform='linear')
             pi_splines = _build_node_splines(N_grid, pi_grid, y_transform='linear')
@@ -252,12 +421,15 @@ def solve_picard(
             delta_s_N_final = delta_s(N_total, 0.0, H_sq_core_final, H_sq_nl_init, alpha)
             terminal_state = terminal_response_state(lam, grid, delta_s_N_final)
 
-            bp = solve_ivp(
+            bp, bp_step_stats = _solve_ivp_instrumented(
+                instrument_stiffness,
                 lambda N, y: _bwd_rhs(N, y, phi_splines, pi_splines),
                 (N_stop, N_start), terminal_state, method="RK45",
                 t_eval=N_grid_rev, dense_output=True, atol=atol, rtol=rtol,
             )
             ode_solve_count += 1
+            if bp_step_stats is not None:
+                bwd_rk45_stats.append(bp_step_stats)
             if not bp.success:
                 return None, None, None, None, n_inner_iters, None, None
 
@@ -268,12 +440,15 @@ def solve_picard(
             rmom_splines = _build_node_splines(N_grid, rmom_grid, y_transform='sinh')
 
             # Forward pass, now sourced by the just-computed response fields.
-            fp = solve_ivp(
+            fp, fp_step_stats = _solve_ivp_instrumented(
+                instrument_stiffness,
                 lambda N, y: _fwd_rhs(N, y, rfield_splines, rmom_splines),
                 (N_start, N_stop), state_init, method="RK45",
                 t_eval=N_grid, dense_output=True, atol=atol, rtol=rtol,
             )
             ode_solve_count += 1
+            if fp_step_stats is not None:
+                fwd_rk45_stats.append(fp_step_stats)
             if not fp.success:
                 return None, None, None, None, n_inner_iters, None, None
 
@@ -281,6 +456,8 @@ def solve_picard(
             inner_res = np.max(np.abs(phi_grid_new - phi_grid))
             phi_grid, pi_grid = phi_grid_new, pi_grid_new
             fp_sol, bp_sol = fp.sol, bp.sol
+            if instrument_stiffness:
+                picard_sweep_wallclocks.append(time.perf_counter() - sweep_start)
             if inner_res < INNER_TOL:
                 break
 
@@ -357,6 +534,7 @@ def solve_picard(
         "mean_time_per_picard_iteration": (
             picard_time_total / picard_iters_total if picard_iters_total else None
         ),
+        **_instrumentation_diagnostics(),
     }
 
     if not converged:
