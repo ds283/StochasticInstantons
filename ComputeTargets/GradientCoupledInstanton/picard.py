@@ -226,6 +226,7 @@ def solve_picard(
     disable_spatial_coupling: bool = False,
     instrument_stiffness: bool = True,
     label: Optional[str] = None,
+    verbose: bool = False,
 ) -> dict:
     """
     Solve the gradient-coupled instanton BVP over the onion coordinate grid
@@ -250,6 +251,13 @@ def solve_picard(
     is the only call-site difference; dense_output requests extra
     per-step interpolant bookkeeping but does not alter step selection or
     output values). When False, these diagnostics keys are simply absent.
+
+    verbose (default False): print one line per inner Picard sweep and one
+    line per outer Newton iteration (residual, lambda), so a long-running
+    solve's progress is visible instead of blocking silently until it
+    converges or exhausts MAX_OUTER. Off by default since production runs
+    dispatch hundreds of solves in parallel Ray workers, where per-sweep
+    prints would flood the log; intended for interactive/exploratory use.
 
     Returns a dict with keys:
         "N_total", "N_grid", "phi_grid", "pi_grid", "rfield_grid",
@@ -280,6 +288,10 @@ def solve_picard(
 
     N_grid = np.linspace(N_start, N_stop, N_GRID_SIZE)
     N_grid_rev = N_grid[::-1]
+
+    if verbose:
+        print(f"[{_lbl}] starting: n_nodes={n_nodes} N_total={N_total:.6g} "
+              f"alpha={alpha:.6g} MAX_OUTER={MAX_OUTER} MAX_INNER={MAX_INNER}", flush=True)
 
     phi_init = trajectory.phi_at(N_offset + N_start)
     pi_init = trajectory.pi_at(N_offset + N_start)
@@ -411,7 +423,7 @@ def solve_picard(
         bp_sol = None
 
         for _ in range(MAX_INNER):
-            sweep_start = time.perf_counter() if instrument_stiffness else None
+            sweep_start = time.perf_counter() if (instrument_stiffness or verbose) else None
             n_inner_iters += 1
             phi_splines = _build_node_splines(N_grid, phi_grid, y_transform='linear')
             pi_splines = _build_node_splines(N_grid, pi_grid, y_transform='linear')
@@ -458,6 +470,14 @@ def solve_picard(
             fp_sol, bp_sol = fp.sol, bp.sol
             if instrument_stiffness:
                 picard_sweep_wallclocks.append(time.perf_counter() - sweep_start)
+            if verbose:
+                sweep_time = time.perf_counter() - sweep_start if sweep_start is not None else None
+                print(
+                    f"[{_lbl}]     picard sweep {n_inner_iters}/{MAX_INNER}: "
+                    f"max|dphi|={inner_res:.6e} (tol={INNER_TOL:.3e})"
+                    + (f"  [{sweep_time:.2f}s]" if sweep_time is not None else ""),
+                    flush=True,
+                )
             if inner_res < INNER_TOL:
                 break
 
@@ -480,6 +500,9 @@ def solve_picard(
 
     for outer in range(MAX_OUTER):
         outer_iterations = outer + 1
+        if verbose:
+            print(f"[{_lbl}]   outer {outer_iterations}/{MAX_OUTER}: lambda={lam:.6g} "
+                  f"-- residual picard_inner", flush=True)
         picard_start = time.perf_counter()
         pg, pig, rfg, rmg, n_inner, fp_sol, bp_sol = picard_inner(lam, phi_grid_f, pi_grid_f)
         picard_time_total += time.perf_counter() - picard_start
@@ -496,12 +519,20 @@ def solve_picard(
         phi_grid_f, pi_grid_f, rfield_grid_f, rmom_grid_f = pg, pig, rfg, rmg
         fp_sol_f, bp_sol_f = fp_sol, bp_sol
 
+        if verbose:
+            print(f"[{_lbl}]   outer {outer_iterations}/{MAX_OUTER}: residual={residual:.6e} "
+                  f"(tol={OUTER_TOL:.3e}), {n_inner} picard sweeps, "
+                  f"{picard_time_total:.1f}s picard time so far", flush=True)
+
         if abs(residual) < OUTER_TOL:
             converged = True
             break
 
         # Finite-difference Newton step.
         dlam = max(abs(lam) * 1e-4, 1e-6)
+        if verbose:
+            print(f"[{_lbl}]   outer {outer_iterations}/{MAX_OUTER}: "
+                  f"Newton derivative probe at lambda+dlam={lam + dlam:.6g}", flush=True)
         picard_start = time.perf_counter()
         pg_p, _, _, _, n_inner_p, _, _ = picard_inner(lam + dlam, phi_grid_f, pi_grid_f)
         picard_time_total += time.perf_counter() - picard_start
