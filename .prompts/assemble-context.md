@@ -37,6 +37,8 @@ Please:
    onion coordinate `y`. You can refer to the details in the `./.documents/onion_model.tex` mathematical notes, and you
    can assume the online Claude.ai will have access to these notes. Explain the scheme used to assign scales to shells
    in `GradientCoupledInstanton` and how it relates to the scheme used by `FullInstanton` + `CompactionFunction`.
+5. Produce a narrative explanation of how the `Datastore` and `ShardedPool` abstractions work
+6. Produce a narrative explanation of hwo the `RayWorkPool` abstraction works
 
 The contents of the `claude-context` folder are ephemeral and are regenerated when necessary. Do not commit anything to
 the git repository.
