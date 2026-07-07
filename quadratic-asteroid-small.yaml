@@ -15,3 +15,5 @@ delta-Nstar-low: 0.1
 delta-Nstar-high: 3.0
 delta-Nstar-samples: 5
 samples-per-N: 100
+n-collocation-points: [ 17, 33 ]
+alpha-regularization: [ 0.001, 0.01, 0.1 ]
