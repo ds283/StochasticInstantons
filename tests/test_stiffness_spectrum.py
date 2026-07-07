@@ -19,7 +19,8 @@ operator eigenvalue sweep for the gradient-coupled instanton's onion-model
 spatial discretisation -- and prompt 18's discrete adjoint-consistency
 diagnostic (`--mode adjoint`), amended in prompt 18a to fix `L_selfadj`
 (now inversion-free) and replace the `*_eliminated` columns with full-node
-`*_interior` companions.
+`*_interior` companions. Prompt 20 adds the signed spectral abscissa /
+right-half-plane eigenvalue count / growth e-fold time to `--mode spectrum`.
 """
 
 import csv
@@ -33,6 +34,7 @@ from analyze_StiffnessSpectrum import (
     assemble_spatial_operator,
     compute_adjoint_diagnostics,
     self_check_assembled_operator,
+    spectral_stability_metrics,
     sweep_adjoint_diagnostics,
     sweep_eigenvalues,
     write_csv,
@@ -309,3 +311,104 @@ def test_spectrum_mode_unaffected_by_adjoint_addition(tmp_path):
     with open(output_path, newline="") as f:
         reader = csv.DictReader(f)
         assert reader.fieldnames == CSV_FIELDNAMES
+
+
+# ---------------------------------------------------------------------------
+# Prompt 20 -- signed spectral abscissa + RHP eigenvalue count.
+#
+# max_abs_re_lambda (prompt 17) discards sign, so a spurious +1500 (a genuine
+# growing mode) is indistinguishable from a stable -1500. These tests check
+# that the new columns preserve sign and correctly localize the instability
+# to the initial layer (small N, near the alpha-regularized N_init
+# coordinate singularity).
+# ---------------------------------------------------------------------------
+
+
+def test_spectral_abscissa_positive_and_grows_with_n_max_at_small_delta_s():
+    """
+    Acceptance anchor: at small Delta_s (N=0.1, alpha=0.1) the signed
+    spectral abscissa is POSITIVE -- a genuine growing mode -- and increases
+    monotonically with n_max. The exact magnitudes depend on the real
+    background state; sign and monotone growth are the acceptance criteria.
+    """
+    n_max_values = [8, 16, 32, 64]
+    abscissas = []
+    for n_max in n_max_values:
+        matrix, _ = assemble_spatial_operator(n_max, 0.1, 0.1)
+        metrics = spectral_stability_metrics(np.linalg.eigvals(matrix))
+        abscissas.append(metrics["spectral_abscissa"])
+
+    assert all(a > 0.0 for a in abscissas)
+    assert abscissas == sorted(abscissas)
+
+
+def test_n_rhp_positive_and_reaches_full_rank_at_smallest_delta_s():
+    """
+    Acceptance anchor: n_rhp > 0 at small Delta_s and grows with n_max,
+    approaching the full 2*n_max-1 unstable modes at the smallest Delta_s
+    in the default sweep (N=0.01).
+    """
+    for n_max in (8, 16, 32):
+        matrix, _ = assemble_spatial_operator(n_max, 0.1, 0.01)
+        metrics = spectral_stability_metrics(np.linalg.eigvals(matrix))
+        assert metrics["n_rhp"] > 0
+        assert metrics["n_rhp"] == 2 * n_max - 1
+
+
+def test_spectral_abscissa_shrinks_by_orders_of_magnitude_away_from_N_init():
+    """
+    Acceptance anchor: moving from the initial layer (small N) into the
+    production wide-transition regime (N>=5) the spectral abscissa drops by
+    orders of magnitude at fixed (production) n_max -- consistent with the
+    empirical blow-up localizing near N_init. At n_max=16, alpha=0.1 this
+    frozen-coefficient reconstruction does not drive the abscissa
+    non-positive by N=25 (it stays O(1)), so this checks the localizing
+    trend rather than a sign flip.
+    """
+    n_max = 16
+    matrix_small, _ = assemble_spatial_operator(n_max, 0.1, 0.1)
+    matrix_large, _ = assemble_spatial_operator(n_max, 0.1, 25.0)
+    abscissa_small = spectral_stability_metrics(np.linalg.eigvals(matrix_small))["spectral_abscissa"]
+    abscissa_large = spectral_stability_metrics(np.linalg.eigvals(matrix_large))["spectral_abscissa"]
+
+    assert abscissa_large < abscissa_small / 50.0
+
+
+def test_growth_efold_time_much_less_than_N_total_at_small_delta_s():
+    """
+    Acceptance anchor: growth_efold_time << N_total at production n_max and
+    small Delta_s -- the quantitative statement that the solve cannot
+    survive the initial layer regardless of step size.
+    """
+    matrix, _ = assemble_spatial_operator(16, 0.1, 0.1)
+    metrics = spectral_stability_metrics(np.linalg.eigvals(matrix))
+    N_total_representative = 20.0
+    assert metrics["growth_efold_time"] < N_total_representative / 100.0
+
+
+def test_growth_efold_time_is_inf_when_abscissa_non_positive():
+    """When every mode is stable (abscissa <= 0), there is no growing mode
+    and growth_efold_time must report inf rather than a negative timescale,
+    with n_rhp == 0."""
+    metrics = spectral_stability_metrics(np.array([-1.0, -2.0, -0.5]))
+    assert metrics["spectral_abscissa"] < 0.0
+    assert metrics["n_rhp"] == 0
+    assert metrics["growth_efold_time"] == float("inf")
+
+
+def test_sweep_eigenvalues_reports_prompt20_columns_consistently():
+    """spectral_abscissa/n_rhp/growth_efold_time from the sweep must agree
+    with directly recomputing them from the same assembled operator, and
+    existing prompt-17 columns must be untouched."""
+    rows = sweep_eigenvalues([8, 16], [0.1], [0.1, 25.0])
+    assert set(rows[0].keys()) == set(CSV_FIELDNAMES)
+
+    for row in rows:
+        matrix, _ = assemble_spatial_operator(row["n_max"], row["alpha"], row["N"], )
+        expected = spectral_stability_metrics(np.linalg.eigvals(matrix))
+        assert row["spectral_abscissa"] == pytest.approx(expected["spectral_abscissa"])
+        assert row["n_rhp"] == expected["n_rhp"]
+        if np.isinf(expected["growth_efold_time"]):
+            assert np.isinf(row["growth_efold_time"])
+        else:
+            assert row["growth_efold_time"] == pytest.approx(expected["growth_efold_time"])

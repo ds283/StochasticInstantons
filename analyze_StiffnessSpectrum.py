@@ -62,6 +62,17 @@ flagged in `onion_model_planning.md`'s cross-checks, not to gate
 correctness. Also frozen-uniform-H^2 (a real, phi/pi-dependent H_sq(N)
 profile is out of scope here, same simplification as `--mode spectrum`).
 
+Prompt 20 amends `--mode spectrum` to report the SIGNED spectral abscissa
+(`max(ev.real)`, not `max(|ev.real|)`) plus a right-half-plane eigenvalue
+count and the associated growth e-fold time. `max_abs_re_lambda` alone cannot
+distinguish a genuinely unstable `+1500` from a stable `-1500`; the sign is
+the entire question of whether the assembled operator itself is unstable,
+independent of which integrator is thrown at it. `implied_rk45_max_dt` is
+only a meaningful stability step when `spectral_abscissa <= 0` -- when it is
+positive, the semi-discrete ODE grows for ANY step size, and
+`growth_efold_time` (directly comparable to `N_total`) is the relevant
+number instead.
+
 Prompt 18a amends two of prompt 18's metrics, both metric-definition fixes,
 not physics changes:
 
@@ -122,8 +133,19 @@ VERSION_LABEL = "2026.3.0"
 # comparable real and imaginary eigenvalue parts) the true stable region is
 # an egg-shaped patch of the complex plane, not a disc, so the implied
 # max step this script reports is an order-of-magnitude indicator, not a
-# rigorous bound.
+# rigorous bound. It is also only a *stability* step at all when
+# `spectral_abscissa <= 0` (prompt 20): when the spectral abscissa is
+# positive, the semi-discrete system has an exponentially growing mode and
+# NO step size is stable -- `growth_efold_time` is the relevant number in
+# that regime, not `implied_rk45_max_dt`.
 RK45_REAL_AXIS_STABILITY_RADIUS = 2.8
+
+# Relative right-half-plane threshold (prompt 20): an eigenvalue counts as
+# "unstable" (contributing to n_rhp) only if its real part exceeds this
+# fraction of the largest eigenvalue magnitude, so the count is scale-robust
+# across the O(n_max^4) growth in |lambda| rather than using a fixed
+# absolute cutoff.
+RHP_REL_TOL = 1.0e-6
 
 DEFAULT_EPSILON_CORE = 0.01
 _FD_EPS = 1.0e-6
@@ -139,6 +161,7 @@ DEFAULT_N_VALUES = [0.01, 0.1, 1.0, 5.0, 10.0, 15.0, 20.0, 25.0]
 CSV_FIELDNAMES = [
     "n_max", "alpha", "N", "delta_s_N", "op_norm",
     "max_abs_re_lambda", "max_abs_im_lambda", "implied_rk45_max_dt",
+    "spectral_abscissa", "n_rhp", "growth_efold_time",
 ]
 
 ADJOINT_CSV_FIELDNAMES = [
@@ -707,6 +730,38 @@ def plot_adjoint_convergence(n_max_values, alpha, N, epsilon_core: float, output
 # ---------------------------------------------------------------------------
 
 
+def spectral_stability_metrics(eigvals: np.ndarray) -> dict:
+    """
+    Signed spectral abscissa, right-half-plane eigenvalue count, and growth
+    e-fold time for an assembled operator's eigenvalues `eigvals` (prompt 20).
+
+    Unlike `max_abs_re_lambda` (prompt 17), `spectral_abscissa = max(ev.real)`
+    keeps its SIGN: `> 0` means the semi-discrete system has a genuinely
+    growing mode -- no time integrator, explicit or implicit, can rescue it,
+    because it would be faithfully integrating an ODE that is itself blowing
+    up. `n_rhp` counts eigenvalues with real part exceeding a *relative*
+    threshold (`RHP_REL_TOL * max(1, max|lambda|)`), so the count stays
+    meaningful across the O(n_max^4) growth in eigenvalue magnitude rather
+    than using a fixed absolute cutoff. `growth_efold_time = 1/spectral_abscissa`
+    is the e-fold timescale of the fastest growing mode, directly comparable
+    to `N_total`; it is reported as `inf` when there is no growing mode
+    (`spectral_abscissa <= 0`).
+    """
+    real_parts = eigvals.real
+    spectral_abscissa = float(np.max(real_parts))
+    max_abs_lambda = float(np.max(np.abs(eigvals)))
+    rhp_tol = RHP_REL_TOL * max(1.0, max_abs_lambda)
+    n_rhp = int(np.sum(real_parts > rhp_tol))
+    growth_efold_time = (
+        1.0 / spectral_abscissa if spectral_abscissa > 0.0 else float("inf")
+    )
+    return {
+        "spectral_abscissa": spectral_abscissa,
+        "n_rhp": n_rhp,
+        "growth_efold_time": growth_efold_time,
+    }
+
+
 def sweep_eigenvalues(n_max_values, alpha_values, N_values, epsilon_core: float = DEFAULT_EPSILON_CORE):
     """Computes one row per (n_max, alpha, N) combination in the Cartesian
     product of the three input lists. Returns a list of dicts with keys
@@ -725,6 +780,7 @@ def sweep_eigenvalues(n_max_values, alpha_values, N_values, epsilon_core: float 
                     RK45_REAL_AXIS_STABILITY_RADIUS / max_abs_lambda
                     if max_abs_lambda > 0.0 else float("inf")
                 )
+                stability_metrics = spectral_stability_metrics(eigvals)
                 rows.append({
                     "n_max": n_max,
                     "alpha": alpha,
@@ -734,6 +790,7 @@ def sweep_eigenvalues(n_max_values, alpha_values, N_values, epsilon_core: float 
                     "max_abs_re_lambda": max_abs_re,
                     "max_abs_im_lambda": max_abs_im,
                     "implied_rk45_max_dt": implied_dt,
+                    **stability_metrics,
                 })
     return rows
 
@@ -769,6 +826,34 @@ def plot_spectrum_scatter(n_max_values, alpha, N, epsilon_core: float, output_pa
     ax.set_ylabel(r"$\mathrm{Im}(\lambda)$")
     ax.set_title(rf"Assembled operator spectrum ($\alpha={alpha:.3g}$, $N={N:.3g}$)")
     ax.legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(output_path)
+    plt.close(fig)
+
+
+def plot_spectral_abscissa(n_max_values, alpha, N, epsilon_core: float, output_path: Path) -> None:
+    """
+    Signed spectral abscissa vs n_max (prompt 20), at a single representative
+    (alpha, N) point near N_init (small Delta_s) -- a y=0 reference line
+    makes a positive, n_max-growing curve read as instability at a glance,
+    consistent with the empirical blow-up localizing near N_init.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    abscissa_values = []
+    for n_max in n_max_values:
+        matrix, _ = assemble_spatial_operator(n_max, alpha, N, epsilon_core)
+        eigvals = np.linalg.eigvals(matrix)
+        abscissa_values.append(spectral_stability_metrics(eigvals)["spectral_abscissa"])
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.axhline(0.0, color="k", linewidth=0.8, linestyle="--")
+    ax.plot(n_max_values, abscissa_values, marker="o", color="C3")
+    ax.set_xlabel(r"$n_{\max}$")
+    ax.set_ylabel(r"spectral abscissa $\max(\mathrm{Re}\,\lambda)$")
+    ax.set_title(rf"Signed spectral abscissa ($\alpha={alpha:.3g}$, $N={N:.3g}$)")
     fig.tight_layout()
     fig.savefig(output_path)
     plt.close(fig)
@@ -860,12 +945,21 @@ def main(argv=None) -> int:
 
         return 0
 
+    check_n_max = 8
+    check_alpha = alpha_values[0] if alpha_values else 0.05
+    check_N = N_values[-1] if N_values else 5.0
+
     self_check_diff = self_check_assembled_operator(
-        n_max=8, alpha=alpha_values[0] if alpha_values else 0.05,
-        N=N_values[-1] if N_values else 5.0, epsilon_core=args.epsilon_core,
+        n_max=check_n_max, alpha=check_alpha, N=check_N, epsilon_core=args.epsilon_core,
     )
     print(f"Self-check (assembled operator vs. finite-difference Jacobian of "
           f"forward_rhs): max abs diff = {self_check_diff:.3e}")
+
+    check_matrix, _ = assemble_spatial_operator(check_n_max, check_alpha, check_N, args.epsilon_core)
+    check_metrics = spectral_stability_metrics(np.linalg.eigvals(check_matrix))
+    print(f"Self-check point (n_max={check_n_max}, alpha={check_alpha:.3g}, N={check_N:.3g}): "
+          f"spectral_abscissa = {check_metrics['spectral_abscissa']:.3e}, "
+          f"n_rhp = {check_metrics['n_rhp']}")
 
     rows = sweep_eigenvalues(n_max_values, alpha_values, N_values, args.epsilon_core)
     output_path = Path(args.output)
@@ -878,6 +972,14 @@ def main(argv=None) -> int:
             n_max_values, max(alpha_values), max(N_values), args.epsilon_core, plot_path,
         )
         print(f"Wrote spectrum scatter plot to {plot_path}")
+
+        abscissa_plot_path = output_path.with_name(
+            f"{output_path.stem}_abscissa"
+        ).with_suffix(f".{args.plot_format}")
+        plot_spectral_abscissa(
+            n_max_values, max(alpha_values), min(N_values), args.epsilon_core, abscissa_plot_path,
+        )
+        print(f"Wrote spectral abscissa vs n_max plot to {abscissa_plot_path}")
 
     return 0
 
