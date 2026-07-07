@@ -1,4 +1,4 @@
-# Prompt 01 — Wire `GradientCoupledInstanton` into the `main.py` driver
+# Prompt 19 — Wire `GradientCoupledInstanton` into the `main.py` driver
 
 **Feature:** `main-driver-integration`
 **Depends on:** the completed `GradientCoupledInstanton` compute target
