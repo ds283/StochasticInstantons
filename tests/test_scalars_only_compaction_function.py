@@ -167,7 +167,6 @@ def _make_cf(dns_obj, tol_obj, full_serial, sr_serial,
         cosmo=fake_cosmo,
         delta_Nstar=dns_obj,
         C_threshold=0.4,
-        C_bar_threshold=0.4,
         atol=tol_obj,
         rtol=tol_obj,
     )

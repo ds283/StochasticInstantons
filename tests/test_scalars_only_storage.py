@@ -96,11 +96,13 @@ def _get_prerequisites(pool):
         pool.object_get("tolerance",   payload_data=[{"log10_tol": _LOG10_TOL}]),
         pool.object_get("efold_value", payload_data=[{"N": n} for n in _N_SAMPLES]),
     ])
+    diffusion = ray.get(pool.object_get("MasslessDecoupledDiffusion"))
     return {
         "dns":         dns_list[0],
         "n_final":     n_final_list[0],
         "tol":         tol_list[0],
         "efold_values": efold_list,     # list of efold_value objects in N order
+        "diffusion":   diffusion,
     }
 
 
@@ -110,7 +112,7 @@ def _mint_n_init(pool, value: float):
 
 
 def _make_full_instanton(n_init_obj, n_final_obj, dns_obj, tol_obj, efold_values,
-                         failure: bool = False, diagnostics: dict = None):
+                         diffusion_model, failure: bool = False, diagnostics: dict = None):
     """
     Construct a FullInstanton as if it had just been successfully computed.
 
@@ -128,6 +130,7 @@ def _make_full_instanton(n_init_obj, n_final_obj, dns_obj, tol_obj, efold_values
         N_sample=None,
         atol=tol_obj,
         rtol=tol_obj,
+        diffusion_model=diffusion_model,
     )
     fi._diagnostics = diagnostics if diagnostics is not None else {
         "compute_time": 0.1,
@@ -152,7 +155,7 @@ def _make_full_instanton(n_init_obj, n_final_obj, dns_obj, tol_obj, efold_values
 
 
 def _make_slow_roll_instanton(n_init_obj, n_final_obj, dns_obj, tol_obj, efold_values,
-                               failure: bool = False, diagnostics: dict = None):
+                               diffusion_model, failure: bool = False, diagnostics: dict = None):
     """
     Construct a SlowRollInstanton as if it had just been successfully computed.
     """
@@ -166,6 +169,7 @@ def _make_slow_roll_instanton(n_init_obj, n_final_obj, dns_obj, tol_obj, efold_v
         N_sample=None,
         atol=tol_obj,
         rtol=tol_obj,
+        diffusion_model=diffusion_model,
     )
     sri._diagnostics = diagnostics if diagnostics is not None else {
         "compute_time": 0.05,
@@ -199,7 +203,8 @@ class TestScalarsOnlyFullInstanton:
         prereqs = _get_prerequisites(live_pool)
         n_init = _mint_n_init(live_pool, _FI_N_INIT_FULL)
         fi, _ = _make_full_instanton(n_init, prereqs["n_final"], prereqs["dns"],
-                                     prereqs["tol"], prereqs["efold_values"])
+                                     prereqs["tol"], prereqs["efold_values"],
+                                     prereqs["diffusion"])
 
         fi_stored = ray.get(live_pool.object_store(fi))
         assert fi_stored._my_id is not None
@@ -212,7 +217,8 @@ class TestScalarsOnlyFullInstanton:
         prereqs = _get_prerequisites(live_pool)
         n_init = _mint_n_init(live_pool, _FI_N_INIT_SCALARS_BASIC)
         fi, _ = _make_full_instanton(n_init, prereqs["n_final"], prereqs["dns"],
-                                     prereqs["tol"], prereqs["efold_values"])
+                                     prereqs["tol"], prereqs["efold_values"],
+                                     prereqs["diffusion"])
         fi.set_store_full_values(False)
 
         fi_stored = ray.get(live_pool.object_store(fi))
@@ -231,7 +237,8 @@ class TestScalarsOnlyFullInstanton:
         fake_traj = _make_fake_traj()
 
         fi, _ = _make_full_instanton(n_init, prereqs["n_final"], prereqs["dns"],
-                                     prereqs["tol"], prereqs["efold_values"])
+                                     prereqs["tol"], prereqs["efold_values"],
+                                     prereqs["diffusion"])
         fi.set_store_full_values(False)
         fi_stored = ray.get(live_pool.object_store(fi))
         ray.get(live_pool.object_validate(fi_stored))
@@ -245,6 +252,7 @@ class TestScalarsOnlyFullInstanton:
             delta_Nstar=prereqs["dns"],
             atol=prereqs["tol"],
             rtol=prereqs["tol"],
+            diffusion_model=prereqs["diffusion"],
             _do_not_populate=True,
         ))
         assert fi_read._diagnostics is not None
@@ -260,7 +268,8 @@ class TestScalarsOnlyFullInstanton:
         fake_traj = _make_fake_traj()
 
         fi, _ = _make_full_instanton(n_init, prereqs["n_final"], prereqs["dns"],
-                                     prereqs["tol"], prereqs["efold_values"])
+                                     prereqs["tol"], prereqs["efold_values"],
+                                     prereqs["diffusion"])
         fi.set_store_full_values(False)
         fi_stored = ray.get(live_pool.object_store(fi))
         ray.get(live_pool.object_validate(fi_stored))
@@ -274,6 +283,7 @@ class TestScalarsOnlyFullInstanton:
             delta_Nstar=prereqs["dns"],
             atol=prereqs["tol"],
             rtol=prereqs["tol"],
+            diffusion_model=prereqs["diffusion"],
         )
         with pytest.raises(Exception, match="scalars-only mode"):
             ray.get(ref)
@@ -285,7 +295,8 @@ class TestScalarsOnlyFullInstanton:
         fake_traj = _make_fake_traj()
 
         fi, _ = _make_full_instanton(n_init, prereqs["n_final"], prereqs["dns"],
-                                     prereqs["tol"], prereqs["efold_values"])
+                                     prereqs["tol"], prereqs["efold_values"],
+                                     prereqs["diffusion"])
         fi_stored = ray.get(live_pool.object_store(fi))
         ray.get(live_pool.object_validate(fi_stored))
 
@@ -297,6 +308,7 @@ class TestScalarsOnlyFullInstanton:
             delta_Nstar=prereqs["dns"],
             atol=prereqs["tol"],
             rtol=prereqs["tol"],
+            diffusion_model=prereqs["diffusion"],
         ))
         assert len(fi_read._values) == len(_N_SAMPLES)
 
@@ -315,6 +327,7 @@ class TestScalarsOnlyFullInstanton:
         # Store with explicit diagnostics that have other keys but not full_values_stored.
         fi, _ = _make_full_instanton(n_init, prereqs["n_final"], prereqs["dns"],
                                      prereqs["tol"], prereqs["efold_values"],
+                                     prereqs["diffusion"],
                                      diagnostics={"some_key": 42, "another_key": "value"})
         fi_stored = ray.get(live_pool.object_store(fi))
         ray.get(live_pool.object_validate(fi_stored))
@@ -328,6 +341,7 @@ class TestScalarsOnlyFullInstanton:
             delta_Nstar=prereqs["dns"],
             atol=prereqs["tol"],
             rtol=prereqs["tol"],
+            diffusion_model=prereqs["diffusion"],
         ))
         assert len(fi_read._values) == len(_N_SAMPLES)
         # Absent key is treated as True — confirmed by the fact that no exception
@@ -345,10 +359,12 @@ class TestScalarsOnlyFullInstanton:
 
         fi_noflag, _  = _make_full_instanton(n_init_noflag,  prereqs["n_final"],
                                               prereqs["dns"], prereqs["tol"],
-                                              prereqs["efold_values"], failure=True)
+                                              prereqs["efold_values"], prereqs["diffusion"],
+                                              failure=True)
         fi_flagged, _ = _make_full_instanton(n_init_flagged, prereqs["n_final"],
                                               prereqs["dns"], prereqs["tol"],
-                                              prereqs["efold_values"], failure=True)
+                                              prereqs["efold_values"], prereqs["diffusion"],
+                                              failure=True)
         fi_flagged.set_store_full_values(False)
 
         fi_noflag_stored  = ray.get(live_pool.object_store(fi_noflag))
@@ -381,7 +397,8 @@ class TestScalarsOnlySlowRollInstanton:
         prereqs = _get_prerequisites(live_pool)
         n_init = _mint_n_init(live_pool, _SRI_N_INIT_FULL)
         sri, _ = _make_slow_roll_instanton(n_init, prereqs["n_final"], prereqs["dns"],
-                                           prereqs["tol"], prereqs["efold_values"])
+                                           prereqs["tol"], prereqs["efold_values"],
+                                           prereqs["diffusion"])
 
         sri_stored = ray.get(live_pool.object_store(sri))
         assert sri_stored._my_id is not None
@@ -394,7 +411,8 @@ class TestScalarsOnlySlowRollInstanton:
         prereqs = _get_prerequisites(live_pool)
         n_init = _mint_n_init(live_pool, _SRI_N_INIT_SCALARS_BASIC)
         sri, _ = _make_slow_roll_instanton(n_init, prereqs["n_final"], prereqs["dns"],
-                                           prereqs["tol"], prereqs["efold_values"])
+                                           prereqs["tol"], prereqs["efold_values"],
+                                           prereqs["diffusion"])
         sri.set_store_full_values(False)
 
         sri_stored = ray.get(live_pool.object_store(sri))
@@ -413,7 +431,8 @@ class TestScalarsOnlySlowRollInstanton:
         fake_traj = _make_fake_traj()
 
         sri, _ = _make_slow_roll_instanton(n_init, prereqs["n_final"], prereqs["dns"],
-                                           prereqs["tol"], prereqs["efold_values"])
+                                           prereqs["tol"], prereqs["efold_values"],
+                                           prereqs["diffusion"])
         sri.set_store_full_values(False)
         sri_stored = ray.get(live_pool.object_store(sri))
         ray.get(live_pool.object_validate(sri_stored))
@@ -426,6 +445,7 @@ class TestScalarsOnlySlowRollInstanton:
             delta_Nstar=prereqs["dns"],
             atol=prereqs["tol"],
             rtol=prereqs["tol"],
+            diffusion_model=prereqs["diffusion"],
             _do_not_populate=True,
         ))
         assert sri_read._diagnostics is not None
@@ -441,7 +461,8 @@ class TestScalarsOnlySlowRollInstanton:
         fake_traj = _make_fake_traj()
 
         sri, _ = _make_slow_roll_instanton(n_init, prereqs["n_final"], prereqs["dns"],
-                                           prereqs["tol"], prereqs["efold_values"])
+                                           prereqs["tol"], prereqs["efold_values"],
+                                           prereqs["diffusion"])
         sri.set_store_full_values(False)
         sri_stored = ray.get(live_pool.object_store(sri))
         ray.get(live_pool.object_validate(sri_stored))
@@ -454,6 +475,7 @@ class TestScalarsOnlySlowRollInstanton:
             delta_Nstar=prereqs["dns"],
             atol=prereqs["tol"],
             rtol=prereqs["tol"],
+            diffusion_model=prereqs["diffusion"],
         )
         with pytest.raises(Exception, match="scalars-only mode"):
             ray.get(ref)
@@ -465,7 +487,8 @@ class TestScalarsOnlySlowRollInstanton:
         fake_traj = _make_fake_traj()
 
         sri, _ = _make_slow_roll_instanton(n_init, prereqs["n_final"], prereqs["dns"],
-                                           prereqs["tol"], prereqs["efold_values"])
+                                           prereqs["tol"], prereqs["efold_values"],
+                                           prereqs["diffusion"])
         sri_stored = ray.get(live_pool.object_store(sri))
         ray.get(live_pool.object_validate(sri_stored))
 
@@ -477,6 +500,7 @@ class TestScalarsOnlySlowRollInstanton:
             delta_Nstar=prereqs["dns"],
             atol=prereqs["tol"],
             rtol=prereqs["tol"],
+            diffusion_model=prereqs["diffusion"],
         ))
         assert len(sri_read._values) == len(_N_SAMPLES)
 
@@ -491,6 +515,7 @@ class TestScalarsOnlySlowRollInstanton:
 
         sri, _ = _make_slow_roll_instanton(n_init, prereqs["n_final"], prereqs["dns"],
                                            prereqs["tol"], prereqs["efold_values"],
+                                           prereqs["diffusion"],
                                            diagnostics={"some_key": 42, "another_key": "value"})
         sri_stored = ray.get(live_pool.object_store(sri))
         ray.get(live_pool.object_validate(sri_stored))
@@ -503,6 +528,7 @@ class TestScalarsOnlySlowRollInstanton:
             delta_Nstar=prereqs["dns"],
             atol=prereqs["tol"],
             rtol=prereqs["tol"],
+            diffusion_model=prereqs["diffusion"],
         ))
         assert len(sri_read._values) == len(_N_SAMPLES)
         assert sri_read._diagnostics.get("full_values_stored", True) is True
@@ -518,10 +544,12 @@ class TestScalarsOnlySlowRollInstanton:
 
         sri_noflag, _  = _make_slow_roll_instanton(n_init_noflag,  prereqs["n_final"],
                                                     prereqs["dns"], prereqs["tol"],
-                                                    prereqs["efold_values"], failure=True)
+                                                    prereqs["efold_values"], prereqs["diffusion"],
+                                                    failure=True)
         sri_flagged, _ = _make_slow_roll_instanton(n_init_flagged, prereqs["n_final"],
                                                     prereqs["dns"], prereqs["tol"],
-                                                    prereqs["efold_values"], failure=True)
+                                                    prereqs["efold_values"], prereqs["diffusion"],
+                                                    failure=True)
         sri_flagged.set_store_full_values(False)
 
         sri_noflag_stored  = ray.get(live_pool.object_store(sri_noflag))
