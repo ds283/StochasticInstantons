@@ -17,7 +17,9 @@
 Tests for prompt 17 Part A -- analyze_StiffnessSpectrum.py, the assembled-
 operator eigenvalue sweep for the gradient-coupled instanton's onion-model
 spatial discretisation -- and prompt 18's discrete adjoint-consistency
-diagnostic (`--mode adjoint`), added to the same module.
+diagnostic (`--mode adjoint`), amended in prompt 18a to fix `L_selfadj`
+(now inversion-free) and replace the `*_eliminated` columns with full-node
+`*_interior` companions.
 """
 
 import csv
@@ -113,11 +115,12 @@ def test_sweep_op_norm_grows_with_n_max():
 
 
 # ---------------------------------------------------------------------------
-# Prompt 18 -- discrete adjoint-consistency diagnostic ("--mode adjoint").
+# Prompt 18 (metric fixes in 18a) -- discrete adjoint-consistency diagnostic
+# ("--mode adjoint").
 #
 # Representative point: alpha=0.05, N=2.95, giving delta_s_N ~ 3 -- the
 # regime the prompt's own hand reconstruction quotes numbers for
-# (L_selfadj ~1.5-1.6, gradient-only block mismatch plateauing ~1.0).
+# (L_selfadj ~1.0-1.4, gradient-only block mismatch plateauing ~1.0).
 # ---------------------------------------------------------------------------
 
 ADJOINT_ALPHA = 0.05
@@ -131,7 +134,8 @@ def test_sbp_residual_machine_zero_across_default_grid():
     identity concerns only the LGL D matrix and its quadrature weights).
     Uses a subset of the default n_max/alpha/N lists to keep runtime
     reasonable while still spanning the coordinate-singularity and
-    wide-transition regimes prompt 17/18 call out.
+    wide-transition regimes prompt 17/18 call out. Unaffected by the 18a
+    metric fixes (sbp_residual is untouched by both fixes).
     """
     from analyze_StiffnessSpectrum import DEFAULT_N_MAX_VALUES
 
@@ -143,14 +147,30 @@ def test_sbp_residual_machine_zero_across_default_grid():
         assert row["sbp_residual"] < 1.0e-12
 
 
+def test_L_selfadj_stays_O1_at_all_delta_s():
+    """
+    Prompt 18a fix 1: the inversion-free L_selfadj must stay O(1) at every
+    Delta_s, including the wide-transition regime (Delta_s~25) where the
+    original ‖W⁻¹ Lᵀ W − L‖/‖L‖ form blew up to ~1e7-1e9 pure roundoff
+    (condition number of W ~ exp(3*Delta_s)). Anchor: ~1.0-1.4 (module
+    docstring), n_max=64 across Delta_s=1..25.
+    """
+    import math
+
+    for delta_s_target in (1.0, 5.0, 10.0, 15.0, 20.0, 25.0):
+        N = delta_s_target - math.log(1.05)
+        diag = compute_adjoint_diagnostics(64, ADJOINT_ALPHA, N)
+        assert 0.9 < diag["L_selfadj"] < 2.0
+
+
 def test_gradient_self_adjointness_residual_plateaus():
     """
-    L_selfadj must be O(1) and NOT converge with n_max -- D2 is not the SBP
-    second-derivative operator, so the assembled gradient operator L is
-    structurally, not just approximately, non-self-adjoint. Anchor: ~1.5-1.6
-    at Delta_s~3 (module docstring / prompt 18's own hand reconstruction),
-    plateauing rather than decreasing by more than ~2x across the full
-    n_max range.
+    L_selfadj (full-node) must be O(1) and NOT converge with n_max -- D2 is
+    not the SBP second-derivative operator, so the assembled gradient
+    operator L is structurally, not just approximately, non-self-adjoint.
+    Anchor: ~1.0-1.4 at Delta_s~3 (module docstring / prompt 18a's fixed
+    metric), plateauing rather than decreasing by more than ~2x across the
+    full n_max range.
     """
     from analyze_StiffnessSpectrum import DEFAULT_N_MAX_VALUES
 
@@ -159,29 +179,45 @@ def test_gradient_self_adjointness_residual_plateaus():
         for n_max in DEFAULT_N_MAX_VALUES
     ]
     for r in residuals:
-        assert 0.5 < r < 20.0
+        assert 0.9 < r < 2.0
     assert residuals[0] / residuals[-1] < 2.0
 
 
-@pytest.mark.parametrize("eliminated_suffix", ["", "_eliminated"])
-def test_advection_converges_gradient_plateaus(eliminated_suffix):
+def test_L_selfadj_interior_converges_spectrally():
+    """
+    Prompt 18a's key result: L_selfadj_interior -> 0 spectrally in n_max at
+    every Delta_s -- the mu-weighted bulk gradient operator IS discretely
+    self-adjoint; its O(1) full-node mismatch is entirely at y=+-1. Anchor
+    (Delta_s=25): ~7.7e-2 -> ~3.2e-4 over n=16->192.
+    """
+    import math
+    from analyze_StiffnessSpectrum import DEFAULT_N_MAX_VALUES
+
+    N = 25.0 - math.log(1.0 + ADJOINT_ALPHA)
+    residuals = [
+        compute_adjoint_diagnostics(n_max, ADJOINT_ALPHA, N)["L_selfadj_interior"]
+        for n_max in DEFAULT_N_MAX_VALUES
+    ]
+    assert residuals == sorted(residuals, reverse=True)
+    assert residuals[-1] < residuals[0] / 100.0
+
+
+def test_advection_converges_gradient_plateaus():
     """
     Core acceptance criterion: block_mismatch_advection decreases with
     n_max (the SBP-curable advection/D operator) while block_mismatch_
     gradient does not (the structurally non-adjoint D@D-derived gradient
-    operator) -- for both the full-node and eliminated representations.
+    operator) -- full-node representation (the only one left after 18a
+    drops *_eliminated).
     """
     from analyze_StiffnessSpectrum import DEFAULT_N_MAX_VALUES
-
-    adv_key = f"block_mismatch_advection{eliminated_suffix}"
-    grad_key = f"block_mismatch_gradient{eliminated_suffix}"
 
     adv_vals = []
     grad_vals = []
     for n_max in DEFAULT_N_MAX_VALUES:
         diag = compute_adjoint_diagnostics(n_max, ADJOINT_ALPHA, ADJOINT_N)
-        adv_vals.append(diag[adv_key])
-        grad_vals.append(diag[grad_key])
+        adv_vals.append(diag["block_mismatch_advection"])
+        grad_vals.append(diag["block_mismatch_gradient"])
 
     # Advection-only converges towards zero with resolution.
     assert adv_vals[-1] < adv_vals[0] / 3.0
@@ -192,34 +228,49 @@ def test_advection_converges_gradient_plateaus(eliminated_suffix):
     assert grad_vals[-1] > grad_vals[0] / 1.5
 
 
-def test_block_mismatch_gradient_eliminated_is_exactly_sqrt2():
+def test_block_mismatch_gradient_interior_converges_spectrally():
     """
-    Structural identity documented in compute_adjoint_diagnostics's own
-    docstring: with advection and c(N) both zeroed, the eliminated forward/
-    response gradient blocks are purely off-block-diagonal and land at
-    TRANSPOSED (not coincident) positions after the role-swap reordering,
-    so the weighted mismatch ratio collapses to exactly sqrt(2) regardless
-    of n_max -- the eliminated representation's own boundary/SAT signature,
-    distinct from the full-node (non-degenerate, plateauing) counterpart.
+    Prompt 18a acceptance anchor: block_mismatch_gradient_interior -> 0
+    spectrally with n_max -- gradient non-adjointness is boundary-localized,
+    replacing the *_eliminated sqrt(2) artifact this metric used to be
+    compared against.
+    """
+    from analyze_StiffnessSpectrum import DEFAULT_N_MAX_VALUES
+
+    grad_interior_vals = [
+        compute_adjoint_diagnostics(n_max, ADJOINT_ALPHA, ADJOINT_N)["block_mismatch_gradient_interior"]
+        for n_max in DEFAULT_N_MAX_VALUES
+    ]
+    assert grad_interior_vals == sorted(grad_interior_vals, reverse=True)
+    assert grad_interior_vals[-1] < grad_interior_vals[0] / 100.0
+
+
+def test_block_mismatch_advection_interior_tracks_full_node():
+    """
+    Prompt 18a acceptance anchor: block_mismatch_advection_interior ~=
+    block_mismatch_advection at every n_max -- advection mismatch is bulk,
+    not boundary, so masking the boundary out barely moves the number
+    (unlike the gradient block, where interior collapses relative to
+    full-node).
     """
     from analyze_StiffnessSpectrum import DEFAULT_N_MAX_VALUES
 
     for n_max in DEFAULT_N_MAX_VALUES:
         diag = compute_adjoint_diagnostics(n_max, ADJOINT_ALPHA, ADJOINT_N)
-        assert diag["block_mismatch_gradient_eliminated"] == pytest.approx(np.sqrt(2.0), rel=1.0e-10)
+        assert diag["block_mismatch_advection_interior"] == pytest.approx(
+            diag["block_mismatch_advection"], rel=0.05,
+        )
 
 
 def test_full_dominated_by_gradient():
     """block_mismatch_full tracks block_mismatch_gradient (not the
-    converging block_mismatch_advection) at large n_max, in both
-    representations -- the gradient term dominates the full mismatch."""
+    converging block_mismatch_advection) at large n_max -- the gradient
+    term dominates the full mismatch."""
     n_max = 192
     diag = compute_adjoint_diagnostics(n_max, ADJOINT_ALPHA, ADJOINT_N)
 
     assert abs(diag["block_mismatch_full"] - diag["block_mismatch_gradient"]) < \
         abs(diag["block_mismatch_full"] - diag["block_mismatch_advection"])
-    assert abs(diag["block_mismatch_full_eliminated"] - diag["block_mismatch_gradient_eliminated"]) < \
-        abs(diag["block_mismatch_full_eliminated"] - diag["block_mismatch_advection_eliminated"])
 
 
 def test_adjoint_sweep_produces_expected_csv(tmp_path):
@@ -233,6 +284,7 @@ def test_adjoint_sweep_produces_expected_csv(tmp_path):
         assert set(row.keys()) == set(ADJOINT_CSV_FIELDNAMES)
         assert row["sbp_residual"] >= 0.0
         assert row["L_selfadj"] > 0.0
+        assert row["L_selfadj_interior"] >= 0.0
 
     output_path = tmp_path / "adjoint_diagnostic.csv"
     write_csv(rows, output_path, fieldnames=ADJOINT_CSV_FIELDNAMES)

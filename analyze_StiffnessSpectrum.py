@@ -62,6 +62,31 @@ flagged in `onion_model_planning.md`'s cross-checks, not to gate
 correctness. Also frozen-uniform-H^2 (a real, phi/pi-dependent H_sq(N)
 profile is out of scope here, same simplification as `--mode spectrum`).
 
+Prompt 18a amends two of prompt 18's metrics, both metric-definition fixes,
+not physics changes:
+
+- `L_selfadj` is redefined inversion-free, `||W L - (W L)^T|| / ||W L||`
+  (never forming `W^{-1}`, whose condition number is `exp(3*delta_s)` and
+  which made the original `||W^{-1} L^T W - L|| / ||L||` form blow up to pure
+  roundoff beyond delta_s~5).
+- The `*_eliminated` columns are dropped (they were a role-swapped-elimination
+  artifact -- `block_mismatch_gradient_eliminated` collapsed to exactly
+  sqrt(2) for every row, independent of any physics). In their place, every
+  full-node metric (`L_selfadj` and the three `block_mismatch_*`) gets an
+  `*_interior` companion, computed by masking the two boundary nodes
+  (y=+-1) out of both the numerator and denominator Frobenius norms. The
+  interior/boundary split cleanly separates two different situations: the
+  **gradient** operator is bulk spectrally adjoint-consistent under mu (its
+  interior residual -> 0 as n_max grows) with an O(1) mismatch that is pure
+  boundary -- if that needs fixing, the instrument is a SAT boundary penalty,
+  not a bulk operator replacement. The **advection** operator instead shows
+  an O(1) *bulk* mismatch at production delta_s that does not vanish in the
+  interior -- a genuine operator-level discrepancy between the isolated
+  advection-only forward/response comparison, that this diagnostic cannot by
+  itself attribute to a missing response-sector term versus an inherently
+  ill-posed isolation (advection's true adjoint partner may be distributed
+  across the non-spatial couplings excluded from this comparison).
+
 Usage:
     python3 analyze_StiffnessSpectrum.py --output stiffness_spectrum.csv
     python3 analyze_StiffnessSpectrum.py --n-max 8,16,32,64,128 --alpha 0.001,0.05 \
@@ -80,11 +105,7 @@ from ComputeTargets.GradientCoupledInstanton.forward_rhs import (
     pack_state,
     forward_rhs,
 )
-from ComputeTargets.GradientCoupledInstanton.response_rhs import (
-    pack_response_state,
-    unpack_response_state,
-    _c_of_N,
-)
+from ComputeTargets.GradientCoupledInstanton.response_rhs import _c_of_N
 from Numerics.DiscretizedOperators import (
     L_operator,
     advection_term,
@@ -121,10 +142,11 @@ CSV_FIELDNAMES = [
 ]
 
 ADJOINT_CSV_FIELDNAMES = [
-    "n_max", "alpha", "N", "delta_s_N", "sbp_residual", "L_selfadj",
-    "block_mismatch_full", "block_mismatch_advection", "block_mismatch_gradient",
-    "block_mismatch_full_eliminated", "block_mismatch_advection_eliminated",
-    "block_mismatch_gradient_eliminated",
+    "n_max", "alpha", "N", "delta_s_N", "sbp_residual",
+    "L_selfadj", "L_selfadj_interior",
+    "block_mismatch_full", "block_mismatch_full_interior",
+    "block_mismatch_advection", "block_mismatch_advection_interior",
+    "block_mismatch_gradient", "block_mismatch_gradient_interior",
 ]
 
 
@@ -347,15 +369,17 @@ def self_check_assembled_operator(
 
 
 # ---------------------------------------------------------------------------
-# Discrete adjoint-consistency diagnostic (prompt 18)
+# Discrete adjoint-consistency diagnostic (prompt 18, metric fixes in 18a)
 #
 # Measurement only, sibling to the eigenvalue sweep above: assembles the
 # frozen-coefficient forward and response spatial operators the solver
-# actually applies, in two representations (full-node, pre-elimination; and
-# eliminated, the reduced free-DOF operator the solver integrates), and
-# reports how far each is from the continuum adjoint structure the MSR
-# action's stationarity assumes. See the module docstring for the "this is
-# not a bug detector" framing.
+# actually applies (full-node, i.e. pre-elimination -- see prompt 18a for why
+# the eliminated representation was dropped), and reports how far each is
+# from the continuum adjoint structure the MSR action's stationarity
+# assumes, both across the whole node set and restricted to the interior
+# (masking the two boundary nodes y=+-1) so the boundary contribution to any
+# mismatch is visible separately from the bulk. See the module docstring for
+# the "this is not a bug detector" framing.
 # ---------------------------------------------------------------------------
 
 
@@ -402,27 +426,62 @@ def _assemble_gradient_operator_full_node(grid, delta_s_N: float) -> np.ndarray:
     return np.column_stack([_apply(e) for e in np.eye(n_full)])
 
 
-def _self_adjoint_residual(matrix: np.ndarray, w_diag: np.ndarray) -> float:
-    """‖W⁻¹ Mᵀ W − M‖ / ‖M‖ for a diagonal weight diag(w_diag)."""
-    W = np.diag(w_diag)
-    W_inv = np.diag(1.0 / w_diag)
-    defect = W_inv @ matrix.T @ W - matrix
-    return float(np.linalg.norm(defect) / np.linalg.norm(matrix))
+def _interior_node_indices(n_full: int) -> np.ndarray:
+    """
+    Indices [1..n_full-2] -- i.e. every full-node index except the two
+    boundary nodes y=-1 (index 0) and y=+1 (index n_full-1, == n_max). Used
+    to mask the boundary out of both the numerator and denominator Frobenius
+    norms for the `*_interior` metrics (prompt 18a fix 2).
+    """
+    return np.arange(1, n_full - 1)
 
 
-def _block_mismatch(F: np.ndarray, R: np.ndarray, w_diag: np.ndarray) -> float:
+def _self_adjoint_residual(
+    matrix: np.ndarray, w_diag: np.ndarray, keep: np.ndarray = None,
+) -> float:
+    """
+    ‖W L − (W L)ᵀ‖ / ‖W L‖ for a diagonal weight diag(w_diag) -- the
+    inversion-free self-adjointness residual (prompt 18a fix 1). Never forms
+    W⁻¹: the weight `W = diag(w_j mu(y_j,N))` is exponentially graded
+    (condition number exp(3*delta_s)), so the original `‖W⁻¹ Lᵀ W − L‖ / ‖L‖`
+    form is well-conditioned only up to delta_s~5 and pure roundoff beyond
+    that.
+
+    If `keep` is given, both the numerator (`W L − (W L)ᵀ`) and denominator
+    (`W L`) matrices are restricted to `matrix[keep, keep]` before their
+    Frobenius norms are taken -- the interior-only variant, masking the
+    boundary rows/cols out of both norms rather than out of `matrix` up
+    front, so the weighting by W is applied at full resolution first.
+    """
+    WL = np.diag(w_diag) @ matrix
+    defect = WL - WL.T
+    if keep is not None:
+        WL = WL[np.ix_(keep, keep)]
+        defect = defect[np.ix_(keep, keep)]
+    return float(np.linalg.norm(defect) / np.linalg.norm(WL))
+
+
+def _block_mismatch(
+    F: np.ndarray, R: np.ndarray, w_diag: np.ndarray, keep: np.ndarray = None,
+) -> float:
     """
     ‖W_b R + Fᵀ W_b‖ / ‖W_b R‖ for a diagonal block weight diag(w_diag) --
     F and R must already be expressed in the SAME block layout (same sizes,
-    same node semantics per block) for this comparison to be meaningful;
-    see `_permute_response_to_forward_blocks` for why the response operator
-    needs reordering before it can be passed in here in the eliminated
-    representation.
+    same node semantics per block, i.e. the full-node representation) for
+    this comparison to be meaningful.
+
+    If `keep` is given (typically `keep2 = concat(keep, keep)` for the
+    two-field blocks here), both the numerator (`W_b R + Fᵀ W_b`) and
+    denominator (`W_b R`) matrices are restricted to `[keep, keep]` before
+    their Frobenius norms are taken -- the interior-only variant.
     """
     W_b = np.diag(w_diag)
-    numerator = np.linalg.norm(W_b @ R + F.T @ W_b)
-    denominator = np.linalg.norm(W_b @ R)
-    return float(numerator / denominator)
+    numerator_matrix = W_b @ R + F.T @ W_b
+    denominator_matrix = W_b @ R
+    if keep is not None:
+        numerator_matrix = numerator_matrix[np.ix_(keep, keep)]
+        denominator_matrix = denominator_matrix[np.ix_(keep, keep)]
+    return float(np.linalg.norm(numerator_matrix) / np.linalg.norm(denominator_matrix))
 
 
 def _forward_operator_full_node(
@@ -513,179 +572,40 @@ def _response_operator_full_node(
     return np.column_stack([_rhs(e) for e in np.eye(n_state)])
 
 
-def _forward_operator_eliminated_masked(
-    grid, alpha: float, N: float, epsilon_core: float,
-    *, include_gradient: bool, include_advection: bool,
-) -> np.ndarray:
-    """
-    Eliminated-representation forward spatial operator with the gradient/
-    advection contributions independently maskable, shape
-    (2*n_max-1, 2*n_max-1). Same boundary treatment (Dirichlet phi_full[0]=0,
-    Neumann elimination of phi_full[-1]) as assemble_spatial_operator, whose
-    "full" case (both flags True) this function is mathematically identical
-    to -- assemble_spatial_operator itself is reused directly (not this
-    function) wherever only the full case is needed, so the existing
-    eigenvalue-sweep path is untouched by this addition.
-    """
-    n_max = grid.n_max
-    n_state = 2 * n_max - 1
-    delta_s_N = float(delta_s(N, 0.0, 1.0, 1.0, alpha))
-    delta_s_loc_array = np.full(n_max + 1, delta_s_N)
-    A_array = advection_coefficient(grid.nodes, delta_s_N, epsilon_core)
-
-    def _spatial_rhs(state):
-        phi_full = np.empty(n_max + 1)
-        pi_full = np.empty(n_max + 1)
-        phi_full[0] = 0.0
-        pi_full[0] = 0.0
-        n_phi_interior = n_max - 1
-        phi_full[1:n_max] = state[:n_phi_interior]
-        pi_full[1:n_max + 1] = state[n_phi_interior:n_phi_interior + n_max]
-        phi_full[-1] = neumann_boundary_value(phi_full, grid.D, boundary_index=-1)
-
-        if include_gradient:
-            gradient_term = np.exp(-2.0 * delta_s_loc_array) * L_operator(
-                phi_full, delta_s_N, grid.nodes, grid.D, grid.D2
-            )
-        else:
-            gradient_term = np.zeros(n_max + 1)
-        if include_advection:
-            advection_phi = advection_term(phi_full, A_array, grid.D)
-            advection_pi = advection_term(pi_full, A_array, grid.D)
-        else:
-            advection_phi = np.zeros(n_max + 1)
-            advection_pi = np.zeros(n_max + 1)
-
-        dphi_full = advection_phi
-        dpi_full = gradient_term + advection_pi
-        return pack_state(dphi_full, dpi_full)
-
-    return np.column_stack([_spatial_rhs(e) for e in np.eye(n_state)])
-
-
-def _response_operator_eliminated(
-    grid, alpha: float, N: float, epsilon_core: float,
-    *, include_gradient: bool, include_advection_and_c: bool,
-) -> np.ndarray:
-    """
-    Eliminated-representation response spatial operator, shape
-    (2*n_max-1, 2*n_max-1), in pack_response_state's own native order
-    (rfield_1,...,rfield_{n_max}, rmom_1,...,rmom_{n_max-1}). Built via the
-    real pack_response_state/unpack_response_state functions (not a
-    hand-rolled reimplementation of the role-swapped elimination), so a
-    transcription slip in the boundary treatment would show up here exactly
-    as it would in the real solver.
-    """
-    n_max = grid.n_max
-    n_state = 2 * n_max - 1
-    delta_s_N = float(delta_s(N, 0.0, 1.0, 1.0, alpha))
-    delta_s_loc_array = np.full(n_max + 1, delta_s_N)
-    A_array = advection_coefficient(grid.nodes, delta_s_N, epsilon_core)
-    c_N = _c_of_N(epsilon_core, delta_s_N)
-
-    def _spatial_rhs(state):
-        rfield_full, rmom_full = unpack_response_state(state, grid)
-
-        if include_gradient:
-            gradient_term = np.exp(-2.0 * delta_s_loc_array) * L_operator(
-                rmom_full, delta_s_N, grid.nodes, grid.D, grid.D2
-            )
-        else:
-            gradient_term = np.zeros(n_max + 1)
-        if include_advection_and_c:
-            advection_rfield = advection_term(rfield_full, A_array, grid.D)
-            advection_rmom = advection_term(rmom_full, A_array, grid.D)
-            c_rfield = c_N * rfield_full
-            c_rmom = c_N * rmom_full
-        else:
-            advection_rfield = np.zeros(n_max + 1)
-            advection_rmom = np.zeros(n_max + 1)
-            c_rfield = np.zeros(n_max + 1)
-            c_rmom = np.zeros(n_max + 1)
-
-        drfield_full = advection_rfield + c_rfield - gradient_term
-        drmom_full = advection_rmom + c_rmom
-        return pack_response_state(drfield_full, drmom_full)
-
-    return np.column_stack([_spatial_rhs(e) for e in np.eye(n_state)])
-
-
-def _permute_response_to_forward_blocks(matrix: np.ndarray, n_max: int) -> np.ndarray:
-    """
-    Reorders an eliminated-representation response operator (native
-    pack_response_state order: rfield block [size n_max] then rmom block
-    [size n_max-1]) into the forward sector's block order (size n_max-1
-    block first, size n_max block second) so the two can be added/compared
-    entrywise in `_block_mismatch`.
-
-    Why this reorder is needed, not optional: elimination is role-swapped
-    between the sectors (forward eliminates phi at the core and keeps pi
-    free; response eliminates rmom at the core and keeps rfield free), so
-    after elimination the forward sector's field-role block (phi) has size
-    n_max-1 while the response sector's field-role-sized block is rmom, not
-    rfield -- the two sectors' natively-ordered blocks have swapped sizes.
-    Once reordered so that "field-role-sized block first, momentum-role-
-    sized block second" holds for both operators, the node indices within
-    each block line up exactly (forward's phi_1..phi_{n_max-1} against
-    response's rmom_1..rmom_{n_max-1}; forward's pi_1..pi_{n_max} against
-    response's rfield_1..rfield_{n_max}), which is what makes the pairing
-    meaningful rather than an arbitrary size-matching coincidence.
-    """
-    n_rfield = n_max
-    n_rmom = n_max - 1
-    perm = np.concatenate([np.arange(n_rfield, n_rfield + n_rmom), np.arange(0, n_rfield)])
-    return matrix[np.ix_(perm, perm)]
-
-
-def _forward_eliminated_block_weight(grid, delta_s_N: float) -> np.ndarray:
-    """
-    Diagonal block weight for the eliminated representation: (field-role
-    block, node indices 1..n_max-1) then (momentum-role block, node indices
-    1..n_max) -- matching pack_state's own (phi, pi) block order and sizes
-    exactly, and (after `_permute_response_to_forward_blocks`) the
-    response operator's reordered blocks too.
-    """
-    n_max = grid.n_max
-    w_full = _node_weight_array(grid, delta_s_N)
-    return np.concatenate([w_full[1:n_max], w_full[1:n_max + 1]])
-
-
 def compute_adjoint_diagnostics(
     n_max: int, alpha: float, N: float, epsilon_core: float = DEFAULT_EPSILON_CORE,
 ) -> dict:
     """
     Assembles every operator needed for one row of the adjoint-consistency
-    diagnostic (prompt 18) at a single (n_max, alpha, N) point. Returns a
-    dict with keys matching ADJOINT_CSV_FIELDNAMES minus n_max/alpha/N
-    (filled in by the caller, sweep_adjoint_diagnostics).
+    diagnostic (prompt 18, metric fixes in 18a) at a single (n_max, alpha, N)
+    point. Returns a dict with keys matching ADJOINT_CSV_FIELDNAMES minus
+    n_max/alpha/N (filled in by the caller, sweep_adjoint_diagnostics).
 
-    Note on block_mismatch_gradient_eliminated: with advection and c(N) both
-    zeroed, the forward and response gradient operators are each purely
-    off-block-diagonal (dpi depends on phi only; drfield depends on rmom
-    only), and the response block is exactly minus the forward block in
-    that shared position (same L_operator formula, same core elimination,
-    opposite sign). For a matrix that is purely off-block-diagonal this way,
-    ‖W_b R + Fᵀ W_b‖ / ‖W_b R‖ is EXACTLY sqrt(2) regardless of the operator's
-    own self-adjointness quality (W_b R and Fᵀ W_b land in transposed, not
-    coincident, block positions, so their Frobenius norms simply add in
-    quadrature) -- this is the eliminated representation's own boundary/SAT
-    signature (acceptance criterion: eliminated-vs-full-node difference
-    visible separately from the bulk), not a computational bug. The
-    full-node counterpart does not share this degeneracy because the
-    response gradient block there lands at the SAME position as the forward
-    block's transpose (no role-swapped size mismatch to reorder away), so it
-    remains a genuine, non-degenerate self-adjointness measurement.
+    Full-node only (prompt 18a drops the eliminated representation -- the
+    role-swapped Neumann elimination put the forward and response states in
+    mismatched index layouts, making `block_mismatch_gradient_eliminated`
+    collapse to exactly sqrt(2) for every row regardless of n_max/alpha/N,
+    an artifact rather than a measurement). Each full-node metric
+    (`L_selfadj` and the three `block_mismatch_*`) is reported alongside an
+    `*_interior` companion that masks the two boundary nodes (y=+-1) out of
+    both the numerator and denominator Frobenius norms -- the interior/
+    boundary split that replaces the eliminated representation as the way
+    to see the boundary's contribution separately from the bulk.
     """
     grid = LGLCollocationGrid(n_max + 1)
     delta_s_N = float(delta_s(N, 0.0, 1.0, 1.0, alpha))
+    n_full = grid.n_collocation_points
+    keep = _interior_node_indices(n_full)
 
     sbp_residual = _sbp_residual(grid)
 
     L_full_node = _assemble_gradient_operator_full_node(grid, delta_s_N)
     w_full_node = _node_weight_array(grid, delta_s_N)
     L_selfadj = _self_adjoint_residual(L_full_node, w_full_node)
+    L_selfadj_interior = _self_adjoint_residual(L_full_node, w_full_node, keep=keep)
 
     w_b_full_node = np.concatenate([w_full_node, w_full_node])
+    keep2 = np.concatenate([keep, keep + n_full])
 
     F_full = _forward_operator_full_node(
         grid, alpha, N, epsilon_core, include_gradient=True, include_advection=True,
@@ -707,52 +627,23 @@ def compute_adjoint_diagnostics(
     )
 
     block_mismatch_full = _block_mismatch(F_full, R_full, w_b_full_node)
+    block_mismatch_full_interior = _block_mismatch(F_full, R_full, w_b_full_node, keep=keep2)
     block_mismatch_advection = _block_mismatch(F_adv, R_adv, w_b_full_node)
+    block_mismatch_advection_interior = _block_mismatch(F_adv, R_adv, w_b_full_node, keep=keep2)
     block_mismatch_gradient = _block_mismatch(F_grad, R_grad, w_b_full_node)
-
-    F_full_elim, _ = assemble_spatial_operator(n_max, alpha, N, epsilon_core)
-    F_adv_elim = _forward_operator_eliminated_masked(
-        grid, alpha, N, epsilon_core, include_gradient=False, include_advection=True,
-    )
-    F_grad_elim = _forward_operator_eliminated_masked(
-        grid, alpha, N, epsilon_core, include_gradient=True, include_advection=False,
-    )
-
-    R_full_elim = _permute_response_to_forward_blocks(
-        _response_operator_eliminated(
-            grid, alpha, N, epsilon_core, include_gradient=True, include_advection_and_c=True,
-        ),
-        n_max,
-    )
-    R_adv_elim = _permute_response_to_forward_blocks(
-        _response_operator_eliminated(
-            grid, alpha, N, epsilon_core, include_gradient=False, include_advection_and_c=True,
-        ),
-        n_max,
-    )
-    R_grad_elim = _permute_response_to_forward_blocks(
-        _response_operator_eliminated(
-            grid, alpha, N, epsilon_core, include_gradient=True, include_advection_and_c=False,
-        ),
-        n_max,
-    )
-
-    w_b_elim = _forward_eliminated_block_weight(grid, delta_s_N)
-
-    block_mismatch_full_eliminated = _block_mismatch(F_full_elim, R_full_elim, w_b_elim)
-    block_mismatch_advection_eliminated = _block_mismatch(F_adv_elim, R_adv_elim, w_b_elim)
-    block_mismatch_gradient_eliminated = _block_mismatch(F_grad_elim, R_grad_elim, w_b_elim)
+    block_mismatch_gradient_interior = _block_mismatch(F_grad, R_grad, w_b_full_node, keep=keep2)
 
     return {
         "delta_s_N": delta_s_N,
         "sbp_residual": sbp_residual,
         "L_selfadj": L_selfadj,
+        "L_selfadj_interior": L_selfadj_interior,
         "block_mismatch_full": block_mismatch_full,
+        "block_mismatch_full_interior": block_mismatch_full_interior,
         "block_mismatch_advection": block_mismatch_advection,
+        "block_mismatch_advection_interior": block_mismatch_advection_interior,
         "block_mismatch_gradient": block_mismatch_gradient,
-        "block_mismatch_full_eliminated": block_mismatch_full_eliminated,
-        "block_mismatch_advection_eliminated": block_mismatch_advection_eliminated,
-        "block_mismatch_gradient_eliminated": block_mismatch_gradient_eliminated,
+        "block_mismatch_gradient_interior": block_mismatch_gradient_interior,
     }
 
 
@@ -773,31 +664,39 @@ def sweep_adjoint_diagnostics(n_max_values, alpha_values, N_values, epsilon_core
 
 def plot_adjoint_convergence(n_max_values, alpha, N, epsilon_core: float, output_path: Path) -> None:
     """
-    block_mismatch_{full,advection,gradient} (full-node representation) vs
-    n_max at one representative (alpha, N) point, log-y, so the convergence
-    (advection) vs. plateau (gradient, full) pattern is visible in one
-    figure.
+    block_mismatch_{full,advection,gradient}, full-node vs interior-only,
+    overlaid vs n_max at one representative (alpha, N) point, log-y (prompt
+    18a): full-node solid, interior-only dashed, same colour per block --
+    so the boundary-vs-bulk split is visible in one figure (gradient's
+    interior curve should fall away from its flat full-node curve; advection's
+    interior curve should track its already-converging full-node curve).
     """
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    full_vals, adv_vals, grad_vals = [], [], []
+    labels = ["full", "advection-only", "gradient-only"]
+    keys = ["block_mismatch_full", "block_mismatch_advection", "block_mismatch_gradient"]
+    full_series = {k: [] for k in keys}
+    interior_series = {k: [] for k in keys}
     for n_max in n_max_values:
         diagnostics = compute_adjoint_diagnostics(n_max, alpha, N, epsilon_core)
-        full_vals.append(diagnostics["block_mismatch_full"])
-        adv_vals.append(diagnostics["block_mismatch_advection"])
-        grad_vals.append(diagnostics["block_mismatch_gradient"])
+        for k in keys:
+            full_series[k].append(diagnostics[k])
+            interior_series[k].append(diagnostics[f"{k}_interior"])
 
     fig, ax = plt.subplots(figsize=(6, 5))
-    ax.plot(n_max_values, full_vals, marker="o", label="full")
-    ax.plot(n_max_values, adv_vals, marker="o", label="advection-only")
-    ax.plot(n_max_values, grad_vals, marker="o", label="gradient-only")
+    for label, key, color in zip(labels, keys, ("C0", "C1", "C2")):
+        ax.plot(n_max_values, full_series[key], marker="o", color=color, label=f"{label} (full-node)")
+        ax.plot(
+            n_max_values, interior_series[key], marker="s", linestyle="--", color=color,
+            label=f"{label} (interior)",
+        )
     ax.set_yscale("log")
     ax.set_xlabel(r"$n_{\max}$")
     ax.set_ylabel("block mismatch")
-    ax.set_title(rf"Forward/response block adjoint mismatch ($\alpha={alpha:.3g}$, $N={N:.3g}$)")
-    ax.legend(fontsize=8)
+    ax.set_title(rf"Forward/response block adjoint mismatch: full vs interior ($\alpha={alpha:.3g}$, $N={N:.3g}$)")
+    ax.legend(fontsize=7)
     fig.tight_layout()
     fig.savefig(output_path)
     plt.close(fig)
