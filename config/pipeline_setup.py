@@ -56,6 +56,8 @@ def build_pipeline_inputs(pool, units, args) -> dict:
         N_init_array  -- list of N_init objects
         N_final_array -- list of N_final objects
         dns_array     -- list of delta_Nstar objects
+        n_collocation_points_array -- list of n_collocation_points objects
+        alpha_regularization_array -- list of alpha_regularization objects
         model_list    -- list of {"label": str, "potential": obj} dicts
     """
     # Build sample grids (sequential: each prints its own summary line).
@@ -75,10 +77,22 @@ def build_pipeline_inputs(pool, units, args) -> dict:
         args.delta_Nstar_values, "delta_Nstar", silent=csv_mode,
     )
 
+    print(
+        f"   -- n_collocation_points: {len(args.n_collocation_points)} "
+        f"value{'' if len(args.n_collocation_points) == 1 else 's'} = "
+        f"[ {', '.join(str(v) for v in args.n_collocation_points)} ]"
+    )
+    print(
+        f"   -- alpha_regularization: {len(args.alpha_regularization)} "
+        f"value{'' if len(args.alpha_regularization) == 1 else 's'} = "
+        f"[ {', '.join(f'{v:.5g}' for v in args.alpha_regularization)} ]"
+    )
+
     # Register all parameter objects in parallel
     (
         atol, rtol, phi0, pi0,
         N_init_array, N_final_array, dns_array,
+        n_collocation_points_array, alpha_regularization_array,
     ) = ray.get([
         pool.object_get("tolerance", log10_tol=int(round(math.log10(args.abs_tol)))),
         pool.object_get("tolerance", log10_tol=int(round(math.log10(args.rel_tol)))),
@@ -87,6 +101,14 @@ def build_pipeline_inputs(pool, units, args) -> dict:
         pool.object_get("N_init",      payload_data=[{"value": v} for v in N_init_sample]),
         pool.object_get("N_final",     payload_data=[{"value": v} for v in N_final_sample]),
         pool.object_get("delta_Nstar", payload_data=[{"value": v} for v in dns_sample]),
+        pool.object_get(
+            "n_collocation_points",
+            payload_data=[{"n_collocation_points": v} for v in args.n_collocation_points],
+        ),
+        pool.object_get(
+            "alpha_regularization",
+            payload_data=[{"alpha": v} for v in args.alpha_regularization],
+        ),
     ])
 
     model_list = build_model_list(pool, units, args)
@@ -99,5 +121,7 @@ def build_pipeline_inputs(pool, units, args) -> dict:
         "N_init_array":  N_init_array,
         "N_final_array": N_final_array,
         "dns_array":     dns_array,
+        "n_collocation_points_array": n_collocation_points_array,
+        "alpha_regularization_array": alpha_regularization_array,
         "model_list":    model_list,
     }

@@ -90,4 +90,5 @@ inventory_config = {
     "FullInstanton": _instanton_merge,
     "SlowRollInstanton": _instanton_merge,
     "CompactionFunction": _instanton_merge,
+    "GradientCoupledInstanton": _instanton_merge,
 }

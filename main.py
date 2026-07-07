@@ -20,7 +20,7 @@ from ComputeTargets.FullInstanton import FullInstantonProxy
 from ComputeTargets.pipeline import PipelineWorkItem
 from ComputeTargets.SlowRollInstanton import SlowRollInstantonProxy
 from config.argument_parser import create_argument_parser
-from config.grid_builder import build_instanton_grid
+from config.grid_builder import build_gradient_grid, build_instanton_grid
 from config.pipeline_setup import build_pipeline_inputs
 from config.sharding import (
     ShardKeyType,
@@ -408,6 +408,7 @@ def _run_instanton_queue(
     label_builder,
     title: str,
     store_handler,
+    no_store_values: bool = False,
 ):
     """
     Two-pass RayWorkPool pattern for instanton compute targets, flattened
@@ -427,6 +428,12 @@ def _run_instanton_queue(
     dict (including N_sample) for Pass 2. `shard_key_of(item)` returns the
     delta_Nstar shard key for binning. `label_builder(obj)` returns a
     human-readable label string for the compute step.
+
+    `no_store_values`, when True, wraps the persist step so it calls
+    `obj.set_store_full_values(False)` before `pool.object_store(obj)` —
+    every compute target reachable through this helper (FullInstanton,
+    SlowRollInstanton, GradientCoupledInstanton) implements
+    `set_store_full_values`.
     """
     ## Pass 1: vectorized query, binned by shard key
     binned = {}
@@ -475,13 +482,20 @@ def _run_instanton_queue(
     def build_work_ref(item):
         return pool.object_get(cls_name, **full_payload(item))
 
+    if no_store_values:
+        def persist_handler(obj, pool):
+            obj.set_store_full_values(False)
+            return pool.object_store(obj)
+    else:
+        persist_handler = lambda obj, pool: pool.object_store(obj)
+
     work_queue = RayWorkPool(
         pool,
         missing,
         task_builder=build_work_ref,
         compute_handler=lambda obj, **kwargs: obj.compute(**kwargs),
         store_handler=store_handler,
-        persist_handler=lambda obj, pool: pool.object_store(obj),
+        persist_handler=persist_handler,
         validation_handler=lambda obj: pool.object_validate(obj),
         label_builder=label_builder,
         title=f"{title.upper()}",
@@ -491,6 +505,100 @@ def _run_instanton_queue(
         max_task_queue=MAX_INFLIGHT_PIPELINE,
     )
     work_queue.run()
+
+
+def _build_N_sample(N_total: float, samples_per_N: float, pool: ShardedPool) -> efold_array:
+    """
+    Build the shared per-instanton e-fold sample grid used by BOTH the
+    homogeneous and gradient branches: points at multiples of
+    δ = 1/samples_per_N (so that grid points are reused across all
+    instantons, keeping the efold_value table small), plus the exact
+    endpoint N_total so that downstream radial-profile extraction starts
+    from the true instanton endpoint rather than a grid point that may be
+    up to δ/2 away.
+
+    Both branches must agree on this convention for any homogeneous-vs-
+    gradient comparison at the same grid point to be apples-to-apples —
+    do not duplicate this logic at either call site.
+    """
+    step = 1.0 / samples_per_N
+    n_steps = math.floor(N_total * samples_per_N)
+    shared_points = [i * step for i in range(n_steps + 1)]
+    if abs(n_steps * step - N_total) > 1e-12 * max(N_total, 1.0):
+        N_grid = shared_points + [N_total]
+    else:
+        N_grid = shared_points
+    efold_objs = ray.get(
+        pool.object_get("efold_value", payload_data=[{"N": N} for N in N_grid])
+    )
+    return efold_array(efold_objs)
+
+
+def _run_gradient_branch(
+    pool: ShardedPool,
+    base_grid: list,
+    n_collocation_points_array: list,
+    alpha_regularization_array: list,
+    traj_proxies: list,
+    cosmo,
+    atol: tolerance,
+    rtol: tolerance,
+    dm,
+    samples_per_N: float,
+    no_store_values: bool,
+):
+    """
+    Gradient (onion-model) branch: dispatch GradientCoupledInstanton across
+    the base (model, N_init, N_final, delta_Nstar) grid crossed against
+    n_collocation_points and alpha_regularization.
+    """
+    gradient_grid = build_gradient_grid(
+        base_grid, n_collocation_points_array, alpha_regularization_array
+    )
+    n_base = len(base_grid)
+    n_ncp = len(n_collocation_points_array)
+    n_alpha = len(alpha_regularization_array)
+    print(
+        f"\n   >> gradient branch: {n_base} base grid point(s) x "
+        f"{n_ncp} n_collocation_points value(s) x {n_alpha} alpha_regularization "
+        f"value(s) = {len(gradient_grid)} gradient instanton combination(s)"
+    )
+
+    def key_fields(item) -> dict:
+        base_item, ncp_obj, alpha_obj = item
+        model_idx, N_init_obj, N_final_obj, dns_obj = base_item
+        return dict(
+            trajectory=traj_proxies[model_idx],
+            N_init=N_init_obj, N_final=N_final_obj, delta_Nstar=dns_obj,
+            n_collocation_points=ncp_obj, alpha_regularization=alpha_obj,
+            atol=atol, rtol=rtol, cosmo=cosmo, diffusion_model=dm, tags=[],
+        )
+
+    def full_payload(item) -> dict:
+        base_item, ncp_obj, alpha_obj = item
+        model_idx, N_init_obj, N_final_obj, dns_obj = base_item
+        N_total = (float(N_init_obj) - float(N_final_obj)) + float(dns_obj)
+        payload = key_fields(item)
+        payload["N_sample"] = _build_N_sample(N_total, samples_per_N, pool)
+        return payload
+
+    def shard_key_of(item):
+        base_item, _, _ = item
+        return base_item[3]  # delta_Nstar
+
+    _run_instanton_queue(
+        pool=pool, cls_name="GradientCoupledInstanton", task_list=gradient_grid,
+        key_fields=key_fields, full_payload=full_payload, shard_key_of=shard_key_of,
+        label_builder=lambda obj: (
+            f"GradientCoupledInstanton(dNstar={float(obj.delta_Nstar):.4g}, "
+            f"Ninit={float(obj.N_init_value):.4g}, Nfinal={float(obj.N_final_value):.4g}, "
+            f"n_colloc={int(obj.n_collocation_points_value)}, "
+            f"alpha={float(obj.alpha_regularization_value):.4g})"
+        ),
+        store_handler=_default_store_handler,
+        title="STAGE G: GRADIENT-COUPLED (ONION MODEL) INSTANTONS",
+        no_store_values=no_store_values,
+    )
 
 
 def run_all_pipelines(
@@ -503,6 +611,9 @@ def run_all_pipelines(
     atol: tolerance,
     rtol: tolerance,
     cosmo,  # CosmologicalParams instance
+    targets: List[str],
+    n_collocation_points_array: Optional[list] = None,
+    alpha_regularization_array: Optional[list] = None,
     diffusion_model=None,
     stop_after: Optional[str] = None,
     no_store_values: bool = False,
@@ -567,295 +678,140 @@ def run_all_pipelines(
         print("\n** Stopping after Stage 1 (--stop-after inflaton-trajectory)")
         return
 
-    def key_fields(item) -> dict:
-        """Cheap identifying fields only — no N_sample. Used for Pass-1
-        existence checks, so we don't pay for minting an e-fold grid just to
-        find out the object is already in the database. atol/rtol must be
-        included here (not just in full_payload): the factory's lookup query
-        matches on atol_serial/rtol_serial in addition to trajectory, N_init,
-        N_final and delta_Nstar."""
-        model_idx, N_init, N_final, dns = item
-        return dict(
-            trajectory=traj_proxies[model_idx],
-            N_init=N_init,
-            N_final=N_final,
-            delta_Nstar=dns,
-            atol=atol,
-            rtol=rtol,
-            tags=[],
-            diffusion_model=dm,
-        )
-
-    def full_payload(item) -> dict:
-        model_idx, N_init, N_final, dns = item
-        N_total = (float(N_init) - float(N_final)) + float(dns)
-        # Build a shared rational grid: points at multiples of δ = 1/samples_per_N
-        # so that grid points are reused across all instantons (keeps the efold_value
-        # table small). Then append the exact endpoint N_total so that
-        # CompactionFunction's downflow integration starts from the true instanton
-        # endpoint rather than a grid point that may be up to δ/2 away.
-        step = 1.0 / samples_per_N
-        n_steps = math.floor(N_total * samples_per_N)
-        shared_points = [i * step for i in range(n_steps + 1)]
-        if abs(n_steps * step - N_total) > 1e-12 * max(N_total, 1.0):
-            N_grid = shared_points + [N_total]
-        else:
-            N_grid = shared_points
-        efold_objs = ray.get(
-            pool.object_get("efold_value", payload_data=[{"N": N} for N in N_grid])
-        )
-        payload = key_fields(item)
-        payload["N_sample"] = efold_array(efold_objs)
-        payload["diffusion_model"] = dm
-        return payload
-
-    def shard_key_of(item):
-        _, _, _, dns = item
-        return dns
-
-    C_THRESHOLD = 0.4
-    C_BAR_THRESHOLD = 0.4
-
-    if no_store_values:
-        # Unified pipeline: compute all three targets per grid point in a single
-        # Ray task. Stages 2, 3, and 4 are merged.
-        if stop_after in {"full-instanton", "slow-roll-instanton"}:
-            print(
-                f"\n!! WARNING: --stop-after {stop_after!r} is not supported in "
-                f"pipeline mode (--no-store-values). The full pipeline will run "
-                f"(FullInstanton + SlowRollInstanton + CompactionFunction)."
+    def _run_homogeneous_branch():
+        def key_fields(item) -> dict:
+            """Cheap identifying fields only — no N_sample. Used for Pass-1
+            existence checks, so we don't pay for minting an e-fold grid just to
+            find out the object is already in the database. atol/rtol must be
+            included here (not just in full_payload): the factory's lookup query
+            matches on atol_serial/rtol_serial in addition to trajectory, N_init,
+            N_final and delta_Nstar."""
+            model_idx, N_init, N_final, dns = item
+            return dict(
+                trajectory=traj_proxies[model_idx],
+                N_init=N_init,
+                N_final=N_final,
+                delta_Nstar=dns,
+                atol=atol,
+                rtol=rtol,
+                tags=[],
+                diffusion_model=dm,
             )
-        _run_pipeline_queue(
+
+        def full_payload(item) -> dict:
+            model_idx, N_init, N_final, dns = item
+            N_total = (float(N_init) - float(N_final)) + float(dns)
+            payload = key_fields(item)
+            payload["N_sample"] = _build_N_sample(N_total, samples_per_N, pool)
+            payload["diffusion_model"] = dm
+            return payload
+
+        def shard_key_of(item):
+            _, _, _, dns = item
+            return dns
+
+        C_THRESHOLD = 0.4
+        C_BAR_THRESHOLD = 0.4
+
+        if no_store_values:
+            # Unified pipeline: compute all three targets per grid point in a single
+            # Ray task. Stages 2, 3, and 4 are merged.
+            if stop_after in {"full-instanton", "slow-roll-instanton"}:
+                print(
+                    f"\n!! WARNING: --stop-after {stop_after!r} is not supported in "
+                    f"pipeline mode (--no-store-values). The full pipeline will run "
+                    f"(FullInstanton + SlowRollInstanton + CompactionFunction)."
+                )
+            _run_pipeline_queue(
+                pool=pool,
+                task_list=grid,
+                key_fields=key_fields,
+                full_payload=full_payload,
+                shard_key_of=shard_key_of,
+                traj_proxies=traj_proxies,
+                cosmo=cosmo,
+                atol=atol,
+                rtol=rtol,
+                dm=dm,
+                C_threshold=C_THRESHOLD,
+                C_bar_threshold=C_BAR_THRESHOLD,
+                no_store_values=True,
+            )
+            return
+
+        ## -----------------------------------------------------------------------
+        ## STAGE 2: Full MSR instantons — one flat queue, all models and grid points
+        ## -----------------------------------------------------------------------
+
+        _run_instanton_queue(
             pool=pool,
+            cls_name="FullInstanton",
             task_list=grid,
             key_fields=key_fields,
             full_payload=full_payload,
             shard_key_of=shard_key_of,
-            traj_proxies=traj_proxies,
-            cosmo=cosmo,
-            atol=atol,
-            rtol=rtol,
-            dm=dm,
-            C_threshold=C_THRESHOLD,
-            C_bar_threshold=C_BAR_THRESHOLD,
-            no_store_values=True,
-        )
-        return
-
-    ## -----------------------------------------------------------------------
-    ## STAGE 2: Full MSR instantons — one flat queue, all models and grid points
-    ## -----------------------------------------------------------------------
-
-    _run_instanton_queue(
-        pool=pool,
-        cls_name="FullInstanton",
-        task_list=grid,
-        key_fields=key_fields,
-        full_payload=full_payload,
-        shard_key_of=shard_key_of,
-        label_builder=lambda obj: (
-            f"FullInstanton(dNstar={float(obj.delta_Nstar):.4g}, "
-            f"Ninit={float(obj.N_init_value):.4g}, "
-            f"Nfinal={float(obj.N_final_value):.4g})"
-        ),
-        store_handler=_default_store_handler,
-        title="STAGE 2: FULL MSR INSTANTONS",
-    )
-
-    if stop_after == "full-instanton":
-        print("\n** Stopping after Stage 2 (--stop-after full-instanton)")
-        return
-
-    ## -----------------------------------------------------------------------
-    ## STAGE 3: Slow-roll instantons — one flat queue, all models and grid points
-    ## -----------------------------------------------------------------------
-
-    _run_instanton_queue(
-        pool=pool,
-        cls_name="SlowRollInstanton",
-        task_list=grid,
-        key_fields=key_fields,
-        full_payload=full_payload,
-        shard_key_of=shard_key_of,
-        label_builder=lambda obj: (
-            f"SlowRollInstanton(dNstar={float(obj.delta_Nstar):.4g}, "
-            f"Ninit={float(obj.N_init_value):.4g}, "
-            f"Nfinal={float(obj.N_final_value):.4g})"
-        ),
-        store_handler=_default_store_handler,
-        title="STAGE 3: SLOW-ROLL INSTANTONS",
-    )
-
-    if stop_after == "slow-roll-instanton":
-        print("\n** Stopping after Stage 3 (--stop-after slow-roll-instanton)")
-        return
-
-    ## -----------------------------------------------------------------------
-    ## STAGE 4: Compaction functions — two-pass pattern with upstream lookup
-    ## -----------------------------------------------------------------------
-
-    print("\n** STAGE 4: COMPACTION FUNCTIONS")
-
-    ## Pass 1a: look up FullInstanton for ALL grid items, binned by shard key.
-    ## We need instanton store_ids before we can do the CF existence check, since
-    ## the CompactionFunction factory matches on full_instanton_serial and
-    ## slow_roll_instanton_serial as part of its identity query.
-    fi_binned_all = {}
-    for item in grid:
-        fi_binned_all.setdefault(shard_key_of(item), []).append(item)
-    fi_shard_keys_all = list(fi_binned_all.keys())
-
-    fi_lookup_all_queue = RayWorkPool(
-        pool,
-        fi_shard_keys_all,
-        task_builder=lambda key: pool.object_get_vectorized(
-            "FullInstanton",
-            key,
-            payload_data=[
-                {**key_fields(item), "_do_not_populate": True}
-                for item in fi_binned_all[key]
-            ],
-        ),
-        compute_handler=None,
-        store_handler=None,
-        persist_handler=None,
-        validation_handler=None,
-        title=None,
-        store_results=True,
-        create_batch_size=20,
-        process_batch_size=20,
-    )
-    fi_lookup_all_queue.run()
-
-    fi_results_all = {
-        id(item): obj
-        for key, objs in zip(fi_shard_keys_all, fi_lookup_all_queue.results)
-        for item, obj in zip(fi_binned_all[key], objs)
-    }
-
-    ## Pass 1b: look up SlowRollInstanton for ALL grid items
-    sr_lookup_all_queue = RayWorkPool(
-        pool,
-        fi_shard_keys_all,
-        task_builder=lambda key: pool.object_get_vectorized(
-            "SlowRollInstanton",
-            key,
-            payload_data=[
-                {**key_fields(item), "_do_not_populate": True}
-                for item in fi_binned_all[key]
-            ],
-        ),
-        compute_handler=None,
-        store_handler=None,
-        persist_handler=None,
-        validation_handler=None,
-        title=None,
-        store_results=True,
-        create_batch_size=20,
-        process_batch_size=20,
-    )
-    sr_lookup_all_queue.run()
-
-    sr_results_all = {
-        id(item): obj
-        for key, objs in zip(fi_shard_keys_all, sr_lookup_all_queue.results)
-        for item, obj in zip(fi_binned_all[key], objs)
-    }
-
-    ## Pass 1c: CF existence check using actual instanton store_ids.
-    ## Only check items where at least one instanton is available; the rest are
-    ## skipped entirely (no upstream data to compute a CF from).
-
-    def cf_key_fields(item) -> dict:
-        """Identifying fields for the CF existence check. Includes instanton proxies
-        so the factory can match on full_instanton_serial / slow_roll_instanton_serial."""
-        model_idx, N_init_obj, N_final_obj, dns = item
-        fi_obj = fi_results_all[id(item)]
-        sr_obj = sr_results_all[id(item)]
-        fi_proxy = FullInstantonProxy(fi_obj) if fi_obj.available else None
-        sr_proxy = SlowRollInstantonProxy(sr_obj) if sr_obj.available else None
-        return dict(
-            trajectory=traj_proxies[model_idx],
-            full_instanton=fi_proxy,
-            slow_roll_instanton=sr_proxy,
-            delta_Nstar=dns,
-            cosmo=cosmo,
-            C_threshold=C_THRESHOLD,
-            C_bar_threshold=C_BAR_THRESHOLD,
-            atol=atol,
-            rtol=rtol,
-            tags=[],
+            label_builder=lambda obj: (
+                f"FullInstanton(dNstar={float(obj.delta_Nstar):.4g}, "
+                f"Ninit={float(obj.N_init_value):.4g}, "
+                f"Nfinal={float(obj.N_final_value):.4g})"
+            ),
+            store_handler=_default_store_handler,
+            title="STAGE 2: FULL MSR INSTANTONS",
         )
 
-    checkable = [
-        item
-        for item in grid
-        if fi_results_all[id(item)].available or sr_results_all[id(item)].available
-    ]
+        if stop_after == "full-instanton":
+            print("\n** Stopping after Stage 2 (--stop-after full-instanton)")
+            return
 
-    cf_binned = {}
-    for item in checkable:
-        cf_binned.setdefault(shard_key_of(item), []).append(item)
-    cf_shard_keys = list(cf_binned.keys())
+        ## -----------------------------------------------------------------------
+        ## STAGE 3: Slow-roll instantons — one flat queue, all models and grid points
+        ## -----------------------------------------------------------------------
 
-    cf_query_queue = RayWorkPool(
-        pool,
-        cf_shard_keys,
-        task_builder=lambda key: pool.object_get_vectorized(
-            "CompactionFunction",
-            key,
-            payload_data=[
-                {**cf_key_fields(item), "_do_not_populate": True}
-                for item in cf_binned[key]
-            ],
-        ),
-        compute_handler=None,
-        store_handler=None,
-        persist_handler=None,
-        validation_handler=None,
-        title=None,
-        store_results=True,
-        create_batch_size=20,
-        process_batch_size=20,
-    )
-    cf_query_queue.run()
-
-    cf_missing = [
-        item
-        for key, objs in zip(cf_shard_keys, cf_query_queue.results)
-        for item, obj in zip(cf_binned[key], objs)
-        if not obj.available
-    ]
-
-    n_no_instanton = len(grid) - len(checkable)
-    print(
-        f"\n** COMPACTION FUNCTIONS LOOKUP:\n"
-        f"   -- {len(checkable) - len(cf_missing)} already computed, "
-        f"{len(cf_missing)} to compute"
-        + (
-            f", {n_no_instanton} skipped (no instanton available)"
-            if n_no_instanton > 0
-            else ""
+        _run_instanton_queue(
+            pool=pool,
+            cls_name="SlowRollInstanton",
+            task_list=grid,
+            key_fields=key_fields,
+            full_payload=full_payload,
+            shard_key_of=shard_key_of,
+            label_builder=lambda obj: (
+                f"SlowRollInstanton(dNstar={float(obj.delta_Nstar):.4g}, "
+                f"Ninit={float(obj.N_init_value):.4g}, "
+                f"Nfinal={float(obj.N_final_value):.4g})"
+            ),
+            store_handler=_default_store_handler,
+            title="STAGE 3: SLOW-ROLL INSTANTONS",
         )
-    )
 
-    if cf_missing:
-        ## Pass 2a: re-fetch FullInstantons WITH population for the missing CF items.
-        ## The Pass 1a objects were fetched with _do_not_populate=True, so their
-        ## _values lists are empty.  Wrapping one in a proxy and passing it to
-        ## _compute_compaction_function would cause "no sample values" immediately.
-        fi_binned_missing = {}
-        for item in cf_missing:
-            fi_binned_missing.setdefault(shard_key_of(item), []).append(item)
-        fi_shard_keys_missing = list(fi_binned_missing.keys())
+        if stop_after == "slow-roll-instanton":
+            print("\n** Stopping after Stage 3 (--stop-after slow-roll-instanton)")
+            return
 
-        fi_refetch_queue = RayWorkPool(
+        ## -----------------------------------------------------------------------
+        ## STAGE 4: Compaction functions — two-pass pattern with upstream lookup
+        ## -----------------------------------------------------------------------
+
+        print("\n** STAGE 4: COMPACTION FUNCTIONS")
+
+        ## Pass 1a: look up FullInstanton for ALL grid items, binned by shard key.
+        ## We need instanton store_ids before we can do the CF existence check, since
+        ## the CompactionFunction factory matches on full_instanton_serial and
+        ## slow_roll_instanton_serial as part of its identity query.
+        fi_binned_all = {}
+        for item in grid:
+            fi_binned_all.setdefault(shard_key_of(item), []).append(item)
+        fi_shard_keys_all = list(fi_binned_all.keys())
+
+        fi_lookup_all_queue = RayWorkPool(
             pool,
-            fi_shard_keys_missing,
+            fi_shard_keys_all,
             task_builder=lambda key: pool.object_get_vectorized(
                 "FullInstanton",
                 key,
-                payload_data=[key_fields(item) for item in fi_binned_missing[key]],
+                payload_data=[
+                    {**key_fields(item), "_do_not_populate": True}
+                    for item in fi_binned_all[key]
+                ],
             ),
             compute_handler=None,
             store_handler=None,
@@ -866,22 +822,25 @@ def run_all_pipelines(
             create_batch_size=20,
             process_batch_size=20,
         )
-        fi_refetch_queue.run()
+        fi_lookup_all_queue.run()
 
-        fi_results_compute = {
+        fi_results_all = {
             id(item): obj
-            for key, objs in zip(fi_shard_keys_missing, fi_refetch_queue.results)
-            for item, obj in zip(fi_binned_missing[key], objs)
+            for key, objs in zip(fi_shard_keys_all, fi_lookup_all_queue.results)
+            for item, obj in zip(fi_binned_all[key], objs)
         }
 
-        ## Pass 2b: same for SlowRollInstanton
-        sr_refetch_queue = RayWorkPool(
+        ## Pass 1b: look up SlowRollInstanton for ALL grid items
+        sr_lookup_all_queue = RayWorkPool(
             pool,
-            fi_shard_keys_missing,
+            fi_shard_keys_all,
             task_builder=lambda key: pool.object_get_vectorized(
                 "SlowRollInstanton",
                 key,
-                payload_data=[key_fields(item) for item in fi_binned_missing[key]],
+                payload_data=[
+                    {**key_fields(item), "_do_not_populate": True}
+                    for item in fi_binned_all[key]
+                ],
             ),
             compute_handler=None,
             store_handler=None,
@@ -892,28 +851,27 @@ def run_all_pipelines(
             create_batch_size=20,
             process_batch_size=20,
         )
-        sr_refetch_queue.run()
+        sr_lookup_all_queue.run()
 
-        sr_results_compute = {
+        sr_results_all = {
             id(item): obj
-            for key, objs in zip(fi_shard_keys_missing, sr_refetch_queue.results)
-            for item, obj in zip(fi_binned_missing[key], objs)
+            for key, objs in zip(fi_shard_keys_all, sr_lookup_all_queue.results)
+            for item, obj in zip(fi_binned_all[key], objs)
         }
 
-        def build_cf_work_ref(item):
+        ## Pass 1c: CF existence check using actual instanton store_ids.
+        ## Only check items where at least one instanton is available; the rest are
+        ## skipped entirely (no upstream data to compute a CF from).
+
+        def cf_key_fields(item) -> dict:
+            """Identifying fields for the CF existence check. Includes instanton proxies
+            so the factory can match on full_instanton_serial / slow_roll_instanton_serial."""
             model_idx, N_init_obj, N_final_obj, dns = item
-
-            fi_obj = fi_results_compute[id(item)]
-            sr_obj = sr_results_compute[id(item)]
-
+            fi_obj = fi_results_all[id(item)]
+            sr_obj = sr_results_all[id(item)]
             fi_proxy = FullInstantonProxy(fi_obj) if fi_obj.available else None
             sr_proxy = SlowRollInstantonProxy(sr_obj) if sr_obj.available else None
-
-            if fi_proxy is None and sr_proxy is None:
-                return None
-
-            return pool.object_get(
-                "CompactionFunction",
+            return dict(
                 trajectory=traj_proxies[model_idx],
                 full_instanton=fi_proxy,
                 slow_roll_instanton=sr_proxy,
@@ -926,24 +884,179 @@ def run_all_pipelines(
                 tags=[],
             )
 
-        cf_work_queue = RayWorkPool(
+        checkable = [
+            item
+            for item in grid
+            if fi_results_all[id(item)].available or sr_results_all[id(item)].available
+        ]
+
+        cf_binned = {}
+        for item in checkable:
+            cf_binned.setdefault(shard_key_of(item), []).append(item)
+        cf_shard_keys = list(cf_binned.keys())
+
+        cf_query_queue = RayWorkPool(
             pool,
-            cf_missing,
-            task_builder=build_cf_work_ref,
-            compute_handler=lambda obj, **kwargs: obj.compute(**kwargs),
-            store_handler=_default_store_handler,
-            persist_handler=lambda obj, pool: pool.object_store(obj),
-            validation_handler=lambda obj: pool.object_validate(obj),
-            label_builder=lambda obj: (
-                f"CompactionFunction(dNstar={float(obj.delta_Nstar):.4g})"
+            cf_shard_keys,
+            task_builder=lambda key: pool.object_get_vectorized(
+                "CompactionFunction",
+                key,
+                payload_data=[
+                    {**cf_key_fields(item), "_do_not_populate": True}
+                    for item in cf_binned[key]
+                ],
             ),
-            title="STAGE 4: COMPACTION FUNCTIONS AND MASSES",
-            store_results=False,
-            create_batch_size=5,
-            process_batch_size=3,
-            max_task_queue=MAX_INFLIGHT_PIPELINE,
+            compute_handler=None,
+            store_handler=None,
+            persist_handler=None,
+            validation_handler=None,
+            title=None,
+            store_results=True,
+            create_batch_size=20,
+            process_batch_size=20,
         )
-        cf_work_queue.run()
+        cf_query_queue.run()
+
+        cf_missing = [
+            item
+            for key, objs in zip(cf_shard_keys, cf_query_queue.results)
+            for item, obj in zip(cf_binned[key], objs)
+            if not obj.available
+        ]
+
+        n_no_instanton = len(grid) - len(checkable)
+        print(
+            f"\n** COMPACTION FUNCTIONS LOOKUP:\n"
+            f"   -- {len(checkable) - len(cf_missing)} already computed, "
+            f"{len(cf_missing)} to compute"
+            + (
+                f", {n_no_instanton} skipped (no instanton available)"
+                if n_no_instanton > 0
+                else ""
+            )
+        )
+
+        if cf_missing:
+            ## Pass 2a: re-fetch FullInstantons WITH population for the missing CF items.
+            ## The Pass 1a objects were fetched with _do_not_populate=True, so their
+            ## _values lists are empty.  Wrapping one in a proxy and passing it to
+            ## _compute_compaction_function would cause "no sample values" immediately.
+            fi_binned_missing = {}
+            for item in cf_missing:
+                fi_binned_missing.setdefault(shard_key_of(item), []).append(item)
+            fi_shard_keys_missing = list(fi_binned_missing.keys())
+
+            fi_refetch_queue = RayWorkPool(
+                pool,
+                fi_shard_keys_missing,
+                task_builder=lambda key: pool.object_get_vectorized(
+                    "FullInstanton",
+                    key,
+                    payload_data=[key_fields(item) for item in fi_binned_missing[key]],
+                ),
+                compute_handler=None,
+                store_handler=None,
+                persist_handler=None,
+                validation_handler=None,
+                title=None,
+                store_results=True,
+                create_batch_size=20,
+                process_batch_size=20,
+            )
+            fi_refetch_queue.run()
+
+            fi_results_compute = {
+                id(item): obj
+                for key, objs in zip(fi_shard_keys_missing, fi_refetch_queue.results)
+                for item, obj in zip(fi_binned_missing[key], objs)
+            }
+
+            ## Pass 2b: same for SlowRollInstanton
+            sr_refetch_queue = RayWorkPool(
+                pool,
+                fi_shard_keys_missing,
+                task_builder=lambda key: pool.object_get_vectorized(
+                    "SlowRollInstanton",
+                    key,
+                    payload_data=[key_fields(item) for item in fi_binned_missing[key]],
+                ),
+                compute_handler=None,
+                store_handler=None,
+                persist_handler=None,
+                validation_handler=None,
+                title=None,
+                store_results=True,
+                create_batch_size=20,
+                process_batch_size=20,
+            )
+            sr_refetch_queue.run()
+
+            sr_results_compute = {
+                id(item): obj
+                for key, objs in zip(fi_shard_keys_missing, sr_refetch_queue.results)
+                for item, obj in zip(fi_binned_missing[key], objs)
+            }
+
+            def build_cf_work_ref(item):
+                model_idx, N_init_obj, N_final_obj, dns = item
+
+                fi_obj = fi_results_compute[id(item)]
+                sr_obj = sr_results_compute[id(item)]
+
+                fi_proxy = FullInstantonProxy(fi_obj) if fi_obj.available else None
+                sr_proxy = SlowRollInstantonProxy(sr_obj) if sr_obj.available else None
+
+                if fi_proxy is None and sr_proxy is None:
+                    return None
+
+                return pool.object_get(
+                    "CompactionFunction",
+                    trajectory=traj_proxies[model_idx],
+                    full_instanton=fi_proxy,
+                    slow_roll_instanton=sr_proxy,
+                    delta_Nstar=dns,
+                    cosmo=cosmo,
+                    C_threshold=C_THRESHOLD,
+                    C_bar_threshold=C_BAR_THRESHOLD,
+                    atol=atol,
+                    rtol=rtol,
+                    tags=[],
+                )
+
+            cf_work_queue = RayWorkPool(
+                pool,
+                cf_missing,
+                task_builder=build_cf_work_ref,
+                compute_handler=lambda obj, **kwargs: obj.compute(**kwargs),
+                store_handler=_default_store_handler,
+                persist_handler=lambda obj, pool: pool.object_store(obj),
+                validation_handler=lambda obj: pool.object_validate(obj),
+                label_builder=lambda obj: (
+                    f"CompactionFunction(dNstar={float(obj.delta_Nstar):.4g})"
+                ),
+                title="STAGE 4: COMPACTION FUNCTIONS AND MASSES",
+                store_results=False,
+                create_batch_size=5,
+                process_batch_size=3,
+                max_task_queue=MAX_INFLIGHT_PIPELINE,
+            )
+            cf_work_queue.run()
+
+    if "homogeneous" in targets:
+        _run_homogeneous_branch()
+    else:
+        print("\n** Skipping homogeneous branch (--targets excludes 'homogeneous')")
+
+    if "gradient" in targets:
+        _run_gradient_branch(
+            pool=pool, base_grid=grid,
+            n_collocation_points_array=n_collocation_points_array,
+            alpha_regularization_array=alpha_regularization_array,
+            traj_proxies=traj_proxies, cosmo=cosmo, atol=atol, rtol=rtol, dm=dm,
+            samples_per_N=samples_per_N, no_store_values=no_store_values,
+        )
+    else:
+        print("\n** Skipping gradient branch (--targets excludes 'gradient')")
 
 
 def execute(pool: ShardedPool, units: UnitsLike):
@@ -967,6 +1080,8 @@ def execute(pool: ShardedPool, units: UnitsLike):
     N_init_array = inputs["N_init_array"]
     N_final_array = inputs["N_final_array"]
     dns_objects = inputs["dns_array"]
+    n_collocation_points_array = inputs["n_collocation_points_array"]
+    alpha_regularization_array = inputs["alpha_regularization_array"]
     model_list = inputs["model_list"]
 
     ## -----------------------------------------------------------------------
@@ -1019,6 +1134,12 @@ def execute(pool: ShardedPool, units: UnitsLike):
         if matches:
             stop_after = matches[0]
 
+    if stop_after is not None and "homogeneous" not in args.targets:
+        print(
+            f"\n!! WARNING: --stop-after {stop_after!r} has no effect since "
+            f"'homogeneous' is not selected in --targets {args.targets!r}"
+        )
+
     run_all_pipelines(
         pool=pool,
         model_list=model_list,
@@ -1029,6 +1150,9 @@ def execute(pool: ShardedPool, units: UnitsLike):
         atol=atol,
         rtol=rtol,
         cosmo=cosmo,
+        targets=args.targets,
+        n_collocation_points_array=n_collocation_points_array,
+        alpha_regularization_array=alpha_regularization_array,
         diffusion_model=dm,
         stop_after=stop_after,
         no_store_values=args.no_store_values,
@@ -1055,6 +1179,7 @@ def inventory(pool: ShardedPool, units: UnitsLike):
     _inventory_object(pool, "FullInstanton", "Full MSR instantons")
     _inventory_object(pool, "SlowRollInstanton", "Slow-roll instantons")
     _inventory_object(pool, "CompactionFunction", "Compaction functions")
+    _inventory_object(pool, "GradientCoupledInstanton", "Gradient-coupled (onion model) instantons")
 
 
 def _inventory_dimensionless(pool, type_name, label):

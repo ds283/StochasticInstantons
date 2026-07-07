@@ -513,6 +513,65 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
             return [f"Found {len(rows)} unvalidated GradientCoupledInstanton records (not pruned)"]
         return []
 
+    def inventory(self, conn, table, tables):
+        query = sqla.select(
+            table.c.serial,
+            table.c.timestamp,
+            table.c.N_init_serial,
+            table.c.N_final_serial,
+            table.c.delta_Nstar_serial,
+            table.c.n_collocation_points_serial,
+            table.c.alpha_regularization_serial,
+            table.c.validated,
+        )
+        rows = conn.execute(query).fetchall()
+
+        earliest_validated = None
+        latest_validated = None
+        earliest_unvalidated = None
+        latest_unvalidated = None
+        validated_labels = []
+        unvalidated_labels = []
+
+        for row in rows:
+            label = (
+                f"GradientCoupledInstanton("
+                f"N_init_serial={row.N_init_serial}, "
+                f"N_final_serial={row.N_final_serial}, "
+                f"delta_Nstar_serial={row.delta_Nstar_serial}, "
+                f"n_collocation_points_serial={row.n_collocation_points_serial}, "
+                f"alpha_regularization_serial={row.alpha_regularization_serial})"
+            )
+            ts = row.timestamp
+
+            if row.validated:
+                validated_labels.append(label)
+                if latest_validated is None or ts > latest_validated:
+                    latest_validated = ts
+                if earliest_validated is None or ts < earliest_validated:
+                    earliest_validated = ts
+            else:
+                unvalidated_labels.append(label)
+                if latest_unvalidated is None or ts > latest_unvalidated:
+                    latest_unvalidated = ts
+                if earliest_unvalidated is None or ts < earliest_unvalidated:
+                    earliest_unvalidated = ts
+
+        return {
+            "validated": {
+                "labels": validated_labels,
+                "versions": [],
+                "earliest_timestamp": earliest_validated,
+                "latest_timestamp": latest_validated,
+            },
+            "unvalidated": {
+                "labels": unvalidated_labels,
+                "versions": [],
+                "earliest_timestamp": earliest_unvalidated,
+                "latest_timestamp": latest_unvalidated,
+            },
+        }
+
 
 class sqla_GradientCoupledInstantonValue_factory(SQLAFactoryBase):
     def __init__(self):

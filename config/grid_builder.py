@@ -118,6 +118,24 @@ def build_grid_from_csv(pool, csv_path: str, model_list) -> list:
     ]
 
 
+def build_gradient_grid(base_grid, n_collocation_points_array, alpha_regularization_array) -> list:
+    """
+    Cross the shared (model_idx, N_init, N_final, delta_Nstar) grid against
+    the n_collocation_points and alpha_regularization axes, for the gradient
+    branch only. Returns a list of
+    (base_item, n_collocation_points_obj, alpha_regularization_obj) tuples,
+    where base_item is one of base_grid's own (model_idx, N_init, N_final,
+    delta_Nstar) tuples -- unchanged, so existing key_fields/full_payload/
+    shard_key_of closures over base_item continue to work unmodified.
+    """
+    return [
+        (item, ncp, alpha)
+        for item in base_grid
+        for ncp in n_collocation_points_array
+        for alpha in alpha_regularization_array
+    ]
+
+
 def build_instanton_grid(
     pool,
     model_list,
