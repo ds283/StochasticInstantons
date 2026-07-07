@@ -552,16 +552,71 @@ def _run_gradient_branch(
     the base (model, N_init, N_final, delta_Nstar) grid crossed against
     n_collocation_points and alpha_regularization.
     """
+    ## Pass 0 (prompt 21a): fetch the upstream FullInstanton -- POPULATED,
+    ## since its per-sample (N, phi2) values are what seeds the SAT closure's
+    ## lagged pi_core target -- for each BASE grid point (not the full
+    ## gradient_grid: many (n_collocation_points, alpha_regularization)
+    ## combinations share the same underlying FullInstanton, so this is
+    ## O(len(base_grid)) round trips, not O(len(gradient_grid))). Best
+    ## effort: a missing/failed/unpopulated FullInstanton just means
+    ## GradientCoupledInstanton.py's own Ray remote function falls back to
+    ## computing one inline (picard.solve_picard's own fetch-then-fallback);
+    ## it never blocks the gradient branch.
+    def _base_key_fields(item) -> dict:
+        model_idx, N_init_obj, N_final_obj, dns_obj = item
+        return dict(
+            trajectory=traj_proxies[model_idx],
+            N_init=N_init_obj, N_final=N_final_obj, delta_Nstar=dns_obj,
+            atol=atol, rtol=rtol, tags=[], diffusion_model=dm,
+        )
+
+    def _base_shard_key(item):
+        return item[3]  # delta_Nstar
+
+    fi_seed_binned = {}
+    for item in base_grid:
+        fi_seed_binned.setdefault(_base_shard_key(item), []).append(item)
+    fi_seed_shard_keys = list(fi_seed_binned.keys())
+
+    fi_seed_queue = RayWorkPool(
+        pool,
+        fi_seed_shard_keys,
+        task_builder=lambda key: pool.object_get_vectorized(
+            "FullInstanton",
+            key,
+            payload_data=[_base_key_fields(item) for item in fi_seed_binned[key]],
+        ),
+        compute_handler=None,
+        store_handler=None,
+        persist_handler=None,
+        validation_handler=None,
+        title=None,
+        store_results=True,
+        create_batch_size=20,
+        process_batch_size=20,
+    )
+    fi_seed_queue.run()
+
+    fi_proxy_by_base_id = {}
+    for key, objs in zip(fi_seed_shard_keys, fi_seed_queue.results):
+        for item, obj in zip(fi_seed_binned[key], objs):
+            fi_proxy_by_base_id[id(item)] = (
+                FullInstantonProxy(obj) if obj.available and not obj.failure else None
+            )
+
     gradient_grid = build_gradient_grid(
         base_grid, n_collocation_points_array, alpha_regularization_array
     )
     n_base = len(base_grid)
     n_ncp = len(n_collocation_points_array)
     n_alpha = len(alpha_regularization_array)
+    n_fi_seeds = sum(1 for v in fi_proxy_by_base_id.values() if v is not None)
     print(
         f"\n   >> gradient branch: {n_base} base grid point(s) x "
         f"{n_ncp} n_collocation_points value(s) x {n_alpha} alpha_regularization "
-        f"value(s) = {len(gradient_grid)} gradient instanton combination(s)"
+        f"value(s) = {len(gradient_grid)} gradient instanton combination(s)\n"
+        f"   >> SAT closure seed: {n_fi_seeds}/{n_base} base grid point(s) have "
+        f"an already-computed FullInstanton available to seed from"
     )
 
     def key_fields(item) -> dict:
@@ -572,6 +627,7 @@ def _run_gradient_branch(
             N_init=N_init_obj, N_final=N_final_obj, delta_Nstar=dns_obj,
             n_collocation_points=ncp_obj, alpha_regularization=alpha_obj,
             atol=atol, rtol=rtol, cosmo=cosmo, diffusion_model=dm, tags=[],
+            full_instanton=fi_proxy_by_base_id.get(id(base_item)),
         )
 
     def full_payload(item) -> dict:

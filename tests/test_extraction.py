@@ -317,3 +317,58 @@ def test_extract_zeta_profile_failure_handling_does_not_corrupt_other_nodes(monk
     assert result["failure_mask"][1]
     assert np.isnan(result["zeta"][1])
     assert np.isnan(result["phi_end_downflow"][1])
+
+
+# ---------------------------------------------------------------------------
+# Step-4 bracket tolerance (prompt 21a discovery): a near-background solution
+# must not be spuriously rejected by a zero-margin strict inequality.
+# ---------------------------------------------------------------------------
+
+
+def test_extract_zeta_profile_tolerates_near_background_rho_at_bracket_edge():
+    """
+    Discovered during the SBP-SAT production-port acceptance run (prompt
+    21a): when the GradientCoupledInstanton solve correctly converges to a
+    near-zero-lambda solution (the core trajectory tracking the background
+    almost exactly -- a legitimate, physically correct outcome for a
+    near-trivial shooting problem), the per-shell noiseless downflow's
+    terminal density rho_end_j can differ from the background's own
+    rho_end_traj only in the ~10th significant digit, purely from
+    accumulated ODE-solver tolerance -- landing a hair OUTSIDE
+    [rho_end_traj, rho_start_traj] under the old zero-margin strict
+    inequality and producing an all-NaN zeta for a perfectly healthy,
+    converged solution. Reproduces that regime directly: phi_final/pi_final
+    set to (approximately) the background trajectory's own value at
+    N_offset + N_total, chosen close to the background's own end of
+    inflation so the downflow's terminal density sits right at the
+    boundary of the background's own achievable range.
+    """
+    potential = _StubPotential()
+    units = Planck_units()
+    atol = 1.0e-8
+    rtol = 1.0e-8
+
+    trajectory = _DenseTrajectory(potential, phi0=10.0, pi0=-0.01, atol=atol, rtol=rtol)
+
+    N_offset = 0.0
+    # Close to the background's own N_end (small remaining downflow
+    # distance) -- the regime where rho_end_j sits near the edge of
+    # [rho_end_traj, rho_start_traj], not comfortably in the interior.
+    N_total = 0.995 * trajectory.N_end
+
+    phi_final = np.array([trajectory.phi_at(N_offset + N_total)])
+    pi_final = np.array([trajectory.pi_at(N_offset + N_total)])
+
+    result = extract_zeta_profile(
+        phi_final, pi_final, N_offset, N_total, trajectory, potential,
+        atol, rtol, units,
+    )
+
+    assert not result["failure_mask"][0], (
+        "a near-background solution must not be spuriously rejected by "
+        "Step 4's density bracket check"
+    )
+    assert np.isfinite(result["zeta"][0])
+    # Physically this should be small (near-background -> near-zero zeta),
+    # not merely finite.
+    assert abs(result["zeta"][0]) < 0.1

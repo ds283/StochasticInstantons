@@ -63,8 +63,76 @@ def advection_term(f: np.ndarray, A_array: np.ndarray, D: np.ndarray) -> np.ndar
 
     f must already have every boundary value resolved before being passed
     in -- this function does no boundary handling itself.
+
+    SUPERSEDED by advection_split_term for the production forward/response
+    RHS (prompt 21a) -- see that function's docstring for why the plain
+    product form is destabilizing under strong boundary elimination. Kept
+    here (still used by analyze_StiffnessSpectrum.py's strong-BC baseline
+    operator, prompt 20) as the explicit "wrong/old" comparison point the
+    SBP-SAT closure is measured against; do not use it in new production code.
     """
     return A_array * (D @ f)
+
+
+def advection_split_matrix(A_array: np.ndarray, D: np.ndarray) -> np.ndarray:
+    """
+    A_split = 1/2 * (diag(A) @ D + D @ diag(A) - diag(D @ A)) -- the
+    product-rule-consistent ("skew-symmetric split form") discretization of
+    variable-coefficient advection A(y) du/dy, replacing the plain product
+    diag(A) @ D used by advection_term.
+
+    WHAT IT IS: continuum-identical to the plain product (both equal
+    A(y) du/dy for smooth u -- substitute the continuum product rule
+    (Au)_y = A_y u + A u_y into 1/2*(A u_y + (Au)_y - A_y u) and the extra
+    terms cancel, leaving A u_y), but NOT identical as a matrix acting on
+    grid functions: D only differentiates polynomials up to degree n_max
+    exactly, so D @ diag(A) applied to a degree-n_max grid function
+    differentiates an effectively degree-2*n_max object and picks up an
+    aliasing residual relative to diag(A) @ D + diag(D @ A) -- the explicit
+    "- diag(D @ A)" term corrects for exactly that residual.
+
+    WHY IT IS HERE: this is what makes the discrete advection operator skew
+    under the LGL quadrature norm H = diag(grid.weights), up to a single
+    boundary term -- i.e. it restores the discrete mirror of the continuum
+    energy identity dE/dN = 1/2 [A u^2]_{boundary} that the plain product
+    form loses in the interior. The remaining boundary-localised term is
+    exactly what the SAT penalty (see forward_rhs.py) is built to cancel.
+
+    FAILURE SIGNATURE OF THE WRONG (plain-product) VERSION: this is not a
+    hypothetical -- it is the documented history of this operator.
+    Discretising with the plain product diag(A) @ D and STRONG (node-
+    elimination) boundary conditions produces a semi-discrete spectrum whose
+    abscissa grows like n_max^1.6 (integrator-independent -- RK45, Radau,
+    BDF all fail; LSODA returns NaN with success=True), which is exactly the
+    instability that made the GradientCoupledInstanton solve blow up for
+    n_collocation_points >= 9 before this closure (prompt 17/20/21).
+
+    ENERGY-ESTIMATE REFERENCE: .documents/gradient-coupled-instanton/
+    21-sbp-sat-design-note.md, Section 3 ("Exact SBP defect of the
+    split-form advection operator"). Ported here, unchanged in form, from
+    the validated Phase-1 prototype (analyze_StiffnessSpectrum.py's own
+    advection_split_matrix) -- this IS the production home for that
+    construction; the prototype's own copy is left in place as the frozen,
+    independently-tested reference the Phase-1 gate was passed against.
+    """
+    return 0.5 * (
+        np.diag(A_array) @ D + D @ np.diag(A_array) - np.diag(D @ A_array)
+    )
+
+
+def advection_split_term(f: np.ndarray, A_array: np.ndarray, D: np.ndarray) -> np.ndarray:
+    """
+    advection_split_matrix(A_array, D) @ f -- the split-form counterpart of
+    advection_term, with the same (f, A_array, D) call signature so
+    production call sites (forward_rhs.py) can swap one for the other
+    directly. See advection_split_matrix's own docstring for the full
+    what/why/failure-signature/energy-estimate account.
+
+    f must already have every boundary value resolved before being passed
+    in -- this function does no boundary handling itself (same contract as
+    advection_term).
+    """
+    return advection_split_matrix(A_array, D) @ f
 
 
 def neumann_boundary_value(f: np.ndarray, D: np.ndarray, boundary_index: int) -> float:

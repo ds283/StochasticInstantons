@@ -153,6 +153,11 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
         tags = payload.get("tags", [])
         do_not_populate = payload.get("_do_not_populate", False)
         label = payload.get("label", None)
+        # Prompt 21a -- SAT seed only, not part of the identity query below;
+        # None is the normal case ("no pre-fetched FullInstanton available,
+        # solve inline instead" -- see GradientCoupledInstanton.py's own
+        # class docstring).
+        full_instanton = payload.get("full_instanton")
 
         query = sqla.select(
             table.c.serial,
@@ -208,6 +213,7 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
                 diffusion_model=diffusion_model,
                 label=label,
                 tags=tags,
+                full_instanton=full_instanton,
             )
 
         obj = GradientCoupledInstanton(
@@ -226,6 +232,7 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
             label=row_data.label,
             tags=tags,
             timestamp=row_data.timestamp,
+            full_instanton=full_instanton,
         )
         obj._trajectory_serial = trajectory.store_id
         obj._delta_Nstar_serial = delta_Nstar_obj.store_id

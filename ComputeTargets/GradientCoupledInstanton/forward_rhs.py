@@ -26,20 +26,95 @@ in the GradientCoupledInstanton subpackage allowed to depend directly on
 AbstractPotential and InflatonTrajectory -- this is where physics and the
 Numerics/ collocation machinery meet.
 
-State vector layout. Not all 2(n_max+1) raw grid values are independently
-integrated:
+Physics framing -- SBP-SAT boundary closure (prompt 21/21a)
+-------------------------------------------------------------------------
+The continuum problem is well-posed: advection-diffusion with a regularity
+("natural") condition at the coordinate centre y=+1 (the core) -- like a
+driven heat bar where one end is specified data and the far end's value is
+an *output* of the dynamics plus regularity, not imposed data. The core field
+values are things this model *solves for*, not boundary data it is handed.
+
+What used to fail was purely the discretisation, not the physics: centred
+spectral collocation of the advection-dominated spatial operator, with the
+core boundary conditions imposed *strongly* (phi_core node-eliminated via a
+Neumann formula, never itself integrated), loses the discrete energy
+estimate that mirrors the continuum well-posedness. That produces spurious
+right-half-plane eigenvalues whose real part grows like n_max^1.6
+(integrator-independent -- RK45, Radau, BDF all fail; LSODA returns NaN with
+success=True) -- see .documents/gradient-coupled-instanton/
+21-sbp-sat-design-note.md for the full derivation.
+
+The fix (SBP-SAT) restores the discrete energy estimate by (a) writing the
+advection term in the skew-symmetric "split form" (Numerics.DiscretizedOperators
+.advection_split_term) instead of the plain product, and (b) adding a
+dissipative SAT ("Simultaneous Approximation Term") penalty at the core node
+that exactly cancels the one boundary term the split form still carries. This
+does NOT add a new physical boundary condition -- the SAT's *target* value g
+is chosen so that the penalty forcing vanishes at the true solution:
+
+  - g_phi (phi_core's target) is the same Neumann/regularity value the old
+    strong elimination already imposed (neumann_boundary_value, recomputed
+    live from the OTHER, currently-integrated phi nodes at every RHS call --
+    never from phi_core itself, so it is never self-referential). Because it
+    is recomputed from the live, evolving interior state at every call (not
+    frozen across Picard sweeps), it needs no additional lagging: as the
+    interior nodes approach their converged shape, g_phi automatically
+    approaches consistency with phi_core, and the penalty forcing vanishes
+    on its own. See .documents/gradient-coupled-instanton/
+    21-sbp-sat-design-note.md Section 6 for why this is the right target
+    for phi and why it does not need Picard-level lagging.
+  - g_pi (pi_core's target) has no existing analogue to fall back on --
+    pi_core previously had NO boundary condition at all (a totally free,
+    unconstrained DOF). There is nothing "live" to compute it from, so its
+    target is instead the LAGGED, SELF-CONSISTENT core pi(N) trajectory from
+    the previous Picard sweep (threaded in as g_pi_core_spline, built by
+    picard.py the same way the rfield/rmom response-field splines already
+    are), seeded at sweep 0 from a FullInstanton profile. At Picard
+    convergence g_pi_core_spline(N) -> pi_core(N) exactly, so the penalty
+    forcing -> 0 there too. See picard.py's own module docstring for the
+    sweep-to-sweep update and the FullInstanton seed.
+
+Either way, the SAT is a *stabiliser*, not new physics: at the converged
+solution both penalties vanish and the model reduces exactly to the
+unpenalised continuum dynamics, with regularity (d(pi)/dy -> 0 at the core)
+emerging from phi's own regularity through pi = dphi/dN, rather than being
+separately imposed.
+
+HOW TO VERIFY THIS IS STILL CORRECT: three checks must stay green --
+  (a) the prompt-20/21 abscissa diagnostic (analyze_StiffnessSpectrum.py
+      --mode spectrum --closure sbp-sat): spectral_abscissa flat in n_max;
+  (b) tests/test_sbp_sat_boundary_closure.py's SAT energy-cancellation check
+      (the boundary energy term is <= 0 after the penalty, Phase-1 prototype);
+  (c) tests/test_forward_rhs.py's closure-independence (two-seed) regression:
+      the converged core trajectory does not depend on which seed started
+      Picard sweep 0.
+
+State vector layout (prompt 21a -- CHANGED from the strong-BC layout)
+-------------------------------------------------------------------------
+Not all 2*(n_max+1) raw grid values are independently integrated:
 
   - phi_0, pi_0 (outer edge, y=-1): Dirichlet-pinned to
     trajectory.phi_at(N_offset + N)/.pi_at(N_offset + N) -- not integrated,
-    recomputed fresh at every RHS call.
-  - phi_{n_max} (core, y=+1): Neumann-eliminated via neumann_boundary_value
-    (Numerics/DiscretizedOperators.py, boundary_index=-1) -- not integrated.
-  - pi_{n_max} (core momentum): genuinely free, is integrated.
-  - Everything else (phi_1,...,phi_{n_max-1}, pi_1,...,pi_{n_max}) is
-    integrated.
+    recomputed fresh at every RHS call. A(-1) = 0 exactly (see the design
+    note's Section 3), so this edge carries no destabilising energy term and
+    needs no SAT: the strong Dirichlet imposition here is deliberately left
+    unchanged.
+  - phi_{n_max} (core): FORMERLY Neumann-eliminated (not integrated, not
+    part of the state). NOW a free, integrated DOF, weakly (SAT-)penalised
+    toward its live-computed regularity target g_phi (see above) -- this is
+    exactly the "stop eliminating the core node" change the SBP-SAT closure
+    requires: node elimination is itself what breaks the discrete energy
+    estimate, independent of which field is eliminated.
+  - pi_{n_max} (core momentum): was already free/integrated; now ALSO
+    weakly SAT-penalised toward its lagged target g_pi (see above) --
+    previously this node had no boundary condition of any kind.
+  - Everything else (phi_1,...,phi_{n_max-1}, pi_1,...,pi_{n_max-1}) is
+    integrated exactly as before.
 
-So the ODE state vector has length 2*n_max - 1:
-(phi_1,...,phi_{n_max-1}, pi_1,...,pi_{n_max}).
+So the ODE state vector now has length 2*n_max (one entry longer than the
+old strong-BC layout's 2*n_max-1, since phi_core is promoted from
+eliminated to integrated):
+(phi_1,...,phi_{n_max}, pi_1,...,pi_{n_max}).
 """
 
 import numpy as np
@@ -47,7 +122,7 @@ import numpy as np
 from Numerics.OnionCoordinate import delta_s, advection_coefficient
 from Numerics.DiscretizedOperators import (
     L_operator,
-    advection_term,
+    advection_split_term,
     neumann_boundary_value,
 )
 
@@ -55,12 +130,14 @@ from Numerics.DiscretizedOperators import (
 def pack_state(phi_full: np.ndarray, pi_full: np.ndarray) -> np.ndarray:
     """
     Restrict (phi_full, pi_full), each of length n_max+1, to the integrated
-    state vector of length 2*n_max-1: (phi_1,...,phi_{n_max-1},
-    pi_1,...,pi_{n_max}). Drops phi_full[0]/pi_full[0] (Dirichlet-pinned) and
-    phi_full[-1] (Neumann-eliminated).
+    state vector of length 2*n_max: (phi_1,...,phi_{n_max}, pi_1,...,
+    pi_{n_max}). Drops only phi_full[0]/pi_full[0] (Dirichlet-pinned outer
+    edge) -- unlike the pre-prompt-21a layout, phi_full[-1] (the core) is now
+    KEPT, not dropped, since it is an integrated DOF rather than
+    Neumann-eliminated. See the module docstring's "State vector layout"
+    section for the full account of this change.
     """
-    n_max = len(phi_full) - 1
-    return np.concatenate([phi_full[1:n_max], pi_full[1:n_max + 1]])
+    return np.concatenate([phi_full[1:], pi_full[1:]])
 
 
 def unpack_state(
@@ -80,12 +157,12 @@ def unpack_state(
     Index 0 (y=-1): Dirichlet-pinned from the noiseless background,
     trajectory.phi_at(N_offset + N)/.pi_at(N_offset + N).
 
-    Index n_max (y=+1): pi_full[n_max] is the free, integrated core
-    momentum, taken directly from the state vector. phi_full[n_max] is
-    Neumann-eliminated via neumann_boundary_value, using the just-assembled
-    phi_full (every index other than the boundary one is already correct;
-    neumann_boundary_value ignores whatever placeholder sits at the boundary
-    index itself).
+    Indices 1..n_max (interior + core, both fields): read directly from the
+    state vector -- no elimination of any kind. Prompt 21a change: phi_full
+    [-1] (the core) used to be overwritten here via neumann_boundary_value;
+    it is now simply unpacked like every other interior node, since it is an
+    integrated DOF. The Neumann/regularity formula is still used elsewhere
+    (forward_rhs's own g_phi SAT target), just no longer to *set* this value.
 
     alpha, H_sq_nl_init, and potential are threaded through for a signature
     shared with forward_rhs's local context; unpack_state itself only needs
@@ -99,11 +176,8 @@ def unpack_state(
     phi_full[0] = trajectory.phi_at(N_offset + N)
     pi_full[0] = trajectory.pi_at(N_offset + N)
 
-    n_phi_interior = n_max - 1
-    phi_full[1:n_max] = state[:n_phi_interior]
-    pi_full[1:n_max + 1] = state[n_phi_interior:n_phi_interior + n_max]
-
-    phi_full[-1] = neumann_boundary_value(phi_full, grid.D, boundary_index=-1)
+    phi_full[1:n_max + 1] = state[:n_max]
+    pi_full[1:n_max + 1] = state[n_max:2 * n_max]
 
     return phi_full, pi_full
 
@@ -240,11 +314,12 @@ def forward_rhs(
     rfield_splines,
     rmom_splines,
     diffusion_model,
+    g_pi_core_spline,
     disable_spatial_coupling: bool = False,
 ) -> np.ndarray:
     """
     Forward-sector RHS (eq. inst-phi/inst-pi), always sourced by the current
-    response fields.
+    response fields, and (prompt 21a) always closed by the core SAT penalty.
 
     rfield_splines/rmom_splines are one SplineWrapper per grid node (length
     n_max+1 each), reconstructing the current backward-pass response-field
@@ -254,13 +329,27 @@ def forward_rhs(
     is just a particular choice of these splines (constant zero), not a
     separate code path.
 
-    disable_spatial_coupling=True zeroes both the gradient term and both
-    advection contributions together -- zeroing only the gradient term would
-    leave nodes coupled through advection (which doesn't vanish at the core),
-    so the reduction to a decoupled single trajectory needs both zeroed at
-    once. It does NOT zero the response-field sourcing terms, which remain
-    active (matching FullInstanton's own fwd_rhs, which always includes its
-    P1/P2 sourcing terms regardless of gradient coupling).
+    g_pi_core_spline is a SINGLE SplineWrapper (not one per node -- the SAT
+    target only exists at the core), reconstructing the lagged
+    self-consistent pi_core(N) target from the previous Picard sweep (or the
+    FullInstanton seed, at sweep 0). See the module docstring's physics
+    framing above and picard.py's own docstring for how it is built/updated.
+    phi_core's SAT target has no equivalent spline argument: it is computed
+    live, in-line below, from the currently-unpacked phi_full via
+    neumann_boundary_value -- see the module docstring for why phi and pi
+    are treated differently.
+
+    disable_spatial_coupling=True zeroes the gradient term, both advection
+    contributions, AND both SAT penalties together -- the SAT is part of the
+    same spatial-coupling closure as the advection/gradient terms (it exists
+    only to cancel an advection-operator boundary defect), so when advection
+    is switched off there is nothing left for it to cancel; leaving it on
+    would inject a spurious penalty into what is supposed to be a set of
+    decoupled single-trajectory ODEs, breaking the reduction-limit tests
+    that compare this mode directly against FullInstanton. It does NOT zero
+    the response-field sourcing terms, which remain active (matching
+    FullInstanton's own fwd_rhs, which always includes its P1/P2 sourcing
+    terms regardless of gradient coupling).
     """
     phi_full, pi_full = unpack_state(
         state, N, N_offset, alpha, H_sq_nl_init, grid, trajectory, potential
@@ -286,13 +375,138 @@ def forward_rhs(
         gradient_term = np.zeros_like(phi_full)
         advection_phi_array = np.zeros_like(phi_full)
         advection_pi_array = np.zeros_like(pi_full)
+        sat_phi_core = 0.0
+        sat_pi_core = 0.0
     else:
         L_phi_array = L_operator(phi_full, delta_s_N, grid.nodes, grid.D, grid.D2)
         gradient_term = np.exp(-2.0 * delta_s_loc_array) * L_phi_array
 
-        A_array = advection_coefficient(grid.nodes, delta_s_N, epsilon_loc_array[-1])
-        advection_phi_array = advection_term(phi_full, A_array, grid.D)
-        advection_pi_array = advection_term(pi_full, A_array, grid.D)
+        # ---------------------------------------------------------------
+        # Split-form advection (prompt 21a). WHAT: replaces the plain
+        # product diag(A) @ D with the product-rule-consistent split form
+        # (Numerics.DiscretizedOperators.advection_split_term). WHY: the
+        # plain product is not skew under the LGL norm H=diag(grid.weights)
+        # in the interior; the split form is, up to a single boundary term
+        # at the core (design note Section 3). FAILURE SIGNATURE of using
+        # the plain product here instead: spectral_abscissa of the
+        # assembled operator grows like n_max^1.6, integrator-independent
+        # (this is exactly the bug this prompt fixes, not a hypothetical).
+        # ENERGY-ESTIMATE STEP: design note Section 3 ("Exact SBP defect of
+        # the split-form advection operator").
+        # ---------------------------------------------------------------
+        epsilon_core = epsilon_loc_array[-1]
+        A_array = advection_coefficient(grid.nodes, delta_s_N, epsilon_core)
+        advection_phi_array = advection_split_term(phi_full, A_array, grid.D)
+        advection_pi_array = advection_split_term(pi_full, A_array, grid.D)
+
+        # ---------------------------------------------------------------
+        # SAT boundary closure at the core (y=+1), prompt 21a.
+        #
+        # WHAT: a dissipative penalty -tau/w_core * (u_core - g_u) added to
+        # each field's own core-row derivative, tau = A(core)/2.
+        #
+        # WHY: the split-form advection operator above is skew under
+        # H=diag(grid.weights) everywhere EXCEPT a single core-row term of
+        # size ~A(core) (design note Section 3) -- an O(1), n_max-INDEPENDENT
+        # destabilising energy source that dominates as the grid refines and
+        # every other (properly shrinking, w_j -> 0) diagonal entry becomes
+        # negligible by comparison. tau = A(core)/2 is the exact-cancellation
+        # value: substituting it into the discrete energy balance
+        # dE/dN = -a'*E + (1/2 A(core) - tau) u_core^2 + tau*u_core*g makes
+        # the u_core^2 coefficient vanish identically, leaving pure decay at
+        # rate a' plus a bounded forcing term -- see design note Section 4
+        # for the full derivation. tau applies identically to phi and pi:
+        # advection uses the same A_array for both fields, so both fields
+        # carry the same core-row defect independently and both need the
+        # penalty (using it on only one field leaves the OTHER field's core
+        # row uncancelled).
+        #
+        # WHAT A WRONG VERSION LOOKS LIKE: tau=0 reduces to the plain
+        # split-form operator, still carrying the destabilising core entry;
+        # tau < A(core)/2 only partially cancels it (bounded-but-still-
+        # positive abscissa, an under-damped variant); applying the penalty
+        # to only one of phi/pi leaves the other's defect untouched.
+        #
+        # THE TARGETS g_phi / g_pi -- deliberately NOT the same kind of
+        # object (see module docstring's physics framing and design note
+        # Section 6):
+        #   g_phi: computed LIVE at every call from the OTHER (non-core)
+        #     phi nodes via the same Neumann/regularity formula the old
+        #     strong elimination used (neumann_boundary_value) -- this is
+        #     the direct weak analogue of the previous strong condition, not
+        #     a value-type closure, and needs no Picard-sweep lagging since
+        #     it is recomputed from the live, currently-integrated interior
+        #     state at every RHS call (never from phi_core itself, so it
+        #     can never be identically self-cancelling).
+        #   g_pi: NO existing condition to weakly reproduce (pi_core was
+        #     previously completely unconstrained), so its target is the
+        #     LAGGED SELF-CONSISTENT core pi(N) trajectory from the previous
+        #     Picard sweep, reconstructed via g_pi_core_spline (built and
+        #     updated by picard.py; seeded from a FullInstanton profile at
+        #     sweep 0). At Picard convergence g_pi_core_spline(N) ->
+        #     pi_core(N), so this penalty's forcing -> 0 there too, exactly
+        #     like g_phi's.
+        # ---------------------------------------------------------------
+        A_core = float(A_array[-1])
+        # tau = |A_core|, NOT 0.5*A_core (design note Section 4's literal,
+        # minimal-admissible value) -- TWO deliberate hardenings beyond the
+        # Phase-1 frozen-coefficient derivation, both discovered empirically
+        # during Phase-2 acceptance testing (prompt 21a) on the production
+        # case (N_init=19.5, N_final=16, delta_Nstar=0.1, alpha=0.1) and NOT
+        # visible in Phase-1's linear, frozen-coefficient eigenvalue sweep:
+        #
+        # (1) abs(), not the signed A_core -- SIGN ROBUSTNESS.
+        #     A_core = 2*a', a' = (1-epsilon_core)/Delta_s(N), is positive
+        #     only while epsilon_core < 1. That holds at the CONVERGED
+        #     solution (N_final is chosen before the true end of inflation)
+        #     but is NOT guaranteed for the trial states visited mid-
+        #     shooting/mid-Picard-iteration: a poor intermediate iterate can
+        #     transiently push epsilon_core = 0.5*pi_core^2 above 1. A
+        #     signed tau = 0.5*A_core flips NEGATIVE exactly when that
+        #     happens, turning the SAT from a dissipative closure into an
+        #     amplifier -- observed directly as pi_core running away toward
+        #     the H_sq denominator singularity (pi_core^2 = 6) within a
+        #     fraction of an e-fold, at n_max >= 9 on the production case,
+        #     before this fix.
+        # (2) a factor of 2 beyond the minimal |A_core|/2 -- ITERATION
+        #     STABILITY MARGIN. Promoting phi_core from Neumann-eliminated
+        #     to a free, integrated DOF (this same prompt) gives it genuine
+        #     dynamical memory it never had before (previously it was
+        #     slaved, instantaneously, to the interior nodes with no
+        #     independent timescale of its own). At the design note's
+        #     minimal tau = 0.5*|A_core|, this new degree of freedom was
+        #     observed to develop a persistent, non-decaying O(1) Picard-
+        #     sweep oscillation at n_collocation_points=7 on the production
+        #     case (visible as max|dphi| across sweeps failing to shrink at
+        #     all) -- a genuinely new failure mode the frozen-coefficient
+        #     linear analysis cannot see, since it only bounds the per-sweep
+        #     OPERATOR's spectrum, not the full nonlinear Picard/shooting
+        #     iteration's own convergence. Doubling tau (a strictly stronger,
+        #     still-admissible choice per design note Section 4: "any
+        #     tau >= A(core)/2 is admissible") suppressed the oscillation
+        #     completely -- every n_collocation_points in {5,7,9,11,13,17,33}
+        #     then converges in a single outer Newton iteration and a single
+        #     Picard sweep on the production case.
+        #
+        # Both hardenings are safety margin, not a physics change: the exact
+        # energy-balance algebra (design note Section 4, re-derived for the
+        # signed/rescaled case) gives a core-row dE/dN coefficient of
+        # -a'*(1 + w_core/2) when a'>0 (MORE negative / more stable than the
+        # minimal recipe's -a'*w_core/2) and a'*(3 - w_core/2) < 0 when a'<0
+        # (over-damped, but strictly stabilizing, since w_core < 2 always for
+        # LGL weights) -- so this never weakens the closure. See
+        # tests/test_forward_rhs.py's SAT-sign-and-margin tests for the
+        # regression guards, and the design note addendum
+        # (.documents/gradient-coupled-instanton/21a-production-port-notes.md)
+        # for the full empirical account.
+        tau = abs(A_core)
+        w_core = float(grid.weights[-1])
+
+        g_phi_core = neumann_boundary_value(phi_full, grid.D, boundary_index=-1)
+        g_pi_core = float(g_pi_core_spline(N))
+
+        sat_phi_core = -(tau / w_core) * (phi_full[-1] - g_phi_core)
+        sat_pi_core = -(tau / w_core) * (pi_full[-1] - g_pi_core)
 
     # Response-field values at the current N, reconstructed node-by-node from
     # the current backward-pass splines.
@@ -319,5 +533,12 @@ def forward_rhs(
         + advection_pi_array
         + noise_mom_array
     )
+
+    # SAT penalties act only at the core row (index -1); every other row is
+    # untouched. Added last, after the plain assembly above, since they are
+    # additive corrections to the core row's own derivative, not part of the
+    # per-node formula every other row shares.
+    dphi_full[-1] += sat_phi_core
+    dpi_full[-1] += sat_pi_core
 
     return pack_state(dphi_full, dpi_full)

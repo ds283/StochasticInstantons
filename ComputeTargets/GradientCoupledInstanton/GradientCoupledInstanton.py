@@ -40,6 +40,21 @@ the full three-term on-shell quadratic form (eq. msr-action), not just the
 single ``D_phi`` term ``FullInstanton``'s own code computes; see that
 module's docstring for why the extra terms must not be dropped by analogy
 with ``FullInstanton``.
+
+``full_instanton`` (prompt 21a, optional): a ``FullInstantonProxy`` for the
+upstream homogeneous instanton at the same ``(trajectory, N_init, N_final,
+delta_Nstar)``, used ONLY as the sweep-0 seed for ``picard.solve_picard``'s
+lagged pi_core SAT target -- see ``picard.py``'s own module docstring for
+the full closure. It is deliberately NOT part of this object's persisted
+identity (the factory's lookup query never references it): the seed only
+affects how many Picard sweeps a solve takes to converge, never the
+converged answer, so two ``GradientCoupledInstanton`` rows that differ only
+in which ``FullInstanton`` (if any) was available to seed them are the same
+physical object. Datastore access only happens on the driver, never inside
+a ``@ray.remote`` worker (``.claude/rules/ray-dispatch.md``), so fetching
+this proxy -- when the pipeline has one available -- is main.py's
+responsibility (``_run_gradient_branch``); ``None`` here just means "solve
+inline instead" (``picard.solve_picard``'s own fetch-then-fallback).
 """
 
 from datetime import datetime
@@ -92,10 +107,23 @@ def _compute_gradient_coupled_instanton(
     store_full_values: bool,
     instrument_stiffness: bool = True,
     label: Optional[str] = None,
+    full_instanton=None,  # Optional[FullInstantonProxy] (prompt 21a, SAT seed only)
 ) -> dict:
     """
     Solve the gradient-coupled instanton BVP and extract its physical
     profile, per the ten-step pipeline in prompt 14 Part C.
+
+    full_instanton (prompt 21a, optional): a FullInstantonProxy for the
+    upstream homogeneous instanton at the same (trajectory, N_init, N_final,
+    delta_Nstar), materialised here (proxy.get(), per
+    .claude/rules/proxy-pattern.md -- never reach past the proxy) and, if it
+    has succeeded and has per-sample values available, passed down into
+    solve_picard as the sweep-0 seed for the lagged pi_core SAT target. See
+    picard.py's own module docstring and _seed_pi_core_values's docstring
+    for the full fetch-then-fallback preference order; solve_picard computes
+    a FullInstanton profile inline (bypassing Ray) when this is None or
+    unusable, so this parameter only ever affects iteration count, never the
+    physics result.
 
     instrument_stiffness (prompt 17 Part B; default True): threaded straight
     through to solve_picard, which instruments every RK45 solve_ivp call it
@@ -181,12 +209,28 @@ def _compute_gradient_coupled_instanton(
             "diagnostics": diagnostics,
         }
 
+    # ── Step 3b: materialise the FullInstanton SAT seed, if one was fetched
+    # by the driver (prompt 21a) -- .get() per .claude/rules/proxy-pattern.md,
+    # never reach past the proxy. Only its per-sample (N, phi2) values are
+    # needed (solve_picard's own _seed_pi_core_values reads exactly those two
+    # keys); None here just means "solve_picard computes one inline instead".
+    full_instanton_seed = None
+    if full_instanton is not None and full_instanton.available:
+        fi_obj = full_instanton.get()
+        if not fi_obj.failure and fi_obj.values:
+            full_instanton_seed = {
+                "failure": False,
+                "N_sample": [v.N.N for v in fi_obj.values],
+                "phi2": [v.phi2 for v in fi_obj.values],
+            }
+
     # ── Step 4: the full Picard/shooting pipeline ────────────────────────────
     result = solve_picard(
         N_init, N_final, delta_Nstar, alpha, H_sq_nl_init, grid,
         traj, potential, dm, atol, rtol, phi_end,
         instrument_stiffness=instrument_stiffness,
         label=_lbl,
+        full_instanton_seed=full_instanton_seed,
     )
 
     # ── Step 5: bail out on non-convergence ──────────────────────────────────
@@ -467,6 +511,7 @@ class GradientCoupledInstanton(DatastoreObject):
         label: Optional[str] = None,
         tags: Optional[List[store_tag]] = None,
         timestamp: Optional[datetime] = None,
+        full_instanton=None,  # Optional[FullInstantonProxy] (prompt 21a, SAT seed only)
     ):
         DatastoreObject.__init__(self, store_id, timestamp=timestamp)
         self._trajectory = trajectory
@@ -482,6 +527,9 @@ class GradientCoupledInstanton(DatastoreObject):
         self._diffusion_model: AbstractDiffusionModel = diffusion_model or MasslessDecoupledDiffusion()
         self._label: Optional[str] = label
         self._tags: List[store_tag] = tags or []
+        # Prompt 21a -- SAT seed only, not part of this object's persisted
+        # identity (see the class docstring's own "full_instanton" note).
+        self._full_instanton = full_instanton
         self._msr_action: Optional[float] = None  # populated by compute()/store()
         self._noise_field_min: Optional[float] = None
         self._noise_field_mean: Optional[float] = None
@@ -635,6 +683,7 @@ class GradientCoupledInstanton(DatastoreObject):
             rtol=rtol,
             store_full_values=self._store_full_values,
             label=label or self._label,
+            full_instanton=self._full_instanton,
         )
         return self._compute_ref
 

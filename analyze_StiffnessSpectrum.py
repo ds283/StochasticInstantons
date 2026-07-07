@@ -112,10 +112,7 @@ from pathlib import Path
 
 import numpy as np
 
-from ComputeTargets.GradientCoupledInstanton.forward_rhs import (
-    pack_state,
-    forward_rhs,
-)
+from ComputeTargets.GradientCoupledInstanton.forward_rhs import noise_source_terms
 from ComputeTargets.GradientCoupledInstanton.response_rhs import _c_of_N
 from Numerics.DiscretizedOperators import (
     L_operator,
@@ -178,6 +175,29 @@ ADJOINT_CSV_FIELDNAMES = [
 # ---------------------------------------------------------------------------
 
 
+def _pack_state_strong(phi_full: np.ndarray, pi_full: np.ndarray) -> np.ndarray:
+    """
+    Frozen, LOCAL copy of the pre-prompt-21a
+    ComputeTargets.GradientCoupledInstanton.forward_rhs.pack_state: drops
+    the Dirichlet-pinned outer edge AND the Neumann-eliminated phi_core,
+    giving the (2*n_max-1)-length strong-BC state
+    (phi_1,...,phi_{n_max-1}, pi_1,...,pi_{n_max}).
+
+    Prompt 21a promoted phi_core to a free, integrated DOF in the
+    PRODUCTION forward_rhs/pack_state (state length 2*n_max), which is
+    exactly the closure this module's own "sbp-sat" operator
+    (assemble_spatial_operator_sbp_sat) was built to validate BEFORE that
+    port happened. assemble_spatial_operator below is the deliberately
+    preserved "strong" BASELINE every prompt-17/20/21 test compares the new
+    closure against -- it must keep representing the OLD, node-eliminating
+    closure exactly, independent of how the live production module
+    evolves. Hence this local copy, rather than importing the (now
+    different) production pack_state.
+    """
+    n_max = len(phi_full) - 1
+    return np.concatenate([phi_full[1:n_max], pi_full[1:n_max + 1]])
+
+
 def assemble_spatial_operator(
     n_max: int, alpha: float, N: float, epsilon_core: float = DEFAULT_EPSILON_CORE,
 ):
@@ -197,10 +217,12 @@ def assemble_spatial_operator(
     H_sq_local/H_sq_nl_init held at ratio 1 everywhere (see module
     docstring), so both are then held fixed while L_operator/advection_term
     are applied to each unit basis vector of the (2*n_max-1)-length free-DOF
-    state -- matching forward_rhs.pack_state/unpack_state's own layout, with
-    the Dirichlet-pinned boundary (phi_full[0]/pi_full[0]) held at zero
-    (its true, non-zero value is a fixed additive offset from the
-    background trajectory -- not part of the state-dependent linear map).
+    state -- the STRONG (node-eliminating) closure's own layout (see
+    _pack_state_strong's docstring for why this is now a local, frozen
+    copy rather than the live production pack_state), with the
+    Dirichlet-pinned boundary (phi_full[0]/pi_full[0]) held at zero (its
+    true, non-zero value is a fixed additive offset from the background
+    trajectory -- not part of the state-dependent linear map).
 
     Returns (A, delta_s_N): the assembled matrix, shape
     (2*n_max-1, 2*n_max-1), and the scalar Delta_s(N) used to build it.
@@ -229,7 +251,7 @@ def assemble_spatial_operator(
 
         dphi_full = advection_phi_array
         dpi_full = gradient_term + advection_pi_array
-        return pack_state(dphi_full, dpi_full)
+        return _pack_state_strong(dphi_full, dpi_full)
 
     matrix = np.column_stack([_spatial_rhs(e) for e in np.eye(n_state)])
     return matrix, delta_s_N
@@ -310,6 +332,91 @@ class _ConstDiffusion:
         return 0.5, 0.1, 0.2
 
 
+def _unpack_state_strong(state, N, N_offset, alpha, H_sq_nl_init, grid, trajectory, potential):
+    """Frozen LOCAL copy of the pre-prompt-21a
+    ComputeTargets.GradientCoupledInstanton.forward_rhs.unpack_state:
+    Neumann-eliminates phi_core rather than integrating it -- see
+    _pack_state_strong's docstring for why this module keeps its own copy
+    rather than calling the (now different) production unpack_state."""
+    n_max = grid.n_max
+    phi_full = np.empty(n_max + 1)
+    pi_full = np.empty(n_max + 1)
+    phi_full[0] = trajectory.phi_at(N_offset + N)
+    pi_full[0] = trajectory.pi_at(N_offset + N)
+    n_phi_interior = n_max - 1
+    phi_full[1:n_max] = state[:n_phi_interior]
+    pi_full[1:n_max + 1] = state[n_phi_interior:n_phi_interior + n_max]
+    phi_full[-1] = neumann_boundary_value(phi_full, grid.D, boundary_index=-1)
+    return phi_full, pi_full
+
+
+def _forward_rhs_strong(
+    N, state, N_offset, alpha, H_sq_nl_init, grid, trajectory, potential,
+    rfield_splines, rmom_splines, diffusion_model, disable_spatial_coupling=False,
+):
+    """
+    Frozen LOCAL copy of the pre-prompt-21a
+    ComputeTargets.GradientCoupledInstanton.forward_rhs.forward_rhs (plain-
+    product advection, Neumann-eliminated phi_core, no SAT closure) -- used
+    ONLY by finite_difference_spatial_jacobian below.
+
+    Prompt 21a changed the PRODUCTION forward_rhs to a different closure
+    (split-form advection, an enlarged/free-DOF state, a core SAT penalty).
+    finite_difference_spatial_jacobian's whole purpose is to validate
+    assemble_spatial_operator's hand-transcribed STRONG-closure matrix
+    against an independently-computed RHS of THAT SAME (deliberately
+    preserved) closure -- so it must keep testing against a frozen copy of
+    the old physics, not the evolved production module, or the comparison
+    would no longer be checking what assemble_spatial_operator claims to
+    represent. See _pack_state_strong's docstring for the full rationale.
+    diluted_diffusion_coefficients/noise_source_terms/n_count themselves are
+    UNCHANGED by prompt 21a (only the boundary closure moved), so those are
+    still imported directly from the production module rather than
+    duplicated here.
+    """
+    phi_full, pi_full = _unpack_state_strong(
+        state, N, N_offset, alpha, H_sq_nl_init, grid, trajectory, potential
+    )
+
+    H_sq_core = potential.H_sq(phi_full[-1], pi_full[-1])
+    delta_s_N = delta_s(N, 0.0, H_sq_core, H_sq_nl_init, alpha)
+
+    H_sq_loc_array = potential.H_sq(phi_full, pi_full)
+    epsilon_loc_array = potential.epsilon(phi_full, pi_full)
+    dV_array = potential.dV_dphi(phi_full)
+    delta_s_loc_array = delta_s(N, 0.0, H_sq_loc_array, H_sq_nl_init, alpha)
+
+    if disable_spatial_coupling:
+        gradient_term = np.zeros_like(phi_full)
+        advection_phi_array = np.zeros_like(phi_full)
+        advection_pi_array = np.zeros_like(pi_full)
+    else:
+        L_phi_array = L_operator(phi_full, delta_s_N, grid.nodes, grid.D, grid.D2)
+        gradient_term = np.exp(-2.0 * delta_s_loc_array) * L_phi_array
+        epsilon_core = epsilon_loc_array[-1]
+        A_array = advection_coefficient(grid.nodes, delta_s_N, epsilon_core)
+        advection_phi_array = advection_term(phi_full, A_array, grid.D)
+        advection_pi_array = advection_term(pi_full, A_array, grid.D)
+
+    rfield_full = np.array([spline(N) for spline in rfield_splines])
+    rmom_full = np.array([spline(N) for spline in rmom_splines])
+    noise_field_array, noise_mom_array = noise_source_terms(
+        phi_full, pi_full, rfield_full, rmom_full, delta_s_N, delta_s_loc_array,
+        grid, potential, diffusion_model,
+    )
+
+    dphi_full = pi_full + advection_phi_array + noise_field_array
+    dpi_full = (
+        -(3.0 - epsilon_loc_array) * pi_full
+        - dV_array / H_sq_loc_array
+        + gradient_term
+        + advection_pi_array
+        + noise_mom_array
+    )
+
+    return _pack_state_strong(dphi_full, dpi_full)
+
+
 def finite_difference_spatial_jacobian(
     n_max: int, alpha: float, N: float,
     phi0: float = 0.3, pi0: float = -0.05,
@@ -317,14 +424,16 @@ def finite_difference_spatial_jacobian(
 ) -> np.ndarray:
     """
     Self-check companion to assemble_spatial_operator: computes the Jacobian
-    of forward_rhs's own spatial-only contribution by central finite
-    differences of the REAL forward_rhs function (not a hand-transcribed
-    formula) at the same (n_max, alpha, N) point.
+    of the STRONG closure's own spatial-only contribution
+    (_forward_rhs_strong, prompt 21a's frozen copy of the pre-existing
+    forward_rhs -- see that function's docstring for why this is no longer
+    the live production forward_rhs) by central finite differences, at the
+    same (n_max, alpha, N) point.
 
-    Isolates the spatial-only part exactly as forward_rhs's own
+    Isolates the spatial-only part exactly as _forward_rhs_strong's own
     disable_spatial_coupling flag defines it:
-    forward_rhs(disable_spatial_coupling=False) -
-    forward_rhs(disable_spatial_coupling=True), evaluated at the same
+    _forward_rhs_strong(disable_spatial_coupling=False) -
+    _forward_rhs_strong(disable_spatial_coupling=True), evaluated at the same
     state/N/splines. Every term outside that flag's branch
     (noise_source_terms, the -(3-eps)*pi damping, dV_dphi/H_sq) is computed
     identically in both calls from the same phi_full/pi_full, so it cancels
@@ -353,14 +462,14 @@ def finite_difference_spatial_jacobian(
     zero_splines = [_ConstSpline(0.0) for _ in range(n_max + 1)]
     N_offset = 0.0
 
-    state0 = pack_state(np.full(n_max + 1, phi0), np.full(n_max + 1, pi0))
+    state0 = _pack_state_strong(np.full(n_max + 1, phi0), np.full(n_max + 1, pi0))
 
     def _spatial_only(state: np.ndarray) -> np.ndarray:
-        full = forward_rhs(
+        full = _forward_rhs_strong(
             N, state, N_offset, alpha, H_sq_nl_init, grid, trajectory, potential,
             zero_splines, zero_splines, dm, disable_spatial_coupling=False,
         )
-        no_coupling = forward_rhs(
+        no_coupling = _forward_rhs_strong(
             N, state, N_offset, alpha, H_sq_nl_init, grid, trajectory, potential,
             zero_splines, zero_splines, dm, disable_spatial_coupling=True,
         )

@@ -42,6 +42,30 @@ it is the opposite -- rmom eliminated, rfield free. The gradient term in
 the rfield equation applies L to rmom (not rfield) -- self-adjointness of L
 moves the operator onto the other response field; this is not a typo
 relative to the forward sector's L(phi).
+
+Prompt 21a scope note -- response sector deliberately UNCHANGED
+-------------------------------------------------------------------------
+forward_rhs.py's advection term was ported to the SBP-SAT closure (split-form
+advection + a core SAT penalty) because the strong (node-elimination)
+boundary treatment of the forward sector's phi_core was shown to destabilise
+the discrete energy estimate, producing a spectral_abscissa that grows with
+n_max. response_rhs.py's advection_term call below uses the exact same
+A_array construction (same advection_coefficient formula, same destabilising
+core-node mechanism by symmetry) and rmom_full is ALSO Neumann-eliminated at
+the core here (see unpack_response_state below) -- structurally the same
+risk the forward sector had.
+
+This prompt deliberately does NOT port the SBP-SAT closure to this module.
+Per the prompt's own scope ("Response-sector core closure beyond what
+symmetry with the forward sector requires ... note it and scope it as a
+short follow-on rather than expanding this prompt"), this is flagged here
+as a known, symmetric follow-on candidate rather than silently left as an
+oversight: if the response-sector solve is independently found to blow up
+at high n_collocation_points the same way the forward sector did, the fix
+is the same recipe (advection_split_term in place of advection_term, plus a
+lagged/live SAT closure on whichever of rfield_core/rmom_core is shown to
+need a value-type target) -- see forward_rhs.py's own module docstring for
+the full derivation this would reuse.
 """
 
 import numpy as np

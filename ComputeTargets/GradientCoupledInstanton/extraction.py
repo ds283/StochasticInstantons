@@ -150,14 +150,34 @@ def extract_zeta_profile(
         N_end_abs_j = _N_end_abs(N_offset, N_total, N_end_downflow_j)
 
         # ── Step 4: density-match against the background ─────────────────
-        if not (rho_end_traj <= rho_end_j <= rho_start_traj):
+        # A tiny tolerance margin (not a strict bracket) is required here:
+        # a GCI solution that is itself numerically very close to the
+        # background trajectory (e.g. prompt 21a's SBP-SAT closure
+        # correctly converging to a near-zero-lambda solution for a
+        # near-trivial shooting problem) produces a downflow endpoint
+        # rho_end_j that can land a hair outside
+        # [rho_end_traj, rho_start_traj] purely from accumulated ODE-solver
+        # tolerance (rtol/atol-level noise), not from a genuine extraction
+        # failure -- confirmed directly: rho_end_j and rho_end_traj can
+        # differ only in the 10th significant digit, with rho_end_j on the
+        # wrong side of a zero-margin strict inequality. Genuine failures
+        # (rho_end_j far outside the bracket) are still caught by the
+        # relative tolerance below.
+        _bracket_tol = 10.0 * max(atol, rtol) * abs(rho_start_traj - rho_end_traj)
+        if not (rho_end_traj - _bracket_tol <= rho_end_j <= rho_start_traj + _bracket_tol):
             failure_mask[j] = True
             continue
+        # Clamp into the exact bracket before root-finding: brentq requires
+        # the target to be genuinely bracketed by f(0)/f(N_end), which a
+        # rho_end_j just outside (but within _bracket_tol of) the bracket
+        # would violate, raising ValueError even though Step 4's own check
+        # just accepted it as a tolerance-level match.
+        rho_target = min(max(rho_end_j, rho_end_traj), rho_start_traj)
         try:
             N_nl_j = brentq(
                 lambda N: (
                     3.0 * Mp**2 * potential.H_sq(trajectory.phi_at(N), trajectory.pi_at(N))
-                    - rho_end_j
+                    - rho_target
                 ),
                 0.0,
                 trajectory.N_end,

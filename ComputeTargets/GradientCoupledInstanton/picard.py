@@ -48,6 +48,40 @@ N_offset = trajectory.N_end - N_init converts between them, computed once
 here from the compute target's raw parameters and threaded through to every
 forward_rhs call as absolute_N = N_offset + local_N. response_rhs has no
 trajectory dependency, so it needs no N_offset.
+
+SBP-SAT lagged self-consistent target for pi_core (prompt 21a)
+-------------------------------------------------------------------------
+forward_rhs.py's core SAT penalty for pi needs a target g_pi(N) that is
+*not* pi_core itself (see that module's docstring for why a self-referential
+target would make the penalty a no-op). Since pi_core previously had no
+boundary condition at all, there is no live formula to compute g_pi from (as
+there is for phi_core's own Neumann/regularity target) -- instead g_pi is the
+LAGGED, SELF-CONSISTENT core pi(N) trajectory from the previous Picard sweep:
+
+  Sweep 0: g_pi(N) seeded from an independent FullInstanton profile's own
+    core (phi2) trajectory -- see _seed_pi_core_values below for the
+    fetch-then-fallback preference order.
+  Sweep k+1: g_pi(N) <- (1-theta)*g_pi_sweep_k(N) + theta*pi_core_sweep_k(N),
+    a SplineWrapper rebuilt over the shared N_grid after every inner sweep.
+    theta in (0,1] is an optional under-relaxation factor (default 1.0,
+    i.e. a straight replacement) -- lower it only if the theta=1 iteration
+    is observed to oscillate or diverge (prompt 21a's acceptance criteria).
+
+At Picard convergence g_pi(N) -> pi_core(N) (the sweep-to-sweep change goes
+to zero together with the Picard residual), so the SAT penalty's forcing
+-> 0 at the solution: the stabiliser adds sweep-to-sweep dissipation but
+never biases the converged answer. This is the concrete mechanism behind
+forward_rhs.py's "closure-independence" claim, and is checked directly by
+the two-seed regression in tests/test_forward_rhs.py (FullInstanton seed vs.
+background-trajectory seed must converge to the same answer).
+
+The per-sweep linear stability of the assembled operator is IDENTICAL to
+Phase 1's fixed-target result (design note Section 4): the "-tau*g" part of
+the SAT is a constant additive forcing term, not part of the Jacobian an
+eigenvalue analysis probes, so lagging g sweep-to-sweep changes only the
+fixed point the iteration converges to, never the per-sweep operator's own
+spectrum. Only the *iteration's* convergence (not its per-sweep stability)
+is new territory introduced by this prompt.
 """
 
 import time
@@ -60,6 +94,7 @@ from scipy.integrate import solve_ivp
 
 from Interpolation.spline_wrapper import SplineWrapper
 from Numerics.OnionCoordinate import delta_s
+from ComputeTargets.FullInstanton import _compute_full_instanton
 from ComputeTargets.GradientCoupledInstanton.forward_rhs import (
     pack_state,
     unpack_state,
@@ -77,6 +112,14 @@ MAX_INNER = 30
 # Number of temporal sample points spanning the local domain [0.0, N_total];
 # matches FullInstanton's own floor value (N_GRID = max(300, ...)).
 N_GRID_SIZE = 300
+
+# Under-relaxation factor for the lagged pi_core SAT target (prompt 21a),
+# g <- (1-theta)*g_prev + theta*u_core_new. theta=1 is a straight
+# sweep-to-sweep replacement; lower this module default only if the
+# acceptance sweep (n_collocation_points = 9,11,13,17,33 on the original
+# failing case) shows theta=1 oscillating or failing to converge -- see the
+# module docstring above and picard_inner's own comment at the update site.
+DEFAULT_SAT_THETA = 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -210,6 +253,119 @@ def _build_node_splines(N_grid: np.ndarray, values_grid: np.ndarray, y_transform
     ]
 
 
+class _FullInstantonSeedPotentialHolder:
+    """Duck-typed stand-in for InflatonTrajectory, exposing only the
+    ._potential attribute _compute_full_instanton actually reads -- the same
+    minimal stub used by tests/test_picard.py and
+    scripts/compare_gradient_full.py for the same "bypass Ray, call the
+    delegate directly" pattern."""
+
+    def __init__(self, potential):
+        self._potential = potential
+
+
+class _FullInstantonSeedProxyStub:
+    """Duck-typed stand-in for InflatonTrajectoryProxy: _compute_full_instanton
+    only ever calls trajectory.get()._potential. Used only for the SAT
+    pi_core seed's fallback FullInstanton delegate call below -- solve_picard
+    itself already has `potential` directly, with no proxy of its own to
+    reuse (its own `trajectory` parameter is the materialised
+    InflatonTrajectory, not a proxy)."""
+
+    def __init__(self, potential):
+        self._holder = _FullInstantonSeedPotentialHolder(potential)
+
+    def get(self):
+        return self._holder
+
+
+def _seed_pi_core_values(
+    N_grid: np.ndarray,
+    N_offset: float,
+    phi_init: float,
+    pi_init: float,
+    phi_end: float,
+    N_total: float,
+    trajectory,
+    potential,
+    diffusion_model,
+    atol: float,
+    rtol: float,
+    label: str,
+    full_instanton_seed: Optional[dict],
+) -> np.ndarray:
+    """
+    Builds the sweep-0 SAT target values for pi_core, sampled on N_grid (see
+    the module docstring's "SBP-SAT lagged self-consistent target" section).
+    Seed QUALITY only affects how many Picard sweeps it takes to converge,
+    NEVER the converged answer (the target is overwritten every sweep by the
+    solve's own core pi(N), starting from sweep 1) -- this is the whole point
+    of lagging rather than fixing the target, and is checked directly by the
+    two-seed closure-independence regression in tests/test_forward_rhs.py.
+
+    Preference order:
+      1. full_instanton_seed, if supplied and not itself a failure -- a
+         pre-computed dict shaped like _compute_full_instanton's own return
+         value. This is the "prefer fetching the already-computed
+         FullInstanton result from the datastore" path: datastore access
+         only happens on the driver (never inside a @ray.remote worker, see
+         .claude/rules/ray-dispatch.md), so GradientCoupledInstanton.py's own
+         Ray remote function is responsible for fetching one (if available)
+         and passing the resulting dict in here -- solve_picard itself never
+         touches the datastore.
+      2. Otherwise, compute one inline via _compute_full_instanton._function
+         -- bypassing Ray, the same "call the underlying function directly"
+         pattern already used throughout this test suite
+         (tests/test_picard.py) and scripts/compare_gradient_full.py. This is
+         a well-tested, standalone delegate call, not a reimplementation of
+         FullInstanton's own physics.
+      3. If that ALSO fails to converge (e.g. a pathological corner of
+         parameter space), fall back to the noiseless background
+         trajectory's own pi(N) -- always available, no extra ODE solve,
+         and exactly what every other node already tracks during the zeroth
+         Picard iterate's own background pass.
+    """
+
+    def _values_from_result(data: dict) -> Optional[np.ndarray]:
+        seed_N = np.asarray(data["N_sample"], dtype=float)
+        seed_pi = np.asarray(data["phi2"], dtype=float)
+        if len(seed_N) < 4:
+            return None
+        spline = SplineWrapper(seed_N, seed_pi, y_transform='linear', k=3)
+        return np.asarray(spline(N_grid), dtype=float)
+
+    if full_instanton_seed is not None and not full_instanton_seed.get("failure", True):
+        vals = _values_from_result(full_instanton_seed)
+        if vals is not None:
+            return vals
+
+    fi_data = _compute_full_instanton._function(
+        trajectory=_FullInstantonSeedProxyStub(potential),
+        dm=diffusion_model,
+        phi_init=phi_init,
+        pi_init=pi_init,
+        phi_final=phi_end,
+        N_total=N_total,
+        N_sample=N_grid.tolist(),
+        atol=atol,
+        rtol=rtol,
+        label=f"[{label}] SAT pi_core seed (FullInstanton fallback)",
+    )
+    if not fi_data.get("failure", True):
+        vals = _values_from_result(fi_data)
+        if vals is not None:
+            return vals
+
+    print(
+        f"[{label}] SAT pi_core seed: FullInstanton delegate also failed to "
+        f"converge; falling back to the noiseless background trajectory's "
+        f"own pi(N) as the sweep-0 target. This only affects how many Picard "
+        f"sweeps it takes to converge, not the converged answer -- see "
+        f"forward_rhs.py's module docstring."
+    )
+    return np.array([trajectory.pi_at(N_offset + N) for N in N_grid])
+
+
 def solve_picard(
     N_init: float,
     N_final: float,
@@ -227,8 +383,117 @@ def solve_picard(
     instrument_stiffness: bool = True,
     label: Optional[str] = None,
     verbose: bool = False,
+    full_instanton_seed: Optional[dict] = None,
+    theta: float = DEFAULT_SAT_THETA,
 ) -> dict:
     """
+    Solve the gradient-coupled instanton BVP (see _solve_picard_once's own
+    docstring for the full physics/algorithm description). This wrapper adds
+    one thing on top: a retry-with-a-different-seed safeguard (prompt 21a
+    Phase-2 acceptance finding).
+
+    WHY THE RETRY EXISTS: a fetched full_instanton_seed (prompt 21a's
+    "prefer fetching from the datastore" path) can come from a FullInstanton
+    that solves a genuinely different BVP than this GradientCoupledInstanton
+    does -- FullInstanton's own target is evaluated at
+    trajectory.phi_at(N_end - N_final) (no delta_Nstar), whereas this
+    function's own phi_end target corresponds to
+    trajectory.phi_at(N_end - N_final + delta_Nstar) (see picard.py's module
+    docstring on the N convention, and GradientCoupledInstanton.py's own
+    compute() for phi_end's derivation). For most parameter points this
+    difference is immaterial (both are close to the background), but for
+    parameter points where FullInstanton's own shooting problem is poorly
+    conditioned (observed on a case with an extremely small diffusion
+    coefficient, requiring a P1 ~ 10^8 to hit its target), the resulting
+    phi2(N) profile -- while individually smooth and physically valid AS A
+    SOLUTION OF FULLINSTANTON'S OWN PROBLEM -- can be a poor match for what
+    THIS BVP's pi_core(N) will actually converge to. Using it as the lagged
+    SAT target's seed was observed to make the Picard iteration develop a
+    slow-growing (not catastrophic-on-sweep-1, but compounding over ~10-20
+    sweeps) instability, even though the SAME closure converges in a single
+    sweep from either the internally-computed (tier 2/3) seed or a
+    correctly-converged answer.
+
+    Freezing the target (theta=0, i.e. never re-lagging after the seed) does
+    make the Picard/Newton loop "converge" quickly in this situation, but to
+    the WRONG answer -- the frozen, mismatched target biases the shooting
+    problem enough that no lambda can drive the true phi_end residual below
+    tolerance (observed directly: the outer Newton loop pushes lambda to
+    extreme values without ever reducing the residual). So theta=0 is not a
+    valid escape hatch for this failure mode; it must be treated as a
+    genuine solve failure and retried with a different, internally-consistent
+    seed instead.
+
+    THE RETRY: if a solve using a supplied full_instanton_seed fails to
+    converge, retry ONCE with full_instanton_seed=None -- forcing
+    _seed_pi_core_values's own tier-2 (inline _compute_full_instanton call,
+    which correctly targets THIS function's own phi_end) or tier-3
+    (background trajectory) fallback, both of which are internally
+    consistent with the BVP actually being solved here. This preserves the
+    "prefer fetching from the datastore" optimisation on the common path
+    (most parameter points) while never letting a mismatched-target seed
+    turn into an outright solve failure. If disable_spatial_coupling=True,
+    or no seed was supplied in the first place, there is nothing to retry
+    with, and the single attempt's result is returned as-is.
+    """
+    result = _solve_picard_once(
+        N_init, N_final, delta_Nstar, alpha, H_sq_nl_init, grid, trajectory,
+        potential, diffusion_model, atol, rtol, phi_end,
+        disable_spatial_coupling=disable_spatial_coupling,
+        instrument_stiffness=instrument_stiffness, label=label, verbose=verbose,
+        full_instanton_seed=full_instanton_seed, theta=theta,
+    )
+
+    needs_retry = (
+        result.get("failure", False)
+        and not disable_spatial_coupling
+        and full_instanton_seed is not None
+    )
+    if not needs_retry:
+        return result
+
+    _lbl = label if label else f"phi_end={phi_end:.4g} N_init={N_init:.3g} N_final={N_final:.3g}"
+    print(
+        f"[{_lbl}] solve_picard: attempt with the supplied full_instanton_seed "
+        f"failed to converge; retrying once with the internally-consistent "
+        f"(tier 2/3) seed instead -- see solve_picard's own docstring for why "
+        f"a fetched seed can occasionally mismatch this BVP's own target."
+    )
+    return _solve_picard_once(
+        N_init, N_final, delta_Nstar, alpha, H_sq_nl_init, grid, trajectory,
+        potential, diffusion_model, atol, rtol, phi_end,
+        disable_spatial_coupling=disable_spatial_coupling,
+        instrument_stiffness=instrument_stiffness, label=label, verbose=verbose,
+        full_instanton_seed=None, theta=theta,
+    )
+
+
+def _solve_picard_once(
+    N_init: float,
+    N_final: float,
+    delta_Nstar: float,
+    alpha: float,
+    H_sq_nl_init: float,
+    grid,
+    trajectory,
+    potential,
+    diffusion_model,
+    atol: float,
+    rtol: float,
+    phi_end: float,
+    disable_spatial_coupling: bool = False,
+    instrument_stiffness: bool = True,
+    label: Optional[str] = None,
+    verbose: bool = False,
+    full_instanton_seed: Optional[dict] = None,
+    theta: float = DEFAULT_SAT_THETA,
+) -> dict:
+    """
+    Single-attempt core of solve_picard -- see that function's own docstring
+    for the public contract. Factored out so solve_picard can retry with a
+    different seed if this attempt fails to converge (prompt 21a Phase-2
+    acceptance finding, see solve_picard's own docstring for why).
+
     Solve the gradient-coupled instanton BVP over the onion coordinate grid
     by Picard iteration with an outer Newton correction on the shooting
     parameter lambda = P1-equivalent terminal Lagrange multiplier.
@@ -236,6 +501,22 @@ def solve_picard(
     Boundary conditions (local N; see module docstring for the N convention):
         phi(y_j, N=0.0) = phi_init, pi(y_j, N=0.0) = pi_init  (uniform in y)
         phi(y=+1, N=N_total) = phi_end   [shooting condition on lambda]
+
+    full_instanton_seed (prompt 21a, optional): a pre-computed result dict
+    shaped like _compute_full_instanton's own return value, used ONLY to
+    seed sweep 0 of the lagged pi_core SAT target (see the module docstring's
+    "SBP-SAT lagged self-consistent target" section and
+    _seed_pi_core_values's own docstring for the full fetch-then-fallback
+    preference order). None (the default) means "no pre-fetched seed
+    available" -- solve_picard computes one inline instead, via
+    _compute_full_instanton._function (bypassing Ray). Ignored entirely when
+    disable_spatial_coupling=True (the SAT is switched off in that mode, so
+    there is nothing to seed).
+
+    theta (prompt 21a, optional, default DEFAULT_SAT_THETA=1.0):
+    under-relaxation factor for the lagged pi_core target's sweep-to-sweep
+    update, g <- (1-theta)*g_prev + theta*u_core_new. Lower this only if the
+    theta=1 iteration is observed to oscillate or diverge.
 
     instrument_stiffness (prompt 17 Part B; default True): when True,
     every forward/backward RK45 solve_ivp call made during this solve (the
@@ -320,10 +601,11 @@ def solve_picard(
             rmom_grid[i] = rmom_full_i
         return rfield_grid, rmom_grid
 
-    def _fwd_rhs(N, y, rfield_splines, rmom_splines):
+    def _fwd_rhs(N, y, rfield_splines, rmom_splines, g_pi_core_spline):
         return forward_rhs(
             N, y, N_offset, alpha, H_sq_nl_init, grid, trajectory, potential,
             rfield_splines, rmom_splines, diffusion_model,
+            g_pi_core_spline,
             disable_spatial_coupling=disable_spatial_coupling,
         )
 
@@ -387,9 +669,27 @@ def solve_picard(
     # ── Zeroth Picard iterate: background pass, response fields zero ──────
     zero_splines = _build_node_splines(N_grid, np.zeros((N_GRID_SIZE, n_nodes)), y_transform='sinh')
 
+    # ── SBP-SAT lagged pi_core target: sweep-0 seed (prompt 21a) ───────────
+    # See the module docstring's "SBP-SAT lagged self-consistent target"
+    # section and _seed_pi_core_values's own docstring. Skipped entirely
+    # when disable_spatial_coupling=True: forward_rhs zeroes the SAT penalty
+    # in that mode and never dereferences this spline, so there is nothing
+    # to seed and no need to pay for a FullInstanton fallback compute in
+    # that (test-only) reduction path.
+    if disable_spatial_coupling:
+        g_pi_values = None
+        g_pi_core_spline = None
+    else:
+        g_pi_values = _seed_pi_core_values(
+            N_grid, N_offset, phi_init, pi_init, phi_end, N_total,
+            trajectory, potential, diffusion_model, atol, rtol, _lbl,
+            full_instanton_seed,
+        )
+        g_pi_core_spline = SplineWrapper(N_grid, g_pi_values, y_transform='linear', k=3)
+
     bg_sol, bg_step_stats = _solve_ivp_instrumented(
         instrument_stiffness,
-        lambda N, y: _fwd_rhs(N, y, zero_splines, zero_splines),
+        lambda N, y: _fwd_rhs(N, y, zero_splines, zero_splines, g_pi_core_spline),
         (N_start, N_stop), state_init, method="RK45", t_eval=N_grid, atol=atol, rtol=rtol,
         dense_output=instrument_stiffness,
     )
@@ -402,7 +702,10 @@ def solve_picard(
 
     phi_grid0, pi_grid0 = _unpack_grid(bg_sol.y, N_grid)
 
-    def picard_inner(lam: float, phi_grid_in: np.ndarray, pi_grid_in: np.ndarray):
+    def picard_inner(
+        lam: float, phi_grid_in: np.ndarray, pi_grid_in: np.ndarray,
+        g_pi_values_in: Optional[np.ndarray],
+    ):
         """
         Run Picard iteration for fixed lambda. Returns grids or Nones, plus
         the dense-output (`dense_output=True`) solve_ivp solutions of the
@@ -412,12 +715,20 @@ def solve_picard(
         response_rhs.unpack_response_state). Exposed so callers (the MSR
         action convergence diagnostic) can resample at an arbitrary, finer
         N resolution without re-solving any ODE.
+
+        g_pi_values_in (prompt 21a) is the current lagged pi_core SAT target,
+        sampled on N_grid -- None when disable_spatial_coupling=True (never
+        dereferenced in that mode). Returned (updated) as the final element
+        of the tuple so the caller can carry it into the NEXT outer-Newton
+        call, continuing the lag chain across outer iterations rather than
+        re-seeding it every time.
         """
         nonlocal ode_solve_count
         phi_grid = phi_grid_in.copy()
         pi_grid = pi_grid_in.copy()
         rfield_grid = np.zeros((N_GRID_SIZE, n_nodes))
         rmom_grid = np.zeros((N_GRID_SIZE, n_nodes))
+        g_pi_values = None if g_pi_values_in is None else g_pi_values_in.copy()
         n_inner_iters = 0
         fp_sol = None
         bp_sol = None
@@ -427,6 +738,10 @@ def solve_picard(
             n_inner_iters += 1
             phi_splines = _build_node_splines(N_grid, phi_grid, y_transform='linear')
             pi_splines = _build_node_splines(N_grid, pi_grid, y_transform='linear')
+            g_pi_core_spline = (
+                None if g_pi_values is None
+                else SplineWrapper(N_grid, g_pi_values, y_transform='linear', k=3)
+            )
 
             # Backward pass: terminal condition at N_stop (eq. terminal-colloc).
             H_sq_core_final = potential.H_sq(phi_grid[-1, -1], pi_grid[-1, -1])
@@ -443,7 +758,7 @@ def solve_picard(
             if bp_step_stats is not None:
                 bwd_rk45_stats.append(bp_step_stats)
             if not bp.success:
-                return None, None, None, None, n_inner_iters, None, None
+                return None, None, None, None, n_inner_iters, None, None, g_pi_values
 
             response_y = bp.y[:, ::-1]
             rfield_grid, rmom_grid = _unpack_response_grid(response_y, N_grid)
@@ -454,7 +769,7 @@ def solve_picard(
             # Forward pass, now sourced by the just-computed response fields.
             fp, fp_step_stats = _solve_ivp_instrumented(
                 instrument_stiffness,
-                lambda N, y: _fwd_rhs(N, y, rfield_splines, rmom_splines),
+                lambda N, y: _fwd_rhs(N, y, rfield_splines, rmom_splines, g_pi_core_spline),
                 (N_start, N_stop), state_init, method="RK45",
                 t_eval=N_grid, dense_output=True, atol=atol, rtol=rtol,
             )
@@ -462,12 +777,27 @@ def solve_picard(
             if fp_step_stats is not None:
                 fwd_rk45_stats.append(fp_step_stats)
             if not fp.success:
-                return None, None, None, None, n_inner_iters, None, None
+                return None, None, None, None, n_inner_iters, None, None, g_pi_values
 
             phi_grid_new, pi_grid_new = _unpack_grid(fp.y, N_grid)
             inner_res = np.max(np.abs(phi_grid_new - phi_grid))
             phi_grid, pi_grid = phi_grid_new, pi_grid_new
             fp_sol, bp_sol = fp.sol, bp.sol
+
+            # ---------------------------------------------------------------
+            # Lagged self-consistent target update (prompt 21a): rebuild
+            # pi_core's SAT target from THIS sweep's own just-computed
+            # pi_core(N) trajectory, under-relaxed by theta, so the NEXT
+            # sweep's SAT penalty forces pi_core toward what it actually
+            # computed rather than the previous (or seeded) guess. At
+            # convergence (inner_res -> 0) this update itself goes to zero,
+            # so g_pi -> pi_core exactly and the SAT forcing vanishes (see
+            # forward_rhs.py's module docstring). theta<1 under-relaxes the
+            # replacement if theta=1 is found to oscillate or diverge.
+            # ---------------------------------------------------------------
+            if g_pi_values is not None:
+                g_pi_values = (1.0 - theta) * g_pi_values + theta * pi_grid_new[:, -1]
+
             if instrument_stiffness:
                 picard_sweep_wallclocks.append(time.perf_counter() - sweep_start)
             if verbose:
@@ -481,7 +811,7 @@ def solve_picard(
             if inner_res < INNER_TOL:
                 break
 
-        return phi_grid, pi_grid, rfield_grid, rmom_grid, n_inner_iters, fp_sol, bp_sol
+        return phi_grid, pi_grid, rfield_grid, rmom_grid, n_inner_iters, fp_sol, bp_sol, g_pi_values
 
     # ── Outer Newton loop on lambda ────────────────────────────────────────
     lam = 0.0
@@ -504,7 +834,9 @@ def solve_picard(
             print(f"[{_lbl}]   outer {outer_iterations}/{MAX_OUTER}: lambda={lam:.6g} "
                   f"-- residual picard_inner", flush=True)
         picard_start = time.perf_counter()
-        pg, pig, rfg, rmg, n_inner, fp_sol, bp_sol = picard_inner(lam, phi_grid_f, pi_grid_f)
+        pg, pig, rfg, rmg, n_inner, fp_sol, bp_sol, g_pi_values = picard_inner(
+            lam, phi_grid_f, pi_grid_f, g_pi_values
+        )
         picard_time_total += time.perf_counter() - picard_start
         picard_iters_total += n_inner
         picard_iterations_per_outer.append(n_inner)
@@ -528,13 +860,19 @@ def solve_picard(
             converged = True
             break
 
-        # Finite-difference Newton step.
+        # Finite-difference Newton step. The lagged pi_core target chain is
+        # NOT carried forward from this probe (only from the primary
+        # picard_inner call above) -- it is a throwaway finite-difference
+        # evaluation at a perturbed lambda, exactly like phi_grid_f/pi_grid_f
+        # are not updated from it either.
         dlam = max(abs(lam) * 1e-4, 1e-6)
         if verbose:
             print(f"[{_lbl}]   outer {outer_iterations}/{MAX_OUTER}: "
                   f"Newton derivative probe at lambda+dlam={lam + dlam:.6g}", flush=True)
         picard_start = time.perf_counter()
-        pg_p, _, _, _, n_inner_p, _, _ = picard_inner(lam + dlam, phi_grid_f, pi_grid_f)
+        pg_p, _, _, _, n_inner_p, _, _, _ = picard_inner(
+            lam + dlam, phi_grid_f, pi_grid_f, g_pi_values
+        )
         picard_time_total += time.perf_counter() - picard_start
         picard_iters_total += n_inner_p
         picard_iterations_per_outer.append(n_inner_p)
@@ -583,6 +921,15 @@ def solve_picard(
         "rmom_grid": rmom_grid_f.tolist(),
         "final_lambda": lam,
         "diagnostics": diagnostics,
+        # Final lagged pi_core SAT target (prompt 21a), sampled on N_grid --
+        # None when disable_spatial_coupling=True. Stored purely for
+        # post-hoc auditability of the closure-independence claim: at
+        # convergence this should equal pi_grid_f[:, -1] (the actual core
+        # pi(N)) to within the Picard residual tolerance, which is exactly
+        # the "SAT penalty forcing -> 0 at the solution" check (prompt 21a
+        # acceptance criteria; tests/test_forward_rhs.py's closure-
+        # independence regression exercises this directly).
+        "g_pi_core_final": g_pi_values.tolist() if g_pi_values is not None else None,
         # Dense-output (continuous, not just N_grid-sampled) forward/response
         # solutions of the converged final Picard iteration -- scipy
         # OdeSolution callables, N -> packed state vector (unpack via
