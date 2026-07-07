@@ -213,8 +213,13 @@ def _compute_gradient_coupled_instanton(
     delta_s_N_final = delta_s(N_total, 0.0, H_sq_core_final, H_sq_nl_init, alpha)
     scales = assign_scales(
         extraction["zeta"], delta_s_N_final, grid, traj, N_init, N_offset, alpha,
-        potential, units, cosmo, C_threshold=_C_THRESHOLD,
+        potential, units, cosmo, C_threshold=_C_THRESHOLD, label=_lbl,
     )
+    if scales.get("failure", False):
+        diagnostics = dict(result["diagnostics"])
+        diagnostics["scale_assignment"] = scales.get("diagnostics")
+        diagnostics["extraction_failure_mask"] = extraction["failure_mask"].tolist()
+        return _failure_result(diagnostics)
 
     # ── Step 8: noise summary stats at the core node (y=+1), across every
     # row of the dense solver grid -- physically analogous to FullInstanton's

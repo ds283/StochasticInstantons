@@ -99,6 +99,7 @@ def assign_scales(
     units,
     cosmo,
     C_threshold: float = 0.4,
+    label: str = None,
 ) -> dict:
     """
     Assign comoving, areal (via the compaction function), and physical
@@ -110,6 +111,8 @@ def assign_scales(
     no downflow integration anywhere in this function.
 
     Returns a dict with keys:
+        "failure"      -- True if zeta was NaN-contaminated (upstream Picard
+                          divergence); all other physics keys are then None
         "r_ratio"      -- comoving r(y_j,N_final)/r_out, dimensionless
         "C"            -- compaction function C(y_j) (eq:compaction-yoo)
         "r_phys"       -- physical (present-day) scale r_phys(y_j)
@@ -118,8 +121,31 @@ def assign_scales(
         "r_max"        -- outermost r_phys where C >= C_threshold (or None)
         "r_peak"       -- r_phys at which C is maximised
         "diagnostics"  -- dict with r_max_at_grid_edge / r_peak_at_grid_edge
+                          (or "reason"/"nan_node_indices" on failure)
     """
     zeta = np.asarray(zeta, dtype=float)
+
+    # grid.D (the LGL differentiation matrix) is dense, so a single NaN
+    # node in zeta contaminates every entry of dzeta_dy -- hence of C --
+    # below. Bail out here, before that happens, rather than letting a
+    # NaN-poisoned C reach _classify_radii's np.nanargmax (ValueError on an
+    # all-NaN slice).
+    nan_mask = np.isnan(zeta)
+    if np.any(nan_mask):
+        nan_indices = np.nonzero(nan_mask)[0].tolist()
+        reason = (
+            f"zeta contains {int(nan_mask.sum())} NaN node(s) out of "
+            f"{len(zeta)} (indices {nan_indices}) -- likely upstream "
+            f"Picard solver divergence"
+        )
+        if label:
+            print(f"[{label}] assign_scales: {reason}")
+        return {
+            "failure": True,
+            "r_ratio": None, "C": None, "r_phys": None, "r_phys_out": None,
+            "r_max": None, "r_peak": None,
+            "diagnostics": {"reason": reason, "nan_node_indices": nan_indices},
+        }
 
     y = grid.nodes
 
@@ -156,6 +182,7 @@ def assign_scales(
     )
 
     return {
+        "failure": False,
         "r_ratio": r_ratio,
         "C": C,
         "r_phys": r_phys,

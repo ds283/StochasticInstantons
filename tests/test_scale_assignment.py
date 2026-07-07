@@ -238,6 +238,44 @@ def test_r_max_r_peak_reuse_classify_radii_directly():
 
 
 # ---------------------------------------------------------------------------
+# NaN-contaminated zeta -- graceful failure, not a crash
+# ---------------------------------------------------------------------------
+
+
+def test_nan_zeta_returns_failure_not_crash():
+    """
+    Regression test: a NaN-contaminated zeta (e.g. from extract_zeta_profile
+    marking a node's failure_mask, or an upstream Picard divergence) must
+    make assign_scales() return {"failure": True, ...}, not propagate the
+    NaN through grid.D @ zeta into _classify_radii's np.nanargmax, which
+    raises "ValueError: All-NaN slice encountered" on an all-NaN C array
+    (grid.D is dense, so a single NaN node contaminates every C entry).
+    """
+    grid = LGLCollocationGrid(7)
+    potential = _StubPotential()
+    units = Planck_units()
+    cosmo = _make_cosmo()
+    trajectory = _StaticTrajectory(phi=10.0, pi=-0.01, N_end=100.0)
+
+    n_nodes = grid.n_collocation_points
+    zeta = np.zeros(n_nodes)
+    zeta[2] = np.nan
+
+    result = assign_scales(
+        zeta, 3.7, grid, trajectory, 5.0, 50.0, 0.05, potential, units, cosmo,
+        label="test_nan_zeta_returns_failure_not_crash",
+    )
+
+    assert result["failure"] is True
+    assert result["r_ratio"] is None
+    assert result["C"] is None
+    assert result["r_phys"] is None
+    assert result["r_max"] is None
+    assert result["r_peak"] is None
+    assert result["diagnostics"]["nan_node_indices"] == [2]
+
+
+# ---------------------------------------------------------------------------
 # Outer-edge downflow duration == N_init (new consistency check)
 # ---------------------------------------------------------------------------
 
