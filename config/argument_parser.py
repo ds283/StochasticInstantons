@@ -57,6 +57,7 @@ def create_argument_parser():
             "full-instanton",
             "slow-roll-instanton",
             "compaction-function",
+            "gradient-coupled-instanton",
         ],
         help="Drop specified table groups before running",
     )
@@ -270,30 +271,82 @@ def create_argument_parser():
         action="store_true",
         default=False,
         help=(
-            "Skip writing per-sample value rows for FullInstanton, "
-            "SlowRollInstanton, and CompactionFunction. Only scalar summary "
-            "columns are persisted. Activates unified pipeline mode: all three "
-            "compute targets are computed in a single Ray task per grid point, "
-            "so FullInstanton and SlowRollInstanton values are passed in-memory "
-            "to the CompactionFunction computation and never need to be loaded "
-            "from the database. Recommended for sparse-sampling / "
-            "sensitivity-analysis runs."
+            "Skip writing per-sample value rows for the selected branch(es) "
+            "(--targets). For the homogeneous branch: skips per-sample rows "
+            "for FullInstanton, SlowRollInstanton, and CompactionFunction; "
+            "only scalar summary columns are persisted. Activates unified "
+            "pipeline mode: all three compute targets are computed in a "
+            "single Ray task per grid point, so FullInstanton and "
+            "SlowRollInstanton values are passed in-memory to the "
+            "CompactionFunction computation and never need to be loaded from "
+            "the database. For the gradient branch: skips per-sample "
+            "GradientCoupledInstantonValue rows (the dense (phi, pi, rfield, "
+            "rmom) grid) via GradientCoupledInstanton.set_store_full_values"
+            "(False); only scalar summary columns and the always-persisted "
+            "GradientCoupledInstantonProfile rows (zeta/r_ratio/C/r_phys at "
+            "the final row) are stored. Also skips the (expensive) "
+            "interpolation of the dense solver grid onto N_sample inside the "
+            "compute worker itself, not just the database write; "
+            "GradientCoupledInstanton.zeta_C_r_at_time() is unavailable on "
+            "instances stored this way. No task-merging is needed for the "
+            "gradient branch since extraction/scale-assignment already run "
+            "inside the one Ray task per grid point. Recommended for "
+            "sparse-sampling / sensitivity-analysis runs."
         ),
     )
-    inst.add_argument(
-        "--no-store-gradient-instanton-values",
-        action="store_true",
-        default=False,
+
+    # Branch selection
+    branch = parser.add_argument_group("Branch selection")
+    branch.add_argument(
+        "--targets",
+        nargs="*",
+        default=["homogeneous"],
+        choices=["homogeneous", "gradient"],
         help=(
-            "Skip writing per-sample GradientCoupledInstantonValue rows (the "
-            "dense (phi, pi, rfield, rmom) grid). Only scalar summary columns "
-            "and the always-persisted GradientCoupledInstantonProfile rows "
-            "(zeta/r_ratio/C/r_phys at the final row) are stored. Also skips "
-            "the (expensive) interpolation of the dense solver grid onto "
-            "N_sample inside the compute worker itself, not just the database "
-            "write. GradientCoupledInstanton.zeta_C_r_at_time() is unavailable "
-            "on instances stored this way. Recommended for sparse-sampling / "
-            "sensitivity-analysis runs."
+            "Which instanton branch(es) to compute for each grid point. "
+            "'homogeneous' runs FullInstanton + SlowRollInstanton (+ "
+            "CompactionFunction, unless cut short by --stop-after). "
+            "'gradient' runs GradientCoupledInstanton (onion model). Give both "
+            "to run them on the same parameter grid, e.g. for comparing the "
+            "corrections the gradient-coupled model induces relative to the "
+            "homogeneous approximation. Default: homogeneous only (preserves "
+            "existing behaviour)."
+        ),
+    )
+
+    # Gradient-coupled instanton
+    def _positive_float(x):
+        v = float(x)
+        if v <= 0:
+            raise configargparse.ArgumentTypeError(
+                f"--alpha-regularization values must be > 0 "
+                f"(alpha == 0 is a singularity of Delta_s at N_init), got {v!r}"
+            )
+        return v
+
+    gci = parser.add_argument_group("Gradient-coupled instanton")
+    gci.add_argument(
+        "--n-collocation-points",
+        nargs="*",
+        type=int,
+        default=[33],
+        help=(
+            "Number of LGL collocation points for the onion-model spatial grid. "
+            "Accepts multiple values to sweep several n_max in one run (crossed "
+            "against the N_init/N_final/delta_Nstar grid and against "
+            "--alpha-regularization). Default: [33]."
+        ),
+    )
+    gci.add_argument(
+        "--alpha-regularization",
+        nargs="*",
+        type=_positive_float,
+        default=[0.01],
+        help=(
+            "Onion-coordinate horizon-regularization parameter alpha (must be "
+            "> 0; alpha == 0 is a singularity of Delta_s at N_init). Accepts "
+            "multiple values to sweep in one run (crossed against the grid and "
+            "--n-collocation-points). Default: [0.01]."
         ),
     )
 

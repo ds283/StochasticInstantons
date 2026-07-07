@@ -37,8 +37,9 @@ class alpha_regularization(DatastoreObject):
     named identically would be an easy source of confusion between "the
     persisted concept object" and "the plain float value" at call sites.
 
-    alpha == 0 is a valid, well-defined value (matching delta_s()'s own
-    guard), not merely "small" -- it is not rejected here.
+    alpha == 0 is rejected: it makes Delta_s(N_init) = 0, which is a
+    singularity of the onion coordinate map implemented by
+    Numerics/OnionCoordinate.py's delta_s().
     """
 
     def __init__(
@@ -51,9 +52,10 @@ class alpha_regularization(DatastoreObject):
             raise ValueError("Store ID cannot be None")
         DatastoreObject.__init__(self, store_id, timestamp=timestamp)
 
-        if alpha < 0:
+        if alpha <= 0:
             raise ValueError(
-                f"alpha_regularization: alpha must be >= 0, got {alpha!r}"
+                f"alpha_regularization: alpha must be > 0 "
+                f"(alpha == 0 is a singularity of Delta_s at N_init), got {alpha!r}"
             )
 
         self._alpha: float = float(alpha)

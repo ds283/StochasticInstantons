@@ -135,8 +135,16 @@ _drop_actions = {
     "full-instanton":        ["FullInstantonValue", "FullInstanton"],
     "slow-roll-instanton":   ["SlowRollInstantonValue", "SlowRollInstanton"],
     "compaction-function":   ["CompactionFunctionSamples", "CompactionFunction"],
+    "gradient-coupled-instanton": [
+        "GradientCoupledInstantonValue",
+        "GradientCoupledInstantonProfile",
+        "GradientCoupledInstanton",
+    ],
 }
-_drop_order = ["compaction-function", "slow-roll-instanton", "full-instanton", "inflaton-trajectory"]
+_drop_order = [
+    "compaction-function", "slow-roll-instanton", "full-instanton",
+    "gradient-coupled-instanton", "inflaton-trajectory",
+]
 
 # read table configuration should be a Dict with the mapping
 # "method_name" -> {"class": class specifier, "tables_arg": bool}
