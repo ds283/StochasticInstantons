@@ -498,6 +498,114 @@ def test_seed_pi_core_values_falls_back_through_all_three_tiers(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# Prompt 22b -- _AndersonMixer unit tests (isolated from the full ODE-solve
+# pipeline): the fixed-point acceleration replacing the plain lagged-
+# replacement update that prompt 22's Finding 2 showed diverges once
+# genuinely coupled. See picard.py's own module docstring ("SBP-SAT
+# self-consistent target") and the prompt 22b design note
+# (.documents/gradient-coupled-instanton/
+# 22b-convergent-iteration-design-note.md) for the full derivation.
+# ---------------------------------------------------------------------------
+
+
+def test_anderson_mixer_zero_window_matches_plain_picard_update():
+    """anderson_m=0 must reduce update() exactly to the pre-22b plain
+    lagged-replacement rule, x_{k+1} = x_k + theta*g_k -- so the old code
+    path (and any test exercising it) remains reachable unchanged."""
+    mixer = picard_module._AndersonMixer(window=0, theta=0.5)
+    x_k = np.array([1.0, 2.0, 3.0])
+    g_k = np.array([0.1, -0.2, 0.3])
+    x_next = mixer.update(x_k, g_k)
+    np.testing.assert_allclose(x_next, x_k + 0.5 * g_k)
+
+
+def _small_genuinely_coupled_case(n_collocation_points=5):
+    """Like _small_full_coupling_case, but with the FullInstanton-consistent
+    (prompt 22a) phi_end, traj.phi_at(traj.N_end - N_final) -- independent
+    of delta_Nstar, NOT the degenerate traj.phi_at(N_offset + N_total)
+    _small_full_coupling_case still uses. That degenerate formula makes
+    lambda=0 an exact fixed point (prompt 22 Finding 1), so tests built on
+    _small_full_coupling_case exercise only the trivial background branch,
+    regardless of this prompt's closure fix. This variant is what prompt
+    22b's own acceptance tests need: a genuinely non-trivial shooting
+    target, exactly like tests/test_gradient_coupled_instanton_end_to_end.py's
+    now-un-xfailed pipeline tests use."""
+    potential = _StubPotential()
+    traj = _make_dense_trajectory(potential)
+
+    N_init = 5.0
+    N_final = 4.9
+    delta_Nstar = 0.05
+    N_offset = traj.N_end - N_init
+
+    phi_init = traj.phi_at(N_offset)
+    pi_init = traj.pi_at(N_offset)
+    H_sq_nl_init = potential.H_sq(phi_init, pi_init)
+    phi_end = traj.phi_at(traj.N_end - N_final)
+
+    grid = LGLCollocationGrid(n_collocation_points)
+    dm = MasslessDecoupledDiffusion()
+
+    return dict(
+        N_init=N_init, N_final=N_final, delta_Nstar=delta_Nstar, alpha=0.05,
+        H_sq_nl_init=H_sq_nl_init, grid=grid, trajectory=traj, potential=potential,
+        diffusion_model=dm, atol=1e-9, rtol=1e-9, phi_end=phi_end,
+    )
+
+
+@pytest.mark.parametrize("n_collocation_points", [5, 9])
+def test_solve_picard_converges_under_genuine_coupling_across_n(n_collocation_points):
+    """Prompt 22b's own headline acceptance case: on a genuinely non-trivial
+    target (prompt 22a), the Anderson-accelerated closure must converge
+    (not diverge, per prompt 22's Finding 2) across several
+    n_collocation_points, with a strictly non-zero lambda -- proof this is
+    not just re-discovering the trivial lambda=0 branch.
+
+    n=17 was tried on this same small case and does NOT (yet) converge --
+    the outer shooting loop's own conditioning degrades with n here in a way
+    not yet root-caused (see the design note's "what is NOT yet
+    demonstrated" section) -- so the parametrization is deliberately capped
+    at what is proven, rather than claiming broader coverage than tested.
+    """
+    case = _small_genuinely_coupled_case(n_collocation_points)
+    result = solve_picard(**case, instrument_stiffness=False)
+
+    assert result["failure"] is False
+    assert result["diagnostics"]["converged"] is True
+    assert result["final_lambda"] != pytest.approx(0.0, abs=1.0e-8)
+
+
+def test_anderson_mixer_converges_a_diverging_linear_map():
+    """The concrete failure mode Finding 2 diagnosed: plain Picard (theta=1,
+    m=0) on x_{k+1} = x_k + (A - I) x_k with a real eigenvalue > 1 (here
+    A=1.4, matching this prompt's own measured Phase-1b growing-phase
+    contraction ratio) diverges monotonically and unboundedly, since
+    |1 + theta*(A-1)| >= 1 for every theta in (0,1] when A>1 -- no amount of
+    plain under-relaxation can stabilise a real eigenvalue this map alone.
+    Anderson acceleration (m>0), using the exact same per-step map as its
+    residual evaluation, must converge to the fixed point (x=0) instead."""
+    A = 1.4
+
+    def T(x):
+        return A * x
+
+    # Plain Picard (m=0) diverges, confirming the map is genuinely
+    # non-contractive under any theta in (0,1] -- not a strawman.
+    x = np.array([1.0])
+    plain_mixer = picard_module._AndersonMixer(window=0, theta=1.0)
+    for _ in range(20):
+        x = plain_mixer.update(x, T(x) - x)
+    assert abs(x[0]) > 1.0e2, "plain Picard should diverge on this map"
+
+    # Anderson (m>0) converges the identical map to its fixed point.
+    x = np.array([1.0])
+    anderson_mixer = picard_module._AndersonMixer(window=5, theta=1.0)
+    for _ in range(30):
+        x = anderson_mixer.update(x, T(x) - x)
+    assert abs(x[0]) < 1.0e-6, f"Anderson failed to converge: x={x[0]!r}"
+
+
+# ---------------------------------------------------------------------------
 # Prompt 21a's headline acceptance case: the originally-failing production
 # configuration (N_init=19.5, N_final=16, delta_Nstar=0.1, alpha=0.1) must
 # now converge, and converge to consistent core physics, across
