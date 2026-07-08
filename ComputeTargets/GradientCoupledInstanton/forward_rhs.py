@@ -26,6 +26,19 @@ in the GradientCoupledInstanton subpackage allowed to depend directly on
 AbstractPotential and InflatonTrajectory -- this is where physics and the
 Numerics/ collocation machinery meet.
 
+Physics framing -- lambda-scaling (prompt 23 Part B)
+-------------------------------------------------------------------------
+noise_source_terms/forward_rhs each carry an optional lam parameter
+(default 1.0, a complete no-op preserving every pre-prompt-23 call site's
+behaviour exactly). Production usage (picard.py) sets it to the outer
+shooting loop's actual lambda and passes RESCALED response-field splines
+(r_tilde = r/lam, reconstructing response_rhs.terminal_response_state_rescaled's
+own backward solve) rather than the astronomic physical ones -- see
+response_rhs.py's own module docstring for the full derivation (response_rhs
+is exactly linear and homogeneous in the response fields, so this rescaling
+is exact, not an approximation) and noise_source_terms's own docstring for
+exactly how lam re-enters (as (D*lam)*r_tilde, D*lam computed first).
+
 Physics framing -- SBP-SAT boundary closure (prompt 21/21a)
 -------------------------------------------------------------------------
 The continuum problem is well-posed: advection-diffusion with a regularity
@@ -274,6 +287,7 @@ def noise_source_terms(
     grid,
     potential,
     diffusion_model,
+    lam: float = 1.0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Diluted noise-source terms sourcing the forward equations (eq. Dnoise-diag,
@@ -290,14 +304,47 @@ def noise_source_terms(
     delta_s_loc_array is the per-node Delta_s_loc(y_j,N) -- both already
     computed by the caller, passed through rather than recomputed here.
 
+    lam (prompt 23 Part B; default 1.0, i.e. no-op, matching every pre-
+    prompt-23 call site's behaviour exactly): the response-response's own
+    lambda-scaling multiplier. WHAT: when lam=1.0 (the default), rfield_full/
+    rmom_full are read as the PHYSICAL response fields, exactly as before --
+    this function's behaviour and every existing caller/test is completely
+    unchanged. When lam != 1.0 (production usage from prompt 23 onward, via
+    forward_rhs's own lam parameter below), rfield_full/rmom_full are
+    instead the RESCALED r_tilde = r/lam fields (see
+    response_rhs.terminal_response_state's own docstring for the full
+    derivation of why this rescaling is exact by linearity), and this
+    function reconstructs the physical sourcing term as (D*lam)*r_tilde --
+    computing D*lam FIRST, as its own array, before multiplying by the
+    (much smaller-magnitude) rescaled field, rather than materializing
+    lam*r_tilde ~ O(1e9-1e15) as a bare intermediate first and only then
+    multiplying by the tiny D ~ O(1e-11). WHY: D*lam is the genuinely
+    physical, well-conditioned O(1)-ish quantity (D ~ H^2/(8 pi^2), a rare-
+    event diffusion coefficient; lam ~ 1/D is what a rare fluctuation
+    costs -- their product is the astronomic scale FACTORED OUT, see
+    response_rhs.py's own module docstring). FAILURE SIGNATURE of grouping
+    the other way (lam*rfield_full first): not a single-operation precision
+    loss (IEEE double arithmetic is safe at either magnitude here), but
+    every OTHER call site downstream that might reuse an already-scaled
+    lam*r_tilde intermediate for something that should have stayed at the
+    r_tilde scale (e.g. the backward ODE's OWN state vector, which must
+    stay unscaled for prompt 23 Part B's conditioning fix to do anything at
+    all) becomes silently wrong if the two conventions are ever mixed at a
+    call site -- this grouping is the discipline that keeps the boundary
+    between scaled and unscaled quantities explicit at the one place they
+    cross, rather than leaving it implicit and easy to get backwards.
+
     Returns (noise_field_array, noise_mom_array), each shape (n_nodes,).
     """
     D_phi_arr, D_pi_arr, D_phipi_arr = diluted_diffusion_coefficients(
         phi_full, pi_full, delta_s_N, delta_s_loc_array, grid, potential, diffusion_model,
     )
+    D_phi_lam_arr = D_phi_arr * lam
+    D_pi_lam_arr = D_pi_arr * lam
+    D_phipi_lam_arr = D_phipi_arr * lam
 
-    noise_field_array = D_phi_arr * rfield_full + D_phipi_arr * rmom_full
-    noise_mom_array = D_pi_arr * rmom_full + D_phipi_arr * rfield_full
+    noise_field_array = D_phi_lam_arr * rfield_full + D_phipi_lam_arr * rmom_full
+    noise_mom_array = D_pi_lam_arr * rmom_full + D_phipi_lam_arr * rfield_full
 
     return noise_field_array, noise_mom_array
 
@@ -316,6 +363,7 @@ def forward_rhs(
     diffusion_model,
     g_pi_core_spline,
     disable_spatial_coupling: bool = False,
+    lam: float = 1.0,
 ) -> np.ndarray:
     """
     Forward-sector RHS (eq. inst-phi/inst-pi), always sourced by the current
@@ -323,11 +371,31 @@ def forward_rhs(
 
     rfield_splines/rmom_splines are one SplineWrapper per grid node (length
     n_max+1 each), reconstructing the current backward-pass response-field
-    solution rfield_full(N)/rmom_full(N) at whatever N the forward integrator
-    is currently at -- built by the caller (the Picard driver) from the most
-    recent response_rhs solve. The all-zero-response "zeroth Picard iterate"
-    is just a particular choice of these splines (constant zero), not a
-    separate code path.
+    solution at whatever N the forward integrator is currently at -- built
+    by the caller (the Picard driver) from the most recent response_rhs
+    solve. The all-zero-response "zeroth Picard iterate" is just a
+    particular choice of these splines (constant zero), not a separate code
+    path.
+
+    lam (prompt 23 Part B; default 1.0, matching every pre-prompt-23 call
+    site exactly): threaded straight through to noise_source_terms's own
+    lam parameter (see that function's docstring for the full scaling
+    convention). WHAT rfield_splines/rmom_splines RECONSTRUCT DEPENDS ON
+    THIS PARAMETER -- read together, not independently: with the default
+    lam=1.0, they reconstruct the PHYSICAL rfield_full(N)/rmom_full(N)
+    (unchanged pre-prompt-23 behaviour). With lam set to the actual outer-
+    loop shooting parameter (production usage, picard.py), they instead
+    reconstruct the RESCALED r_tilde_full(N) = r_full(N)/lam (built by the
+    caller from a response_rhs backward pass started at
+    response_rhs.terminal_response_state_rescaled, not the astronomic
+    terminal_response_state(lam, ...)) -- and lam here supplies the missing
+    factor back, via noise_source_terms's (D*lam)*r_tilde grouping, so the
+    net sourcing term is exactly the same physical quantity either way.
+    Mixing conventions (e.g. astronomic-lambda splines with lam=1.0 here, or
+    rescaled splines with lam left at its default) would silently source
+    the wrong (off by a factor of lam) forward feedback -- see
+    response_rhs.py's own module docstring for why this boundary is
+    documented at every crossing point.
 
     g_pi_core_spline is a SINGLE SplineWrapper (not one per node -- the SAT
     target only exists at the core), reconstructing the lagged
@@ -509,7 +577,10 @@ def forward_rhs(
         sat_pi_core = -(tau / w_core) * (pi_full[-1] - g_pi_core)
 
     # Response-field values at the current N, reconstructed node-by-node from
-    # the current backward-pass splines.
+    # the current backward-pass splines -- rfield_full/rmom_full here are
+    # r_tilde = r/lam (rescaled) when lam != 1.0, per this function's own
+    # docstring; noise_source_terms's lam parameter below supplies the
+    # missing factor back via its (D*lam)*r_tilde grouping.
     rfield_full = np.array([spline(N) for spline in rfield_splines])
     rmom_full = np.array([spline(N) for spline in rmom_splines])
 
@@ -518,7 +589,7 @@ def forward_rhs(
     # than recomputing delta_s() a third time.
     noise_field_array, noise_mom_array = noise_source_terms(
         phi_full, pi_full, rfield_full, rmom_full, delta_s_N, delta_s_loc_array,
-        grid, potential, diffusion_model,
+        grid, potential, diffusion_model, lam=lam,
     )
 
     dphi_full = (

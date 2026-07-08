@@ -51,6 +51,43 @@ here from the compute target's raw parameters and threaded through to every
 forward_rhs call as absolute_N = N_offset + local_N. response_rhs has no
 trajectory dependency, so it needs no N_offset.
 
+Response-sector lambda-scaling (prompt 23 Part B)
+-------------------------------------------------------------------------
+picard_inner's own backward pass solves for r_tilde = r/lam, NOT the
+physical response state (terminal_response_state_rescaled, an O(1)-ish
+terminal condition independent of the outer loop's actual lam), and the
+loop-local rfield_tilde_grid/rmom_tilde_grid built from it are what feed
+forward_rhs's own sourcing splines every sweep -- forward_rhs's own lam
+parameter reconstructs the physical (D*lam)*r_tilde sourcing term at the
+one place it is actually needed, never materializing lam*r_tilde as a bare
+intermediate. picard_inner converts back to the PHYSICAL rfield_grid/
+rmom_grid exactly once, at its own return statement (lam * rfield_tilde_grid),
+so every caller of picard_inner -- and every consumer of solve_picard's own
+returned "rfield_grid"/"rmom_grid" -- sees physical values, matching every
+pre-prompt-23 caller's expectation exactly. The one exception is
+solve_picard's own "response_dense_solution" (the raw OdeSolution of the
+converged final sweep's backward pass): it is still r_tilde-valued, since
+converting a continuous OdeSolution back to physical would require
+re-wrapping it in a callable rather than a single array multiply -- see that
+key's own comment in solve_picard's return dict.
+
+lam=0.0 (the outer loop's own trivial starting point) degenerates correctly:
+terminal_response_state_rescaled is lam-INDEPENDENT (still O(1)-ish, never
+degenerate), so r_tilde solves the same well-posed backward pass regardless;
+the final "* lam" reconstruction then correctly gives EXACTLY zero physical
+response fields at lam=0, matching the pre-prompt-23 behaviour (and prompt
+22's own Finding 1: lambda=0 is an exact fixed point of the unsourced
+system) with no special-casing needed.
+
+See response_rhs.py's and forward_rhs.py's own module docstrings for the
+full derivation (response_rhs is exactly linear and homogeneous in the
+response fields, so this rescaling is exact by linearity, not an
+approximation) and the physics motivation (astronomic lam ~ 1e9-4e9 in the
+resolved regime; carrying that dynamic range through the adaptive-step
+backward integrator and the nonlinear Picard/shooting iteration is what
+drives the H_sq_local<0/RK45 step-death failures prompt 22c's Finding 4
+reported).
+
 pi_core SAT target -- history and the prompt 22c fixed-target replacement
 -------------------------------------------------------------------------
 forward_rhs.py's core SAT penalty for pi needs a target g_pi(N) that is
@@ -205,7 +242,7 @@ from ComputeTargets.GradientCoupledInstanton.forward_rhs import (
 from ComputeTargets.GradientCoupledInstanton.response_rhs import (
     unpack_response_state,
     response_rhs,
-    terminal_response_state,
+    terminal_response_state_rescaled,
 )
 
 MAX_OUTER = 50
@@ -804,12 +841,13 @@ def solve_picard(
             rmom_grid[i] = rmom_full_i
         return rfield_grid, rmom_grid
 
-    def _fwd_rhs(N, y, rfield_splines, rmom_splines, g_pi_core_spline):
+    def _fwd_rhs(N, y, rfield_splines, rmom_splines, g_pi_core_spline, lam):
         return forward_rhs(
             N, y, N_offset, alpha, H_sq_nl_init, grid, trajectory, potential,
             rfield_splines, rmom_splines, diffusion_model,
             g_pi_core_spline,
             disable_spatial_coupling=disable_spatial_coupling,
+            lam=lam,
         )
 
     def _bwd_rhs(N, y, phi_splines, pi_splines):
@@ -938,8 +976,15 @@ def solve_picard(
         nonlocal ode_solve_count
         phi_grid = phi_grid_in.copy()
         pi_grid = pi_grid_in.copy()
-        rfield_grid = np.zeros((N_GRID_SIZE, n_nodes))
-        rmom_grid = np.zeros((N_GRID_SIZE, n_nodes))
+        # rfield_tilde_grid/rmom_tilde_grid (prompt 23 Part B): the
+        # lambda-RESCALED response fields r_tilde = r/lam, not the physical
+        # ones -- see response_rhs.py's own module docstring for why this
+        # rescaling is exact (response_rhs is linear and homogeneous in the
+        # response fields) and why production integrates r_tilde rather than
+        # the astronomic physical r. Converted back to physical (* lam) only
+        # once, at this function's own return statement below.
+        rfield_tilde_grid = np.zeros((N_GRID_SIZE, n_nodes))
+        rmom_tilde_grid = np.zeros((N_GRID_SIZE, n_nodes))
         g_pi_values = None if g_pi_values_in is None else g_pi_values_in.copy()
         # Fresh mixer state per picard_inner call: lambda is fixed within
         # one call but changes between outer-loop evaluations, so even in
@@ -966,9 +1011,16 @@ def solve_picard(
             )
 
             # Backward pass: terminal condition at N_stop (eq. terminal-colloc).
+            # prompt 23 Part B: solves for r_tilde = r/lam, NOT the physical
+            # (astronomic-at-large-lam) response state -- terminal_response_state_rescaled
+            # is the O(1)-ish, lambda-independent terminal condition (==
+            # terminal_response_state(1.0, ...)); this is what keeps the
+            # backward ODE's own state vector well-conditioned regardless of
+            # how large the outer loop's actual lam is. See
+            # response_rhs.py's own module docstring for the full account.
             H_sq_core_final = potential.H_sq(phi_grid[-1, -1], pi_grid[-1, -1])
             delta_s_N_final = delta_s(N_total, 0.0, H_sq_core_final, H_sq_nl_init, alpha)
-            terminal_state = terminal_response_state(lam, grid, delta_s_N_final)
+            terminal_state = terminal_response_state_rescaled(grid, delta_s_N_final)
 
             bp, bp_step_stats = _solve_ivp_instrumented(
                 instrument_stiffness,
@@ -983,15 +1035,25 @@ def solve_picard(
                 return None, None, None, None, n_inner_iters, None, None, g_pi_values
 
             response_y = bp.y[:, ::-1]
-            rfield_grid, rmom_grid = _unpack_response_grid(response_y, N_grid)
+            rfield_tilde_grid, rmom_tilde_grid = _unpack_response_grid(response_y, N_grid)
 
-            rfield_splines = _build_node_splines(N_grid, rfield_grid, y_transform='sinh')
-            rmom_splines = _build_node_splines(N_grid, rmom_grid, y_transform='sinh')
+            # Splines reconstruct r_tilde(N), not the physical response
+            # field -- forward_rhs's own lam parameter below supplies the
+            # missing factor back at the point it is actually needed (the
+            # noise-sourcing feedback), via noise_source_terms's
+            # (D*lam)*r_tilde grouping, never materializing lam*r_tilde as a
+            # bare intermediate. sinh transform is unchanged (still
+            # appropriate: r_tilde can be either sign and spans orders of
+            # magnitude, just a smaller dynamic range than the physical r).
+            rfield_splines = _build_node_splines(N_grid, rfield_tilde_grid, y_transform='sinh')
+            rmom_splines = _build_node_splines(N_grid, rmom_tilde_grid, y_transform='sinh')
 
-            # Forward pass, now sourced by the just-computed response fields.
+            # Forward pass, now sourced by the just-computed response fields
+            # (rescaled -- lam supplies the physical scale back inside
+            # forward_rhs/noise_source_terms).
             fp, fp_step_stats = _solve_ivp_instrumented(
                 instrument_stiffness,
-                lambda N, y: _fwd_rhs(N, y, rfield_splines, rmom_splines, g_pi_core_spline),
+                lambda N, y: _fwd_rhs(N, y, rfield_splines, rmom_splines, g_pi_core_spline, lam),
                 (N_start, N_stop), state_init, method="RK45",
                 t_eval=N_grid, dense_output=True, atol=atol, rtol=rtol,
             )
@@ -1065,6 +1127,17 @@ def solve_picard(
             else:
                 n_consecutive_converged = 0
 
+        # Reintroduce lam HERE, exactly once, as a single vectorized
+        # multiply -- prompt 23 Part B's own scaled/unscaled boundary.
+        # Every consumer of this function's return value (msr_action,
+        # datastore storage, noise diagnostics, the outer loop's own
+        # phi_end residual check via phi_grid -- unaffected, phi/pi were
+        # never rescaled) expects the PHYSICAL response fields, matching
+        # every pre-prompt-23 caller's expectation exactly; only the
+        # backward ODE integration itself (above) and forward_rhs's own
+        # noise-sourcing feedback ever see r_tilde.
+        rfield_grid = lam * rfield_tilde_grid
+        rmom_grid = lam * rmom_tilde_grid
         return phi_grid, pi_grid, rfield_grid, rmom_grid, n_inner_iters, fp_sol, bp_sol, g_pi_values
 
     # ── Outer shooting loop on lambda (prompt 22c: shared with FullInstanton
@@ -1180,6 +1253,16 @@ def solve_picard(
         # diagnostic) without re-solving any ODE. Not JSON-serializable and
         # not consumed by the Ray remote function's own returned dict -- a
         # test-only / direct-solve_picard-caller convenience.
+        #
+        # response_dense_solution IS THE RESCALED r_tilde SOLUTION (prompt 23
+        # Part B), NOT the physical response state -- unlike "rfield_grid"/
+        # "rmom_grid" above (already converted back to physical, * final_lambda,
+        # inside picard_inner's own return statement), this dense OdeSolution
+        # is the raw backward-pass integrator output, which integrates
+        # r_tilde = r/lam throughout (see response_rhs.py's own module
+        # docstring). A caller resampling this directly must multiply by
+        # "final_lambda" (this same dict's own key) to recover the physical
+        # response state at the resampled N.
         "phi_pi_dense_solution": fp_sol_f,
         "response_dense_solution": bp_sol_f,
     }

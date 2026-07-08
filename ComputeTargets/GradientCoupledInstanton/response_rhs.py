@@ -43,29 +43,83 @@ the rfield equation applies L to rmom (not rfield) -- self-adjointness of L
 moves the operator onto the other response field; this is not a typo
 relative to the forward sector's L(phi).
 
-Prompt 21a scope note -- response sector deliberately UNCHANGED
+Prompt 23 Part A finding -- SBP-SAT closure NOT ported (clean negative)
 -------------------------------------------------------------------------
-forward_rhs.py's advection term was ported to the SBP-SAT closure (split-form
-advection + a core SAT penalty) because the strong (node-elimination)
-boundary treatment of the forward sector's phi_core was shown to destabilise
-the discrete energy estimate, producing a spectral_abscissa that grows with
-n_max. response_rhs.py's advection_term call below uses the exact same
-A_array construction (same advection_coefficient formula, same destabilising
-core-node mechanism by symmetry) and rmom_full is ALSO Neumann-eliminated at
-the core here (see unpack_response_state below) -- structurally the same
-risk the forward sector had.
+Prompt 21a's own scope note (superseded here) flagged this module's
+advection_term call as a "known, symmetric follow-on candidate" for the
+forward sector's SBP-SAT port, on the theory that the SAME A_array
+construction plus rmom_full's OWN Neumann elimination at the core (see
+unpack_response_state below) would produce the same n_max-growing spectral
+defect forward_rhs.py had before prompt 21/21a.
 
-This prompt deliberately does NOT port the SBP-SAT closure to this module.
-Per the prompt's own scope ("Response-sector core closure beyond what
-symmetry with the forward sector requires ... note it and scope it as a
-short follow-on rather than expanding this prompt"), this is flagged here
-as a known, symmetric follow-on candidate rather than silently left as an
-oversight: if the response-sector solve is independently found to blow up
-at high n_collocation_points the same way the forward sector did, the fix
-is the same recipe (advection_split_term in place of advection_term, plus a
-lagged/live SAT closure on whichever of rfield_core/rmom_core is shown to
-need a value-type target) -- see forward_rhs.py's own module docstring for
-the full derivation this would reuse.
+Prompt 23 Phase 1 tested this directly (analyze_StiffnessSpectrum.py's
+response-sector diagnostic section: assemble_response_operator_strong,
+assemble_response_operator_sbp_sat, response_spectral_stability_metrics) and
+found the symmetry argument does NOT hold once the response sector's actual
+integration direction is correctly accounted for. response_rhs is integrated
+BACKWARD in N (picard.py's solve_ivp call uses a decreasing t_span), and for
+backward integration the numerically catastrophic eigenvalue direction is
+the OPPOSITE of the forward sector's (see the diagnostic section's own
+module comment in analyze_StiffnessSpectrum.py for the full sign argument).
+Correctly analyzed, the pre-port "strong" closure's backward-relevant
+spectral abscissa is ALREADY bounded/n_max-independent across the full
+default (alpha, N) sweep grid at n_max=8..192 -- there is no disease to
+cure. A naive same-recipe SBP-SAT port (even with the sign flip backward
+integration requires on the live-Neumann-target field) does not improve
+this and measurably worsens the safe-direction stiffness instead. Full
+numbers: .documents/gradient-coupled-instanton/
+23-response-sbp-sat-design-note.md.
+
+This module's advection therefore remains the plain-product advection_term
+below, and rmom_full remains Neumann-eliminated at the core (unpack_response_state,
+unchanged) -- both deliberately, not by oversight. If a genuinely new
+n_max-dependent failure is found in this sector in the future, re-run the
+Phase-1 diagnostic first (it is a permanent regression fixture, not a
+one-off check) before assuming the forward sector's fix recipe applies
+unchanged.
+
+Prompt 23 Part B -- lambda-scaling convention (astronomic lambda)
+-------------------------------------------------------------------------
+Independent of Part A: response_rhs (below) is exactly LINEAR AND
+HOMOGENEOUS in (rfield, rmom) -- lambda enters this model ONLY through the
+terminal condition (terminal_response_state), never through response_rhs's
+own right-hand side. So the response solution scales exactly with lambda:
+r(N) = lambda * r_tilde(N), where r_tilde solves the IDENTICAL backward-pass
+ODE from the O(1)-ish terminal condition
+terminal_response_state_rescaled(grid, delta_s_N_final) (==
+terminal_response_state(1.0, ...)). Production code (picard.py) integrates
+r_tilde, not the astronomic r itself (lambda ~ 1e9-4e9 in the resolved
+regime that makes r_core ~ 1e9-1e15) -- carrying that dynamic range through
+the adaptive-step backward integrator and the nonlinear Picard/shooting
+iteration is what drives the H_sq_local<0/RK45 step-death failures (prompt
+22c Finding 4). lambda is reintroduced afterwards in ONE vectorized
+multiply (picard.py's own final rfield_grid/rmom_grid reconstruction) and,
+separately, inside forward_rhs's noise-sourcing feedback via a dedicated
+lam parameter that computes (D*lambda) as one quantity BEFORE multiplying
+by r_tilde -- see forward_rhs.py's own module docstring and
+noise_source_terms's docstring for that half of the convention.
+See terminal_response_state's own docstring for the full rationale.
+
+HOW TO VERIFY THIS IS STILL CORRECT -- three checks must stay green:
+  (a) response-abscissa-bounded-in-n (Part A regression):
+      tests/test_response_spectrum_prompt23.py's
+      test_strong_closure_backward_abscissa_bounded_across_default_grid --
+      if this ever fails, re-read the design note before assuming the
+      forward sector's SBP-SAT recipe should now be ported (Phase 1 found
+      it should not, but that finding is about THIS closure's spectrum, not
+      a permanent law -- if the spectrum genuinely changes, re-derive).
+  (b) adjoint-consistency (Part A regression):
+      tests/test_response_spectrum_prompt23.py's
+      test_sat_forward_vs_unchanged_response_mismatch_bounded_in_n -- the
+      forward sector's own closure evolving further (a future prompt) could
+      reopen this; re-run analyze_StiffnessSpectrum.py's
+      compute_forward_sat_vs_response_adjoint_mismatch against whatever the
+      forward operator becomes.
+  (c) lambda-scaling round-trip (Part B regression):
+      tests/test_response_lambda_scaling_prompt23.py's
+      test_response_solution_scales_exactly_with_lambda (linearity) and
+      test_rescaled_backward_pass_feasible_at_astronomic_lambda
+      (feasibility at the resolved-regime lambda scale).
 """
 
 import numpy as np
@@ -258,6 +312,29 @@ def terminal_response_state(lam: float, grid, delta_s_N_final: float) -> np.ndar
 
     Uses grid.weights[-1] directly (already validated against the closed
     form 2/[n_max(n_max+1)] in prompt 01's tests) rather than recomputing it.
+
+    lambda-scaling convention (prompt 23 Part B) -- READ THIS BEFORE PASSING
+    A NON-1.0 VALUE HERE. response_rhs (above) is exactly LINEAR AND
+    HOMOGENEOUS in (rfield, rmom): it has no lambda-dependence anywhere in
+    its own right-hand side, only through whatever terminal_response_state
+    it was started from. So by linearity, the response solution scales
+    EXACTLY with lambda: r(N) = lambda * r_tilde(N), where r_tilde solves
+    the IDENTICAL backward-pass ODE from the O(1)-terminal condition
+    terminal_response_state(1.0, grid, delta_s_N_final) -- see
+    terminal_response_state_rescaled below, the PREFERRED call for
+    production use. Calling this function directly with the true,
+    astronomic lambda (~1e9-4e9 in the resolved regime) makes rfield_core
+    ~1e5-1e15 in magnitude (delta_s_N_final's own measure(1,.) factor can
+    itself be a further ~1e-3 to 1e-20, see the design note), which is
+    exactly the materialization Part B exists to avoid: it is not that any
+    SINGLE floating-point operation on such a value loses precision (IEEE
+    double arithmetic is safe well beyond this range), but that carrying an
+    O(1e9+)-dynamic-range component through the SAME adaptive-step
+    integrator, the SAME nonlinear Picard/shooting iteration, and the
+    forward sector's own noise-sourcing feedback as every OTHER (O(1))
+    state component is what empirically drives the H_sq_local<0/RK45
+    step-death failures (prompt 22c Finding 4) at the astronomic lambda the
+    resolved regime requires.
     """
     n_max = grid.n_max
 
@@ -267,3 +344,25 @@ def terminal_response_state(lam: float, grid, delta_s_N_final: float) -> np.ndar
     rfield_full[-1] = -lam / (grid.weights[-1] * measure(1.0, delta_s_N_final))
 
     return pack_response_state(rfield_full, rmom_full)
+
+
+def terminal_response_state_rescaled(grid, delta_s_N_final: float) -> np.ndarray:
+    """
+    terminal_response_state(1.0, grid, delta_s_N_final) -- the O(1)-ish
+    (NOT astronomic) terminal condition for the lambda-RESCALED backward
+    pass, r_tilde = r / lambda (prompt 23 Part B). This is the call
+    production code (picard.py) should use for the actual backward
+    solve_ivp integration; the true lambda is reintroduced afterwards, in
+    ONE vectorized multiply, only where a genuinely lambda-scaled physical
+    quantity is needed (the forward sector's noise-sourcing feedback -- see
+    forward_rhs.noise_source_terms's own lam parameter -- and the physical
+    rfield/rmom grids returned by solve_picard for msr_action/datastore
+    storage/noise diagnostics). See terminal_response_state's own docstring
+    for the full scaling-convention rationale and failure mode this avoids.
+
+    A thin, self-documenting wrapper (not a new formula) so call sites read
+    "the rescaled terminal condition", making the scaling boundary explicit
+    at the point of use rather than relying on a reader noticing "lam=1.0"
+    is deliberate and not a placeholder/bug.
+    """
+    return terminal_response_state(1.0, grid, delta_s_N_final)

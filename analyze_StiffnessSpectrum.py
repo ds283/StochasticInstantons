@@ -117,6 +117,7 @@ from ComputeTargets.GradientCoupledInstanton.response_rhs import _c_of_N
 from Numerics.DiscretizedOperators import (
     L_operator,
     advection_term,
+    advection_split_term,
     neumann_boundary_value,
 )
 from Numerics.LGLCollocation import LGLCollocationGrid
@@ -673,6 +674,388 @@ def assemble_spatial_operator_sbp_sat(
 
 
 # ---------------------------------------------------------------------------
+# Response-sector spectral diagnostic (prompt 23 Phase 1)
+#
+# response_rhs.py's own pre-port docstring flagged this as a "known, symmetric
+# follow-on candidate": the response sector uses the SAME A_array construction
+# as the forward sector's advection term, and rmom_full is ALSO
+# Neumann-eliminated at the core -- structurally the same defect-generating
+# ingredients prompt 21/21a found and fixed for the forward sector. This
+# section extends the assembled-operator sweep to test whether that symmetry
+# argument actually holds.
+#
+# CRITICAL DIFFERENCE FROM THE FORWARD SECTOR: response_rhs is integrated
+# BACKWARD in N (picard.py calls solve_ivp with t_span=(N_stop, N_start),
+# N_stop > N_start). For a linear mode dy/dN = lambda*y integrated with a
+# NEGATIVE step h (backward), the quantity that governs the numerical
+# integrator's stability is z = h*lambda, not lambda itself -- and h<0 flips
+# which SIGN of Re(lambda) is the catastrophic (unconditionally-unstable,
+# any-step-size-fails) one. For forward integration (h>0), Re(lambda) >> 0
+# growing with n_max is catastrophic (this is exactly prompt 21's disease:
+# spectral_abscissa = max(Re(eig)) growing with n_max). For BACKWARD
+# integration (h<0), it is Re(lambda) << 0 growing MORE NEGATIVE with n_max
+# that is catastrophic (z = h*lambda > 0 for any h<0, outside RK45's stability
+# region unconditionally) -- while Re(lambda) >> 0 growing is merely stiffness
+# (z = h*lambda < 0, deep in the LHP; conditionally stable, just forces a
+# smaller step). So the response sector's OWN "spectral_abscissa" -- the
+# quantity that must stay bounded in n_max for the ACTUAL backward solve to be
+# safe -- is max(Re(-eig)) = -min(Re(eig)) of the SAME assembled matrix M
+# (dy/dN = M y convention, built the same way as the forward sector's
+# assemble_spatial_operator for direct comparability), NOT max(Re(eig))
+# itself. response_spectral_stability_metrics below encodes this by feeding
+# spectral_stability_metrics the NEGATED eigenvalues -- see that function's
+# own docstring.
+# ---------------------------------------------------------------------------
+
+
+def _pack_response_state_strong(rfield_full: np.ndarray, rmom_full: np.ndarray) -> np.ndarray:
+    """
+    Frozen, LOCAL copy of the pre-prompt-23
+    ComputeTargets.GradientCoupledInstanton.response_rhs.pack_response_state:
+    drops rfield_full[0]/rmom_full[0] (both pinned to zero) and rmom_full[-1]
+    (Neumann-eliminated), giving the (2*n_max-1)-length state
+    (rfield_1,...,rfield_{n_max}, rmom_1,...,rmom_{n_max-1}).
+
+    Kept as a local copy (mirroring _pack_state_strong's own rationale) so
+    this module's "strong" BASELINE keeps representing the OLD,
+    node-eliminating closure exactly, independent of whether prompt 23
+    Phase 2 ever changes the live production response_rhs.py.
+    """
+    n_max = len(rfield_full) - 1
+    return np.concatenate([rfield_full[1:n_max + 1], rmom_full[1:n_max]])
+
+
+def assemble_response_operator_strong(
+    n_max: int, alpha: float, N: float, epsilon_core: float = DEFAULT_EPSILON_CORE,
+):
+    """
+    Assembles the linearised response-sector spatial operator -- the SAME
+    structural pieces response_rhs.py's own pre-port assembly applies:
+    advection (plain product, advection_term) on both rfield/rmom, the
+    gradient term (L applied to rmom, MINUS sign, per response_rhs.py's own
+    docstring on why the sign and field are swapped relative to the forward
+    sector), and the scalar c(N) dressing both fields -- with rmom_full[-1]
+    (the core) Neumann-eliminated exactly as
+    ComputeTargets.GradientCoupledInstanton.response_rhs.unpack_response_state
+    does, and rfield_full[-1] (the core) free/integrated.
+
+    Frozen-coefficient, same convention as assemble_spatial_operator: N and
+    alpha fix Delta_s(N) via delta_s() evaluated at H_sq_local/H_sq_nl_init
+    held at ratio 1 everywhere; epsilon_core is a fixed representative value
+    feeding both the advection coefficient and c(N) (mirrors response_rhs's
+    own epsilon_core = potential.epsilon(phi_full[-1], pi_full[-1]), a single
+    scalar read at the core).
+
+    Returns (A, delta_s_N): the assembled matrix, shape
+    (2*n_max-1, 2*n_max-1), and the scalar Delta_s(N) used to build it.
+    """
+    grid = LGLCollocationGrid(n_max + 1)
+    n_state = 2 * n_max - 1
+
+    delta_s_N = float(delta_s(N, 0.0, 1.0, 1.0, alpha))
+    delta_s_loc_array = delta_s(N, 0.0, np.ones(n_max + 1), 1.0, alpha)
+    A_array = advection_coefficient(grid.nodes, delta_s_N, epsilon_core)
+    c_N = _c_of_N(epsilon_core, delta_s_N)
+
+    def _spatial_rhs(state: np.ndarray) -> np.ndarray:
+        rfield_full = np.empty(n_max + 1)
+        rmom_full = np.empty(n_max + 1)
+        rfield_full[0] = 0.0
+        rmom_full[0] = 0.0
+        rfield_full[1:n_max + 1] = state[:n_max]
+        rmom_full[1:n_max] = state[n_max:2 * n_max - 1]
+        rmom_full[-1] = neumann_boundary_value(rmom_full, grid.D, boundary_index=-1)
+
+        L_rmom_array = L_operator(rmom_full, delta_s_N, grid.nodes, grid.D, grid.D2)
+        gradient_term = np.exp(-2.0 * delta_s_loc_array) * L_rmom_array
+
+        advection_rfield_array = advection_term(rfield_full, A_array, grid.D)
+        advection_rmom_array = advection_term(rmom_full, A_array, grid.D)
+
+        # Isolates the SAME "spatial coupling only" subset the forward
+        # sector's own assemble_spatial_operator isolates (gradient +
+        # advection, dressed by c(N) -- the genuine spatial-coupling
+        # analogue of c(N)'s role here): EXCLUDES the "-rfield_full" mass
+        # coupling and "+(3-eps)*rmom" damping terms
+        # _assemble_response_derivatives always adds (response_rhs.py's own
+        # eq. inst-rpi) -- both are O(1), n_max-INDEPENDENT contributions
+        # (a fixed -1/+3 diagonal shift, not growing with resolution), so
+        # excluding them does not change whether the assembled operator's
+        # eigenvalues grow with n_max, exactly mirroring why forward's own
+        # isolation (excluding "-(3-eps)*pi" and "-dV/H_sq") is the right
+        # comparison target rather than an arbitrary simplification.
+        drfield_full = advection_rfield_array + c_N * rfield_full - gradient_term
+        drmom_full = advection_rmom_array + c_N * rmom_full
+
+        return _pack_response_state_strong(drfield_full, drmom_full)
+
+    matrix = np.column_stack([_spatial_rhs(e) for e in np.eye(n_state)])
+    return matrix, delta_s_N
+
+
+def assemble_response_operator_sbp_sat(
+    n_max: int, alpha: float, N: float, epsilon_core: float = DEFAULT_EPSILON_CORE,
+    *, include_gradient: bool = True, tau_mult: float = 0.5,
+):
+    """
+    SBP-SAT-closure CANDIDATE for the response sector (prompt 23 Phase 1),
+    mirroring assemble_spatial_operator_sbp_sat's role-swap: split-form
+    advection (advection_split_term) on both rfield/rmom, rmom_core promoted
+    from Neumann-eliminated to a free/integrated DOF with a SAT penalty
+    toward the LIVE Neumann target (mirrors forward's g_phi_core exactly,
+    just role-swapped field name -- rmom's own natural regularity condition),
+    and rfield_core (already free) SAT-penalized toward a FIXED target g=0
+    (mirrors forward's g_pi_core role -- the "free field with no existing
+    condition" -- but see the module docstring above: unlike forward's
+    pi_core, rfield_core's terminal condition already anchors it, so a
+    trivial zero target -- pure dissipation -- is tried first per the
+    prompt's own suggestion, "confirm whether a value-target is needed at
+    all").
+
+    THE SIGN IS FLIPPED ON THE rmom_core SAT relative to forward's g_phi_core
+    recipe: forward uses "-(tau/w_core)*(u_core-g)"; this uses
+    "+(tau/w_core)*(rmom_core-g)". This is not a typo -- it is the direct,
+    empirically-confirmed (see the Phase-1 test suite) consequence of the
+    backward-integration sign flip described in this section's module
+    comment above. rfield_core's SAT keeps forward's ORIGINAL sign
+    ("-(tau/w_core)*rfield_core") because its target is the state-INDEPENDENT
+    constant g=0: Phase-1 testing (see tests/test_response_spectrum_prompt23.py)
+    found a DECOUPLED, constant-target SAT is exactly n-independent under
+    EITHER sign (a diagonal-only correction -- the exact-cancellation tau
+    value zeroes the anomalous term regardless of integration direction),
+    so its sign is not a live design question the way rmom_core's is; "-" is
+    kept purely for continuity with the forward sector's own convention.
+
+    tau_mult (default 0.5, i.e. tau = A(core)/2, the EXACT algebraic
+    cancellation value from the design note's Section 4 -- NOT forward's own
+    empirically-hardened tau=|A(core)| doubling): Phase-1 testing found that
+    using forward's doubled tau on the response sector's rmom_core SAT
+    OVERSHOOTS the exact cancellation and flips the sign of the (now
+    backward-relevant) u_core^2 coefficient, reproducing exactly the kind of
+    n_max-growing catastrophic mode this closure is meant to remove -- see
+    the design note (prompt 23) for the full account and the numbers.
+
+    Returns (matrix, delta_s_N, tau, A_core), matching
+    assemble_spatial_operator_sbp_sat's own return shape. State layout:
+    (rfield_1,...,rfield_{n_max}, rmom_1,...,rmom_{n_max}), length 2*n_max --
+    one longer than the strong closure's 2*n_max-1, since rmom_core is
+    promoted from eliminated to integrated (PROTOTYPE-ONLY layout choice, as
+    for the forward sector's own Phase-1 prototype).
+    """
+    grid = LGLCollocationGrid(n_max + 1)
+    n_state = 2 * n_max
+
+    delta_s_N = float(delta_s(N, 0.0, 1.0, 1.0, alpha))
+    delta_s_loc_array = delta_s(N, 0.0, np.ones(n_max + 1), 1.0, alpha)
+    A_array = advection_coefficient(grid.nodes, delta_s_N, epsilon_core)
+    c_N = _c_of_N(epsilon_core, delta_s_N)
+
+    A_core = float(A_array[-1])
+    tau = tau_mult * A_core
+    w_core = float(grid.weights[-1])
+
+    def _spatial_rhs(state: np.ndarray) -> np.ndarray:
+        rfield_full = np.empty(n_max + 1)
+        rmom_full = np.empty(n_max + 1)
+        rfield_full[0] = 0.0
+        rmom_full[0] = 0.0
+        rfield_full[1:n_max + 1] = state[:n_max]
+        rmom_full[1:n_max + 1] = state[n_max:2 * n_max]
+
+        if include_gradient:
+            L_rmom_array = L_operator(rmom_full, delta_s_N, grid.nodes, grid.D, grid.D2)
+            gradient_term = np.exp(-2.0 * delta_s_loc_array) * L_rmom_array
+        else:
+            gradient_term = np.zeros(n_max + 1)
+
+        advection_rfield_array = advection_split_term(rfield_full, A_array, grid.D)
+        advection_rmom_array = advection_split_term(rmom_full, A_array, grid.D)
+
+        drfield_full = advection_rfield_array + c_N * rfield_full - gradient_term
+        drmom_full = advection_rmom_array + c_N * rmom_full
+
+        # rfield_core SAT: fixed g=0 target, forward's original sign.
+        drfield_full[-1] += -(tau / w_core) * (rfield_full[-1] - 0.0)
+        # rmom_core SAT: LIVE Neumann target, SIGN FLIPPED (see docstring).
+        g_rmom_core = neumann_boundary_value(rmom_full, grid.D, boundary_index=-1)
+        drmom_full[-1] += (tau / w_core) * (rmom_full[-1] - g_rmom_core)
+
+        return np.concatenate([drfield_full[1:n_max + 1], drmom_full[1:n_max + 1]])
+
+    matrix = np.column_stack([_spatial_rhs(e) for e in np.eye(n_state)])
+    return matrix, delta_s_N, tau, A_core
+
+
+def response_spectral_stability_metrics(eigvals: np.ndarray) -> dict:
+    """
+    The response-sector analogue of spectral_stability_metrics, accounting
+    for the backward-integration sign flip (see this section's module
+    comment above): feeds spectral_stability_metrics the NEGATED eigenvalues,
+    so its "spectral_abscissa" = max(Re(-eig)) = -min(Re(eig)) of the
+    ORIGINAL (dy/dN = M y convention) matrix -- the quantity that must stay
+    bounded in n_max for solve_ivp's ACTUAL backward (t_span decreasing)
+    integration of this operator to be safe from unconditional instability.
+
+    A caller who mistakenly used spectral_stability_metrics directly on a
+    response-sector matrix would be checking max(Re(eig)) -- the
+    FORWARD-integration criterion -- against an operator that is never
+    integrated forward; this function exists specifically to prevent that
+    mistake being silently repeated at every response-sector call site.
+    """
+    return spectral_stability_metrics(-eigvals)
+
+
+def _response_rhs_strong_spatial_only(
+    N, state, alpha, H_sq_nl_init, grid, phi_splines, pi_splines, potential,
+):
+    """
+    Frozen LOCAL copy of the real (pre-prompt-23) response_rhs, with the
+    mass-coupling ("-rfield_full") and damping ("+(3-eps_loc)*rmom_full")
+    terms EXCLUDED -- the response-sector analogue of _forward_rhs_strong's
+    isolation of "everything disable_spatial_coupling=True zeroes". Used
+    ONLY by self_check_response_assembled_operator, to validate
+    assemble_response_operator_strong's hand-transcribed matrix against an
+    independently-computed RHS restricted to the SAME spatial-only subset
+    (advection + gradient + c(N)) -- see assemble_response_operator_strong's
+    own comment for why excluding the mass/damping terms is the right
+    comparison (both are O(1), n_max-independent, exactly mirroring why
+    forward's own isolation excludes its "-(3-eps)*pi"/"-dV/H_sq" terms).
+    """
+    phi_full = np.array([spline(N) for spline in phi_splines])
+    pi_full = np.array([spline(N) for spline in pi_splines])
+
+    rfield_full, rmom_full = _unpack_response_state_strong_local(state, grid)
+
+    H_sq_core = potential.H_sq(phi_full[-1], pi_full[-1])
+    delta_s_N = delta_s(N, 0.0, H_sq_core, H_sq_nl_init, alpha)
+    epsilon_core = potential.epsilon(phi_full[-1], pi_full[-1])
+    c_N = _c_of_N(epsilon_core, delta_s_N)
+
+    H_sq_loc_array = potential.H_sq(phi_full, pi_full)
+    delta_s_loc_array = delta_s(N, 0.0, H_sq_loc_array, H_sq_nl_init, alpha)
+
+    L_rmom_array = L_operator(rmom_full, delta_s_N, grid.nodes, grid.D, grid.D2)
+    gradient_term = np.exp(-2.0 * delta_s_loc_array) * L_rmom_array
+
+    A_array = advection_coefficient(grid.nodes, delta_s_N, epsilon_core)
+    advection_rfield_array = advection_term(rfield_full, A_array, grid.D)
+    advection_rmom_array = advection_term(rmom_full, A_array, grid.D)
+
+    drfield_full = advection_rfield_array + c_N * rfield_full - gradient_term
+    drmom_full = advection_rmom_array + c_N * rmom_full
+
+    return _pack_response_state_strong(drfield_full, drmom_full)
+
+
+def _unpack_response_state_strong_local(state, grid):
+    """Frozen LOCAL copy of unpack_response_state's pre-prompt-23 layout --
+    see _pack_response_state_strong's own docstring for why this module
+    keeps its own copy."""
+    n_max = grid.n_max
+    rfield_full = np.empty(n_max + 1)
+    rmom_full = np.empty(n_max + 1)
+    rfield_full[0] = 0.0
+    rmom_full[0] = 0.0
+    rfield_full[1:n_max + 1] = state[:n_max]
+    rmom_full[1:n_max] = state[n_max:2 * n_max - 1]
+    rmom_full[-1] = neumann_boundary_value(rmom_full, grid.D, boundary_index=-1)
+    return rfield_full, rmom_full
+
+
+def self_check_response_assembled_operator(
+    n_max: int, alpha: float, N: float, epsilon_core: float = DEFAULT_EPSILON_CORE,
+    fd_eps: float = _FD_EPS,
+) -> float:
+    """
+    Self-check companion to assemble_response_operator_strong: builds a
+    central finite-difference Jacobian of
+    _response_rhs_strong_spatial_only (the frozen, spatial-only-isolated
+    local copy above) at the same frozen (n_max, alpha, N, epsilon_core)
+    point, and compares it to assemble_response_operator_strong's own
+    hand-assembled matrix -- the response-sector analogue of
+    self_check_assembled_operator.
+    """
+    grid = LGLCollocationGrid(n_max + 1)
+    n_state = 2 * n_max - 1
+
+    H_sq_nl_init = 1.0
+    potential = _FrozenCoefficientPotential(H_sq_value=H_sq_nl_init, epsilon_value=epsilon_core)
+
+    phi0, pi0 = 0.3, -0.05
+    phi_splines = [_ConstSpline(phi0) for _ in range(n_max + 1)]
+    pi_splines = [_ConstSpline(pi0) for _ in range(n_max + 1)]
+
+    state0 = _pack_response_state_strong(np.zeros(n_max + 1), np.zeros(n_max + 1))
+
+    def _spatial_only(state: np.ndarray) -> np.ndarray:
+        return _response_rhs_strong_spatial_only(
+            N, state, alpha, H_sq_nl_init, grid, phi_splines, pi_splines, potential,
+        )
+
+    jacobian = np.empty((n_state, n_state))
+    for k in range(n_state):
+        e_k = np.zeros(n_state)
+        e_k[k] = fd_eps
+        jacobian[:, k] = (_spatial_only(state0 + e_k) - _spatial_only(state0 - e_k)) / (2.0 * fd_eps)
+
+    matrix, _ = assemble_response_operator_strong(n_max, alpha, N, epsilon_core)
+    return float(np.max(np.abs(matrix - jacobian)))
+
+
+def sweep_response_eigenvalues(
+    n_max_values, alpha_values, N_values, epsilon_core: float = DEFAULT_EPSILON_CORE,
+    closure: str = "strong",
+):
+    """
+    Response-sector analogue of sweep_eigenvalues: one row per (n_max, alpha,
+    N) combination, using response_spectral_stability_metrics (NOT
+    spectral_stability_metrics directly -- see this section's module
+    comment) so the reported spectral_abscissa/n_rhp/growth_efold_time are
+    the backward-integration-relevant quantities.
+
+    closure="strong" (default): the pre-port Neumann-eliminated/plain-product
+    assemble_response_operator_strong. closure="sbp-sat" (prompt 23 Phase 1
+    candidate): assemble_response_operator_sbp_sat instead.
+    """
+    rows = []
+    for n_max in n_max_values:
+        for alpha in alpha_values:
+            for N in N_values:
+                if closure == "sbp-sat":
+                    matrix, delta_s_N, _tau, _A_core = assemble_response_operator_sbp_sat(
+                        n_max, alpha, N, epsilon_core,
+                    )
+                elif closure == "strong":
+                    matrix, delta_s_N = assemble_response_operator_strong(n_max, alpha, N, epsilon_core)
+                else:
+                    raise ValueError(
+                        f"sweep_response_eigenvalues: closure must be 'strong' or 'sbp-sat', got {closure!r}"
+                    )
+                eigvals = np.linalg.eigvals(matrix)
+                op_norm = float(np.linalg.norm(matrix, ord=2))
+                max_abs_re = float(np.max(np.abs(eigvals.real)))
+                max_abs_im = float(np.max(np.abs(eigvals.imag)))
+                max_abs_lambda = float(np.max(np.abs(eigvals)))
+                implied_dt = (
+                    RK45_REAL_AXIS_STABILITY_RADIUS / max_abs_lambda
+                    if max_abs_lambda > 0.0 else float("inf")
+                )
+                stability_metrics = response_spectral_stability_metrics(eigvals)
+                rows.append({
+                    "n_max": n_max,
+                    "alpha": alpha,
+                    "N": N,
+                    "delta_s_N": delta_s_N,
+                    "op_norm": op_norm,
+                    "max_abs_re_lambda": max_abs_re,
+                    "max_abs_im_lambda": max_abs_im,
+                    "implied_rk45_max_dt": implied_dt,
+                    **stability_metrics,
+                })
+    return rows
+
+
+# ---------------------------------------------------------------------------
 # Discrete adjoint-consistency diagnostic (prompt 18, metric fixes in 18a)
 #
 # Measurement only, sibling to the eigenvalue sweep above: assembles the
@@ -790,7 +1173,7 @@ def _block_mismatch(
 
 def _forward_operator_full_node(
     grid, alpha: float, N: float, epsilon_core: float,
-    *, include_gradient: bool, include_advection: bool,
+    *, include_gradient: bool, include_advection: bool, advection_fn=advection_term,
 ) -> np.ndarray:
     """
     Full-node forward spatial operator (no boundary elimination -- every
@@ -800,6 +1183,16 @@ def _forward_operator_full_node(
     the gradient and advection contributions independently maskable so the
     "advection-only"/"gradient-only" block-mismatch decomposition (prompt 18)
     can reuse this one assembly rather than three near-duplicates.
+
+    advection_fn (default advection_term, prompt 18/18a's own plain-product
+    convention): pass advection_split_term (prompt 23) to build the operator
+    with the SAME split-form advection the current PRODUCTION forward_rhs.py
+    actually uses (prompt 21a) -- see
+    compute_forward_sat_vs_response_adjoint_diagnostics below, which uses
+    this to re-run the adjoint-consistency check against the closure that is
+    actually live in production, not the pre-prompt-21 baseline this
+    function still defaults to (so existing prompt-18/18a callers/tests are
+    completely unaffected by this parameter's addition).
     """
     n_full = grid.n_collocation_points
     delta_s_N = float(delta_s(N, 0.0, 1.0, 1.0, alpha))
@@ -816,8 +1209,8 @@ def _forward_operator_full_node(
         else:
             gradient_term = np.zeros(n_full)
         if include_advection:
-            advection_phi = advection_term(phi_full, A_array, grid.D)
-            advection_pi = advection_term(pi_full, A_array, grid.D)
+            advection_phi = advection_fn(phi_full, A_array, grid.D)
+            advection_pi = advection_fn(pi_full, A_array, grid.D)
         else:
             advection_phi = np.zeros(n_full)
             advection_pi = np.zeros(n_full)
@@ -960,6 +1353,81 @@ def sweep_adjoint_diagnostics(n_max_values, alpha_values, N_values, epsilon_core
         for alpha in alpha_values:
             for N in N_values:
                 diagnostics = compute_adjoint_diagnostics(n_max, alpha, N, epsilon_core)
+                row = {"n_max": n_max, "alpha": alpha, "N": N}
+                row.update(diagnostics)
+                rows.append(row)
+    return rows
+
+
+def compute_forward_sat_vs_response_adjoint_mismatch(
+    n_max: int, alpha: float, N: float, epsilon_core: float = DEFAULT_EPSILON_CORE,
+) -> dict:
+    """
+    Prompt 23 Phase 1's adjoint-consistency checkbox: "Run 18a's
+    boundary-mismatch check on the SAT'd forward/response pair; confirm the
+    boundary mismatch does not grow with n and the response closure is the
+    forward's discrete adjoint to the expected level."
+
+    Since Phase 1's own eigenvalue diagnostic (assemble_response_operator_sbp_sat,
+    response_spectral_stability_metrics -- see that section's module
+    comment) found the response sector's pre-port "strong" closure is
+    ALREADY bounded in n_max for its own (backward) integration direction,
+    and a naive same-recipe SBP-SAT port makes the safe-direction stiffness
+    (max Re) markedly WORSE with no compensating benefit (the design note
+    has the full numbers), prompt 23 does NOT port the response sector's
+    advection to the SBP-SAT closure (see this module's own response-sector
+    section for the full account). "The SAT'd forward/response pair" this
+    function checks is therefore: the CURRENT PRODUCTION forward operator
+    (prompt 21a's split-form advection, via _forward_operator_full_node's
+    advection_fn=advection_split_term) against the UNCHANGED response
+    operator (_response_operator_full_node, plain advection_term, as it was
+    pre-prompt-23) -- i.e. this directly answers "did porting the FORWARD
+    sector alone (already done, prompt 21a) leave the two sectors'
+    boundary-mismatch bounded, or did it introduce a NEW n-growing
+    mismatch by making the two sectors' advection treatments asymmetric?"
+
+    Returns a dict with the same block_mismatch_*/block_mismatch_*_interior
+    keys as compute_adjoint_diagnostics, computed for the FULL operator
+    (gradient + advection together) only -- the advection-only/gradient-only
+    decomposition is not repeated here since compute_adjoint_diagnostics
+    already establishes (prompt 18a) that the gradient piece alone is not
+    the source of any n-growth; this function's whole purpose is the
+    advection-closure-asymmetry question specifically.
+    """
+    grid = LGLCollocationGrid(n_max + 1)
+    delta_s_N = float(delta_s(N, 0.0, 1.0, 1.0, alpha))
+    n_full = grid.n_collocation_points
+    keep = _interior_node_indices(n_full)
+
+    w_full_node = _node_weight_array(grid, delta_s_N)
+    w_b_full_node = np.concatenate([w_full_node, w_full_node])
+    keep2 = np.concatenate([keep, keep + n_full])
+
+    F_sat = _forward_operator_full_node(
+        grid, alpha, N, epsilon_core, include_gradient=True, include_advection=True,
+        advection_fn=advection_split_term,
+    )
+    R_unchanged = _response_operator_full_node(
+        grid, alpha, N, epsilon_core, include_gradient=True, include_advection_and_c=True,
+    )
+
+    return {
+        "delta_s_N": delta_s_N,
+        "block_mismatch_full": _block_mismatch(F_sat, R_unchanged, w_b_full_node),
+        "block_mismatch_full_interior": _block_mismatch(F_sat, R_unchanged, w_b_full_node, keep=keep2),
+    }
+
+
+def sweep_forward_sat_vs_response_adjoint_mismatch(
+    n_max_values, alpha_values, N_values, epsilon_core: float = DEFAULT_EPSILON_CORE,
+):
+    """Computes one row per (n_max, alpha, N) combination -- see
+    compute_forward_sat_vs_response_adjoint_mismatch's own docstring."""
+    rows = []
+    for n_max in n_max_values:
+        for alpha in alpha_values:
+            for N in N_values:
+                diagnostics = compute_forward_sat_vs_response_adjoint_mismatch(n_max, alpha, N, epsilon_core)
                 row = {"n_max": n_max, "alpha": alpha, "N": N}
                 row.update(diagnostics)
                 rows.append(row)
