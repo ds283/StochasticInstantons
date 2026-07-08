@@ -68,6 +68,7 @@ def _compute_full_instanton(
     import numpy as np
     from scipy.integrate import solve_ivp
     from Interpolation.spline_wrapper import SplineWrapper
+    from Numerics.ShootingSolver import solve_shooting
 
     compute_start = time.perf_counter()
     ode_solve_count = 0
@@ -204,63 +205,65 @@ def _compute_full_instanton(
 
         return p1_arr, p2_arr, P1_new, P2_new, n_inner_iters
 
-    # ── Outer Newton loop on λ ────────────────────────────────────────────
-    lam = 0.0
+    # ── Outer shooting loop on λ (prompt 22c) ──────────────────────────────
+    # Was a bare finite-difference Newton probe (dlam~1e-6) -- flagged as
+    # poorly conditioned (.documents/gradient-coupled-instanton/
+    # 22-validation.md Finding 1b) once genuine (not just trivial-lambda=0)
+    # shooting problems are exercised, and now on the critical path as
+    # GradientCoupledInstanton's own seed source (prompt 22c). Ported to the
+    # same secant/Armijo-backtracking/trust-region hardening
+    # GradientCoupledInstanton's own outer loop uses (prompt 22b), factored
+    # into Numerics/ShootingSolver.py so neither module duplicates it.
     phi1_f = phi1_curr
     phi2_f = phi2_curr
     P1_f   = np.zeros_like(N_grid)
     P2_f   = np.zeros_like(N_grid)
-    converged = False
-    final_residual = None
-    outer_iterations = 0
-    newton_fallback_count = 0
     picard_iterations_per_outer = []
     picard_time_total = 0.0
     picard_iters_total = 0
 
-    for outer in range(MAX_OUTER):
-        outer_iterations = outer + 1
+    def evaluate(lam: float):
+        nonlocal picard_time_total, picard_iters_total
         picard_start = time.perf_counter()
         p1, p2, P1, P2, n_inner = picard_inner(lam, phi1_f, phi2_f)
         picard_time_total += time.perf_counter() - picard_start
         picard_iters_total += n_inner
         picard_iterations_per_outer.append(n_inner)
         if p1 is None:
-            print(f"[{_lbl}] Picard inner failed at outer iter {outer}")
-            break
-
+            print(f"[{_lbl}] Picard inner failed at lambda={lam:.6g}")
+            return None, False, None
         residual = p1[-1] - phi_final
-        final_residual = abs(residual)
         if verbose:
             rho_T = compute_rho(p1[-1], p2[-1])
             print(
-                f"[{_lbl}] outer {outer}: lambda={lam:.4g}, "
+                f"[{_lbl}] lambda={lam:.4g}, "
                 f"phi1(T)={p1[-1]:.6g}, phi2(T)={p2[-1]:.6g}, "
                 f"rho(T)={rho_T:.6g}, "
                 f"res={residual:.2e}"
             )
+        return residual, True, (p1, p2, P1, P2)
 
+    def commit(aux):
+        nonlocal phi1_f, phi2_f, P1_f, P2_f
+        p1, p2, P1, P2 = aux
         phi1_f, phi2_f, P1_f, P2_f = p1, p2, P1, P2
 
-        if abs(residual) < OUTER_TOL:
-            converged = True
-            break
-
-        # Finite-difference Newton step
-        dlam = max(abs(lam) * 1e-4, 1e-6)
-        picard_start = time.perf_counter()
-        p1_p, p2_p, _, _, n_inner_p = picard_inner(lam + dlam, phi1_f, phi2_f)
-        picard_time_total += time.perf_counter() - picard_start
-        picard_iters_total += n_inner_p
-        picard_iterations_per_outer.append(n_inner_p)
-        if p1_p is not None:
-            dres_dlam = (p1_p[-1] - p1[-1]) / dlam
-            if abs(dres_dlam) > 1e-14:
-                lam -= residual / dres_dlam
-                continue
-        # Fallback nudge
-        newton_fallback_count += 1
-        lam += (phi_final - p1[-1]) * 0.1
+    # trust_radius_max is set far above GradientCoupledInstanton's own
+    # default (1e2): FullInstanton's own lambda = P1(N_total) can
+    # legitimately need to reach O(1e9) when the diffusion coefficient is
+    # astronomically small (prompt 21a's own observation, reconfirmed while
+    # validating prompt 22c's FullInstanton-seeding hypothesis) -- capping
+    # the trust region anywhere near GCI's O(1-100) scale would make that
+    # regime permanently unreachable regardless of stall_growth.
+    shoot = solve_shooting(
+        evaluate, commit, lam0=0.0, tol=OUTER_TOL, max_outer=MAX_OUTER,
+        trust_radius_max=1.0e15,
+    )
+    converged = shoot.converged
+    final_residual = shoot.final_residual
+    outer_iterations = shoot.outer_iterations
+    newton_fallback_count = shoot.newton_fallback_count
+    lam = shoot.lam
 
     diagnostics = {
         "compute_time": time.perf_counter() - compute_start,

@@ -41,20 +41,26 @@ single ``D_phi`` term ``FullInstanton``'s own code computes; see that
 module's docstring for why the extra terms must not be dropped by analogy
 with ``FullInstanton``.
 
-``full_instanton`` (prompt 21a, optional): a ``FullInstantonProxy`` for the
-upstream homogeneous instanton at the same ``(trajectory, N_init, N_final,
-delta_Nstar)``, used ONLY as the sweep-0 seed for ``picard.solve_picard``'s
-lagged pi_core SAT target -- see ``picard.py``'s own module docstring for
-the full closure. It is deliberately NOT part of this object's persisted
-identity (the factory's lookup query never references it): the seed only
-affects how many Picard sweeps a solve takes to converge, never the
-converged answer, so two ``GradientCoupledInstanton`` rows that differ only
-in which ``FullInstanton`` (if any) was available to seed them are the same
-physical object. Datastore access only happens on the driver, never inside
-a ``@ray.remote`` worker (``.claude/rules/ray-dispatch.md``), so fetching
-this proxy -- when the pipeline has one available -- is main.py's
-responsibility (``_run_gradient_branch``); ``None`` here just means "solve
-inline instead" (``picard.solve_picard``'s own fetch-then-fallback).
+``full_instanton`` (prompt 21a, optional; repurposed prompt 22c): a
+``FullInstantonProxy`` for the upstream homogeneous instanton at the same
+``(trajectory, N_init, N_final, delta_Nstar)``, used to seed
+``picard.solve_picard``'s outer-Newton ``lambda`` and onion-interpolated
+forward-field guess, AND as the (now FIXED, not lagged/self-consistent)
+``pi_core`` SAT target -- see ``picard.py``'s own module docstring for the
+full closure and its "self-consistent target abandoned" history. It is
+deliberately NOT part of this object's persisted identity (the factory's
+lookup query never references it): two ``GradientCoupledInstanton`` rows
+that differ only in which ``FullInstanton`` (if any) seeded them are the
+same physical object, since a genuinely different ``FullInstanton`` profile
+only ever changes this by a small, quantified bias (prompt 22c's own
+fixed-target-bias acceptance check) -- NOT the qualitative claim prompt 21a
+made ("never the converged answer"), which was only ever true of the
+lagged/self-consistent target that prompt 22c replaces. Datastore access
+only happens on the driver, never inside a ``@ray.remote`` worker
+(``.claude/rules/ray-dispatch.md``), so fetching this proxy -- when the
+pipeline has one available -- is main.py's responsibility
+(``_run_gradient_branch``); ``None`` here just means "solve inline instead"
+(``picard.solve_picard``'s own fetch-then-fallback).
 """
 
 from datetime import datetime
@@ -113,17 +119,21 @@ def _compute_gradient_coupled_instanton(
     Solve the gradient-coupled instanton BVP and extract its physical
     profile, per the ten-step pipeline in prompt 14 Part C.
 
-    full_instanton (prompt 21a, optional): a FullInstantonProxy for the
-    upstream homogeneous instanton at the same (trajectory, N_init, N_final,
-    delta_Nstar), materialised here (proxy.get(), per
-    .claude/rules/proxy-pattern.md -- never reach past the proxy) and, if it
-    has succeeded and has per-sample values available, passed down into
-    solve_picard as the sweep-0 seed for the lagged pi_core SAT target. See
-    picard.py's own module docstring and _seed_pi_core_values's docstring
-    for the full fetch-then-fallback preference order; solve_picard computes
-    a FullInstanton profile inline (bypassing Ray) when this is None or
-    unusable, so this parameter only ever affects iteration count, never the
-    physics result.
+    full_instanton (prompt 21a, optional; repurposed prompt 22c): a
+    FullInstantonProxy for the upstream homogeneous instanton at the same
+    (trajectory, N_init, N_final, delta_Nstar), materialised here
+    (proxy.get(), per .claude/rules/proxy-pattern.md -- never reach past the
+    proxy) and, if it has succeeded and has per-sample values available,
+    passed down into solve_picard to seed the outer Newton lambda, the
+    onion-interpolated forward-field guess, AND the (now fixed, not lagged)
+    pi_core SAT target. See picard.py's own module docstring and
+    _fetch_full_instanton_profile's docstring for the full fetch-then-
+    fallback preference order; solve_picard computes a FullInstanton profile
+    inline (bypassing Ray) when this is None or unusable. This parameter
+    affects the converged answer only by a small, quantified bias (prompt
+    22c's fixed-target-bias acceptance check) -- not "iteration count only",
+    which was true of prompt 21a's lagged/self-consistent target but is no
+    longer the mechanism in use.
 
     instrument_stiffness (prompt 17 Part B; default True): threaded straight
     through to solve_picard, which instruments every RK45 solve_ivp call it
@@ -221,19 +231,30 @@ def _compute_gradient_coupled_instanton(
             "diagnostics": diagnostics,
         }
 
-    # ── Step 3b: materialise the FullInstanton SAT seed, if one was fetched
-    # by the driver (prompt 21a) -- .get() per .claude/rules/proxy-pattern.md,
-    # never reach past the proxy. Only its per-sample (N, phi2) values are
-    # needed (solve_picard's own _seed_pi_core_values reads exactly those two
+    # ── Step 3b: materialise the FullInstanton seed, if one was fetched
+    # by the driver (prompt 21a; extended prompt 22c) -- .get() per
+    # .claude/rules/proxy-pattern.md, never reach past the proxy. Its
+    # per-sample (N, phi1, phi2) values plus final_lambda are needed
+    # (solve_picard's own _fetch_full_instanton_profile reads exactly these
     # keys); None here just means "solve_picard computes one inline instead".
     full_instanton_seed = None
     if full_instanton is not None and full_instanton.available:
         fi_obj = full_instanton.get()
         if not fi_obj.failure and fi_obj.values:
+            fi_diagnostics = fi_obj.diagnostics or {}
             full_instanton_seed = {
                 "failure": False,
                 "N_sample": [v.N.N for v in fi_obj.values],
+                "phi1": [v.phi1 for v in fi_obj.values],
                 "phi2": [v.phi2 for v in fi_obj.values],
+                # FullInstanton's own converged terminal multiplier
+                # (P1-equivalent) -- used to seed the outer Newton loop's
+                # lambda (prompt 22c) so it starts next to the solution
+                # rather than at lambda=0. Falls back to 0.0 if somehow
+                # absent (should not happen for a converged, non-failing
+                # FullInstanton, but avoids a KeyError over a purely
+                # convenience diagnostic field).
+                "final_lambda": fi_diagnostics.get("final_lambda", 0.0),
             }
 
     # ── Step 4: the full Picard/shooting pipeline ────────────────────────────

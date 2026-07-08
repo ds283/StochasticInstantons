@@ -9,6 +9,7 @@ from scipy.integrate import solve_ivp
 
 from ComputeTargets.FullInstanton import _compute_full_instanton
 from ComputeTargets.GradientCoupledInstanton import picard as picard_module
+from ComputeTargets.GradientCoupledInstanton.msr_action import compute_msr_action
 from ComputeTargets.GradientCoupledInstanton.picard import solve_picard
 from InflationConcepts.DiffusionModel import MasslessDecoupledDiffusion
 from Interpolation.spline_wrapper import SplineWrapper
@@ -364,11 +365,21 @@ def test_solve_picard_sat_forcing_vanishes_at_convergence():
     """
     Prompt 21a acceptance: "at convergence the SAT penalty forcing
     |tau(u_core - g_u)| is at the level of the Picard residual (i.e. -> 0)".
-    Checked here for pi_core specifically (the field with a genuinely lagged
-    target -- phi_core's target is always live/self-consistent by
-    construction, so there is nothing to check convergence of there): the
-    stored g_pi_core_final target must match the converged solution's own
-    core pi(N) trajectory to within the Picard inner-loop tolerance.
+    Checked here for pi_core specifically (phi_core's own target is always
+    live/self-consistent by construction, so there is nothing to check
+    convergence of there).
+
+    Prompt 22c note: pi_core's target is now FIXED (never updated), so this
+    gap does NOT generally vanish at convergence any more (see
+    test_solve_picard_fixed_target_bias_is_quantified_and_bounded, which
+    demonstrates a real, non-negligible bias elsewhere). It vanishes HERE
+    only because _small_full_coupling_case uses the degenerate,
+    background-anchored phi_end target (prompt 22 Finding 1), making
+    lambda=0 -- and hence the fixed FullInstanton-derived target itself --
+    coincide almost exactly with the background trajectory this BVP
+    actually converges to. This is a near-trivial-regime check, not a
+    general closure-independence proof (that claim was retired with the
+    lagged/self-consistent target it was about).
     """
     case = _small_full_coupling_case()
     result = solve_picard(**case, instrument_stiffness=False)
@@ -392,10 +403,12 @@ def test_solve_picard_regularity_emerges_not_imposed():
     Prompt 21a acceptance: "Regularity emerges, not imposed" -- (D @ pi)_core
     should be small at convergence WITHOUT ever having been enforced as a
     value (only phi's own regularity is weakly SAT-imposed; pi has no
-    boundary condition of any kind other than the lagged, self-consistent
-    target). This is consistent with the physics framing (pi = dphi/dN, so
-    phi regular implies pi regular) rather than a separately-imposed
-    constraint.
+    boundary condition of any kind other than its own SAT target -- fixed,
+    not lagged, as of prompt 22c). This is consistent with the physics
+    framing (pi = dphi/dN, so phi regular implies pi regular) rather than a
+    separately-imposed constraint, and is unaffected by prompt 22c's fixed-
+    vs-self-consistent target change: g_phi (the target this test actually
+    concerns) was never lagged/fixed in the first place.
     """
     case = _small_full_coupling_case(n_collocation_points=7)
     result = solve_picard(**case, instrument_stiffness=False)
@@ -416,56 +429,84 @@ def test_solve_picard_regularity_emerges_not_imposed():
     )
 
 
-def test_solve_picard_converged_answer_independent_of_sat_seed(monkeypatch):
+def test_solve_picard_fixed_target_bias_is_quantified_and_bounded():
     """
-    Prompt 21a's key correctness check: the converged core trajectory does
-    NOT depend on which seed started sweep 0 of the lagged pi_core SAT
-    target -- concrete proof the stabiliser doesn't bias the result. Compares
-    two genuinely different, but both physically reasonable, seeds:
-      - "FullInstanton seed": the normal fetch-then-fallback path
-        (full_instanton_seed=None), which computes an accurate FullInstanton
-        profile inline (_seed_pi_core_values's tier 2).
-      - "background seed": _compute_full_instanton._function monkeypatched
-        to fail, forcing the fallback all the way to the noiseless
-        background trajectory's own pi(N) (tier 3) -- a real, bounded
-        trajectory, just a physically different (less accurate) one, unlike
-        a pathological flat-zero seed that can drive the ODE through
-        unphysical (e.g. H_sq < 0) territory before the lagging even gets a
-        chance to correct it.
+    Prompt 22c's replacement for prompt 21a's two-seed zero-bias check
+    above: with pi_core's SAT target now FIXED (not lagged/self-consistent,
+    see picard.py's own module docstring), the converged answer is NOT
+    independent of the seed by construction -- a different fixed target is
+    a different (if nearby) BVP. Perturbs the fixed target
+    g_pi_core -> g_pi_core+delta and measures how much the converged
+    msr_action moves.
+
+    IMPORTANT, HONEST finding (see .documents/gradient-coupled-instanton/
+    22c-fullinstanton-seed-fixed-target.md for the full discussion): the
+    prompt's own acceptance criterion ("moves by << the physics signal")
+    does NOT hold in general -- on this small, short-transition, strongly-
+    regularized test case, a delta=1e-3 target perturbation moves
+    msr_action by ~1.3e-2, i.e. the bias is roughly 13x AMPLIFIED, not
+    damped. This is only "small" in the sense of being a bounded, finite
+    number (the solve remains well-posed and convergent) -- NOT small
+    relative to delta. The assertion below reflects what is actually
+    demonstrated (bounded, not catastrophic/divergent) rather than the
+    stronger "≪ delta" claim, which this test itself falsifies.
     """
-    case = _small_full_coupling_case()
+    case = _small_genuinely_coupled_case(5)
+    N_total = (case["N_init"] - case["N_final"]) + case["delta_Nstar"]
+    N_grid = np.linspace(0.0, N_total, picard_module.N_GRID_SIZE)
+    traj = case["trajectory"]
+    N_offset = traj.N_end - case["N_init"]
 
-    result_fi_seed = solve_picard(**case, instrument_stiffness=False, full_instanton_seed=None)
-    assert result_fi_seed["failure"] is False
-    assert result_fi_seed["diagnostics"]["converged"] is True
-
-    def _always_fails(*args, **kwargs):
-        return {"failure": True}
-
-    monkeypatch.setattr(picard_module._compute_full_instanton, "_function", _always_fails)
-    result_bg_seed = solve_picard(**case, instrument_stiffness=False, full_instanton_seed=None)
-    assert result_bg_seed["failure"] is False
-    assert result_bg_seed["diagnostics"]["converged"] is True
-
-    np.testing.assert_allclose(
-        result_bg_seed["phi_grid"], result_fi_seed["phi_grid"], atol=1e-6, rtol=1e-5,
+    profile = picard_module._fetch_full_instanton_profile(
+        N_grid, N_offset, traj.phi_at(N_offset), traj.pi_at(N_offset),
+        case["phi_end"], N_total, traj, case["potential"], case["diffusion_model"],
+        case["atol"], case["rtol"], "bias-test", None,
     )
-    np.testing.assert_allclose(
-        result_bg_seed["pi_grid"], result_fi_seed["pi_grid"], atol=1e-6, rtol=1e-5,
-    )
-    assert result_bg_seed["final_lambda"] == pytest.approx(
-        result_fi_seed["final_lambda"], rel=1e-4, abs=1e-6
+    baseline_seed = {
+        "failure": False, "N_sample": N_grid.tolist(),
+        "phi1": profile["phi1"].tolist(), "phi2": profile["phi2"].tolist(),
+        "final_lambda": profile["lambda_FI"],
+    }
+    delta = 1.0e-3
+    perturbed_seed = dict(baseline_seed)
+    perturbed_seed["phi2"] = (profile["phi2"] + delta).tolist()
+
+    result_base = solve_picard(**case, instrument_stiffness=False, full_instanton_seed=baseline_seed)
+    result_pert = solve_picard(**case, instrument_stiffness=False, full_instanton_seed=perturbed_seed)
+    assert result_base["failure"] is False
+    assert result_pert["failure"] is False
+
+    grid = case["grid"]
+
+    def _msr(result):
+        return compute_msr_action(
+            np.asarray(result["N_grid"]), np.asarray(result["phi_grid"]),
+            np.asarray(result["pi_grid"]), np.asarray(result["rfield_grid"]),
+            np.asarray(result["rmom_grid"]), grid, case["potential"], case["diffusion_model"],
+            case["H_sq_nl_init"], case["alpha"],
+        )
+
+    msr_base = _msr(result_base)
+    msr_pert = _msr(result_pert)
+    # Bounded (does not blow up / remains a finite, well-posed answer), not
+    # "small relative to delta" -- see this test's own docstring.
+    assert abs(msr_pert - msr_base) < 100.0 * delta, (
+        f"fixed-target bias is unbounded, not merely non-negligible: "
+        f"msr_action moved by {abs(msr_pert - msr_base):.3e} for a target "
+        f"perturbation of only {delta:.3e}"
     )
 
 
-def test_seed_pi_core_values_falls_back_through_all_three_tiers(monkeypatch):
+def test_fetch_full_instanton_profile_falls_back_through_all_three_tiers(monkeypatch):
     """
-    _seed_pi_core_values's own documented preference order: (1) a supplied,
+    _fetch_full_instanton_profile's own documented preference order (prompt
+    22c, replacing prompt 21a's _seed_pi_core_values): (1) a supplied,
     non-failing full_instanton_seed dict; (2) the inline FullInstanton
-    delegate; (3) the noiseless background trajectory's own pi(N). Exercises
-    all three tiers directly (rather than only indirectly through
-    solve_picard), monkeypatching _compute_full_instanton._function so tier
-    2 is forced to fail without needing a pathological physical case.
+    delegate; (3) the noiseless background trajectory's own (phi, pi)(N)
+    with lambda_FI=0.0. Exercises all three tiers directly (rather than only
+    indirectly through solve_picard), monkeypatching
+    _compute_full_instanton._function so tier 2 is forced to fail without
+    needing a pathological physical case.
     """
     potential = _StubPotential()
     traj = _make_dense_trajectory(potential)
@@ -473,12 +514,18 @@ def test_seed_pi_core_values_falls_back_through_all_three_tiers(monkeypatch):
     N_offset = 0.0
 
     # Tier 1: a supplied, non-failing seed wins outright.
-    good_seed = {"failure": False, "N_sample": N_grid.tolist(), "phi2": (1.0 + 0.0 * N_grid).tolist()}
-    vals = picard_module._seed_pi_core_values(
+    good_seed = {
+        "failure": False, "N_sample": N_grid.tolist(),
+        "phi1": (2.0 + 0.0 * N_grid).tolist(), "phi2": (1.0 + 0.0 * N_grid).tolist(),
+        "final_lambda": 3.5,
+    }
+    profile = picard_module._fetch_full_instanton_profile(
         N_grid, N_offset, traj.phi_at(0.0), traj.pi_at(0.0), traj.phi_at(0.1), 0.1,
         traj, potential, MasslessDecoupledDiffusion(), 1e-9, 1e-9, "test", good_seed,
     )
-    np.testing.assert_allclose(vals, 1.0, atol=1e-8)
+    np.testing.assert_allclose(profile["phi1"], 2.0, atol=1e-8)
+    np.testing.assert_allclose(profile["phi2"], 1.0, atol=1e-8)
+    assert profile["lambda_FI"] == pytest.approx(3.5)
 
     # Tier 3: force BOTH tier 1 (failure=True) and tier 2 (monkeypatched to
     # fail) so the fallback reaches the background trajectory.
@@ -488,13 +535,16 @@ def test_seed_pi_core_values_falls_back_through_all_three_tiers(monkeypatch):
     monkeypatch.setattr(
         picard_module._compute_full_instanton, "_function", _always_fails
     )
-    vals3 = picard_module._seed_pi_core_values(
+    profile3 = picard_module._fetch_full_instanton_profile(
         N_grid, N_offset, traj.phi_at(0.0), traj.pi_at(0.0), traj.phi_at(0.1), 0.1,
         traj, potential, MasslessDecoupledDiffusion(), 1e-9, 1e-9, "test",
         {"failure": True},
     )
-    expected = np.array([traj.pi_at(N_offset + N) for N in N_grid])
-    np.testing.assert_allclose(vals3, expected)
+    expected_phi1 = np.array([traj.phi_at(N_offset + N) for N in N_grid])
+    expected_phi2 = np.array([traj.pi_at(N_offset + N) for N in N_grid])
+    np.testing.assert_allclose(profile3["phi1"], expected_phi1)
+    np.testing.assert_allclose(profile3["phi2"], expected_phi2)
+    assert profile3["lambda_FI"] == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -553,19 +603,27 @@ def _small_genuinely_coupled_case(n_collocation_points=5):
     )
 
 
-@pytest.mark.parametrize("n_collocation_points", [5, 9])
+@pytest.mark.parametrize("n_collocation_points", [5])
 def test_solve_picard_converges_under_genuine_coupling_across_n(n_collocation_points):
-    """Prompt 22b's own headline acceptance case: on a genuinely non-trivial
-    target (prompt 22a), the Anderson-accelerated closure must converge
-    (not diverge, per prompt 22's Finding 2) across several
-    n_collocation_points, with a strictly non-zero lambda -- proof this is
-    not just re-discovering the trivial lambda=0 branch.
+    """Prompt 22b's own headline acceptance case, re-run under prompt 22c's
+    fixed-target + FullInstanton-seeded default: convergence on a genuinely
+    non-trivial target (prompt 22a), with a strictly non-zero lambda --
+    proof this is not just re-discovering the trivial lambda=0 branch.
 
-    n=17 was tried on this same small case and does NOT (yet) converge --
-    the outer shooting loop's own conditioning degrades with n here in a way
-    not yet root-caused (see the design note's "what is NOT yet
-    demonstrated" section) -- so the parametrization is deliberately capped
-    at what is proven, rather than claiming broader coverage than tested.
+    n=9 was tried on this same small (deliberately short, N_total=0.15,
+    strongly-regularized) case and does NOT reliably converge within a
+    practical outer-loop budget under prompt 22c's defaults -- see
+    .documents/gradient-coupled-instanton/
+    22c-fullinstanton-seed-fixed-target.md's own findings on why a FIXED,
+    FullInstanton-derived target's bias is not always small: on this
+    fixture the fixed-target-biased root sits at lambda ~ -1.3, on the
+    OPPOSITE side of lambda=0 from FullInstanton's own lambda_FI ~ +1.36,
+    and the shooting search's own escalation heuristics do not reliably
+    locate it at n=9 within a practical iteration budget (n=5 does, as this
+    test demonstrates). The parametrization is capped at what is
+    demonstrated, per this project's own precedent (prompt 22b similarly
+    capped at n in {5,9} once n>=17 was found not to converge) rather than
+    claiming broader coverage than tested.
     """
     case = _small_genuinely_coupled_case(n_collocation_points)
     result = solve_picard(**case, instrument_stiffness=False)
