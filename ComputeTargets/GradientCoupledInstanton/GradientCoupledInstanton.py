@@ -194,7 +194,19 @@ def _compute_gradient_coupled_instanton(
     pi_init = traj.pi_at(N_offset)
     H_sq_nl_init = potential.H_sq(phi_init, pi_init)
 
-    phi_end = traj.phi_at(N_offset + N_total)
+    # Fixed endpoint, deliberately independent of delta_Nstar -- matches
+    # FullInstanton's own convention (ComputeTargets/FullInstanton.py ~line 650,
+    # `phi_final = traj.phi_at(N_end - N_final)`). delta_Nstar is documented
+    # (InflationConcepts/delta_Nstar.py) as the *excess* transition time: the
+    # instanton must cover the same field distance phi_init -> phi_at(N_end -
+    # N_final) as the noiseless background, but in delta_Nstar *more* e-folds
+    # (N_total already carries the excess duration below). Using
+    # `traj.phi_at(N_offset + N_total)` here instead made the target track
+    # N_total itself, so the noiseless background (integrated for exactly
+    # N_total e-folds) always lands on it exactly -- forcing lambda=0, zero
+    # response fields, and msr_action == 0 at every delta_Nstar (prompt 22
+    # Finding 1). Do not "helpfully" re-couple this to delta_Nstar again.
+    phi_end = traj.phi_at(N_offset + (N_init - N_final))
 
     def _failure_result(diagnostics: dict) -> dict:
         return {

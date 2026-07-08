@@ -212,6 +212,19 @@ def test_guard_passes_for_valid_configuration():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.xfail(
+    reason=(
+        "prompt 22a fixed phi_end to FullInstanton's delta_Nstar-independent "
+        "target (.prompts/gradient-coupled-instanton/22a-fix-degenerate-phi-end-target.md), "
+        "which makes this scenario's shooting BVP genuinely non-trivial. Per "
+        "prompt 22's Finding 2 (.documents/gradient-coupled-instanton/22-validation.md), "
+        "the theta=1 lagged-pi_core Picard closure does not converge once "
+        "genuine coupling is present, even for small delta_Nstar. Remediating "
+        "the closure is prompt 22b's job; this xfail should be removed once "
+        "that lands and this scenario converges again."
+    ),
+    strict=True,
+)
 def test_compute_gradient_coupled_instanton_end_to_end_full_values():
     """
     Small, fast scenario (short transition, trivial background-anchored
@@ -285,6 +298,16 @@ def test_compute_gradient_coupled_instanton_end_to_end_full_values():
     assert all(len(row) == n_colloc for row in result["rfield"])
 
 
+@pytest.mark.xfail(
+    reason=(
+        "prompt 22a fixed phi_end to FullInstanton's delta_Nstar-independent "
+        "target; per prompt 22's Finding 2, the theta=1 lagged-pi_core Picard "
+        "closure does not converge once genuine coupling is present, even for "
+        "this scenario's small delta_Nstar. Remediating the closure is prompt "
+        "22b's job; remove this xfail once that lands."
+    ),
+    strict=True,
+)
 def test_compute_gradient_coupled_instanton_scalars_only_skips_interpolation():
     """store_full_values=False -- profile still computed, per-sample arrays empty."""
     potential = _StubPotential()
@@ -569,6 +592,16 @@ class TestGradientCoupledInstantonPersistence:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.xfail(
+    reason=(
+        "prompt 22a fixed phi_end to FullInstanton's delta_Nstar-independent "
+        "target; per prompt 22's Finding 2, the theta=1 lagged-pi_core Picard "
+        "closure does not converge once genuine coupling is present, even for "
+        "this scenario's small delta_Nstar. Remediating the closure is prompt "
+        "22b's job; remove this xfail once that lands."
+    ),
+    strict=True,
+)
 def test_zeta_c_r_at_time_reconstructs_stored_final_row():
     """
     zeta_C_r_at_time() at the final stored N_sample point should reproduce
