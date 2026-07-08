@@ -158,6 +158,10 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
         # solve inline instead" -- see GradientCoupledInstanton.py's own
         # class docstring).
         full_instanton = payload.get("full_instanton")
+        # Prompt 24 prerequisite -- runtime-only knobs, not part of the
+        # identity query below (same rationale as full_instanton above).
+        wallclock_budget_seconds = payload.get("wallclock_budget_seconds")
+        max_step = payload.get("max_step")
 
         query = sqla.select(
             table.c.serial,
@@ -214,6 +218,8 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
                 label=label,
                 tags=tags,
                 full_instanton=full_instanton,
+                wallclock_budget_seconds=wallclock_budget_seconds,
+                max_step=max_step,
             )
 
         obj = GradientCoupledInstanton(
@@ -233,6 +239,8 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
             tags=tags,
             timestamp=row_data.timestamp,
             full_instanton=full_instanton,
+            wallclock_budget_seconds=wallclock_budget_seconds,
+            max_step=max_step,
         )
         obj._trajectory_serial = trajectory.store_id
         obj._delta_Nstar_serial = delta_Nstar_obj.store_id

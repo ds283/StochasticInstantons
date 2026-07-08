@@ -349,6 +349,34 @@ def create_argument_parser():
             "--n-collocation-points). Default: [0.01]."
         ),
     )
+    gci.add_argument(
+        "--gci-wallclock-budget-seconds",
+        type=float,
+        default=None,
+        help=(
+            "Prompt 24 prerequisite: per-solve wall-clock budget (seconds) for "
+            "GradientCoupledInstanton's Picard/shooting solve "
+            "(ComputeTargets/GradientCoupledInstanton/picard.py's own "
+            "solve_picard). A deadline checked at forward/backward RHS-call "
+            "granularity, the inner Picard sweep loop, and the outer shooting "
+            "loop -- once exceeded, the solve bails GRACEFULLY (keeps whatever "
+            "grid the last completed sweep/outer-iteration produced) rather "
+            "than running unboundedly. The outcome is tagged in "
+            "diagnostics['bailout_tag']/['bailout_reason']. Default: None "
+            "(unbounded -- matches every pre-prompt-24 run)."
+        ),
+    )
+    gci.add_argument(
+        "--gci-max-step",
+        type=float,
+        default=None,
+        help=(
+            "Prompt 24 prerequisite: forwarded as solve_ivp's own max_step for "
+            "every forward/backward RK45 solve inside solve_picard. Default: "
+            "None, which resolves to DEFAULT_MAX_STEP_FRACTION * N_total "
+            "per instanton (see picard.py)."
+        ),
+    )
 
     # Output sampling
     samp = parser.add_argument_group("Output sampling")

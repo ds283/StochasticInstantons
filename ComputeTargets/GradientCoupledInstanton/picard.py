@@ -298,6 +298,107 @@ DEFAULT_SEED_PROFILE = "linear"
 # tuned production knob; see _seed_profile_weights).
 SEED_EXPONENTIAL_RATE = 3.0
 
+# ---------------------------------------------------------------------------
+# Prompt 24 prerequisite -- wall-clock safeguard + non-convergence
+# classification. Companion timing analysis (24 Phase 0) found the
+# disqualifying gap: MAX_OUTER/MAX_INNER bound iteration COUNTS, but nothing
+# bounded wall-clock, so a single RK45 backward pass could step-halve
+# indefinitely in exactly the small-m/large-delta_Nstar corner this campaign
+# explores. Three layered defences, all optional (None/default preserves
+# every pre-existing caller's unbounded behaviour exactly):
+#   1. wallclock_budget_seconds (solve_picard param): a global deadline
+#      checked (a) inside every forward/backward RHS call -- the finest
+#      granularity, catching runaway step-halving on the very next RHS
+#      evaluation rather than waiting for a whole solve_ivp call to return;
+#      (b) at the top of picard_inner's own sweep loop; (c) inside
+#      Numerics/ShootingSolver.solve_shooting's own outer loop (deadline
+#      param there). A deadline hit is a GRACEFUL bail: whatever grid the
+#      last completed sweep/outer-iteration produced is kept and returned
+#      exactly as if MAX_INNER/MAX_OUTER had been exhausted instead --
+#      never a hard crash, never a partially-overwritten grid.
+#   2. max_step (solve_picard param, default DEFAULT_MAX_STEP_FRACTION *
+#      N_total): bounds solve_ivp's own maximum accepted step, so a single
+#      step attempt cannot itself take an unbounded stride into a poorly-
+#      resolved region before the deadline check on the NEXT RHS call gets
+#      a chance to fire.
+#   3. A Ray task-level hard timeout (outer safety net, defence-in-depth
+#      beyond 1-2 for the case the in-process deadline somehow fails to
+#      fire): NOT implemented here -- ShootingSolver.py/picard.py have no
+#      access to the Ray dispatch layer, and RayTools/RayWorkPool.py (which
+#      main.py's own gradient branch dispatches through) is protected
+#      infrastructure (CLAUDE.md) not to be modified without explicit
+#      instruction, and exposes no per-task timeout/cancel hook to layer
+#      this on top of. A driver that bypasses RayWorkPool and calls
+#      GradientCoupledInstanton.compute() ObjectRefs directly could add this
+#      via ray.wait(refs, timeout=...) + ray.cancel(ref, force=True) on
+#      whatever is still pending past budget + margin; the prompt-24
+#      campaign runs through the real main.py/RayWorkPool pipeline instead
+#      (per the prompt's own instruction), so relies on layers 1-2 alone --
+#      see .documents/gradient-coupled-instanton/
+#      24-prerequisite-wallclock-safeguard.md for the full writeup of this
+#      trade-off.
+# Every non-convergent bail (timeout, MAX_OUTER exhaustion, H_sq<0/
+# step-death) is tagged via _classify_bailout below, folded into the
+# returned "diagnostics" dict as "bailout_tag"/"bailout_reason" -- this is
+# what makes a timeout a DATA POINT (convergent-but-slow vs structural)
+# rather than a hole in the record.
+# ---------------------------------------------------------------------------
+
+DEFAULT_MAX_STEP_FRACTION = 1.0 / 50.0
+
+# Window (number of trailing outer-loop residual evaluations) and relative
+# threshold used by _classify_bailout's residual-trend heuristic below.
+RESIDUAL_TREND_WINDOW = 5
+RESIDUAL_TREND_RELATIVE_THRESHOLD = 0.05
+
+
+class _WallclockBudgetExceeded(Exception):
+    """Raised from inside a forward/backward RHS call once
+    wallclock_budget_seconds has elapsed (see the module-level comment
+    above). Caught immediately around the enclosing solve_ivp call in
+    picard_inner -- never propagates out of solve_picard itself."""
+    pass
+
+
+def _classify_bailout(
+    converged: bool,
+    ode_failure_at_bail: bool,
+    residual_history: list,
+) -> str:
+    """
+    Tags a solve_picard outcome as one of: "converged", "blown-up",
+    "diverging", "floored", "descending" -- see the module-level comment
+    above and .prompts/gradient-coupled-instanton/24-revised-deep-dive-
+    then-map.md's own definitions.
+
+    converged: the outer shooting loop reached tol.
+    ode_failure_at_bail: the LAST outer-loop evaluation failed outright
+        (H_sq_local<0, RK45 step-death, or the divergence early-exit) rather
+        than the loop simply running out of outer iterations or wall-clock
+        with its most recent evaluation still succeeding -- always
+        "blown-up" (structural), regardless of any earlier trend.
+    residual_history: abs(residual) at every SUCCESSFUL outer-loop
+        evaluation, in call order (solve_picard's own "evaluate" closure
+        appends to this).
+    """
+    if converged:
+        return "converged"
+    if ode_failure_at_bail:
+        return "blown-up"
+    if len(residual_history) < 2:
+        # No trend data (bailed before or at the second successful
+        # evaluation) -- cannot distinguish descending/floored/diverging;
+        # treat conservatively as structural rather than guessing.
+        return "blown-up"
+    window = residual_history[-min(RESIDUAL_TREND_WINDOW, len(residual_history)):]
+    baseline = max(abs(window[0]), 1.0e-300)
+    rel_change = (window[-1] - window[0]) / baseline
+    if rel_change > RESIDUAL_TREND_RELATIVE_THRESHOLD:
+        return "diverging"
+    if rel_change < -RESIDUAL_TREND_RELATIVE_THRESHOLD:
+        return "descending"
+    return "floored"
+
 
 class _AndersonMixer:
     """
@@ -713,6 +814,8 @@ def solve_picard(
     theta: float = DEFAULT_SAT_THETA,
     anderson_m: int = DEFAULT_ANDERSON_M,
     seed_profile: str = DEFAULT_SEED_PROFILE,
+    wallclock_budget_seconds: Optional[float] = None,
+    max_step: Optional[float] = None,
 ) -> dict:
     """
     Solve the gradient-coupled instanton BVP over the onion coordinate grid
@@ -746,6 +849,25 @@ def solve_picard(
     sweep-0 onion-interpolation shape between the FullInstanton core and
     noiseless-background exterior endmembers -- see _seed_profile_weights.
 
+    wallclock_budget_seconds (prompt 24 prerequisite, optional, default
+    None): a global wall-clock budget for this ENTIRE solve_picard call
+    (every outer shooting evaluation, every inner Picard sweep, every
+    forward/backward solve_ivp call). None (default) means unbounded --
+    every pre-existing caller's behaviour is unchanged. When set, a deadline
+    of compute_start + wallclock_budget_seconds is checked at RHS-call
+    granularity (the finest level, see the module-level "prerequisite"
+    comment above); once passed, the solve bails GRACEFULLY, keeping
+    whatever grid the last completed sweep/outer-iteration produced --
+    never a hard crash. The outcome is tagged via _classify_bailout and
+    exposed in "diagnostics" as "bailout_tag"/"bailout_reason".
+
+    max_step (prompt 24 prerequisite, optional, default None): forwarded to
+    every solve_ivp call as its own max_step. None (default) resolves to
+    DEFAULT_MAX_STEP_FRACTION * N_total, bounding a single accepted step to
+    a generous fraction of the whole integration span so a pathological
+    single step cannot itself run unbounded before the next RHS-level
+    deadline check gets a chance to fire.
+
     instrument_stiffness (prompt 17 Part B; default True): when True,
     every forward/backward RK45 solve_ivp call made during this solve (every
     inner-Picard forward/backward solve across every outer shooting
@@ -772,12 +894,35 @@ def solve_picard(
     compute_start = time.perf_counter()
     ode_solve_count = 0
 
+    # Prompt 24 prerequisite -- global deadline (None means unbounded, see
+    # this function's own "wallclock_budget_seconds" docstring). Checked at
+    # RHS-call granularity via _check_deadline() below.
+    deadline = (
+        None if wallclock_budget_seconds is None
+        else compute_start + wallclock_budget_seconds
+    )
+    # budget_state["hit"] is set True the moment ANY deadline check fires --
+    # read by the outer-loop bailout classification below to distinguish
+    # "ran out of wall-clock" from a genuine ODE/structural failure (only
+    # the latter is tagged "blown-up"; see _classify_bailout).
+    budget_state = {"hit": False}
+
+    def _check_deadline():
+        if deadline is not None and time.perf_counter() > deadline:
+            budget_state["hit"] = True
+            raise _WallclockBudgetExceeded()
+
     # Prompt 17 Part B -- shared accumulators mutated (via .append(), never
     # reassigned) by picard_inner's closure below; aggregated into
     # "diagnostics" at every return point via _instrumentation_diagnostics().
     fwd_rk45_stats: list = []
     bwd_rk45_stats: list = []
     picard_sweep_wallclocks: list = []
+    # Prompt 24 prerequisite -- abs(residual) at every SUCCESSFUL outer-loop
+    # evaluation, in call order; the trend this traces out is what
+    # _classify_bailout reads to tell "descending" (convergent-but-slow)
+    # apart from "floored"/"diverging" at a non-convergent bail.
+    outer_residual_history: list = []
 
     _lbl = label if label else f"phi_end={phi_end:.4g} N_init={N_init:.3g} N_final={N_final:.3g}"
 
@@ -803,6 +948,11 @@ def solve_picard(
 
     N_grid = np.linspace(N_start, N_stop, N_GRID_SIZE)
     N_grid_rev = N_grid[::-1]
+
+    # Prompt 24 prerequisite -- see this function's own "max_step" docstring.
+    effective_max_step = (
+        max_step if max_step is not None else DEFAULT_MAX_STEP_FRACTION * N_total
+    )
 
     if verbose:
         print(f"[{_lbl}] starting: n_nodes={n_nodes} N_total={N_total:.6g} "
@@ -842,6 +992,11 @@ def solve_picard(
         return rfield_grid, rmom_grid
 
     def _fwd_rhs(N, y, rfield_splines, rmom_splines, g_pi_core_spline, lam):
+        # Prompt 24 prerequisite -- finest-granularity deadline check (see
+        # the module-level comment): fires on the very next RHS evaluation,
+        # so a runaway step-halving cascade is caught promptly rather than
+        # only between whole solve_ivp calls.
+        _check_deadline()
         return forward_rhs(
             N, y, N_offset, alpha, H_sq_nl_init, grid, trajectory, potential,
             rfield_splines, rmom_splines, diffusion_model,
@@ -851,6 +1006,7 @@ def solve_picard(
         )
 
     def _bwd_rhs(N, y, phi_splines, pi_splines):
+        _check_deadline()
         return response_rhs(
             N, y, alpha, H_sq_nl_init, grid, phi_splines, pi_splines, potential,
         )
@@ -1001,6 +1157,16 @@ def solve_picard(
         bp_sol = None
 
         for _ in range(MAX_INNER):
+            # Prompt 24 prerequisite -- loop-level deadline check, BEFORE
+            # starting a new sweep: a graceful bail that simply stops here,
+            # keeping whatever phi_grid/pi_grid the last COMPLETED sweep
+            # produced -- exactly like exhausting MAX_INNER naturally (see
+            # this function's own docstring; no distinction is made
+            # downstream between "converged inner" and "ran out of
+            # iterations/budget", both proceed with whatever grid resulted).
+            if deadline is not None and time.perf_counter() > deadline:
+                budget_state["hit"] = True
+                break
             sweep_start = time.perf_counter() if (instrument_stiffness or verbose) else None
             n_inner_iters += 1
             phi_splines = _build_node_splines(N_grid, phi_grid, y_transform='linear')
@@ -1022,12 +1188,23 @@ def solve_picard(
             delta_s_N_final = delta_s(N_total, 0.0, H_sq_core_final, H_sq_nl_init, alpha)
             terminal_state = terminal_response_state_rescaled(grid, delta_s_N_final)
 
-            bp, bp_step_stats = _solve_ivp_instrumented(
-                instrument_stiffness,
-                lambda N, y: _bwd_rhs(N, y, phi_splines, pi_splines),
-                (N_stop, N_start), terminal_state, method="RK45",
-                t_eval=N_grid_rev, dense_output=True, atol=atol, rtol=rtol,
-            )
+            try:
+                bp, bp_step_stats = _solve_ivp_instrumented(
+                    instrument_stiffness,
+                    lambda N, y: _bwd_rhs(N, y, phi_splines, pi_splines),
+                    (N_stop, N_start), terminal_state, method="RK45",
+                    t_eval=N_grid_rev, dense_output=True, atol=atol, rtol=rtol,
+                    max_step=effective_max_step,
+                )
+            except _WallclockBudgetExceeded:
+                # Prompt 24 prerequisite -- caught at the same granularity as
+                # an outright ODE failure (bp.success=False below): the
+                # caller's evaluate() treats this exactly like an infeasible
+                # probe, but budget_state["hit"] (already set inside
+                # _check_deadline) lets the top-level classifier tell the
+                # two apart -- "blown-up" is reserved for a genuine ODE
+                # failure, not a wall-clock bail.
+                return None, None, None, None, n_inner_iters, None, None, g_pi_values
             ode_solve_count += 1
             if bp_step_stats is not None:
                 bwd_rk45_stats.append(bp_step_stats)
@@ -1051,12 +1228,16 @@ def solve_picard(
             # Forward pass, now sourced by the just-computed response fields
             # (rescaled -- lam supplies the physical scale back inside
             # forward_rhs/noise_source_terms).
-            fp, fp_step_stats = _solve_ivp_instrumented(
-                instrument_stiffness,
-                lambda N, y: _fwd_rhs(N, y, rfield_splines, rmom_splines, g_pi_core_spline, lam),
-                (N_start, N_stop), state_init, method="RK45",
-                t_eval=N_grid, dense_output=True, atol=atol, rtol=rtol,
-            )
+            try:
+                fp, fp_step_stats = _solve_ivp_instrumented(
+                    instrument_stiffness,
+                    lambda N, y: _fwd_rhs(N, y, rfield_splines, rmom_splines, g_pi_core_spline, lam),
+                    (N_start, N_stop), state_init, method="RK45",
+                    t_eval=N_grid, dense_output=True, atol=atol, rtol=rtol,
+                    max_step=effective_max_step,
+                )
+            except _WallclockBudgetExceeded:
+                return None, None, None, None, n_inner_iters, None, None, g_pi_values
             ode_solve_count += 1
             if fp_step_stats is not None:
                 fwd_rk45_stats.append(fp_step_stats)
@@ -1167,6 +1348,9 @@ def solve_picard(
             print(f"[{_lbl}] Picard inner failed at lambda={lam:.6g}")
             return None, False, None
         residual = pg[-1, -1] - phi_end
+        # Prompt 24 prerequisite -- the trend _classify_bailout reads at a
+        # non-convergent bail (see this function's own outer-scope comment).
+        outer_residual_history.append(abs(residual))
         if verbose:
             print(
                 f"[{_lbl}]   lambda={lam:.6g}: residual={residual:.6e} "
@@ -1196,7 +1380,34 @@ def solve_picard(
     shoot = solve_shooting(
         evaluate, commit, lam0=lam0, tol=OUTER_TOL, max_outer=MAX_OUTER,
         bootstrap_target=bootstrap_target, stall_growth=1.5,
+        deadline=deadline,
     )
+
+    # Prompt 24 prerequisite -- non-convergence classification (see the
+    # module-level comment and _classify_bailout's own docstring). A
+    # non-convergent bail is tagged "blown-up" (structural: an outright
+    # ODE/divergence failure on the LAST outer evaluation) only when neither
+    # ShootingSolver's own deadline check NOR any inner-loop/RHS-level
+    # deadline check (budget_state["hit"]) fired, and the loop broke before
+    # exhausting MAX_OUTER -- the signature of evaluate() returning
+    # success=False. Everything else (deadline fired anywhere, or MAX_OUTER
+    # genuinely exhausted with the last evaluation still succeeding) falls
+    # through to the residual-trend classifier.
+    bail_is_ode_failure = (
+        not shoot.converged
+        and not shoot.budget_exceeded
+        and not budget_state["hit"]
+        and shoot.outer_iterations < MAX_OUTER
+    )
+    bailout_tag = _classify_bailout(shoot.converged, bail_is_ode_failure, outer_residual_history)
+    if shoot.converged:
+        bailout_reason = "converged"
+    elif shoot.budget_exceeded or budget_state["hit"]:
+        bailout_reason = "wallclock_budget"
+    elif bail_is_ode_failure:
+        bailout_reason = "ode_failure"
+    else:
+        bailout_reason = "max_outer_exhausted"
 
     diagnostics = {
         "compute_time": time.perf_counter() - compute_start,
@@ -1216,6 +1427,11 @@ def solve_picard(
         "mean_time_per_picard_iteration": (
             picard_time_total / picard_iters_total if picard_iters_total else None
         ),
+        "bailout_tag": bailout_tag,
+        "bailout_reason": bailout_reason,
+        "outer_residual_history": outer_residual_history,
+        "wallclock_budget_seconds": wallclock_budget_seconds,
+        "wallclock_budget_exceeded": shoot.budget_exceeded or budget_state["hit"],
         **_instrumentation_diagnostics(),
     }
 

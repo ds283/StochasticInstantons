@@ -47,6 +47,7 @@ from scratch, halving the typical per-outer-iteration cost.
 """
 
 import math
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Optional, Tuple
 
@@ -70,6 +71,14 @@ class ShootingResult:
     outer_iterations: int
     newton_fallback_count: int
     n_evaluations: int
+    # True when the loop exited because `deadline` (prompt 24 prerequisite
+    # wall-clock safeguard) elapsed before the next outer iteration started,
+    # rather than because max_outer was exhausted or evaluate() failed
+    # outright. Lets callers (picard.py's own non-convergence classifier)
+    # distinguish "ran out of wall-clock" from "ran out of iterations" from
+    # "the underlying BVP solve failed" -- see picard.py's own
+    # _classify_bailout.
+    budget_exceeded: bool = False
 
 
 def solve_shooting(
@@ -85,10 +94,20 @@ def solve_shooting(
     fallback_gain: float = DEFAULT_FALLBACK_GAIN,
     stall_growth: float = DEFAULT_STALL_GROWTH,
     bootstrap_target: Optional[float] = None,
+    deadline: Optional[float] = None,
 ) -> ShootingResult:
     """
     Find lam such that ``evaluate(lam)``'s residual is within ``tol`` of
     zero, via secant + Armijo backtracking + trust region.
+
+    ``deadline`` (prompt 24 prerequisite wall-clock safeguard, optional): a
+    ``time.perf_counter()``-comparable timestamp. Checked at the top of
+    every outer iteration (before calling ``evaluate`` again); once passed,
+    the loop exits immediately with whatever ``lam``/``final_residual`` was
+    last committed, exactly as if ``max_outer`` had been reached, with
+    ``ShootingResult.budget_exceeded=True`` so the caller can tell the two
+    apart. ``None`` (default) disables this check entirely -- unbounded by
+    wall-clock, matching every pre-existing caller's behaviour.
 
     ``bootstrap_target`` (prompt 22c -- e.g. GradientCoupledInstanton's own
     FullInstanton-derived lambda_FI): an optional, independently-sourced
@@ -154,12 +173,16 @@ def solve_shooting(
     outer_iterations = 0
     newton_fallback_count = 0
     n_evaluations = 0
+    budget_exceeded = False
 
     # (residual, aux) of an already-evaluated point, reusable at the top of
     # the next outer iteration instead of re-running evaluate() there.
     pending: Optional[Tuple[float, Any]] = None
 
     for outer in range(max_outer):
+        if deadline is not None and time.perf_counter() > deadline:
+            budget_exceeded = True
+            break
         outer_iterations = outer + 1
         if pending is not None:
             residual, aux = pending
@@ -298,4 +321,5 @@ def solve_shooting(
         outer_iterations=outer_iterations,
         newton_fallback_count=newton_fallback_count,
         n_evaluations=n_evaluations,
+        budget_exceeded=budget_exceeded,
     )

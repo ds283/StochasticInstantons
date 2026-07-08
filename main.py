@@ -546,11 +546,19 @@ def _run_gradient_branch(
     dm,
     samples_per_N: float,
     no_store_values: bool,
+    wallclock_budget_seconds: Optional[float] = None,
+    max_step: Optional[float] = None,
 ):
     """
     Gradient (onion-model) branch: dispatch GradientCoupledInstanton across
     the base (model, N_init, N_final, delta_Nstar) grid crossed against
     n_collocation_points and alpha_regularization.
+
+    wallclock_budget_seconds, max_step (prompt 24 prerequisite): forwarded
+    unchanged into every GradientCoupledInstanton's constructor kwargs (see
+    key_fields below) -- runtime-only knobs, not part of the object's
+    persisted identity (same treatment as full_instanton). None (default)
+    preserves the pre-prompt-24 unbounded behaviour.
     """
     ## Pass 0 (prompt 21a): fetch the upstream FullInstanton -- POPULATED,
     ## since its per-sample (N, phi2) values are what seeds the SAT closure's
@@ -628,6 +636,8 @@ def _run_gradient_branch(
             n_collocation_points=ncp_obj, alpha_regularization=alpha_obj,
             atol=atol, rtol=rtol, cosmo=cosmo, diffusion_model=dm, tags=[],
             full_instanton=fi_proxy_by_base_id.get(id(base_item)),
+            wallclock_budget_seconds=wallclock_budget_seconds,
+            max_step=max_step,
         )
 
     def full_payload(item) -> dict:
@@ -1110,6 +1120,8 @@ def run_all_pipelines(
             alpha_regularization_array=alpha_regularization_array,
             traj_proxies=traj_proxies, cosmo=cosmo, atol=atol, rtol=rtol, dm=dm,
             samples_per_N=samples_per_N, no_store_values=no_store_values,
+            wallclock_budget_seconds=args.gci_wallclock_budget_seconds,
+            max_step=args.gci_max_step,
         )
     else:
         print("\n** Skipping gradient branch (--targets excludes 'gradient')")

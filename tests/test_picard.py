@@ -286,6 +286,80 @@ def test_solve_picard_non_convergence_returns_failure_dict(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# Prompt 24 prerequisite -- wall-clock safeguard + non-convergence
+# classification (see picard.py's own module-level comment).
+# ---------------------------------------------------------------------------
+
+
+def test_solve_picard_wallclock_budget_bails_gracefully_and_tags_correctly():
+    """An effectively-zero wallclock_budget_seconds must produce a graceful
+    failure result (never a hard crash / uncaught exception), tagged with
+    bailout_reason="wallclock_budget" -- not "ode_failure" -- distinguishing
+    "ran out of time" from a genuine structural (H_sq<0/step-death) failure,
+    even though both paths return failure=True via the same _failure_result
+    shape."""
+    case = _small_genuinely_coupled_case(5)
+    result = solve_picard(**case, instrument_stiffness=False, wallclock_budget_seconds=1.0e-9)
+
+    assert result["failure"] is True
+    diag = result["diagnostics"]
+    assert diag["converged"] is False
+    assert diag["wallclock_budget_exceeded"] is True
+    assert diag["bailout_reason"] == "wallclock_budget"
+    # Never "converged"; the residual-trend classifier (or the <2-points
+    # conservative fallback) applies, never the ODE-failure path -- an
+    # exhausted budget is not a structural claim about H_sq<0/step-death.
+    assert diag["bailout_tag"] in ("diverging", "floored", "descending", "blown-up")
+    assert isinstance(diag["outer_residual_history"], list)
+
+
+def test_solve_picard_generous_budget_still_converges_and_tags_converged():
+    """A budget generous enough to never bind must reproduce the existing
+    n=5 genuinely-coupled convergence result exactly, now additionally
+    tagged bailout_tag="converged" -- confirms the prerequisite's safeguard
+    plumbing (deadline checks, max_step) does not perturb a converging
+    solve's own outcome."""
+    case = _small_genuinely_coupled_case(5)
+    result = solve_picard(**case, instrument_stiffness=False, wallclock_budget_seconds=300.0)
+
+    assert result["failure"] is False
+    diag = result["diagnostics"]
+    assert diag["converged"] is True
+    assert diag["wallclock_budget_exceeded"] is False
+    assert diag["bailout_reason"] == "converged"
+    assert diag["bailout_tag"] == "converged"
+    assert result["final_lambda"] != pytest.approx(0.0, abs=1.0e-8)
+
+
+def test_solve_picard_ode_failure_tags_blown_up(monkeypatch):
+    """A genuine ODE failure (backward pass fails outright, e.g. H_sq<0) at
+    the very first outer evaluation -- forced here via monkeypatching
+    solve_ivp to always report failure, isolating the "structural" path from
+    the wall-clock path above -- must be tagged bailout_tag="blown-up" and
+    bailout_reason="ode_failure", NOT "wallclock_budget" (no budget is set
+    at all here)."""
+    import scipy.integrate as scipy_integrate
+
+    original_solve_ivp = scipy_integrate.solve_ivp
+
+    def _always_fail(*args, **kwargs):
+        sol = original_solve_ivp(*args, **kwargs)
+        sol.success = False
+        return sol
+
+    monkeypatch.setattr(picard_module, "solve_ivp", _always_fail)
+
+    case = _small_genuinely_coupled_case(5)
+    result = solve_picard(**case, instrument_stiffness=False)
+
+    assert result["failure"] is True
+    diag = result["diagnostics"]
+    assert diag["wallclock_budget_exceeded"] is False
+    assert diag["bailout_reason"] == "ode_failure"
+    assert diag["bailout_tag"] == "blown-up"
+
+
+# ---------------------------------------------------------------------------
 # Prompt 21a -- SBP-SAT closure acceptance checks, under FULL spatial
 # coupling (disable_spatial_coupling=False, the default): the lagged
 # pi_core target, the FullInstanton seed, and the closure-independence /

@@ -114,6 +114,8 @@ def _compute_gradient_coupled_instanton(
     instrument_stiffness: bool = True,
     label: Optional[str] = None,
     full_instanton=None,  # Optional[FullInstantonProxy] (prompt 21a, SAT seed only)
+    wallclock_budget_seconds: Optional[float] = None,  # prompt 24 prerequisite
+    max_step: Optional[float] = None,  # prompt 24 prerequisite
 ) -> dict:
     """
     Solve the gradient-coupled instanton BVP and extract its physical
@@ -264,6 +266,8 @@ def _compute_gradient_coupled_instanton(
         instrument_stiffness=instrument_stiffness,
         label=_lbl,
         full_instanton_seed=full_instanton_seed,
+        wallclock_budget_seconds=wallclock_budget_seconds,
+        max_step=max_step,
     )
 
     # ── Step 5: bail out on non-convergence ──────────────────────────────────
@@ -545,6 +549,8 @@ class GradientCoupledInstanton(DatastoreObject):
         tags: Optional[List[store_tag]] = None,
         timestamp: Optional[datetime] = None,
         full_instanton=None,  # Optional[FullInstantonProxy] (prompt 21a, SAT seed only)
+        wallclock_budget_seconds: Optional[float] = None,  # prompt 24 prerequisite
+        max_step: Optional[float] = None,  # prompt 24 prerequisite
     ):
         DatastoreObject.__init__(self, store_id, timestamp=timestamp)
         self._trajectory = trajectory
@@ -563,6 +569,12 @@ class GradientCoupledInstanton(DatastoreObject):
         # Prompt 21a -- SAT seed only, not part of this object's persisted
         # identity (see the class docstring's own "full_instanton" note).
         self._full_instanton = full_instanton
+        # prompt 24 prerequisite -- runtime/diagnostic knobs only, deliberately
+        # NOT part of this object's persisted identity (same rationale as
+        # full_instanton above): a rerun with a different budget/max_step
+        # that converges to the same answer is the same physical object.
+        self._wallclock_budget_seconds: Optional[float] = wallclock_budget_seconds
+        self._max_step: Optional[float] = max_step
         self._msr_action: Optional[float] = None  # populated by compute()/store()
         self._noise_field_min: Optional[float] = None
         self._noise_field_mean: Optional[float] = None
@@ -717,6 +729,8 @@ class GradientCoupledInstanton(DatastoreObject):
             store_full_values=self._store_full_values,
             label=label or self._label,
             full_instanton=self._full_instanton,
+            wallclock_budget_seconds=self._wallclock_budget_seconds,
+            max_step=self._max_step,
         )
         return self._compute_ref
 
