@@ -33,9 +33,10 @@ keeping `integration` excluded)** only when the diff touches:
   subject code lives)
 - `Numerics/` (LGL collocation, onion coordinate — inputs to the same solves)
 - `Interpolation/` (`SplineWrapper` — used inside the solves)
-- `analyze_StiffnessSpectrum.py` (the spectral-diagnostic module two `slow`
-  files test directly; it is a top-level script, not under `ComputeTargets/`,
-  so don't rely on a directory check alone)
+- `tools/diagnostics/GradientCoupledInstanton/spectrum.py` (the spectral-
+  diagnostic module two `slow` files test directly; it lives under
+  `tools/diagnostics/`, not `ComputeTargets/`, so don't rely on a
+  `ComputeTargets/`-only directory check alone)
 
 A quick check before choosing:
 
@@ -79,7 +80,7 @@ exceeded a 45-second cap (or, for the two borderline ones, came close):
 | `test_msr_action.py` | Real `solve_picard`/`solve_ivp` runs back every test |
 | `test_picard.py` | Every test drives a real Picard shooting solve |
 | `test_response_lambda_scaling_prompt23.py` | Parametrized `solve_ivp` backward passes across lambda values (measured 36s standalone) |
-| `test_response_spectrum_prompt23.py` | Sweeps `n_max` up to 192 through dense eigendecompositions (via `analyze_StiffnessSpectrum.py`) |
+| `test_response_spectrum_prompt23.py` | Sweeps `n_max` up to 192 through dense eigendecompositions (via `tools/diagnostics/GradientCoupledInstanton/spectrum.py`) |
 | `test_sbp_sat_boundary_closure.py` | Same dense-eigendecomposition sweep, forward-sector version |
 
 Whole-file-slow modules carry a module-level `pytestmark = pytest.mark.slow`
@@ -101,7 +102,7 @@ take more than a few seconds", not "does it touch `ComputeTargets/`".
 
 ```bash
 # NEVER — defaults to the full suite "to be safe" when the diff doesn't
-# touch ComputeTargets/Numerics/Interpolation/analyze_StiffnessSpectrum.py
+# touch ComputeTargets/Numerics/Interpolation/spectrum.py
 pytest
 ```
 

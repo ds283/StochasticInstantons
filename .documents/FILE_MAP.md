@@ -253,6 +253,6 @@ text rather than by including the source directly.
 | `Caching/ExtractionCache.py`                             | Memoisation helper for repeated ζ-extraction calls; an optimisation, not part of the core numerical scheme |
 | `constants.py`                                           | Only defines `RadiationConstant` and `StefanBoltzmannConstant`; peripheral  |
 | `utilities.py`                                           | General-purpose utilities (timing, grouper, etc.); not needed for patterns  |
-| `analyze_StiffnessSpectrum.py`                           | Standalone diagnostic script for the response-sector stiffness spectrum (prompt 23); a debugging tool, not part of the production pipeline |
+| `tools/diagnostics/GradientCoupledInstanton/spectrum.py` | Standalone diagnostic script for the response-sector stiffness spectrum (prompt 23); a debugging tool, not part of the production pipeline |
 | `tests/` (remaining ~35 files)                           | Section 15 above is a deliberately small representative sample; the rest cover the same patterns at other grid points, seeds, or failure modes |
 | `.documents/gradient-coupled-instanton/onion_model.tex`  | Not copied into this bundle — the online session is assumed to have access to it directly per the source prompt; `NUMERICAL_SCHEMES.md` cites its section/equation numbers rather than reproducing them |

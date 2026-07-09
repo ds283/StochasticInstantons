@@ -25,7 +25,7 @@ It follows `.documents/FILE_MAP.md`'s own per-file-purpose convention.
 | `convergence_floor.py` | Diagnostics 1–8: the `delta_Nstar`/mass/`n_collocation_points`/`OUTER_TOL`/`alpha_regularization` convergence-floor campaign (prompts 24a, 24b, and the new Diagnostic 8). |
 | `trajectory_plots.py` | Trajectory-validation plots (phi/pi(N) vs FullInstanton, epsilon(N), y-profile, action-ratio-vs-sweep-variable) for any converged-solve JSON+`.npz` record produced by `convergence_floor.py`. |
 | `seed_screen.py` | Cheap `alpha_regularization` vs `n_collocation_points` zeroth-Picard-iterate pre-screen, before spending a full solve budget on an untested corner. |
-| `spectrum.py` | Thin wrapper around the existing `analyze_StiffnessSpectrum.py` (assembled-operator eigenvalue sweep + discrete-adjoint diagnostic) — **not yet physically relocated**, see §5. |
+| `spectrum.py` | Assembled-operator eigenvalue sweep + discrete-adjoint diagnostic (prompts 17/18/18a/20/21/21a/23) for the onion-model spatial discretisation. Self-contained: frozen-coefficient, potential-independent synthetic operators, no `harness.py`/`InflatonTrajectory` dependency. |
 | `archive/prompt22_validation.py` | Historical replay of prompt 22's own validation harness (Findings 1/1b/2 — the `phi_end` degeneracy and Picard divergence that blocked Studies A–E until 22a/22c/24b). Not part of the active CLI; kept for provenance only. |
 | `output/` | Created on demand (`.gitignore`-able); every diagnostic writes its JSON/CSV/`.npz`/PNG records under `output/<module-name>/`, replacing each predecessor script's own bespoke `..._output/` directory. |
 
@@ -160,22 +160,6 @@ Once that lands, `diagnostic_8_tau_sensitivity` in `convergence_floor.py`
 should sweep `tau_multiplier∈{0.5, 1.0, 2.0}` (i.e. the design note's minimal
 admissible value, the current production value, and a further hardening) at
 every Diagnostic-4 point, following the same pattern as `diagnostic_8_alpha_sensitivity`.
-
-**`spectrum.py` wraps, rather than relocates, `analyze_StiffnessSpectrum.py`.**
-That script is ~1770 lines of numerically delicate assembled-operator code;
-it was reviewed only in outline for this refactor (its full body was not
-re-derived or re-transcribed), specifically to avoid the risk of a silent
-transcription error in code nobody would think to re-verify against the
-original. `spectrum.py` imports the existing module from wherever it lives
-today and re-exports its `main`/`create_parser` so it participates in the
-unified CLI unchanged. **Follow-up**: `git mv analyze_StiffnessSpectrum.py
-tools/diagnostics/GradientCoupledInstanton/spectrum_impl.py` (a pure
-relocation — import-path fixups only) and delete `spectrum.py`'s
-path-searching fallback once that's done. This script does not use
-`harness.py` at all (it works with frozen-coefficient synthetic operators,
-no `InflatonTrajectory`/`AbstractPotential` dependency), so there is no
-shared-code benefit being deferred by leaving it as a wrapper — only the
-relocation itself is outstanding.
 
 **`archive/prompt22_validation.py` is frozen, not maintained.** Its own
 `production_phi_end` deliberately reproduces the pre-22a degenerate formula

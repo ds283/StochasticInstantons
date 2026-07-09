@@ -543,7 +543,7 @@ def test_advection_split_matrix_matches_phase1_prototype():
     would mean the production code has silently diverged from the validated
     construction.
     """
-    from analyze_StiffnessSpectrum import (
+    from tools.diagnostics.GradientCoupledInstanton.spectrum import (
         advection_split_matrix as prototype_advection_split_matrix,
     )
 

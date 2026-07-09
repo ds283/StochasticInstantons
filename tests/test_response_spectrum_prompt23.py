@@ -44,7 +44,7 @@ response sector's advection treatment.
 import numpy as np
 import pytest
 
-from analyze_StiffnessSpectrum import (
+from tools.diagnostics.GradientCoupledInstanton.spectrum import (
     DEFAULT_ALPHA_VALUES,
     DEFAULT_N_VALUES,
     assemble_response_operator_strong,
@@ -58,7 +58,8 @@ from analyze_StiffnessSpectrum import (
 
 # Sweeps N_MAX_SWEEP (up to n_max=192) through dense eigendecompositions --
 # minutes, not seconds. Only worth running when ComputeTargets/ (or its
-# numerical dependencies, incl. analyze_StiffnessSpectrum.py) change; see
+# numerical dependencies, incl.
+# tools/diagnostics/GradientCoupledInstanton/spectrum.py) change; see
 # .claude/rules/test-selection.md.
 pytestmark = pytest.mark.slow
 
@@ -92,7 +93,7 @@ def test_self_check_response_assembled_operator(n_max, alpha, N, epsilon_core):
 
 
 def test_response_spectral_stability_metrics_is_negated_convention():
-    from analyze_StiffnessSpectrum import spectral_stability_metrics
+    from tools.diagnostics.GradientCoupledInstanton.spectrum import spectral_stability_metrics
 
     matrix, _ = assemble_response_operator_strong(16, 0.1, 5.0)
     eig = np.linalg.eigvals(matrix)
@@ -178,7 +179,7 @@ def test_naive_sbp_sat_port_does_not_improve_safe_direction_stiffness():
 
 
 def test_sweep_response_eigenvalues_matches_direct_assembly():
-    from analyze_StiffnessSpectrum import CSV_FIELDNAMES
+    from tools.diagnostics.GradientCoupledInstanton.spectrum import CSV_FIELDNAMES
 
     rows = sweep_response_eigenvalues([8, 16], [0.1], [0.1, 10.0], closure="strong")
     assert set(rows[0].keys()) == set(CSV_FIELDNAMES)

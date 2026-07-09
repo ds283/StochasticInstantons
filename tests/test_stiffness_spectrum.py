@@ -28,7 +28,7 @@ import csv
 import numpy as np
 import pytest
 
-from analyze_StiffnessSpectrum import (
+from tools.diagnostics.GradientCoupledInstanton.spectrum import (
     ADJOINT_CSV_FIELDNAMES,
     CSV_FIELDNAMES,
     assemble_spatial_operator,
@@ -139,7 +139,7 @@ def test_sbp_residual_machine_zero_across_default_grid():
     wide-transition regimes prompt 17/18 call out. Unaffected by the 18a
     metric fixes (sbp_residual is untouched by both fixes).
     """
-    from analyze_StiffnessSpectrum import DEFAULT_N_MAX_VALUES
+    from tools.diagnostics.GradientCoupledInstanton.spectrum import DEFAULT_N_MAX_VALUES
 
     rows = sweep_adjoint_diagnostics(
         DEFAULT_N_MAX_VALUES, [1.0e-4, 0.1], [0.01, 5.0, 25.0],
@@ -174,7 +174,7 @@ def test_gradient_self_adjointness_residual_plateaus():
     metric), plateauing rather than decreasing by more than ~2x across the
     full n_max range.
     """
-    from analyze_StiffnessSpectrum import DEFAULT_N_MAX_VALUES
+    from tools.diagnostics.GradientCoupledInstanton.spectrum import DEFAULT_N_MAX_VALUES
 
     residuals = [
         compute_adjoint_diagnostics(n_max, ADJOINT_ALPHA, ADJOINT_N)["L_selfadj"]
@@ -193,7 +193,7 @@ def test_L_selfadj_interior_converges_spectrally():
     (Delta_s=25): ~7.7e-2 -> ~3.2e-4 over n=16->192.
     """
     import math
-    from analyze_StiffnessSpectrum import DEFAULT_N_MAX_VALUES
+    from tools.diagnostics.GradientCoupledInstanton.spectrum import DEFAULT_N_MAX_VALUES
 
     N = 25.0 - math.log(1.0 + ADJOINT_ALPHA)
     residuals = [
@@ -212,7 +212,7 @@ def test_advection_converges_gradient_plateaus():
     operator) -- full-node representation (the only one left after 18a
     drops *_eliminated).
     """
-    from analyze_StiffnessSpectrum import DEFAULT_N_MAX_VALUES
+    from tools.diagnostics.GradientCoupledInstanton.spectrum import DEFAULT_N_MAX_VALUES
 
     adv_vals = []
     grad_vals = []
@@ -237,7 +237,7 @@ def test_block_mismatch_gradient_interior_converges_spectrally():
     replacing the *_eliminated sqrt(2) artifact this metric used to be
     compared against.
     """
-    from analyze_StiffnessSpectrum import DEFAULT_N_MAX_VALUES
+    from tools.diagnostics.GradientCoupledInstanton.spectrum import DEFAULT_N_MAX_VALUES
 
     grad_interior_vals = [
         compute_adjoint_diagnostics(n_max, ADJOINT_ALPHA, ADJOINT_N)["block_mismatch_gradient_interior"]
@@ -255,7 +255,7 @@ def test_block_mismatch_advection_interior_tracks_full_node():
     (unlike the gradient block, where interior collapses relative to
     full-node).
     """
-    from analyze_StiffnessSpectrum import DEFAULT_N_MAX_VALUES
+    from tools.diagnostics.GradientCoupledInstanton.spectrum import DEFAULT_N_MAX_VALUES
 
     for n_max in DEFAULT_N_MAX_VALUES:
         diag = compute_adjoint_diagnostics(n_max, ADJOINT_ALPHA, ADJOINT_N)

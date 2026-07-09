@@ -37,7 +37,7 @@ criterion passes").
 import numpy as np
 import pytest
 
-from analyze_StiffnessSpectrum import (
+from tools.diagnostics.GradientCoupledInstanton.spectrum import (
     DEFAULT_ALPHA_VALUES,
     DEFAULT_N_VALUES,
     advection_split_energy_defect,
@@ -53,7 +53,8 @@ from Numerics.OnionCoordinate import advection_coefficient, delta_s
 # Sweeps DEFAULT_N_VALUES/DEFAULT_ALPHA_VALUES through dense eigendecomposition
 # and finite-difference checks -- minutes, not seconds. Only worth running
 # when ComputeTargets/ (or its numerical dependencies, incl.
-# analyze_StiffnessSpectrum.py) change; see .claude/rules/test-selection.md.
+# tools/diagnostics/GradientCoupledInstanton/spectrum.py) change; see
+# .claude/rules/test-selection.md.
 pytestmark = pytest.mark.slow
 
 
@@ -246,7 +247,7 @@ def test_growth_efold_time_no_longer_tiny_at_small_delta_s():
 
 
 def test_sweep_eigenvalues_sbp_sat_closure_matches_direct_assembly():
-    from analyze_StiffnessSpectrum import CSV_FIELDNAMES
+    from tools.diagnostics.GradientCoupledInstanton.spectrum import CSV_FIELDNAMES
 
     rows = sweep_eigenvalues([8, 16], [0.1], [0.1, 10.0], closure="sbp-sat")
     assert set(rows[0].keys()) == set(CSV_FIELDNAMES)
