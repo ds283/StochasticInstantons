@@ -67,15 +67,24 @@ file:
    for the full derivation of why the previous (endpoint-downflow-based)
    anchor was wrong.
 
-r_max/r_peak reuse CompactionFunction's own _classify_radii helper directly
-(not reimplemented), fed r_phys (not the dimensionless ratio) since that is
-the "r"-like quantity _classify_radii and its M_max/M_peak-adjacent callers
+r_max/r_peak reuse compaction_scalars.classify_radii directly (not
+reimplemented), fed r_phys (not the dimensionless ratio) since that is
+the "r"-like quantity classify_radii and its M_max/M_peak-adjacent callers
 elsewhere expect -- the same convention CompactionFunction's own Step E
-already uses. _classify_radii additionally expects its r array sorted
+already uses. classify_radii additionally expects its r array sorted
 ascending (CompactionFunction always feeds it via np.argsort before calling
 it); grid.nodes runs from y=-1 (outer edge, largest r) to y=+1 (core,
 smallest r), i.e. r_phys is naturally *descending* in grid order, so it must
 be re-sorted ascending here before the call.
+
+C_bar and the r_max/r_peak classification both run on a densified log-r grid
+built by compaction_scalars.densify_zeta_profile from the sorted (r_phys,
+zeta) pair, mirroring CompactionFunction's own Step D/E -- see
+compaction_scalars.densify_zeta_profile/compute_C_bar for the dense-grid
+construction and cumulative-integral strategy. This is a deliberate
+higher-fidelity choice over classifying on the raw n_collocation_points-sized
+node set; see the DESIGN-DECISION comment at the classify_radii call site
+below.
 """
 
 from math import exp, sqrt
@@ -83,7 +92,12 @@ from math import pi as PI
 
 import numpy as np
 
-from ComputeTargets.CompactionFunction import _classify_radii, ln_k_phys_Mpc
+from ComputeTargets.CompactionFunction import ln_k_phys_Mpc
+from ComputeTargets.compaction_scalars import (
+    classify_radii,
+    compute_C_bar,
+    densify_zeta_profile,
+)
 from Numerics.OnionCoordinate import comoving_radius_ratio
 
 
@@ -114,12 +128,19 @@ def assign_scales(
         "failure"      -- True if zeta was NaN-contaminated (upstream Picard
                           divergence); all other physics keys are then None
         "r_ratio"      -- comoving r(y_j,N_final)/r_out, dimensionless
-        "C"            -- compaction function C(y_j) (eq:compaction-yoo)
+        "C"            -- compaction function C(y_j) (eq:compaction-yoo),
+                          evaluated at the raw collocation nodes
+        "C_bar"        -- averaged compaction function C_bar(y_j)
+                          (compaction_scalars.compute_C_bar), same length and
+                          node ordering as "C"/"r_ratio"/"r_phys"
         "r_phys"       -- physical (present-day) scale r_phys(y_j)
         "r_phys_out"   -- the single Leach-Liddle anchor value at the outer
                           edge, kept for diagnostics
-        "r_max"        -- outermost r_phys where C >= C_threshold (or None)
-        "r_peak"       -- r_phys at which C is maximised
+        "r_max"        -- outermost r_phys where C >= C_threshold (or None),
+                          classified on the densified log-r grid (see module
+                          docstring)
+        "r_peak"       -- r_phys at which C is maximised, classified on the
+                          densified log-r grid (see module docstring)
         "diagnostics"  -- dict with r_max_at_grid_edge / r_peak_at_grid_edge
                           (or "reason"/"nan_node_indices" on failure)
     """
@@ -142,7 +163,8 @@ def assign_scales(
             print(f"[{label}] assign_scales: {reason}")
         return {
             "failure": True,
-            "r_ratio": None, "C": None, "r_phys": None, "r_phys_out": None,
+            "r_ratio": None, "C": None, "C_bar": None,
+            "r_phys": None, "r_phys_out": None,
             "r_max": None, "r_peak": None,
             "diagnostics": {"reason": reason, "nan_node_indices": nan_indices},
         }
@@ -175,16 +197,37 @@ def assign_scales(
     r_phys_out = (1.0 + alpha) * 2.0 * PI / exp(lnk_outer)
     r_phys = r_ratio * r_phys_out
 
-    # ── r_max / r_peak: reuse CompactionFunction's own helper ────────────────
+    # ── C_bar and r_max / r_peak: densify, then reuse compaction_scalars ─────
+    # r_phys is naturally descending in grid order (module docstring, item 3);
+    # re-sort ascending once and reuse that same sorted view for both the
+    # densification and the classification below.
     sort_idx = np.argsort(r_phys)
-    r_max, r_peak, r_max_at_grid_edge, r_peak_at_grid_edge = _classify_radii(
-        r_phys[sort_idx], C[sort_idx], C_threshold
+    r_dense, zeta_dense, zeta_prime_dense = densify_zeta_profile(
+        r_phys[sort_idx], zeta[sort_idx]
+    )
+
+    # C_bar evaluated pointwise at the original (unsorted) node r_phys/zeta
+    # values -- compute_C_bar interpolates the dense-grid cumulative integral
+    # back to each r_v[i] independently, so no re-sort is needed to recover
+    # the original grid order expected of the returned "C_bar" array (matches
+    # how "r_ratio"/"C"/"r_phys" are already returned in original grid order).
+    C_bar = compute_C_bar(r_dense, zeta_dense, zeta_prime_dense, r_phys, zeta)
+
+    # DESIGN-DECISION: classification and C_bar integration now run on a
+    # densified log-r grid rather than the raw LGL nodes; this changes
+    # diagnostics["scale_assignment"]["r_max"/"r_peak"] relative to pre-U2a
+    # runs (see design doc §7.2 "One fidelity note" and
+    # onion_model_implementation_review.md).
+    C_dense = (2.0 / 3.0) * (1.0 - (1.0 + r_dense * zeta_prime_dense) ** 2)
+    r_max, r_peak, r_max_at_grid_edge, r_peak_at_grid_edge = classify_radii(
+        r_dense, C_dense, C_threshold
     )
 
     return {
         "failure": False,
         "r_ratio": r_ratio,
         "C": C,
+        "C_bar": C_bar,
         "r_phys": r_phys,
         "r_phys_out": r_phys_out,
         "r_max": r_max,

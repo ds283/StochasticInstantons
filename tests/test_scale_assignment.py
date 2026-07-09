@@ -8,7 +8,8 @@ import types
 import numpy as np
 import pytest
 
-from ComputeTargets.CompactionFunction import _classify_radii, _compute_instanton_path, ln_k_phys_Mpc
+from ComputeTargets.CompactionFunction import _compute_instanton_path, ln_k_phys_Mpc
+from ComputeTargets.compaction_scalars import classify_radii, densify_zeta_profile
 from ComputeTargets.GradientCoupledInstanton.extraction import extract_zeta_profile
 from ComputeTargets.GradientCoupledInstanton.picard import solve_picard
 from ComputeTargets.GradientCoupledInstanton.scale_assignment import assign_scales
@@ -68,7 +69,7 @@ class _StaticTrajectory:
     r_ratio/C wiring and don't care about the physical realism of the
     Leach-Liddle anchor value itself (test_r_ratio_reuses_comoving_radius_ratio,
     test_compaction_function_matches_analytic_chain_rule,
-    test_r_max_r_peak_reuse_classify_radii_directly below).
+    test_r_max_r_peak_reuse_classify_radii_on_densified_grid below).
     """
 
     def __init__(self, phi: float, pi: float, N_end: float):
@@ -201,12 +202,18 @@ def test_compaction_function_matches_analytic_chain_rule():
 # ---------------------------------------------------------------------------
 
 
-def test_r_max_r_peak_reuse_classify_radii_directly():
+def test_r_max_r_peak_reuse_classify_radii_on_densified_grid():
     """
-    Confirm r_max/r_peak are genuinely produced by CompactionFunction's own
-    _classify_radii helper (not reimplemented): feed the *same* r_phys/C
-    arrays assign_scales() itself computed into a direct call to
-    _classify_radii and confirm identical output.
+    Confirm r_max/r_peak are genuinely produced by
+    compaction_scalars.classify_radii (not reimplemented), fed the
+    *densified* log-r grid rather than the raw node-level (r_phys, C) pair
+    -- see the DESIGN-DECISION comment in scale_assignment.py's assign_scales
+    for why (removes an n_collocation_points-dependence artifact from
+    r_max/r_peak; U2a). This test independently reconstructs that densified
+    grid the same way assign_scales() does (densify_zeta_profile on the
+    sorted (r_phys, zeta) pair, then the same compaction-function formula
+    evaluated on the dense grid) and confirms identical output to a direct
+    classify_radii call -- not a golden-value regression check.
     """
     grid = LGLCollocationGrid(9)  # n_max=8, gives more structure in C(y)
     potential = _StubPotential()
@@ -227,9 +234,11 @@ def test_r_max_r_peak_reuse_classify_radii_directly():
     )
 
     sort_idx = np.argsort(result["r_phys"])
-    expected = _classify_radii(
-        result["r_phys"][sort_idx], result["C"][sort_idx], C_threshold
+    r_dense, zeta_dense, zeta_prime_dense = densify_zeta_profile(
+        result["r_phys"][sort_idx], zeta[sort_idx]
     )
+    C_dense = (2.0 / 3.0) * (1.0 - (1.0 + r_dense * zeta_prime_dense) ** 2)
+    expected = classify_radii(r_dense, C_dense, C_threshold)
 
     assert result["r_max"] == expected[0]
     assert result["r_peak"] == expected[1]
@@ -269,6 +278,7 @@ def test_nan_zeta_returns_failure_not_crash():
     assert result["failure"] is True
     assert result["r_ratio"] is None
     assert result["C"] is None
+    assert result["C_bar"] is None
     assert result["r_phys"] is None
     assert result["r_max"] is None
     assert result["r_peak"] is None

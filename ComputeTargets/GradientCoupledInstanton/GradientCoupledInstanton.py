@@ -479,12 +479,22 @@ class GradientCoupledInstantonValue(DatastoreObject):
 
 class GradientCoupledInstantonProfileValue:
     """
-    Physical profile (zeta, r_ratio, C, r_phys) at a single collocation
-    node, evaluated at the transition's final row (N_total). Not a
-    DatastoreObject subclass: node_index is a plain integer
+    Physical profile (zeta, r_ratio, C, C_bar, r_phys) at a single
+    collocation node, evaluated at the transition's final row (N_total). Not
+    a DatastoreObject subclass: node_index is a plain integer
     (0..n_collocation_points-1) with no FK to a y_value-style concept, since
     y is fully determined by n_collocation_points alone (LGLCollocationGrid
     is deterministic given that one integer).
+
+    C_bar may be None: it is only populated once the Ray-remote function's
+    returned dict carries a "C_bar" key (U2b); until then the U2a call site
+    guards with data.get("C_bar") per node so the two prompts don't have a
+    hard ordering dependency (see 02-U2a's own task note). The default of
+    None (rather than a required positional, unlike zeta/r_ratio/C/r_phys)
+    is also required so that the pre-existing, U3-owned factory call site in
+    Datastore/SQL/ObjectFactories/GradientCoupledInstanton.py -- which this
+    prompt must not touch -- keeps constructing valid objects until U3 wires
+    C_bar through the schema.
     """
 
     def __init__(
@@ -494,12 +504,14 @@ class GradientCoupledInstantonProfileValue:
         r_ratio: float,
         C: float,
         r_phys: float,
+        C_bar: Optional[float] = None,
     ):
         self._node_index = node_index
         self._zeta = zeta
         self._r_ratio = r_ratio
         self._C = C
         self._r_phys = r_phys
+        self._C_bar = C_bar
 
     @property
     def node_index(self) -> int:
@@ -520,6 +532,10 @@ class GradientCoupledInstantonProfileValue:
     @property
     def r_phys(self) -> float:
         return self._r_phys
+
+    @property
+    def C_bar(self) -> Optional[float]:
+        return self._C_bar
 
 
 class GradientCoupledInstanton(DatastoreObject):
@@ -763,12 +779,17 @@ class GradientCoupledInstanton(DatastoreObject):
         self._noise_mom_mean = data.get("noise_mom_mean")
         self._noise_mom_max = data.get("noise_mom_max")
 
+        # data.get("C_bar") defaults to None per node: U2a (this call site)
+        # and U2b (the Ray-remote function's own "C_bar" key) have no hard
+        # ordering dependency on which one runs first inside this file --
+        # see 02-U2a-onion-profile-cbar-and-densified-classification.md.
+        C_bar_out = data.get("C_bar") or [None] * len(data["zeta"])
         self._profile = [
             GradientCoupledInstantonProfileValue(
-                node_index=i, zeta=z, r_ratio=rr, C=c, r_phys=rp,
+                node_index=i, zeta=z, r_ratio=rr, C=c, r_phys=rp, C_bar=cb,
             )
-            for i, (z, rr, c, rp) in enumerate(
-                zip(data["zeta"], data["r_ratio"], data["C"], data["r_phys"])
+            for i, (z, rr, c, rp, cb) in enumerate(
+                zip(data["zeta"], data["r_ratio"], data["C"], data["r_phys"], C_bar_out)
             )
         ]
 
