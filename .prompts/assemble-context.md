@@ -1,7 +1,6 @@
 ## SUMMARY
 
 In this prompt, the targets are:
-- 
 
 - to assemble a sample of source files that can be uploaded to an online Claude.ai session, as context
 - to produce (or update) a map of these files, to guide Claude.ai's reasoning
