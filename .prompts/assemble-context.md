@@ -6,6 +6,8 @@ In this prompt, the targets are:
 - to produce (or update) a map of these files, to guide Claude.ai's reasoning
 - to prouduce (or update) a narrative explanation of the numerical schemes and infrastructure used in the pipeline
 
+## TASKS
+
 ### PREPARATION
 
 1. If it does not already exist, create a directory `claude-context` in the top level of the repository. If this
