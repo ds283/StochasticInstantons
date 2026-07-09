@@ -138,3 +138,121 @@ above is complete, not a new finding.
   non-trivial regime — 22c Finding 3's bias measurement is the only existing
   data point, and it is on the tiny fixture, not the physical regime Phase 3
   asks for.
+
+---
+
+## 6. Update — status after prompts 24 (revised)/24a/24b/25/26 (as of 2026-07-09)
+
+This section records what changed once the campaign this baseline was
+written *for* actually ran. It does not rewrite §§1–5 above, which remain an
+accurate snapshot of what was known *before* prompt 24 — new findings are
+appended here instead, each sourced the same way as above. Read this section
+alongside `24-campaign-closeout.md` (the original `δN★=1.0`-only Phase A/B/C
+run, superseded in scope — not correctness — by 24a/24b below),
+`24a-diagnose-convergence-floor.md`, `24b-lambda-conversion-seeding-and-trajectory-validation.md`,
+`25-bias-corrected-n-geq-9-retry.md`, and `26-sector-attribution-instrument-stiffness.md`.
+
+### 6.1 §4 is now superseded: a non-trivial converged solve exists
+
+**§4's "None exists" claim no longer holds.** 24a's Diagnostic 4, confirmed
+and sped up ~20–75× by 24b's Part A (λ-seed conversion + corridor bound),
+produced the project's first genuine (`λ≠0`, `msr_action>0`) converged GCI
+solves, at `m/Mp=1e-2`, `n=5`, `α=0.1`, `δN★∈{0.2,0.3,0.5,0.7}`. 24b's Part B
+confirmed these are physically healthy, not boundary-skirting artefacts:
+`ε(N)` for the GCI core stays `≤0.056` throughout every converged point,
+`≥17×` below the `ε=1` reference boundary.
+
+Caveat carried over precisely, not glossed: this is at `m/Mp=1e-2`, the
+*cheap* end of the four-mass sweep `{1e-2,1e-3,1e-4,1e-5}`, not the literal
+production point `m/Mp=1e-5` §4 named. `δN★=1.0` — the point the original
+Phase A/B/C run (`24-campaign-closeout.md`) tested — and `m/Mp=1e-5` at any
+`δN★≥1` still do not converge (see 6.2). So §4's *general* statement
+("no converged resolved-regime solve exists anywhere") is now false; its
+narrower reading ("...at the specific production point tested") still holds.
+
+### 6.2 `δN★=1.0` remains a clean negative at all four masses, seeding ruled out
+
+24b's Part C re-ran `δN★=1.0` across all four masses under the *corrected*
+λ-seed/corridor — still `floored`/`max_outer_exhausted` at `MAX_OUTER=50`
+everywhere, well inside the wall-clock budget (not a timeout artefact), with
+the outer search never approaching either corridor edge. This directly rules
+out mechanism (c)/(d) — the narrow-corridor/wrong-side-root explanation §3
+item 5 and the original Phase A/B/C closeout both entertained — as the cause
+at this specific point, leaving 24a's mechanism (a) (fixed-`g_pi_core`-target
+bias) as the standing explanation, per 24b's own classification. This
+confirms the original closeout's Phase A finding ("no non-trivial converged
+solve at `δN★=1.0`, any mass") was correct as far as it went; 24a/24b add the
+mechanism, not a contradiction.
+
+### 6.3 The `n≥9` cap: explanation revised twice since §2/§3
+
+§2's cap-table row and §3 item 6 record the *pre-24* explanation for `n=9`
+being dropped: "fixed-target-biased root sits at `λ≈-1.3`, opposite sign from
+`λ_FI≈+1.36`" (22c) — i.e., the old bootstrap-toward-`+λ_FI` search finding
+the wrong-signed root. **This exact mechanism no longer applies**: 24b's
+corrected λ-seed already aims at the correct (negative) corridor from the
+start, yet `n∈{9,17}` still floor at `m/Mp=1e-2, δN★=0.5` (a point that
+converges cleanly at `n=5`) — `n=9` at `final_residual=0.112`
+(`MAX_OUTER=50` exhausted), `n=17` at `0.116` (wall-clock-bailed after only
+16 outer iterations). So the cap is real and reproduces, but the *reason*
+given for it in §2/§3 is stale.
+
+25's Diagnostic 9 then tested the next candidate explanation — whether this
+is 24a's own mechanism (a), the fixed-`g_pi_core`-target bias, now biting at
+finer resolution — directly, by sweeping bias-scaled target perturbations
+(`δ/bias_n5∈{0,±0.3,±1.0,±3.0}`) at `n=9`: **clean negative**. No perturbation
+converged; the response is the wrong shape for a curable bias (worse
+monotonically in both directions beyond a marginal `+0.3·bias_n5` dip, with
+the largest magnitudes destabilizing the outer loop into `blown-up`/
+`diverging` states). This rules out mechanism (a) too, at this point.
+**Current standing explanation: genuinely under-resolved structure (a
+boundary-layer/regularity problem), not a seeding or target-bias artefact.**
+
+26's Diagnostic 10 (in progress as of this writing — `n=5,7,9` done,
+`n=17` pending) is now sector-attributing that under-resolved structure
+between the forward (onion, SBP-SAT-ported) and response/backward
+(deliberately un-ported) directions, via `solve_picard`'s existing
+`instrument_stiffness` RK45 step statistics. Partial read, not yet a
+conclusion: total RK45 step counts explode in **both** sectors from `n=7` to
+the first floored point `n=9` (forward `24,993→339,983`, backward
+`21,939→319,292` — both ~14×), which on its own looks more like "both
+sectors are being stressed together" than a clean single-sector
+attribution — but the rejected-step *fraction* and `steps_per_efold` ratios
+(the diagnostic's actual attribution signal, not raw totals) are not yet
+assessed pending `n=17`. See `26-sector-attribution-instrument-stiffness.md`
+for the completed call.
+
+### 6.4 New data point: `n=7` converges, and is not just "`n=5` refined"
+
+Not covered by any prior diagnostic — 24b's own `n≥9` retry (§6.3) tested
+`n∈{9,17}` only, and 21a's own `n∈{5,7,9,...,33}` table (§2) was on the
+degenerate `δN★=0.1` branch. An ad hoc re-solve of the Diagnostic 10 control
+point at `n=7` (`m/Mp=1e-2, δN★=0.5`, `instrument_stiffness=False`,
+otherwise identical to Diagnostic 10's own `n=7` call — reproduces its
+`final_lambda=-16.7797` bit-for-bit) shows `n=7` converges cleanly, extending
+the known-good resolution range up from `n=5`. Its `y`-profiles broadly agree
+with `n=5`'s in shape, but `π_core(N)` shows a materially sharper transient
+near the start of the integration than `n=5` resolves — a deeper dip
+(`≈-0.50` vs `n=5`'s `≈-0.30`) and a second, more persistent oscillation out
+to `N≈1–1.5` that is essentially absent at `n=5`. This is consistent with (not
+proof of) 6.3's "genuine under-resolved structure" reading: `n=7` is
+revealing real transient structure `n=5` smooths over, sharpening further —
+and eventually breaking convergence — by `n=9`, rather than `n=7`/`n=9` simply
+adding numerical noise on top of an otherwise-identical solution.
+
+### 6.5 Other closed-out items from §2/§3
+
+- **`OUTER_TOL`** (24b, confirmed again by Diagnostic 7): not doing physics
+  at the converged `δN★∈{0.3,0.5,0.7}` points — tightening the floor two
+  orders of magnitude changes `final_lambda`/`msr_action` by exactly zero.
+- **`α_regularization` sensitivity** (Diagnostic 8a): stable across
+  `α∈{0.01,0.05,0.1,0.3}` at every converged Diagnostic-4 point — no
+  production change needed, no regularization-scale artefact found.
+- **`τ_multiplier` sensitivity** (Diagnostic 8t): still blocked, unchanged
+  from §3/DIAGNOSTICS_SUITE.md's own "Known gaps" — `tau=abs(A_core)` remains
+  a hardcoded local in `forward_rhs.py`, not a `solve_picard` parameter; a
+  small, explicitly-scoped production prompt is still a prerequisite.
+- **Astronomic-`λ` response-sector failure** (§3 item 5, Finding 4/23 Part B):
+  still not validated end-to-end at production scale (`m/Mp=1e-5`,
+  `λ_FI~1e9`) — nothing in 24a/24b/25/26 touches this; all of the above is at
+  `m/Mp=1e-2`. This remains open exactly as §3 left it.

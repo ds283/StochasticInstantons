@@ -794,6 +794,163 @@ def diagnostic_9_bias_corrected_n_retry(
 
 
 # ---------------------------------------------------------------------------
+# Diagnostic 10 (prompt 26) -- sector attribution via instrument_stiffness at
+# n>=9. Diagnostic 9 ruled out the fixed-g_pi_core-target bias as the cause
+# of the n in {9, 17} non-convergence Diagnostic 6 found at
+# (m=1e-2, delta_Nstar=0.5). This diagnostic asks a different question of the
+# SAME non-convergence: which sector -- forward (onion, SBP-SAT-ported,
+# prompt 21a) or response/backward (deliberately un-ported, prompt 23) -- is
+# actually destabilising as n_collocation_points increases through the
+# known failure point. It flips solve_picard's existing
+# instrument_stiffness flag to True (already threaded through production,
+# already aggregating per-sector RK45 step statistics -- see picard.py's
+# _aggregate_rk45_stats) and reads what it already measures; no new
+# instrumentation and no production change.
+#
+# Reading the result:
+#   - Forward-attributed (forward sector's rejected_fraction/steps_per_efold
+#     spikes disproportionately at n>=9, backward stays bounded): consistent
+#     with 21a-production-port-notes.md Sec 5.2's forward-sector tau
+#     recurrence -- proceed to the tau_multiplier production prompt and
+#     Diagnostic 8t.
+#   - Backward-attributed (response sector's stats are the ones that spike,
+#     forward stays comparatively bounded): contradicts the frozen-
+#     coefficient spectral bound established in
+#     23-response-sbp-sat-design-note.md Part A the same way the forward
+#     sector's own Phase 1 check was contradicted by its later nonlinear
+#     behaviour -- recommend re-opening the response-sector SBP-SAT question
+#     rather than proceeding with the forward-only tau_multiplier prompt.
+#   - Ambiguous (both sectors degrade together, or neither shows a clear
+#     signal despite non-convergence): fall back to the tau_multiplier study
+#     anyway (cheaper of the two remaining options, informed by real
+#     precedent either way), but flag explicitly that the response sector
+#     has not been ruled out.
+# ---------------------------------------------------------------------------
+
+def diagnostic_10_sector_attribution(
+    m: float = 1.0e-2, delta_Nstar: float = 0.5, ns=(5, 7, 9, 17),
+    wallclock_budget: float = 900.0,
+):
+    """Diagnostic 6's own n-retry pattern, plus instrument_stiffness=True,
+    plus reading the six additional rk45_{forward,backward}_* keys and three
+    picard_sweep_wallclock_* keys instrument_stiffness already aggregates
+    per solve_picard call -- no new machinery. Same (m, delta_Nstar) point as
+    Diagnostic 6, so directly comparable to that diagnostic's own
+    converged/floored record at each n.
+
+    NOTE (per this prompt's own constraints): instrument_stiffness adds
+    measurement overhead (picard.py's own docstring), so a run's bailout_tag
+    landing on "wallclock_budget" here where Diagnostic 6's equivalent run
+    at the same n floored on "max_outer_exhausted" instead is an expected
+    discrepancy from that overhead, not a sign the two runs disagree on
+    convergence behaviour -- don't treat the two runs' outer-iteration
+    counts as directly comparable in that case. The RK45 step statistics
+    accumulated up to the bailout are still valid and are what this
+    diagnostic is actually after.
+    """
+    print("\n" + "=" * 78, flush=True)
+    print(f"DIAGNOSTIC 10: sector attribution via instrument_stiffness at m={m:.4g}, "
+          f"delta_Nstar={delta_Nstar}", flush=True)
+    print("=" * 78, flush=True)
+
+    potential, units, traj, dm = h.setup(m)
+    phi_end = h.production_phi_end(traj)
+    H_sq_nl_init = h.H_sq_nl_init_of(potential, traj, h.N_INIT)
+    fi_data = h.fetch_full_instanton(potential, traj, dm, h.N_INIT, h.N_FINAL, delta_Nstar,
+                                      label="D10 FI seed")
+    lambda_FI = fi_data.get("diagnostics", {}).get("final_lambda", 0.0)
+    full_instanton_seed = h.full_instanton_seed_from(fi_data)
+    print(f"[D10] FullInstanton: lambda_FI={lambda_FI!r} msr_action={fi_data.get('msr_action')!r}", flush=True)
+
+    rk45_keys = [
+        "rk45_forward_total_steps", "rk45_forward_accepted_steps", "rk45_forward_rejected_steps",
+        "rk45_forward_min_step", "rk45_forward_max_step", "rk45_forward_steps_per_efold",
+        "rk45_backward_total_steps", "rk45_backward_accepted_steps", "rk45_backward_rejected_steps",
+        "rk45_backward_min_step", "rk45_backward_max_step", "rk45_backward_steps_per_efold",
+        "picard_sweep_wallclock_min", "picard_sweep_wallclock_mean", "picard_sweep_wallclock_max",
+    ]
+
+    def _ratio(numer, denom):
+        if numer is None or denom is None or denom == 0:
+            return None
+        return numer / denom
+
+    rows = []
+    for n in ns:
+        grid = h.LGLCollocationGrid(n)
+        t0 = time.perf_counter()
+        result = h.picard_module.solve_picard(
+            h.N_INIT, h.N_FINAL, delta_Nstar, h.ALPHA, H_sq_nl_init, grid, traj, potential, dm,
+            h.ATOL, h.RTOL, phi_end, instrument_stiffness=True, verbose=False,
+            full_instanton_seed=full_instanton_seed,
+            wallclock_budget_seconds=wallclock_budget, label=f"D10 n={n}",
+        )
+        dt = time.perf_counter() - t0
+        diag = result.get("diagnostics", {})
+        row = {
+            "n_collocation_points": n,
+            "converged": diag.get("converged"),
+            "final_residual": diag.get("final_residual"),
+            "bailout_tag": diag.get("bailout_tag"),
+            "bailout_reason": diag.get("bailout_reason"),
+            "outer_iterations": diag.get("outer_iterations"),
+            "final_lambda": result.get("final_lambda"),
+            "wallclock": dt,
+        }
+        for key in rk45_keys:
+            row[key] = diag.get(key)
+        row["forward_rejected_fraction"] = _ratio(
+            row["rk45_forward_rejected_steps"], row["rk45_forward_total_steps"])
+        row["backward_rejected_fraction"] = _ratio(
+            row["rk45_backward_rejected_steps"], row["rk45_backward_total_steps"])
+        row["backward_to_forward_steps_per_efold_ratio"] = _ratio(
+            row["rk45_backward_steps_per_efold"], row["rk45_forward_steps_per_efold"])
+        if diag.get("converged"):
+            phi_grid = np.asarray(result["phi_grid"])
+            pi_grid = np.asarray(result["pi_grid"])
+            rfield_grid = np.asarray(result["rfield_grid"])
+            rmom_grid = np.asarray(result["rmom_grid"])
+            N_grid_arr = np.asarray(result["N_grid"])
+            row["msr_action"] = h.compute_msr_action(
+                N_grid_arr, phi_grid, pi_grid, rfield_grid, rmom_grid, grid, potential, dm,
+                H_sq_nl_init, h.ALPHA,
+            )
+        else:
+            row["msr_action"] = None
+        rows.append(row)
+        print(f"[D10] n={n}: converged={row['converged']} final_lambda={row['final_lambda']!r} "
+              f"fwd_total={row['rk45_forward_total_steps']!r} "
+              f"fwd_rej_frac={row['forward_rejected_fraction']!r} "
+              f"bwd_total={row['rk45_backward_total_steps']!r} "
+              f"bwd_rej_frac={row['backward_rejected_fraction']!r} "
+              f"bailout={row['bailout_tag']} ({dt:.1f}s)", flush=True)
+
+    output = {"m": m, "delta_Nstar": delta_Nstar, "ns": list(ns), "lambda_FI": lambda_FI, "rows": rows}
+    h.save_json(f"{OUT_DIR}/diagnostic10_sector_attribution.json", output)
+
+    def _fmt(v, spec="{:.4g}"):
+        return "n/a" if v is None else spec.format(v)
+
+    print("\n--- Diagnostic 10 summary ---", flush=True)
+    header = (f"  {'n':>4} {'converged':>10} {'fwd_total':>10} {'fwd_rej_frac':>13} "
+              f"{'bwd_total':>10} {'bwd_rej_frac':>13} {'bwd/fwd_steps_per_efold':>24} {'bailout_tag':>18}")
+    print(header, flush=True)
+    for row in rows:
+        print(
+            f"  {row['n_collocation_points']:>4} {str(row['converged']):>10} "
+            f"{_fmt(row['rk45_forward_total_steps'], '{:.0f}'):>10} "
+            f"{_fmt(row['forward_rejected_fraction']):>13} "
+            f"{_fmt(row['rk45_backward_total_steps'], '{:.0f}'):>10} "
+            f"{_fmt(row['backward_rejected_fraction']):>13} "
+            f"{_fmt(row['backward_to_forward_steps_per_efold_ratio']):>24} "
+            f"{str(row['bailout_tag']):>18}",
+            flush=True,
+        )
+
+    return output
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -810,6 +967,7 @@ _DIAGNOSTIC_DISPATCH = {
     ),
     "8t": lambda args: diagnostic_8_tau_sensitivity(),
     "9": lambda args: diagnostic_9_bias_corrected_n_retry(),
+    "10": lambda args: diagnostic_10_sector_attribution(),
 }
 
 
