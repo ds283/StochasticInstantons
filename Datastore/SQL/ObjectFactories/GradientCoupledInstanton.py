@@ -116,6 +116,21 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
                 sqla.Column("noise_mom_min",  sqla.Float(64), nullable=True),
                 sqla.Column("noise_mom_mean", sqla.Float(64), nullable=True),
                 sqla.Column("noise_mom_max",  sqla.Float(64), nullable=True),
+                # Parity scalar set (design §7.1/§7.2), matching
+                # CompactionFunction's own exposed set -- naming convention
+                # mirrors Datastore/SQL/ObjectFactories/CompactionFunction.py
+                # exactly (r_max_Mpc/M_max_SolarMass/etc.).
+                sqla.Column("C_peak",     sqla.Float(64), nullable=True),
+                sqla.Column("C_bar_peak", sqla.Float(64), nullable=True),
+                sqla.Column("C_min",      sqla.Float(64), nullable=True),
+                sqla.Column("compensated", sqla.Integer, nullable=True),
+                sqla.Column("type_II",     sqla.Integer, nullable=True),
+                sqla.Column("r_max_Mpc",              sqla.Float(64), nullable=True),
+                sqla.Column("r_peak_Mpc",             sqla.Float(64), nullable=True),
+                sqla.Column("M_max_SolarMass",        sqla.Float(64), nullable=True),
+                sqla.Column("M_peak_SolarMass",       sqla.Float(64), nullable=True),
+                sqla.Column("V_end_downflow_PlanckMass4", sqla.Float(64), nullable=True),
+                sqla.Column("N_end_downflow",         sqla.Float(64), nullable=True),
                 sqla.Column("label", sqla.Text, nullable=True),
                 sqla.Column("diagnostics_json", sqla.Text, nullable=True),
                 sqla.Column(
@@ -174,6 +189,17 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
             table.c.noise_mom_min,
             table.c.noise_mom_mean,
             table.c.noise_mom_max,
+            table.c.C_peak,
+            table.c.C_bar_peak,
+            table.c.C_min,
+            table.c.compensated,
+            table.c.type_II,
+            table.c.r_max_Mpc,
+            table.c.r_peak_Mpc,
+            table.c.M_max_SolarMass,
+            table.c.M_peak_SolarMass,
+            table.c.V_end_downflow_PlanckMass4,
+            table.c.N_end_downflow,
             table.c.label,
             table.c.diagnostics_json,
         ).filter(
@@ -255,6 +281,34 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
         obj._noise_mom_min  = row_data.noise_mom_min
         obj._noise_mom_mean = row_data.noise_mom_mean
         obj._noise_mom_max  = row_data.noise_mom_max
+
+        # Parity scalar set -- unconditional, parent-row scalars available
+        # even on a cheap _do_not_populate=True fetch (mirrors msr_action
+        # and the noise_* columns above; see CompactionFunction's own
+        # _restore_r/_restore_M/_restore_V closures).
+        PlanckMass4 = units.PlanckMass ** 4
+
+        def _restore_r(val):
+            return val * units.Mpc if val is not None else None
+
+        def _restore_M(val):
+            return val * units.SolarMass if val is not None else None
+
+        def _restore_V(val):
+            return val * PlanckMass4 if val is not None else None
+
+        obj._C_peak = row_data.C_peak
+        obj._C_bar_peak = row_data.C_bar_peak
+        obj._C_min = row_data.C_min
+        obj._compensated = bool(row_data.compensated) if row_data.compensated is not None else None
+        obj._type_II = bool(row_data.type_II) if row_data.type_II is not None else None
+        obj._r_max = _restore_r(row_data.r_max_Mpc)
+        obj._r_peak = _restore_r(row_data.r_peak_Mpc)
+        obj._M_max = _restore_M(row_data.M_max_SolarMass)
+        obj._M_peak = _restore_M(row_data.M_peak_SolarMass)
+        obj._V_end_downflow = _restore_V(row_data.V_end_downflow_PlanckMass4)
+        obj._N_end_downflow = row_data.N_end_downflow
+
         obj._diagnostics = (
             json.loads(row_data.diagnostics_json) if row_data.diagnostics_json else None
         )
@@ -340,6 +394,7 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
                 profile_table.c.r_ratio,
                 profile_table.c.C,
                 profile_table.c.r_phys_Mpc,
+                profile_table.c.C_bar,
             )
             .filter(profile_table.c.parent_serial == obj.store_id)
             .order_by(profile_table.c.node_index)
@@ -348,7 +403,7 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
         obj._profile = [
             GradientCoupledInstantonProfileValue(
                 node_index=r.node_index, zeta=r.zeta, r_ratio=r.r_ratio, C=r.C,
-                r_phys=r.r_phys_Mpc * Mpc,
+                r_phys=r.r_phys_Mpc * Mpc, C_bar=r.C_bar,
             )
             for r in rows
         ]
@@ -396,6 +451,17 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
                 "noise_mom_min": None,
                 "noise_mom_mean": None,
                 "noise_mom_max": None,
+                "C_peak": None,
+                "C_bar_peak": None,
+                "C_min": None,
+                "compensated": None,
+                "type_II": None,
+                "r_max_Mpc": None,
+                "r_peak_Mpc": None,
+                "M_max_SolarMass": None,
+                "M_peak_SolarMass": None,
+                "V_end_downflow_PlanckMass4": None,
+                "N_end_downflow": None,
                 "label": obj._label,
                 "diagnostics_json": diagnostics_json,
                 "validated": False,
@@ -405,6 +471,7 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
 
         units = obj._trajectory.units
         PlanckMass = units.PlanckMass
+        PlanckMass4 = PlanckMass ** 4
         Mpc = units.Mpc
 
         store_id = inserter(conn, {
@@ -428,6 +495,17 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
             "noise_mom_min":  obj.noise_mom_min,
             "noise_mom_mean": obj.noise_mom_mean,
             "noise_mom_max":  obj.noise_mom_max,
+            "C_peak": obj.C_peak,
+            "C_bar_peak": obj.C_bar_peak,
+            "C_min": obj.C_min,
+            "compensated": int(obj.compensated) if obj.compensated is not None else None,
+            "type_II": int(obj.type_II) if obj.type_II is not None else None,
+            "r_max_Mpc": obj.r_max / Mpc if obj.r_max is not None else None,
+            "r_peak_Mpc": obj.r_peak / Mpc if obj.r_peak is not None else None,
+            "M_max_SolarMass": obj.M_max / units.SolarMass if obj.M_max is not None else None,
+            "M_peak_SolarMass": obj.M_peak / units.SolarMass if obj.M_peak is not None else None,
+            "V_end_downflow_PlanckMass4": obj.V_end_downflow / PlanckMass4 if obj.V_end_downflow is not None else None,
+            "N_end_downflow": obj.N_end_downflow,
             "label": obj._label,
             "diagnostics_json": diagnostics_json,
             "validated": False,
@@ -460,6 +538,7 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
                 "r_ratio": p.r_ratio,
                 "C": p.C,
                 "r_phys_Mpc": p.r_phys / Mpc,
+                "C_bar": p.C_bar,
             })
 
         return obj
@@ -661,6 +740,9 @@ class sqla_GradientCoupledInstantonProfileFactory(SQLAFactoryBase):
                 sqla.Column("r_ratio", sqla.Float(64), nullable=False),
                 sqla.Column("C", sqla.Float(64), nullable=False),
                 sqla.Column("r_phys_Mpc", sqla.Float(64), nullable=False),
+                # C_bar may be None (see GradientCoupledInstantonProfileValue's
+                # own docstring) -- nullable, unlike zeta/r_ratio/C/r_phys_Mpc.
+                sqla.Column("C_bar", sqla.Float(64), nullable=True),
             ],
         }
 

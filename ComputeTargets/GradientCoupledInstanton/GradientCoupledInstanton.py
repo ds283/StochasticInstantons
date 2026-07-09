@@ -647,6 +647,19 @@ class GradientCoupledInstanton(DatastoreObject):
         self._noise_mom_min: Optional[float] = None
         self._noise_mom_mean: Optional[float] = None
         self._noise_mom_max: Optional[float] = None
+        # Parity scalar set (design §7.1), matching CompactionFunction's own
+        # exposed set; populated by compute()/store() via _populate_from_result.
+        self._C_peak: Optional[float] = None
+        self._C_bar_peak: Optional[float] = None
+        self._C_min: Optional[float] = None
+        self._compensated: Optional[bool] = None
+        self._type_II: Optional[bool] = None
+        self._r_max: Optional[float] = None
+        self._r_peak: Optional[float] = None
+        self._M_max: Optional[float] = None
+        self._M_peak: Optional[float] = None
+        self._V_end_downflow: Optional[float] = None
+        self._N_end_downflow: Optional[float] = None
         self._values: List[GradientCoupledInstantonValue] = []
         self._profile: List[GradientCoupledInstantonProfileValue] = []
         self._compute_ref: Optional[ObjectRef] = None
@@ -719,6 +732,50 @@ class GradientCoupledInstanton(DatastoreObject):
     @property
     def noise_mom_max(self) -> Optional[float]:
         return self._noise_mom_max
+
+    @property
+    def C_peak(self) -> Optional[float]:
+        return self._C_peak
+
+    @property
+    def C_bar_peak(self) -> Optional[float]:
+        return self._C_bar_peak
+
+    @property
+    def C_min(self) -> Optional[float]:
+        return self._C_min
+
+    @property
+    def compensated(self) -> Optional[bool]:
+        return self._compensated
+
+    @property
+    def type_II(self) -> Optional[bool]:
+        return self._type_II
+
+    @property
+    def r_max(self) -> Optional[float]:
+        return self._r_max
+
+    @property
+    def r_peak(self) -> Optional[float]:
+        return self._r_peak
+
+    @property
+    def M_max(self) -> Optional[float]:
+        return self._M_max
+
+    @property
+    def M_peak(self) -> Optional[float]:
+        return self._M_peak
+
+    @property
+    def V_end_downflow(self) -> Optional[float]:
+        return self._V_end_downflow
+
+    @property
+    def N_end_downflow(self) -> Optional[float]:
+        return self._N_end_downflow
 
     @property
     def diagnostics(self) -> Optional[dict]:
@@ -827,6 +884,18 @@ class GradientCoupledInstanton(DatastoreObject):
         self._noise_mom_min = data.get("noise_mom_min")
         self._noise_mom_mean = data.get("noise_mom_mean")
         self._noise_mom_max = data.get("noise_mom_max")
+
+        self._C_peak = data.get("C_peak")
+        self._C_bar_peak = data.get("C_bar_peak")
+        self._C_min = data.get("C_min")
+        self._compensated = data.get("compensated")
+        self._type_II = data.get("type_II")
+        self._r_max = data.get("r_max")
+        self._r_peak = data.get("r_peak")
+        self._M_max = data.get("M_max")
+        self._M_peak = data.get("M_peak")
+        self._V_end_downflow = data.get("V_end_downflow")
+        self._N_end_downflow = data.get("N_end_downflow")
 
         # data.get("C_bar") defaults to None per node: U2a (this call site)
         # and U2b (the Ray-remote function's own "C_bar" key) have no hard
