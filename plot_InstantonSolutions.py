@@ -16,7 +16,6 @@
 import itertools
 import math
 import sys
-from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -42,10 +41,23 @@ from CosmologyModels.cosmo_params import CosmologicalParams
 from CosmologyModels.params import Planck2018
 from Datastore.SQL.ShardedPool import ShardedPool
 from InflationConcepts import MasslessDecoupledDiffusion
+from plotting.annotations import (
+    _add_cf_annotation,
+    _cf_annotation_text,
+    _extract_cf_annotation,
+)
+from plotting.dispatch import _dispatch_plot_work
+from plotting.fetch import (
+    _cf_key_payload,
+    _cf_vectorized_fetch,
+    _extract_cf_summary,
+    _instanton_key_payload,
+    _qualifying_action,
+)
+from plotting.provenance import VERSION_LABEL, _provenance_footer
+from plotting.sampling import _evenly_sample, _safe_name, _safe_num
 from RayTools.RayWorkPool import RayWorkPool
 from Units import Planck_units
-
-VERSION_LABEL = "2026.3.0"
 
 DEFAULT_MAX_TRAJECTORIES = 3
 DEFAULT_MAX_COMBINATIONS = 10
@@ -102,205 +114,7 @@ def create_plot_parser():
     return parser
 
 
-# ── Grid + sampling helpers ────────────────────────────────────────────────────
-
-
-def _evenly_sample(seq, k):
-    """Return up to k elements of seq, evenly spaced by index."""
-    n = len(seq)
-    if n <= k:
-        return list(seq)
-    idx = sorted(set(int(round(i)) for i in np.linspace(0, n - 1, k)))
-    return [seq[i] for i in idx]
-
-
-# ── CF annotation helpers ──────────────────────────────────────────────────────
-
-
-def _extract_cf_annotation(cf, units):
-    """Return a plain-dict of CF summary scalars (all in display units) or None."""
-    if cf is None or not cf.available or cf.failure:
-        return None
-    Mpc = units.Mpc
-    SolarMass = units.SolarMass
-
-    def _div(v, u):
-        return v / u if v is not None else None
-
-    def _mul(v, u):
-        return v * u if v is not None else None
-
-    return {
-        "C_peak_full": cf.C_peak_full,
-        "C_bar_peak_full": cf.C_bar_peak_full,
-        "r_max_full_Mpc": _div(cf.r_max_full, Mpc),
-        "r_peak_full_Mpc": _div(cf.r_peak_full, Mpc),
-        "M_max_full_solar": _div(cf.M_max_full, SolarMass),
-        "M_peak_full_solar": _div(cf.M_peak_full, SolarMass),
-        "C_peak_slow_roll": cf.C_peak_slow_roll,
-        "C_bar_peak_slow_roll": cf.C_bar_peak_slow_roll,
-        "r_max_slow_roll_Mpc": _div(cf.r_max_slow_roll, Mpc),
-        "r_peak_slow_roll_Mpc": _div(cf.r_peak_slow_roll, Mpc),
-        "M_max_slow_roll_solar": _div(cf.M_max_slow_roll, SolarMass),
-        "M_peak_slow_roll_solar": _div(cf.M_peak_slow_roll, SolarMass),
-    }
-
-
-def _cf_annotation_text(ann):
-    """Build a compact annotation string (LaTeX mathtext) from a CF annotation
-    dict returned by _extract_cf_annotation, or return None if ann is None."""
-    if ann is None:
-        return None
-    lines = []
-    for label, keys in (
-        (
-            "Full",
-            (
-                "C_peak_full",
-                "C_bar_peak_full",
-                "r_max_full_Mpc",
-                "r_peak_full_Mpc",
-                "M_max_full_solar",
-                "M_peak_full_solar",
-            ),
-        ),
-        (
-            "SR",
-            (
-                "C_peak_slow_roll",
-                "C_bar_peak_slow_roll",
-                "r_max_slow_roll_Mpc",
-                "r_peak_slow_roll_Mpc",
-                "M_max_slow_roll_solar",
-                "M_peak_slow_roll_solar",
-            ),
-        ),
-    ):
-        C_max, Cb_max, r_max, r_peak, M_max, M_peak = (ann.get(k) for k in keys)
-        if C_max is None and M_max is None:
-            continue
-        parts = []
-        if C_max is not None:
-            parts.append(rf"$C_{{\rm peak}}$={C_max:.3g}")
-        if Cb_max is not None:
-            parts.append(rf"$\bar{{C}}_{{\rm peak}}$={Cb_max:.3g}")
-        if r_max is not None:
-            parts.append(rf"$r_{{\rm max}}$={r_max:.3g} Mpc")
-        if r_peak is not None:
-            parts.append(rf"$r_{{\rm peak}}$={r_peak:.3g} Mpc")
-        if M_max is not None:
-            parts.append(rf"$M_{{\rm max}}$={M_max:.3g} $M_\odot$")
-        if M_peak is not None:
-            parts.append(rf"$M_{{\rm peak}}$={M_peak:.3g} $M_\odot$")
-        lines.append(f"{label}: " + ",  ".join(parts))
-    return "\n".join(lines) if lines else None
-
-
-def _add_cf_annotation(fig, ann_text):
-    """Add ann_text as a small figure-level annotation and adjust layout.
-
-    The footer sits at y≈0.003; the annotation is anchored at y=0.03 so
-    there is always a clear gap between them regardless of line count.
-    """
-    if not ann_text:
-        fig.tight_layout()
-        return
-    n_lines = ann_text.count("\n") + 1
-    # Reserve space in absolute inches (text size is fixed in points, not
-    # figure-relative), then convert to a figure-fraction for this fig's
-    # actual height. Avoids over-reserving whitespace on taller figures.
-    fig_height_in = fig.get_size_inches()[1]
-    footer_strip_in = 0.18  # dedicated footer strip
-    per_line_in = 0.22  # x-small annotation line + padding
-    bottom_frac = (footer_strip_in + per_line_in * n_lines) / fig_height_in
-    fig.tight_layout(rect=[0, bottom_frac, 1, 1])
-    fig.text(
-        0.5,
-        0.03,
-        ann_text,
-        ha="center",
-        va="bottom",
-        fontsize="x-small",
-        transform=fig.transFigure,
-    )
-
-
-def _provenance_footer(fig, *objs, render_time=None, run_label: str = ""):
-    """Render a small, unobtrusive provenance line at the very bottom of fig.
-
-    Introspects whatever public attributes are present on each object; never
-    raises if an attribute is absent or if the object is not yet persisted.
-    When run_label is non-empty, renders a second line above the version/timestamp
-    line showing the database filename, config, and active mode flags.
-    """
-    if render_time is None:
-        render_time = datetime.now()
-
-    obj_parts = []
-    for obj in objs:
-        fields = []
-        try:
-            if hasattr(obj, "available") and obj.available:
-                fields.append(f"id={obj.store_id}")
-        except Exception:
-            pass
-        try:
-            ts = getattr(obj, "timestamp", None)
-            if ts is not None:
-                fields.append(f"stored={ts.strftime('%Y-%m-%d %H:%M')}")
-        except Exception:
-            pass
-        for attr in ("atol", "rtol", "label"):
-            try:
-                val = getattr(obj, attr, None)
-                if val is not None:
-                    try:
-                        formatted = f"{float(val):.2g}"
-                    except (TypeError, ValueError):
-                        formatted = str(val)
-                    fields.append(f"{attr}={formatted}")
-            except Exception:
-                pass
-        if fields:
-            obj_parts.append(f"{type(obj).__name__}({', '.join(fields)})")
-
-    parts = [
-        f"StochasticInstanton v{VERSION_LABEL}",
-        render_time.strftime("%Y-%m-%d %H:%M:%S"),
-    ]
-    parts.extend(obj_parts)
-    bottom_line = "  |  ".join(parts)
-
-    if run_label:
-        fig_height_in = fig.get_size_inches()[1]
-        two_line_strip_in = 0.30
-        bottom_frac = two_line_strip_in / fig_height_in
-        current_bottom = fig.subplotpars.bottom
-        if bottom_frac > current_bottom:
-            fig.subplots_adjust(bottom=bottom_frac)
-
-    footer_text = "\n".join([run_label, bottom_line]) if run_label else bottom_line
-
-    try:
-        fig.text(
-            0.5,
-            0.003,
-            footer_text,
-            ha="center",
-            va="bottom",
-            fontsize=7,
-            color="#888888",
-            transform=fig.transFigure,
-        )
-    except Exception:
-        pass
-
-
 # ── Figure functions ──────────────────────────────────────────────────────────
-
-
-def _safe_name(s):
-    return s.replace(" ", "_").replace("(", "").replace(")", "").replace(",", "")
 
 
 def plot_background_fields(
@@ -725,10 +539,6 @@ def plot_msr_action_sweep(
     plt.close(fig)
 
 
-def _safe_num(v: float) -> str:
-    return f"{v:.4g}".replace(".", "p").replace("-", "m")
-
-
 def plot_zeta_and_compaction(
     cf,
     units,
@@ -1093,122 +903,7 @@ def _plot_compaction_summary_item(
     )
 
 
-def _dispatch_plot_work(item):
-    """task_builder for RayWorkPool: item is a (remote_fn, args) pair already
-    fully prepared by the data-fetch stage; just submit it."""
-    remote_fn, args = item
-    return remote_fn.remote(*args)
-
-
 # ── Sweep-direction data fetching ────────────────────────────────────────────
-
-
-def _instanton_key_payload(traj_proxy, N_init, N_final, dns, atol, rtol, dm):
-    return dict(
-        trajectory=traj_proxy,
-        N_init=N_init,
-        N_final=N_final,
-        delta_Nstar=dns,
-        atol=atol,
-        rtol=rtol,
-        tags=[],
-        diffusion_model=dm,
-    )
-
-
-def _cf_key_payload(traj_proxy, fi_proxy, sri_proxy, dns, cosmo, atol, rtol):
-    return dict(
-        trajectory=traj_proxy,
-        full_instanton=fi_proxy,
-        slow_roll_instanton=sri_proxy,
-        delta_Nstar=dns,
-        cosmo=cosmo,
-        C_threshold=0.4,
-        atol=atol,
-        rtol=rtol,
-        tags=[],
-    )
-
-
-def _qualifying_action(obj):
-    """Extract msr_action from a (possibly _do_not_populate=True) query
-    result, or None if the object doesn't exist / has no action recorded."""
-    if obj is None or not obj.available:
-        return None
-    return obj.msr_action
-
-
-def _extract_cf_summary(cf, units):
-    """Return a 12-tuple:
-        (C_peak_full, C_bar_peak_full, M_max_full_solar, M_peak_full_solar,
-         C_peak_sr,   C_bar_peak_sr,   M_max_sr_solar,   M_peak_sr_solar,
-         r_max_full_Mpc, r_peak_full_Mpc,
-         r_max_sr_Mpc,   r_peak_sr_Mpc)
-    from a CompactionFunction object, or an all-None 12-tuple when unavailable."""
-    none12 = (None,) * 12
-    if cf is None or not cf.available or cf.failure:
-        return none12
-
-    SolarMass = units.SolarMass
-    Mpc = units.Mpc
-
-    def _m(v):
-        return v / SolarMass if v is not None else None
-
-    def _r(v):
-        return v / Mpc if v is not None else None
-
-    return (
-        cf.C_peak_full,
-        cf.C_bar_peak_full,
-        _m(cf.M_max_full),
-        _m(cf.M_peak_full),
-        cf.C_peak_slow_roll,
-        cf.C_bar_peak_slow_roll,
-        _m(cf.M_max_slow_roll),
-        _m(cf.M_peak_slow_roll),
-        _r(cf.r_max_full),
-        _r(cf.r_peak_full),
-        _r(cf.r_max_slow_roll),
-        _r(cf.r_peak_slow_roll),
-    )
-
-
-def _cf_vectorized_fetch(
-    pool, traj_proxy, fi_list, sri_list, dns_val, cosmo, atol, rtol
-):
-    """Return an index-aligned list of CompactionFunction objects (or None) for every
-    element in fi_list/sri_list.  Only submits a vectorized fetch for positions where
-    at least one instanton is available; positions where neither is available get None."""
-    n = len(fi_list)
-    valid_indices = []
-    payload_data = []
-    for i, (fi_obj, sri_obj) in enumerate(zip(fi_list, sri_list)):
-        fi_avail = fi_obj is not None and fi_obj.available
-        sri_avail = sri_obj is not None and sri_obj.available
-        if fi_avail or sri_avail:
-            fi_proxy = FullInstantonProxy(fi_obj) if fi_avail else None
-            sri_proxy = SlowRollInstantonProxy(sri_obj) if sri_avail else None
-            payload_data.append(
-                {
-                    **_cf_key_payload(
-                        traj_proxy, fi_proxy, sri_proxy, dns_val, cosmo, atol, rtol
-                    ),
-                    "_do_not_populate": True,
-                }
-            )
-            valid_indices.append(i)
-
-    result = [None] * n
-    if payload_data:
-        fetched = ray.get(
-            pool.object_get_vectorized(
-                "CompactionFunction", dns_val, payload_data=payload_data
-            )
-        )
-        for i, cf in zip(valid_indices, fetched):
-            result[i] = cf
-    return result
 
 
 def _sweep_Ninit_or_Nfinal(
