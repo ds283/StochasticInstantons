@@ -50,11 +50,17 @@ from plotting.annotations import (
 )
 from plotting.dispatch import _dispatch_plot_work
 from plotting.fetch import (
+    CFFetchSpec,
+    ClassFetchSpec,
     _cf_key_payload,
     _cf_vectorized_fetch,
     _extract_cf_summary,
     _instanton_key_payload,
     _qualifying_action,
+    collect_doe_scalar_points,
+    fetch_adapters_over_grid,
+    flatten_doe_points_for_csv,
+    full_sr_class_specs,
 )
 from plotting.figures.compaction import plot_zeta_and_compaction
 from plotting.figures.doe import plot_doe_scalar_summary
@@ -327,9 +333,8 @@ def _plot_noise_profile_item(
 
 @ray.remote
 def _plot_msr_sweep_item(
+    adapters,
     x_label,
-    fi_points,
-    sri_points,
     fixed_desc,
     potential_name,
     output_dir_str,
@@ -342,9 +347,8 @@ def _plot_msr_sweep_item(
     sns.set_theme()
     output_dir = Path(output_dir_str)
     plot_msr_action_sweep(
+        adapters,
         x_label,
-        fi_points,
-        sri_points,
         fixed_desc,
         potential_name,
         output_dir,
@@ -394,15 +398,13 @@ def _plot_compaction_item(
 
 @ray.remote
 def _plot_compaction_summary_item(
+    adapters,
     x_label,
-    fi_cf_points,
-    sri_cf_points,
     fixed_desc,
     potential_name,
     output_dir_str,
     fmt,
     swept_name,
-    threshold=None,
     run_label: str = "",
 ):
     """Runs inside a Ray worker: two-panel compaction summary sweep plot."""
@@ -410,15 +412,13 @@ def _plot_compaction_summary_item(
     sns.set_theme()
     output_dir = Path(output_dir_str)
     plot_compaction_summary(
+        adapters,
         x_label,
-        fi_cf_points,
-        sri_cf_points,
         fixed_desc,
         potential_name,
         output_dir,
         fmt,
         swept_name,
-        threshold=threshold,
         run_label=run_label,
     )
 
@@ -441,7 +441,6 @@ def _sweep_Ninit_or_Nfinal(
     max_combos,
     work_items,
     cosmo,
-    units,
     dm,
     run_label: str = "",
 ):
@@ -455,58 +454,41 @@ def _sweep_Ninit_or_Nfinal(
 
     for other_val, dns_val in selected:
         if swept_name == "N_init":
-            payload_data = [
-                {
-                    **_instanton_key_payload(
-                        traj_proxy, v, other_val, dns_val, atol, rtol, dm
-                    ),
-                    "_do_not_populate": True,
-                }
-                for v in swept_array
-            ]
-        else:
-            payload_data = [
-                {
-                    **_instanton_key_payload(
-                        traj_proxy, other_val, v, dns_val, atol, rtol, dm
-                    ),
-                    "_do_not_populate": True,
-                }
-                for v in swept_array
-            ]
-
-        fi_list, sri_list = ray.get(
-            [
-                pool.object_get_vectorized(
-                    "FullInstanton", dns_val, payload_data=payload_data
-                ),
-                pool.object_get_vectorized(
-                    "SlowRollInstanton", dns_val, payload_data=payload_data
-                ),
-            ]
-        )
-
-        swept_vals = [float(v) for v in swept_array]
-        fi_points = list(zip(swept_vals, (_qualifying_action(o) for o in fi_list)))
-        sri_points = list(zip(swept_vals, (_qualifying_action(o) for o in sri_list)))
-
-        if swept_name == "N_init":
+            items = [(v, other_val, dns_val) for v in swept_array]
             fixed_desc = f"Nfinal={float(other_val):.3g}_dNstar={float(dns_val):.3g}"
             x_label = r"$N_{\rm init}$"
         else:
+            items = [(other_val, v, dns_val) for v in swept_array]
             fixed_desc = f"Ninit={float(other_val):.3g}_dNstar={float(dns_val):.3g}"
             x_label = r"$N_{\rm final}$"
 
-        if any(a is not None for _, a in fi_points) or any(
-            a is not None for _, a in sri_points
-        ):
+        class_specs = full_sr_class_specs(traj_proxy, atol, rtol, dm)
+        cf_spec = CFFetchSpec(
+            shard_key_of=lambda item: item[2],
+            traj_proxy=traj_proxy,
+            fi_spec_name="full",
+            sri_spec_name="slow-roll",
+            cosmo=cosmo,
+            atol=atol,
+            rtol=rtol,
+        )
+        coords_of = lambda item: {
+            "N_init": float(item[0]),
+            "N_final": float(item[1]),
+            "delta_Nstar": float(item[2]),
+        }
+        rows = fetch_adapters_over_grid(
+            pool, items, class_specs, coords_of, cf_spec=cf_spec, do_not_populate=True
+        )
+        adapters = [a for row in rows for a in row]
+
+        if any(a.available and not a.failure for a in adapters):
             work_items.append(
                 (
                     _plot_msr_sweep_item,
                     (
+                        adapters,
                         x_label,
-                        fi_points,
-                        sri_points,
                         fixed_desc,
                         potential.name,
                         str(out_dir),
@@ -517,46 +499,22 @@ def _sweep_Ninit_or_Nfinal(
                 )
             )
 
-        cf_list = _cf_vectorized_fetch(
-            pool, traj_proxy, fi_list, sri_list, dns_val, cosmo, atol, rtol
-        )
-        fi_cf_points = []
-        sri_cf_points = []
-        c_thresholds = set()
-        for sv, cf in zip(swept_vals, cf_list):
-            s = _extract_cf_summary(cf, units)
-            fi_cf_points.append((sv, s[0], s[1], s[2], s[3], s[8], s[9]))
-            sri_cf_points.append((sv, s[4], s[5], s[6], s[7], s[10], s[11]))
-            if cf is not None and cf.available and not cf.failure:
-                try:
-                    c_thresholds.add(cf.C_threshold)
-                except Exception:
-                    pass
-        threshold = None
-        if len(c_thresholds) == 1:
-            threshold = next(iter(c_thresholds))
-        elif len(c_thresholds) > 1:
-            print(
-                f"  Warning: C_threshold varies across sweep: {sorted(c_thresholds)}. "
-                "Using smallest value."
-            )
-            threshold = sorted(c_thresholds)[0]
         if any(
-            p[1] is not None or p[3] is not None for p in fi_cf_points + sri_cf_points
+            a.scalars().get("C_peak") is not None
+            or a.scalars().get("C_bar_peak") is not None
+            for a in adapters
         ):
             work_items.append(
                 (
                     _plot_compaction_summary_item,
                     (
+                        adapters,
                         x_label,
-                        fi_cf_points,
-                        sri_cf_points,
                         fixed_desc,
                         potential.name,
                         str(out_dir),
                         fmt,
                         swept_name,
-                        threshold,
                         run_label,
                     ),
                 )
@@ -577,7 +535,6 @@ def _sweep_delta_Nstar(
     max_combos,
     work_items,
     cosmo,
-    units,
     dm,
     run_label: str = "",
 ):
@@ -589,94 +546,46 @@ def _sweep_delta_Nstar(
     combos = list(itertools.product(N_init_array, N_final_array))
     selected = _evenly_sample(combos, max_combos)
 
-    fi_refs = {}
-    sri_refs = {}
-    for dns_val in dns_array:
-        payload_data = [
-            {
-                **_instanton_key_payload(
-                    traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol, dm
-                ),
-                "_do_not_populate": True,
-            }
-            for (N_init_v, N_final_v) in selected
-        ]
-        fi_refs[dns_val] = pool.object_get_vectorized(
-            "FullInstanton", dns_val, payload_data=payload_data
-        )
-        sri_refs[dns_val] = pool.object_get_vectorized(
-            "SlowRollInstanton", dns_val, payload_data=payload_data
-        )
+    items = [
+        (N_init_v, N_final_v, dns_val)
+        for (N_init_v, N_final_v) in selected
+        for dns_val in dns_array
+    ]
+    class_specs = full_sr_class_specs(traj_proxy, atol, rtol, dm)
+    cf_spec = CFFetchSpec(
+        shard_key_of=lambda item: item[2],
+        traj_proxy=traj_proxy,
+        fi_spec_name="full",
+        sri_spec_name="slow-roll",
+        cosmo=cosmo,
+        atol=atol,
+        rtol=rtol,
+    )
+    coords_of = lambda item: {
+        "N_init": float(item[0]),
+        "N_final": float(item[1]),
+        "delta_Nstar": float(item[2]),
+    }
+    rows = fetch_adapters_over_grid(
+        pool, items, class_specs, coords_of, cf_spec=cf_spec, do_not_populate=True
+    )
 
-    fi_by_dns = dict(zip(fi_refs.keys(), ray.get(list(fi_refs.values()))))
-    sri_by_dns = dict(zip(sri_refs.keys(), ray.get(list(sri_refs.values()))))
-
-    cf_refs = {}
-    cf_valid_indices_by_dns = {}
-    for dns_val in dns_array:
-        fi_list_d = fi_by_dns[dns_val]
-        sri_list_d = sri_by_dns[dns_val]
-        valid_indices = []
-        cf_payload_data = []
-        for i, (fi_obj, sri_obj) in enumerate(zip(fi_list_d, sri_list_d)):
-            fi_avail = fi_obj is not None and fi_obj.available
-            sri_avail = sri_obj is not None and sri_obj.available
-            if fi_avail or sri_avail:
-                fi_proxy = FullInstantonProxy(fi_obj) if fi_avail else None
-                sri_proxy = SlowRollInstantonProxy(sri_obj) if sri_avail else None
-                cf_payload_data.append(
-                    {
-                        **_cf_key_payload(
-                            traj_proxy, fi_proxy, sri_proxy, dns_val, cosmo, atol, rtol
-                        ),
-                        "_do_not_populate": True,
-                    }
-                )
-                valid_indices.append(i)
-        if cf_payload_data:
-            cf_refs[dns_val] = pool.object_get_vectorized(
-                "CompactionFunction", dns_val, payload_data=cf_payload_data
-            )
-        cf_valid_indices_by_dns[dns_val] = valid_indices
-
-    dns_with_refs = [(dns, ref) for dns, ref in cf_refs.items()]
-    if dns_with_refs:
-        dns_keys, refs = zip(*dns_with_refs)
-        fetched_lists = ray.get(list(refs))
-        cf_by_dns_raw = dict(zip(dns_keys, fetched_lists))
-    else:
-        cf_by_dns_raw = {}
-
-    cf_by_dns = {}
-    for dns_val in dns_array:
-        full_list = [None] * len(selected)
-        for i, cf in zip(
-            cf_valid_indices_by_dns.get(dns_val, []), cf_by_dns_raw.get(dns_val, [])
-        ):
-            full_list[i] = cf
-        cf_by_dns[dns_val] = full_list
-
+    # items (and therefore rows) are laid out combo-major, dns-minor (see the
+    # list comprehension above), so each combo's adapters are a contiguous
+    # slice of length len(dns_array).
+    n_dns = len(dns_array)
     for combo_idx, (N_init_v, N_final_v) in enumerate(selected):
-        fi_points = [
-            (float(dns_val), _qualifying_action(fi_by_dns[dns_val][combo_idx]))
-            for dns_val in dns_array
-        ]
-        sri_points = [
-            (float(dns_val), _qualifying_action(sri_by_dns[dns_val][combo_idx]))
-            for dns_val in dns_array
-        ]
-
+        combo_rows = rows[combo_idx * n_dns : (combo_idx + 1) * n_dns]
+        adapters = [a for row in combo_rows for a in row]
         fixed_desc = f"Ninit={float(N_init_v):.3g}_Nfinal={float(N_final_v):.3g}"
-        if any(a is not None for _, a in fi_points) or any(
-            a is not None for _, a in sri_points
-        ):
+
+        if any(a.available and not a.failure for a in adapters):
             work_items.append(
                 (
                     _plot_msr_sweep_item,
                     (
+                        adapters,
                         r"$\delta N_\star$",
-                        fi_points,
-                        sri_points,
                         fixed_desc,
                         potential.name,
                         str(out_dir),
@@ -687,45 +596,22 @@ def _sweep_delta_Nstar(
                 )
             )
 
-        fi_cf_points = []
-        sri_cf_points = []
-        c_thresholds = set()
-        for dns_val in dns_array:
-            cf = cf_by_dns[dns_val][combo_idx]
-            s = _extract_cf_summary(cf, units)
-            dns_float = float(dns_val)
-            fi_cf_points.append((dns_float, s[0], s[1], s[2], s[3], s[8], s[9]))
-            sri_cf_points.append((dns_float, s[4], s[5], s[6], s[7], s[10], s[11]))
-            if cf is not None and cf.available and not cf.failure:
-                try:
-                    c_thresholds.add(cf.C_threshold)
-                except Exception:
-                    pass
-        threshold = None
-        if len(c_thresholds) == 1:
-            threshold = next(iter(c_thresholds))
-        elif len(c_thresholds) > 1:
-            print(
-                f"  Warning: C_threshold varies across sweep: {sorted(c_thresholds)}. "
-                "Using smallest value."
-            )
-            threshold = sorted(c_thresholds)[0]
         if any(
-            p[1] is not None or p[3] is not None for p in fi_cf_points + sri_cf_points
+            a.scalars().get("C_peak") is not None
+            or a.scalars().get("C_bar_peak") is not None
+            for a in adapters
         ):
             work_items.append(
                 (
                     _plot_compaction_summary_item,
                     (
+                        adapters,
                         r"$\delta N_\star$",
-                        fi_cf_points,
-                        sri_cf_points,
                         fixed_desc,
                         potential.name,
                         str(out_dir),
                         fmt,
                         "delta_Nstar",
-                        threshold,
                         run_label,
                     ),
                 )
@@ -943,143 +829,22 @@ def _generate_instanton_samples(
 
 
 # ── DOE scalar collection and summary plots ───────────────────────────────────
-
-
-def _collect_doe_scalar_data(
-    pool,
-    traj_proxy,
-    grid_combos,
-    cosmo,
-    atol,
-    rtol,
-    units,
-    dm,
-) -> list:
-    """Return a list of dicts (one per available grid point) with scalar summaries.
-    Grid points where neither FullInstanton nor SlowRollInstanton is available
-    are omitted entirely."""
-    if not grid_combos:
-        return []
-
-    # Group by dns value (shard key) to allow one vectorized fetch per shard.
-    by_dns = {}
-    for combo_idx, (N_init_obj, N_final_obj, dns_obj) in enumerate(grid_combos):
-        key = float(dns_obj)
-        if key not in by_dns:
-            by_dns[key] = {"dns_obj": dns_obj, "pairs": []}
-        by_dns[key]["pairs"].append((combo_idx, N_init_obj, N_final_obj))
-
-    # Issue vectorized instanton fetches per shard.
-    fi_refs = {}
-    sri_refs = {}
-    for dns_float, group in by_dns.items():
-        dns_val = group["dns_obj"]
-        pairs = group["pairs"]
-        payload_data = [
-            {
-                **_instanton_key_payload(
-                    traj_proxy, N_init_v, N_final_v, dns_val, atol, rtol, dm
-                ),
-                "_do_not_populate": True,
-            }
-            for _, N_init_v, N_final_v in pairs
-        ]
-        fi_refs[dns_float] = pool.object_get_vectorized(
-            "FullInstanton", dns_val, payload_data=payload_data
-        )
-        sri_refs[dns_float] = pool.object_get_vectorized(
-            "SlowRollInstanton", dns_val, payload_data=payload_data
-        )
-
-    dns_floats = list(by_dns.keys())
-    fi_results = ray.get([fi_refs[d] for d in dns_floats])
-    sri_results = ray.get([sri_refs[d] for d in dns_floats])
-    fi_by_dns = dict(zip(dns_floats, fi_results))
-    sri_by_dns = dict(zip(dns_floats, sri_results))
-
-    # Fetch CF scalars per shard.
-    cf_by_dns = {}
-    for dns_float, group in by_dns.items():
-        dns_val = group["dns_obj"]
-        fi_list = fi_by_dns[dns_float]
-        sri_list = sri_by_dns[dns_float]
-        cf_by_dns[dns_float] = _cf_vectorized_fetch(
-            pool, traj_proxy, fi_list, sri_list, dns_val, cosmo, atol, rtol
-        )
-
-    result = []
-    for dns_float, group in by_dns.items():
-        dns_val = group["dns_obj"]
-        pairs = group["pairs"]
-        fi_list = fi_by_dns[dns_float]
-        sri_list = sri_by_dns[dns_float]
-        cf_list = cf_by_dns[dns_float]
-
-        for local_idx, (_, N_init_obj, N_final_obj) in enumerate(pairs):
-            fi_obj = fi_list[local_idx]
-            sri_obj = sri_list[local_idx]
-            cf_obj = cf_list[local_idx]
-
-            fi_avail = fi_obj is not None and fi_obj.available
-            sri_avail = sri_obj is not None and sri_obj.available
-            if not fi_avail and not sri_avail:
-                continue
-
-            s = _extract_cf_summary(cf_obj, units)
-            result.append(
-                {
-                    "N_init": float(N_init_obj),
-                    "N_final": float(N_final_obj),
-                    "delta_Nstar": float(dns_val),
-                    "delta_N": float(N_init_obj) - float(N_final_obj),
-                    "msr_action_full": _qualifying_action(fi_obj),
-                    "msr_action_sr": _qualifying_action(sri_obj),
-                    "noise_phi1_min_full": fi_obj.noise_phi1_min if fi_avail else None,
-                    "noise_phi1_mean_full": fi_obj.noise_phi1_mean
-                    if fi_avail
-                    else None,
-                    "noise_phi1_max_full": fi_obj.noise_phi1_max if fi_avail else None,
-                    "noise_phi2_min_full": fi_obj.noise_phi2_min if fi_avail else None,
-                    "noise_phi2_mean_full": fi_obj.noise_phi2_mean
-                    if fi_avail
-                    else None,
-                    "noise_phi2_max_full": fi_obj.noise_phi2_max if fi_avail else None,
-                    "noise_phi1_min_sr": sri_obj.noise_phi1_min if sri_avail else None,
-                    "noise_phi1_mean_sr": sri_obj.noise_phi1_mean
-                    if sri_avail
-                    else None,
-                    "noise_phi1_max_sr": sri_obj.noise_phi1_max if sri_avail else None,
-                    "noise_phi2_min_sr": sri_obj.noise_phi2_min if sri_avail else None,
-                    "noise_phi2_mean_sr": sri_obj.noise_phi2_mean
-                    if sri_avail
-                    else None,
-                    "noise_phi2_max_sr": sri_obj.noise_phi2_max if sri_avail else None,
-                    "C_peak_full": s[0],
-                    "C_bar_peak_full": s[1],
-                    "M_max_full_solar": s[2],
-                    "M_peak_full_solar": s[3],
-                    "r_max_full_Mpc": s[8],
-                    "r_peak_full_Mpc": s[9],
-                    "C_peak_sr": s[4],
-                    "C_bar_peak_sr": s[5],
-                    "M_max_sr_solar": s[6],
-                    "M_peak_sr_solar": s[7],
-                    "r_max_sr_Mpc": s[10],
-                    "r_peak_sr_Mpc": s[11],
-                }
-            )
-
-    return result
+#
+# Scalar collection itself (formerly _collect_doe_scalar_data) now lives in
+# plotting.fetch.collect_doe_scalar_points, returning adapters instead of a
+# _full/_sr-suffixed flat dict; plotting.fetch.flatten_doe_points_for_csv
+# rebuilds that flat dict for the CSV, so scalar_data.csv's columns/values
+# are unchanged (see _run_doe_summary_plots below).
 
 
 @ray.remote
 def _plot_doe_summary_item(
-    data_points, potential_name, output_dir_str, fmt, threshold, run_label: str = ""
+    points, potential_name, output_dir_str, fmt, threshold, run_label: str = ""
 ):
     sns.set_theme()
     output_dir = Path(output_dir_str)
     plot_doe_scalar_summary(
-        data_points, potential_name, output_dir, fmt, threshold, run_label=run_label
+        points, potential_name, output_dir, fmt, threshold, run_label=run_label
     )
 
 
@@ -1100,32 +865,33 @@ def _run_doe_summary_plots(
     run_label: str = "",
 ):
     print(f"   >> Collecting scalar summaries for {len(grid_combos)} grid point(s)...")
-    data_points = _collect_doe_scalar_data(
+    points = collect_doe_scalar_points(
         pool, traj_proxy, grid_combos, cosmo, atol, rtol, units, dm
     )
-    if not data_points:
+    if not points:
         print("   >> No data found — skipping DOE summary plots and CSV.")
         return
 
-    print(f"   >> {len(data_points)} point(s) with data; queuing DOE summary plots.")
+    print(f"   >> {len(points)} point(s) with data; queuing DOE summary plots.")
     doe_dir = traj_dir / "doe_summary"
     doe_dir.mkdir(parents=True, exist_ok=True)
 
     work_items.append(
         (
             _plot_doe_summary_item,
-            (data_points, potential.name, str(doe_dir), fmt, threshold, run_label),
+            (points, potential.name, str(doe_dir), fmt, threshold, run_label),
         )
     )
 
     import csv
 
     csv_path = doe_dir / "scalar_data.csv"
-    fieldnames = list(data_points[0].keys())
+    csv_rows = flatten_doe_points_for_csv(points)
+    fieldnames = list(csv_rows[0].keys())
     with open(csv_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(data_points)
+        writer.writerows(csv_rows)
     print(f"   >> Scalar data written to {csv_path}")
 
 
@@ -1313,7 +1079,6 @@ def run_plots(pool, units, args):
             max_combos=max_combos,
             work_items=work_items,
             cosmo=cosmo,
-            units=units,
             dm=dm,
             run_label=run_label,
         )
@@ -1332,7 +1097,6 @@ def run_plots(pool, units, args):
             max_combos=max_combos,
             work_items=work_items,
             cosmo=cosmo,
-            units=units,
             dm=dm,
             run_label=run_label,
         )
@@ -1350,7 +1114,6 @@ def run_plots(pool, units, args):
             max_combos=max_combos,
             work_items=work_items,
             cosmo=cosmo,
-            units=units,
             dm=dm,
             run_label=run_label,
         )

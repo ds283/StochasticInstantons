@@ -43,6 +43,13 @@ class InstantonAdapter(abc.ABC):
     kind: str
     display_label: str
     line_style: str
+    # Matplotlib marker character for this kind, e.g. "o"/"^" -- lets sweep
+    # and DOE scatter figures draw one shape per solver identity without
+    # ever branching on `.kind` (added in the P2b retrofit alongside
+    # `line_style`, same category of addition as `atol`/`rtol`/
+    # `channel_label`: needed to preserve visually-distinct overlays while
+    # keeping figure functions solver-agnostic).
+    marker: str
 
     def __init__(self, coords: Optional[dict] = None):
         # Grid coordinates (N_init, N_final, delta_Nstar, and for GCI alpha /

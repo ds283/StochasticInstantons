@@ -37,6 +37,7 @@ class SlowRollInstantonAdapter(InstantonAdapter):
 
     kind = "slow-roll"
     line_style = "--"
+    marker = "^"
 
     def __init__(self, sri, cf=None, coords: Optional[dict] = None):
         super().__init__(coords)

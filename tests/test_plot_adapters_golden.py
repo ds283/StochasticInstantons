@@ -43,6 +43,7 @@ moved/converted code directly against stand-in objects:
 
 import numpy as np
 import pytest
+import ray
 from matplotlib import pyplot as plt
 
 import plot_InstantonSolutions as driver
@@ -56,6 +57,18 @@ import plotting.figures.sweeps as sweeps
 import plotting.figures.time_history as time_history
 from plotting.adapters.full import FullInstantonAdapter
 from plotting.adapters.slow_roll import SlowRollInstantonAdapter
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _ray_ready():
+    """The P2b fetch-helper tests below (TestFetchAdaptersOverGrid,
+    TestCollectDoeScalarPoints) exercise ray.put/ray.get through a stub
+    pool, same as tests/test_plot_extraction_golden.py's own fixture of the
+    same name -- a bare local Ray init is enough, no live_pool/database.
+    Does not call ray.shutdown(); conftest.py's session-scoped live_pool
+    fixture owns that."""
+    ray.init(ignore_reinit_error=True)
+    yield
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +139,12 @@ class _FullInstantonStub:
         self.noise_phi2_max = 0.6
         self.diagnostics = {"picard_iterations": 7}
         self.timestamp = timestamp
+        # Needed only when this stub is wrapped in a FullInstantonProxy (the
+        # P2b fetch.py::_cf_vectorized_fetch call path), which reads these
+        # directly -- matches the real FullInstanton's own properties.
+        self.N_init_value = 60.0
+        self.N_final_value = 10.0
+        self.delta_Nstar = 5.0
         self._trajectory = _TrajProxyStub(units)
         self._atol = _ToleranceStub(atol)
         self._rtol = _ToleranceStub(rtol)
@@ -165,6 +184,10 @@ class _SlowRollInstantonStub:
         self.noise_phi2_max = None
         self.diagnostics = {"brentq_iterations": 12}
         self.timestamp = timestamp
+        # See _FullInstantonStub's own comment on these three.
+        self.N_init_value = 60.0
+        self.N_final_value = 10.0
+        self.delta_Nstar = 5.0
         self._trajectory = _TrajProxyStub(units)
         self._atol = _ToleranceStub(atol)
         self._rtol = _ToleranceStub(rtol)
@@ -258,10 +281,12 @@ class TestDriverReExportsAreIdentical:
         assert driver.plot_noise_profile is noise.plot_noise_profile
         assert driver.plot_zeta_and_compaction is compaction.plot_zeta_and_compaction
 
-    def test_sweeps_and_doe_unconverted_but_moved(self):
-        """These three were moved verbatim (no adapter conversion -- see the
-        module docstrings in sweeps.py/doe.py); re-export identity is the
-        entire regression guard for them."""
+    def test_sweeps_and_doe_converted(self):
+        """P2b retrofit: these three were also converted to consume
+        InstantonAdapter lists (plot_msr_action_sweep/plot_compaction_summary
+        take a flat adapter list; plot_doe_scalar_summary takes a list of
+        per-grid-point {"delta_Nstar", "delta_N", "adapters"} dicts) -- see
+        the module docstrings in sweeps.py/doe.py."""
         assert driver.plot_msr_action_sweep is sweeps.plot_msr_action_sweep
         assert driver.plot_compaction_summary is sweeps.plot_compaction_summary
         assert driver.plot_doe_scalar_summary is doe.plot_doe_scalar_summary
@@ -655,3 +680,515 @@ class TestPlotZetaAndCompactionOverlay:
         assert "SR" not in zeta_labels  # cf.slow_roll_values is empty
 
         plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# 4. P2b retrofit: plotting/fetch.py's generic multi-class adapter fetch,
+#    and the now-adapter-driven sweeps.py/doe.py figure functions.
+# ---------------------------------------------------------------------------
+
+
+class TestInstantonAdapterMarker:
+    def test_full_and_slow_roll_markers(self):
+        assert FullInstantonAdapter(None).marker == "o"
+        assert SlowRollInstantonAdapter(None).marker == "^"
+
+
+class TestPlotMsrActionSweepOverlay:
+    def test_two_kind_overlay_draws_expected_lines(self, tmp_path, _no_op_close):
+        N_init_vals = [50.0, 55.0, 60.0]
+        adapters = []
+        for i, N_init in enumerate(N_init_vals):
+            coords = {"N_init": N_init, "N_final": 10.0, "delta_Nstar": 5.0}
+            fi = _FullInstantonStub(msr_action=1.0 + 0.1 * i)
+            sri = _SlowRollInstantonStub(msr_action=2.0 + 0.1 * i)
+            adapters.append(FullInstantonAdapter(fi, coords=coords))
+            adapters.append(SlowRollInstantonAdapter(sri, coords=coords))
+
+        sweeps.plot_msr_action_sweep(
+            adapters,
+            r"$N_{\rm init}$",
+            "Nfinal=10_dNstar=5",
+            "quadratic",
+            tmp_path,
+            "png",
+            "N_init",
+        )
+
+        fig = plt.gcf()
+        lines = fig.axes[0].get_lines()
+        labels = [line.get_label() for line in lines]
+        assert "Full MSR" in labels
+        assert "SR MSR" in labels
+
+        full_line = next(line for line in lines if line.get_label() == "Full MSR")
+        assert list(full_line.get_xdata()) == N_init_vals  # already ascending, x-sorted
+
+        plt.close(fig)
+
+    def test_skips_when_no_data(self, tmp_path):
+        adapters = [FullInstantonAdapter(None), SlowRollInstantonAdapter(None)]
+        sweeps.plot_msr_action_sweep(
+            adapters, "x", "fixed", "quadratic", tmp_path, "png", "N_init"
+        )
+        assert not list(tmp_path.iterdir())
+
+
+class TestPlotCompactionSummaryOverlay:
+    def test_two_kind_overlay_draws_expected_lines(self, tmp_path, _no_op_close):
+        adapters = []
+        for N_init in (50.0, 60.0):
+            coords = {"N_init": N_init, "N_final": 10.0, "delta_Nstar": 5.0}
+            cf = _CompactionFunctionStub(units=_UnitsStub(), **_FULL_CF_KWARGS)
+            adapters.append(
+                FullInstantonAdapter(_FullInstantonStub(), cf, coords=coords)
+            )
+            adapters.append(
+                SlowRollInstantonAdapter(_SlowRollInstantonStub(), cf, coords=coords)
+            )
+
+        sweeps.plot_compaction_summary(
+            adapters, r"$N_{\rm init}$", "fixed", "quadratic", tmp_path, "png", "N_init"
+        )
+
+        fig = plt.gcf()
+        ax_C, ax_M, ax_r = fig.axes[0], fig.axes[1], fig.axes[2]
+
+        C_labels = [line.get_label() for line in ax_C.get_lines()]
+        assert r"$C_{\rm peak}$ (Full)" in C_labels
+        assert r"$\bar{C}_{\rm peak}$ (Full)" in C_labels
+        assert r"$C_{\rm peak}$ (SR)" in C_labels
+        assert r"$\bar{C}_{\rm peak}$ (SR)" in C_labels
+
+        M_labels = [line.get_label() for line in ax_M.get_lines()]
+        assert r"$M_{\rm max}$ (Full)" in M_labels
+        assert r"$M_{\rm peak}$ (SR)" in M_labels
+
+        r_labels = [line.get_label() for line in ax_r.get_lines()]
+        assert r"$r_{\rm max}$ (Full)" in r_labels
+
+        plt.close(fig)
+
+    def test_threshold_mismatch_warns_and_uses_smallest(
+        self, tmp_path, _no_op_close, capsys
+    ):
+        cf_a = _CompactionFunctionStub(
+            units=_UnitsStub(), C_threshold=0.4, **_FULL_CF_KWARGS
+        )
+        cf_b = _CompactionFunctionStub(
+            units=_UnitsStub(), C_threshold=0.3, **_FULL_CF_KWARGS
+        )
+        adapters = [
+            FullInstantonAdapter(
+                _FullInstantonStub(),
+                cf_a,
+                coords={"N_init": 60.0, "N_final": 10.0, "delta_Nstar": 5.0},
+            ),
+            FullInstantonAdapter(
+                _FullInstantonStub(),
+                cf_b,
+                coords={"N_init": 55.0, "N_final": 10.0, "delta_Nstar": 5.0},
+            ),
+        ]
+
+        sweeps.plot_compaction_summary(
+            adapters, "x", "fixed", "quadratic", tmp_path, "png", "N_init"
+        )
+
+        assert "C_threshold varies across sweep" in capsys.readouterr().out
+
+        fig = plt.gcf()
+        threshold_lines = [
+            line
+            for line in fig.axes[0].get_lines()
+            if line.get_label().startswith("Threshold")
+        ]
+        assert len(threshold_lines) == 1
+        assert "0.30" in threshold_lines[0].get_label()
+        plt.close(fig)
+
+
+class TestPlotDoeScalarSummaryOverlay:
+    def test_two_kind_points_render_without_error(self, tmp_path):
+        points = []
+        for i, dns in enumerate((3.0, 5.0)):
+            fi = _FullInstantonStub(msr_action=1.0 + i, store_id=i + 1)
+            sri = _SlowRollInstantonStub(msr_action=2.0 + i, store_id=i + 10)
+            cf = _CompactionFunctionStub(units=_UnitsStub(), **_FULL_CF_KWARGS)
+            points.append(
+                {
+                    "delta_Nstar": dns,
+                    "delta_N": 50.0 - i,
+                    "adapters": [
+                        FullInstantonAdapter(fi, cf),
+                        SlowRollInstantonAdapter(sri, cf),
+                    ],
+                }
+            )
+
+        doe.plot_doe_scalar_summary(points, "quadratic", tmp_path, "png")
+
+        assert (tmp_path / "doe_compaction_action.png").exists()
+        assert (tmp_path / "doe_mass_collapse.png").exists()
+
+    def test_skips_when_no_points(self, tmp_path):
+        doe.plot_doe_scalar_summary([], "quadratic", tmp_path, "png")
+        assert not list(tmp_path.iterdir())
+
+
+class _FakeThirdAdapter:
+    """Minimal duck-typed third adapter kind (not Full/SR), used to prove the
+    five overlay-capable figure functions never hard-code a two-kind
+    assumption -- exactly the property P4's later GradientCoupledAdapter
+    depends on."""
+
+    kind = "fake-third"
+    marker = "D"
+    line_style = ":"
+
+    def __init__(self, coords=None):
+        self.display_label = "Fake3"
+        self._coords = coords or {}
+
+    @property
+    def coords(self):
+        return dict(self._coords)
+
+    @property
+    def available(self):
+        return True
+
+    @property
+    def failure(self):
+        return False
+
+    @property
+    def store_id(self):
+        return 999
+
+    @property
+    def timestamp(self):
+        return None
+
+    @property
+    def tolerances(self):
+        return (1e-8, 1e-9)
+
+    @property
+    def atol(self):
+        return self.tolerances[0]
+
+    @property
+    def rtol(self):
+        return self.tolerances[1]
+
+    def has_channel(self, name):
+        return name == "phi"
+
+    def is_spatial(self):
+        return False
+
+    def channel_label(self, channel):
+        return r"$\chi$" if channel == "phi" else None
+
+    def time_history(self, channel):
+        if channel != "phi":
+            return None
+        return np.array([1.0, 2.0]), np.array([3.0, 4.0])
+
+    def noise_history(self):
+        return None
+
+    def radial_profile(self):
+        return {
+            "r_Mpc": np.array([1.0]),
+            "zeta": np.array([0.1]),
+            "C": np.array([0.2]),
+            "C_bar": np.array([0.3]),
+        }
+
+    def scalars(self):
+        return {
+            "msr_action": 9.9,
+            "C_peak": 0.6,
+            "C_bar_peak": 0.4,
+            "C_min": -0.1,
+            "compensated": True,
+            "type_II": False,
+            "r_max_Mpc": 7.0,
+            "r_peak_Mpc": 3.0,
+            "M_max_solar": 12.0,
+            "M_peak_solar": 6.0,
+            "V_end_downflow": None,
+            "N_end_downflow": None,
+            "C_threshold": 0.4,
+            "noise_field_min": None,
+            "noise_field_mean": None,
+            "noise_field_max": None,
+            "noise_mom_min": None,
+            "noise_mom_mean": None,
+            "noise_mom_max": None,
+        }
+
+    def diagnostics(self):
+        return None
+
+
+class TestOverlayGeneralizesToNAdapters:
+    def test_all_figure_families_render_a_third_series(self, tmp_path, _no_op_close):
+        coords = {"N_init": 60.0, "N_final": 10.0, "delta_Nstar": 5.0}
+        fi = _FullInstantonStub(
+            values=[_FullValueStub(N=1.0, phi1=1.0, phi2=1.0, P1=0.1, P2=0.01)],
+            msr_action=1.0,
+        )
+        sri = _SlowRollInstantonStub(
+            values=[_SlowRollValueStub(N=1.0, phi=1.0, P1=0.1)], msr_action=2.0
+        )
+        cf = _CompactionFunctionStub(
+            full_values=[_CFValueStub(r=20.0, zeta=0.1, C=0.2, C_bar=0.3)],
+            slow_roll_values=[_CFValueStub(r=16.0, zeta=0.05, C=0.15, C_bar=0.25)],
+            units=_UnitsStub(),
+        )
+        adapters = [
+            FullInstantonAdapter(fi, cf, coords=coords),
+            SlowRollInstantonAdapter(sri, cf, coords=coords),
+            _FakeThirdAdapter(coords=coords),
+        ]
+
+        time_history.plot_instanton_fields(
+            adapters, 60.0, 10.0, 5.0, _PotentialStub(), _UnitsStub(), tmp_path, "png"
+        )
+        fig = plt.gcf()
+        phi_labels = [line.get_label() for line in fig.axes[0].get_lines()]
+        assert any("Fake3" in lbl for lbl in phi_labels)
+        plt.close(fig)
+
+        # third adapter's noise_history() is None -- must not raise, and its
+        # absence from the legend is expected (no data to draw).
+        noise.plot_noise_profile(
+            adapters, 60.0, 10.0, 5.0, "quadratic", tmp_path, "png"
+        )
+        plt.close(plt.gcf())
+
+        compaction.plot_zeta_and_compaction(
+            adapters, 60.0, 10.0, 5.0, "quadratic", tmp_path, "png"
+        )
+        fig = plt.gcf()
+        zeta_labels = [line.get_label() for line in fig.axes[0].get_lines()]
+        assert "Fake3" in zeta_labels
+        plt.close(fig)
+
+        sweeps.plot_msr_action_sweep(
+            adapters, "x", "fixed", "quadratic", tmp_path, "png", "N_init"
+        )
+        fig = plt.gcf()
+        labels = [line.get_label() for line in fig.axes[0].get_lines()]
+        assert "Fake3 MSR" in labels
+        plt.close(fig)
+
+        sweeps.plot_compaction_summary(
+            adapters, "x", "fixed", "quadratic", tmp_path, "png", "N_init"
+        )
+        fig = plt.gcf()
+        C_labels = [line.get_label() for line in fig.axes[0].get_lines()]
+        assert any("Fake3" in lbl for lbl in C_labels)
+        plt.close(fig)
+
+        points = [{"delta_Nstar": 5.0, "delta_N": 50.0, "adapters": adapters}]
+        doe.plot_doe_scalar_summary(points, "quadratic", tmp_path, "png")
+        assert (tmp_path / "doe_compaction_action.png").exists()
+
+
+class _MultiClassStubPool:
+    """Stand-in for ShardedPool's vectorized-fetch API across several solver
+    classes at once, keyed by (class_name, shard_key)."""
+
+    def __init__(self, responses):
+        self._responses = responses
+        self.calls = []
+
+    def object_get_vectorized(self, class_name, shard_key, payload_data):
+        self.calls.append((class_name, shard_key, payload_data))
+        response = self._responses.get((class_name, shard_key))
+        if response is None:
+            response = [None] * len(payload_data)
+        return ray.put(response)
+
+
+class TestFetchAdaptersOverGrid:
+    def test_one_call_per_class_and_shard_with_correct_reassembly(self):
+        items = [(60.0, 10.0, 5.0), (60.0, 10.0, 5.0), (55.0, 12.0, 3.0)]
+        fi_a = _FullInstantonStub(store_id=1, msr_action=1.1)
+        fi_b = _FullInstantonStub(store_id=2, msr_action=1.2)
+        fi_c = _FullInstantonStub(store_id=3, msr_action=1.3)
+        sri_a = _SlowRollInstantonStub(store_id=11, msr_action=2.1)
+        sri_b = _SlowRollInstantonStub(store_id=12, msr_action=2.2)
+
+        responses = {
+            ("FullInstanton", 5.0): [fi_a, fi_b],
+            ("SlowRollInstanton", 5.0): [sri_a, sri_b],
+            ("FullInstanton", 3.0): [fi_c],
+            ("SlowRollInstanton", 3.0): [None],
+        }
+        pool = _MultiClassStubPool(responses)
+
+        class_specs = fetch.full_sr_class_specs(
+            traj_proxy="traj-sentinel", atol=1e-8, rtol=1e-9, dm="dm-sentinel"
+        )
+        coords_of = lambda item: {
+            "N_init": item[0],
+            "N_final": item[1],
+            "delta_Nstar": item[2],
+        }
+        rows = fetch.fetch_adapters_over_grid(pool, items, class_specs, coords_of)
+
+        assert len(rows) == 3
+        assert len(pool.calls) == 4  # 2 classes x 2 distinct shards
+        called_pairs = {(c, s) for c, s, _ in pool.calls}
+        assert called_pairs == {
+            ("FullInstanton", 5.0),
+            ("SlowRollInstanton", 5.0),
+            ("FullInstanton", 3.0),
+            ("SlowRollInstanton", 3.0),
+        }
+
+        full0, sr0 = rows[0]
+        assert full0.store_id == 1
+        assert sr0.store_id == 11
+        assert full0.coords == {"N_init": 60.0, "N_final": 10.0, "delta_Nstar": 5.0}
+
+        full2, sr2 = rows[2]
+        assert full2.store_id == 3
+        assert sr2.available is False
+
+    def test_cf_spec_skips_shard_with_no_available_instanton(self):
+        items = [(60.0, 10.0, 5.0), (55.0, 12.0, 3.0)]
+        fi_a = _FullInstantonStub(store_id=1)
+        cf_a = _CompactionFunctionStub(
+            full_values=[_CFValueStub(r=20.0, zeta=0.1, C=0.2, C_bar=0.3)],
+            units=_UnitsStub(),
+        )
+        responses = {
+            ("FullInstanton", 5.0): [fi_a],
+            ("SlowRollInstanton", 5.0): [None],
+            ("FullInstanton", 3.0): [None],
+            ("SlowRollInstanton", 3.0): [None],
+            ("CompactionFunction", 5.0): [cf_a],
+        }
+        pool = _MultiClassStubPool(responses)
+
+        class_specs = fetch.full_sr_class_specs(
+            traj_proxy="traj-sentinel", atol=1e-8, rtol=1e-9, dm="dm-sentinel"
+        )
+        cf_spec = fetch.CFFetchSpec(
+            shard_key_of=lambda item: item[2],
+            traj_proxy="traj-sentinel",
+            fi_spec_name="full",
+            sri_spec_name="slow-roll",
+            cosmo="cosmo-sentinel",
+            atol=1e-8,
+            rtol=1e-9,
+        )
+        coords_of = lambda item: {
+            "N_init": item[0],
+            "N_final": item[1],
+            "delta_Nstar": item[2],
+        }
+        rows = fetch.fetch_adapters_over_grid(
+            pool, items, class_specs, coords_of, cf_spec=cf_spec
+        )
+
+        cf_calls = [c for c in pool.calls if c[0] == "CompactionFunction"]
+        assert len(cf_calls) == 1
+        assert cf_calls[0][1] == 5.0  # only the shard with an available instanton
+
+        full0, _ = rows[0]
+        assert full0.radial_profile() is not None
+        full1, _ = rows[1]
+        assert full1.radial_profile() is None
+
+
+class TestCollectDoeScalarPoints:
+    def test_returns_new_shape_and_omits_unavailable_points(self):
+        grid_combos = [(60.0, 10.0, 5.0), (55.0, 12.0, 3.0), (50.0, 8.0, 5.0)]
+        fi_a = _FullInstantonStub(store_id=1, msr_action=1.1)
+        sri_a = _SlowRollInstantonStub(store_id=11, msr_action=2.1)
+        cf_a = _CompactionFunctionStub(units=_UnitsStub(), **_FULL_CF_KWARGS)
+
+        responses = {
+            ("FullInstanton", 5.0): [fi_a, None],
+            ("SlowRollInstanton", 5.0): [sri_a, None],
+            ("FullInstanton", 3.0): [None],
+            ("SlowRollInstanton", 3.0): [None],
+            ("CompactionFunction", 5.0): [cf_a, None],
+        }
+        pool = _MultiClassStubPool(responses)
+
+        points = fetch.collect_doe_scalar_points(
+            pool,
+            "traj-sentinel",
+            grid_combos,
+            "cosmo-sentinel",
+            1e-8,
+            1e-9,
+            _UnitsStub(),
+            "dm-sentinel",
+        )
+
+        # combo 1 (dns=3.0, neither available) and combo 2 (dns=5.0, second
+        # slot -- also neither available there) are both omitted.
+        assert len(points) == 1
+        assert points[0]["delta_Nstar"] == 5.0
+        assert points[0]["delta_N"] == pytest.approx(50.0)
+        full_a, sr_a = points[0]["adapters"]
+        assert full_a.store_id == 1
+        assert sr_a.store_id == 11
+
+    def test_empty_grid_combos_returns_empty_list(self):
+        pool = _MultiClassStubPool({})
+        assert (
+            fetch.collect_doe_scalar_points(
+                pool,
+                "traj-sentinel",
+                [],
+                "cosmo-sentinel",
+                1e-8,
+                1e-9,
+                _UnitsStub(),
+                "dm-sentinel",
+            )
+            == []
+        )
+
+    def test_flatten_reproduces_golden_flat_dict(self):
+        coords = {"N_init": 60.0, "N_final": 10.0, "delta_Nstar": 5.0}
+        fi = _FullInstantonStub(msr_action=1.5)
+        sri = _SlowRollInstantonStub(msr_action=1.6)
+        cf = _CompactionFunctionStub(units=_UnitsStub(), **_FULL_CF_KWARGS)
+        full_a = FullInstantonAdapter(fi, cf, coords=coords)
+        sr_a = SlowRollInstantonAdapter(sri, cf, coords=coords)
+        points = [{"delta_Nstar": 5.0, "delta_N": 50.0, "adapters": [full_a, sr_a]}]
+
+        rows = fetch.flatten_doe_points_for_csv(points)
+        assert len(rows) == 1
+        row = rows[0]
+
+        # Cross-check against the pre-existing, still-unchanged helpers this
+        # replaces -- same values _collect_doe_scalar_data used to compute.
+        s = fetch._extract_cf_summary(cf, _UnitsStub())
+        assert row["N_init"] == 60.0
+        assert row["N_final"] == 10.0
+        assert row["delta_Nstar"] == 5.0
+        assert row["delta_N"] == 50.0
+        assert row["msr_action_full"] == fetch._qualifying_action(fi)
+        assert row["msr_action_sr"] == fetch._qualifying_action(sri)
+        assert row["noise_phi1_min_full"] == fi.noise_phi1_min
+        assert row["noise_phi2_max_sr"] == sri.noise_phi2_max
+        assert row["C_peak_full"] == s[0]
+        assert row["C_bar_peak_full"] == s[1]
+        assert row["M_max_full_solar"] == pytest.approx(s[2])
+        assert row["M_peak_full_solar"] == pytest.approx(s[3])
+        assert row["C_peak_sr"] == s[4]
+        assert row["r_max_full_Mpc"] == pytest.approx(s[8])
+        assert row["r_max_sr_Mpc"] == pytest.approx(s[10])
+        assert row["r_peak_sr_Mpc"] == pytest.approx(s[11])

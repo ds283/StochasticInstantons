@@ -17,21 +17,16 @@ from matplotlib import pyplot as plt
 
 from plotting.provenance import _provenance_footer
 
-# Not yet converted to consume `InstantonAdapter` instances: unlike
-# plot_instanton_fields/plot_noise_profile/plot_zeta_and_compaction, these two
-# functions are fed pre-aggregated (x, scalar) points collected across many
-# separate datastore fetches by `_sweep_Ninit_or_Nfinal`/`_sweep_delta_Nstar`
-# (still in plot_InstantonSolutions.py), not a single materialised
-# FullInstanton/SlowRollInstanton/CompactionFunction per render call -- there
-# is no adapter-able object at this function's call site to convert. That
-# fetch-side aggregation is out of this prompt's scope (see the P2 prompt's
-# "Files" list: plotting/fetch.py is not touched here).
+# Adapter-driven (P2b retrofit): each function takes a flat list of
+# InstantonAdapter instances -- one adapter per (swept x-value, solver kind)
+# -- grouped by `display_label` (never `.kind`) into one line/series per
+# solver. Overlaying a further kind (e.g. GCI) is just a longer `adapters`
+# list; neither function needs to change.
 
 
 def plot_msr_action_sweep(
+    adapters,
     x_label,
-    fi_points,
-    sri_points,
     fixed_desc,
     potential_name,
     output_dir,
@@ -41,26 +36,36 @@ def plot_msr_action_sweep(
 ):
     """One trajectory's MSR action vs the swept dimension, at one fixed
     combination of the other two dimensions (described by fixed_desc).
-    fi_points/sri_points: lists of (swept_value, msr_action) tuples."""
-    fi_points = [(x, a) for x, a in fi_points if a is not None]
-    sri_points = [(x, a) for x, a in sri_points if a is not None]
-    if not fi_points and not sri_points:
+    `adapters`: a flat list of InstantonAdapter, one per (swept x-value,
+    solver kind); the swept x-value for each adapter is read from
+    `a.coords[swept_name]`."""
+    live = [a for a in adapters if a.available and not a.failure]
+    groups: dict = {}
+    for a in live:
+        groups.setdefault(a.display_label, []).append(a)
+
+    series = {}
+    for label, group in groups.items():
+        pts = sorted(
+            (a.coords[swept_name], a.scalars().get("msr_action")) for a in group
+        )
+        pts = [(x, y) for x, y in pts if y is not None]
+        if pts:
+            series[label] = pts
+
+    if not series:
         return
 
-    max_pts = max(len(fi_points), len(sri_points))
+    max_pts = max(len(pts) for pts in series.values())
     use_markers = max_pts <= 25
-    fmt_fi = "o-" if use_markers else "-"
-    fmt_sri = "s--" if use_markers else "--"
 
     fig, ax = plt.subplots(figsize=(7, 5.5))
-    if fi_points:
-        fi_sorted = sorted(fi_points)
-        xs, ys = zip(*fi_sorted)
-        ax.semilogy(xs, ys, fmt_fi, label="Full MSR")
-    if sri_points:
-        sri_sorted = sorted(sri_points)
-        xs, ys = zip(*sri_sorted)
-        ax.semilogy(xs, ys, fmt_sri, label="Slow-roll")
+    for label, pts in series.items():
+        marker = groups[label][0].marker
+        line_style = groups[label][0].line_style
+        fmt_str = f"{marker}{line_style}" if use_markers else line_style
+        xs, ys = zip(*pts)
+        ax.semilogy(xs, ys, fmt_str, label=f"{label} MSR")
 
     ax.set_xlabel(x_label)
     ax.set_ylabel(r"$S_{\rm MSR}$")
@@ -78,9 +83,8 @@ def plot_msr_action_sweep(
 
 
 def plot_compaction_summary(
+    adapters,
     x_label,
-    fi_cf_points,
-    sri_cf_points,
     fixed_desc,
     potential_name,
     output_dir,
@@ -90,67 +94,87 @@ def plot_compaction_summary(
     run_label: str = "",
 ):
     """Two-panel summary: left = max C and max C̄ vs swept parameter;
-    right = PBH mass in solar masses (log y-scale) vs swept parameter."""
+    right = PBH mass in solar masses (log y-scale) vs swept parameter.
+    `adapters`: a flat list of InstantonAdapter, one per (swept x-value,
+    solver kind). If `threshold` is None, it is derived from the adapters'
+    own `scalars()["C_threshold"]` values (warning if they disagree, taking
+    the smallest) -- the driver no longer needs to aggregate this itself."""
     swept_file = {"N_init": "Ninit", "N_final": "Nfinal", "delta_Nstar": "dNstar"}[
         swept_name
     ]
 
-    def _unzip(points, idx):
-        return [p[0] for p in points if p[idx] is not None], [
-            p[idx] for p in points if p[idx] is not None
-        ]
+    live = [a for a in adapters if a.available and not a.failure]
+    groups: dict = {}
+    for a in live:
+        groups.setdefault(a.display_label, []).append(a)
 
-    fi_xC, fi_yC = _unzip(fi_cf_points, 1)
-    fi_xCb, fi_yCb = _unzip(fi_cf_points, 2)
-    fi_xM, fi_yM = _unzip(fi_cf_points, 3)
-    fi_xMb, fi_yMb = _unzip(fi_cf_points, 4)
-    fi_xr, fi_yr = _unzip(fi_cf_points, 5)
-    fi_xrb, fi_yrb = _unzip(fi_cf_points, 6)
-    sri_xC, sri_yC = _unzip(sri_cf_points, 1)
-    sri_xCb, sri_yCb = _unzip(sri_cf_points, 2)
-    sri_xM, sri_yM = _unzip(sri_cf_points, 3)
-    sri_xMb, sri_yMb = _unzip(sri_cf_points, 4)
-    sri_xr, sri_yr = _unzip(sri_cf_points, 5)
-    sri_xrb, sri_yrb = _unzip(sri_cf_points, 6)
+    def _series(group, key):
+        pts = sorted((a.coords[swept_name], a.scalars().get(key)) for a in group)
+        pts = [(x, y) for x, y in pts if y is not None]
+        if not pts:
+            return [], []
+        xs, ys = zip(*pts)
+        return list(xs), list(ys)
 
-    has_C_data = any(len(v) > 0 for v in (fi_xC, fi_xCb, sri_xC, sri_xCb))
-    has_M_data = any(len(v) > 0 for v in (fi_xM, fi_xMb, sri_xM, sri_xMb))
-    has_r_data = any(len(v) > 0 for v in (fi_xr, fi_xrb, sri_xr, sri_xrb))
+    series_by_group = {
+        label: {
+            "C_peak": _series(group, "C_peak"),
+            "C_bar_peak": _series(group, "C_bar_peak"),
+            "M_max_solar": _series(group, "M_max_solar"),
+            "M_peak_solar": _series(group, "M_peak_solar"),
+            "r_max_Mpc": _series(group, "r_max_Mpc"),
+            "r_peak_Mpc": _series(group, "r_peak_Mpc"),
+        }
+        for label, group in groups.items()
+    }
+
+    has_C_data = any(
+        len(s["C_peak"][0]) > 0 or len(s["C_bar_peak"][0]) > 0
+        for s in series_by_group.values()
+    )
+    has_M_data = any(
+        len(s["M_max_solar"][0]) > 0 or len(s["M_peak_solar"][0]) > 0
+        for s in series_by_group.values()
+    )
+    has_r_data = any(
+        len(s["r_max_Mpc"][0]) > 0 or len(s["r_peak_Mpc"][0]) > 0
+        for s in series_by_group.values()
+    )
     if not has_C_data and not has_M_data and not has_r_data:
         return
 
-    all_series = (
-        fi_xC,
-        fi_xCb,
-        sri_xC,
-        sri_xCb,
-        fi_xM,
-        fi_xMb,
-        sri_xM,
-        sri_xMb,
-        fi_xr,
-        fi_xrb,
-        sri_xr,
-        sri_xrb,
+    if threshold is None:
+        thresholds = {a.scalars().get("C_threshold") for a in live} - {None}
+        if len(thresholds) == 1:
+            threshold = next(iter(thresholds))
+        elif len(thresholds) > 1:
+            print(
+                f"  Warning: C_threshold varies across sweep: {sorted(thresholds)}. "
+                "Using smallest value."
+            )
+            threshold = sorted(thresholds)[0]
+    threshold_val = threshold if threshold is not None else 0.4
+
+    max_pts = max(
+        (len(s[key][0]) for s in series_by_group.values() for key in s), default=0
     )
-    max_pts = max((len(x) for x in all_series), default=0)
     use_markers = max_pts <= 25
-    fmt_full_s = "o-" if use_markers else "-"
-    fmt_full_d = "o--" if use_markers else "--"
-    fmt_sr_s = "s-" if use_markers else "-"
-    fmt_sr_d = "s--" if use_markers else "--"
 
     fig, (ax_C, ax_M, ax_r) = plt.subplots(1, 3, figsize=(15, 5))
 
-    if fi_xC:
-        ax_C.plot(fi_xC, fi_yC, fmt_full_s, label=r"$C_{\rm peak}$ (full)")
-    if fi_xCb:
-        ax_C.plot(fi_xCb, fi_yCb, fmt_full_d, label=r"$\bar{C}_{\rm peak}$ (full)")
-    if sri_xC:
-        ax_C.plot(sri_xC, sri_yC, fmt_sr_s, label=r"$C_{\rm peak}$ (SR)")
-    if sri_xCb:
-        ax_C.plot(sri_xCb, sri_yCb, fmt_sr_d, label=r"$\bar{C}_{\rm peak}$ (SR)")
-    threshold_val = threshold if threshold is not None else 0.4
+    for label, group in groups.items():
+        marker = group[0].marker
+        s = series_by_group[label]
+        solid = f"{marker}-" if use_markers else "-"
+        dashed = f"{marker}--" if use_markers else "--"
+
+        xs, ys = s["C_peak"]
+        if xs:
+            ax_C.plot(xs, ys, solid, label=rf"$C_{{\rm peak}}$ ({label})")
+        xs, ys = s["C_bar_peak"]
+        if xs:
+            ax_C.plot(xs, ys, dashed, label=rf"$\bar{{C}}_{{\rm peak}}$ ({label})")
+
     ax_C.axhline(
         y=threshold_val,
         color="gray",
@@ -163,28 +187,38 @@ def plot_compaction_summary(
     ax_C.set_title("Compaction function peak values")
     ax_C.legend(fontsize="small")
 
-    if fi_xM:
-        ax_M.semilogy(fi_xM, fi_yM, fmt_full_s, label=r"$M_{\rm max}$ (full)")
-    if fi_xMb:
-        ax_M.semilogy(fi_xMb, fi_yMb, fmt_full_d, label=r"$M_{\rm peak}$ (full)")
-    if sri_xM:
-        ax_M.semilogy(sri_xM, sri_yM, fmt_sr_s, label=r"$M_{\rm max}$ (SR)")
-    if sri_xMb:
-        ax_M.semilogy(sri_xMb, sri_yMb, fmt_sr_d, label=r"$M_{\rm peak}$ (SR)")
+    for label, group in groups.items():
+        marker = group[0].marker
+        s = series_by_group[label]
+        solid = f"{marker}-" if use_markers else "-"
+        dashed = f"{marker}--" if use_markers else "--"
+
+        xs, ys = s["M_max_solar"]
+        if xs:
+            ax_M.semilogy(xs, ys, solid, label=rf"$M_{{\rm max}}$ ({label})")
+        xs, ys = s["M_peak_solar"]
+        if xs:
+            ax_M.semilogy(xs, ys, dashed, label=rf"$M_{{\rm peak}}$ ({label})")
+
     ax_M.set_xlabel(x_label)
     ax_M.set_ylabel(r"$M_{\rm PBH}\,/\,M_\odot$")
     ax_M.set_title("PBH mass")
     if has_M_data:
         ax_M.legend(fontsize="small")
 
-    if fi_xr:
-        ax_r.semilogy(fi_xr, fi_yr, fmt_full_s, label=r"$r_{\rm max}$ (full)")
-    if fi_xrb:
-        ax_r.semilogy(fi_xrb, fi_yrb, fmt_full_d, label=r"$r_{\rm peak}$ (full)")
-    if sri_xr:
-        ax_r.semilogy(sri_xr, sri_yr, fmt_sr_s, label=r"$r_{\rm max}$ (SR)")
-    if sri_xrb:
-        ax_r.semilogy(sri_xrb, sri_yrb, fmt_sr_d, label=r"$r_{\rm peak}$ (SR)")
+    for label, group in groups.items():
+        marker = group[0].marker
+        s = series_by_group[label]
+        solid = f"{marker}-" if use_markers else "-"
+        dashed = f"{marker}--" if use_markers else "--"
+
+        xs, ys = s["r_max_Mpc"]
+        if xs:
+            ax_r.semilogy(xs, ys, solid, label=rf"$r_{{\rm max}}$ ({label})")
+        xs, ys = s["r_peak_Mpc"]
+        if xs:
+            ax_r.semilogy(xs, ys, dashed, label=rf"$r_{{\rm peak}}$ ({label})")
+
     ax_r.set_xlabel(x_label)
     ax_r.set_ylabel(r"$r_{\rm PBH}\,/\,\mathrm{Mpc}$")
     ax_r.set_title("PBH collapse scale")

@@ -36,6 +36,7 @@ class FullInstantonAdapter(InstantonAdapter):
 
     kind = "full"
     line_style = "-"
+    marker = "o"
 
     def __init__(self, fi, cf=None, coords: Optional[dict] = None):
         super().__init__(coords)
