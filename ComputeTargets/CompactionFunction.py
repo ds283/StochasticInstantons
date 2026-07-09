@@ -21,6 +21,7 @@ from typing import List, Optional
 import ray
 from ray import ObjectRef
 
+from ComputeTargets.compaction_scalars import classify_radii
 from Datastore.object import DatastoreObject
 from InflationConcepts.delta_Nstar import delta_Nstar
 from MetadataConcepts.store_tag import store_tag
@@ -80,36 +81,11 @@ def ln_k_phys_Mpc(
     )
 
 
-def _classify_radii(r_v, C_v, C_threshold: float):
-    """
-    Compute r_max and r_peak from C(r) sample arrays.
-
-    r_max: outermost r where C >= C_threshold, scanning inward.
-           r_max_at_grid_edge=True when C_v[-1] >= C_threshold
-           (peak not resolved within grid).
-           r_max=None if C nowhere reaches C_threshold.
-
-    r_peak: r at which C is maximised (nanargmax).
-            r_peak_at_grid_edge=True when argmax == len-1
-            (peak not resolved within grid).
-
-    Returns (r_max, r_peak, r_max_at_grid_edge, r_peak_at_grid_edge).
-    """
-    import numpy as np
-
-    r_max = None
-    r_max_at_grid_edge = False
-    for i in range(len(r_v) - 1, -1, -1):
-        if C_v[i] >= C_threshold:
-            r_max = float(r_v[i])
-            r_max_at_grid_edge = i == len(r_v) - 1
-            break
-
-    peak_idx = int(np.nanargmax(C_v))
-    r_peak = float(r_v[peak_idx])
-    r_peak_at_grid_edge = peak_idx == len(r_v) - 1
-
-    return r_max, r_peak, r_max_at_grid_edge, r_peak_at_grid_edge
+# Re-exported so that GradientCoupledInstanton/scale_assignment.py's
+# `from ComputeTargets.CompactionFunction import _classify_radii, ...` keeps
+# working unchanged. The implementation now lives in compaction_scalars.py,
+# shared with GradientCoupledInstanton.
+_classify_radii = classify_radii
 
 
 def _compute_instanton_path(
@@ -137,8 +113,14 @@ def _compute_instanton_path(
     import numpy as np
     from scipy.optimize import brentq
 
+    from ComputeTargets.compaction_scalars import (
+        classify_C_min,
+        classify_radii,
+        compute_C_bar,
+        densify_zeta_profile,
+        pbh_mass,
+    )
     from InflationConcepts.noiseless_equations import integrate_noiseless_trajectory
-    from Interpolation.spline_wrapper import SplineWrapper
 
     compute_start = time.perf_counter()
 
@@ -282,83 +264,29 @@ def _compute_instanton_path(
         }
 
     # ── Step D: zeta(r), C(r), C_bar(r) ─────────────────────────────────
-    #
-    # Strategy:
-    #   1. Fit a spline to (r_v, zeta_v) in log-r space for smoothing.
-    #   2. Evaluate on a log-uniform dense grid (geomspace) — essential
-    #      because r spans many decades; linspace concentrates all points
-    #      at large r, making np.gradient wildly inaccurate at small r.
-    #   3. Overwrite the left-endpoint derivative after np.gradient using
-    #      a two-point forward difference anchored to the exact physical
-    #      boundary value ζ = δN★.  The right endpoint needs no correction.
-    #   4. Compute dζ/dr by finite differences (np.gradient in log-r space,
-    #      then divide by r) — no spline derivative is used.
-    #   5. Interpolate dζ/dr back to r_v via np.interp in log-r space.
+    # See compaction_scalars.densify_zeta_profile for the dense-grid
+    # construction strategy and compute_C_bar for the cumulative-integral
+    # strategy -- both shared with GradientCoupledInstanton.
 
-    zeta_spline = SplineWrapper(r_v, zeta_v, x_transform='log', k=3)
-
-    N_dense = max(10 * len(r_v), 500)
-    r_dense = np.geomspace(r_v[0], r_v[-1], N_dense)   # log-uniform spacing
-    log_r_dense = np.log(r_dense)
-    zeta_dense = zeta_spline(r_dense)
-
-    # Finite-difference dζ/dr: gradient in log-r then divide by r.
-    # np.gradient uses a three-point one-sided stencil at the endpoints,
-    # which is sensitive to the values of the neighbouring points.  Pinning
-    # zeta_dense[0] before the gradient call creates a discontinuity that
-    # corrupts the stencil.  Instead, overwrite dzeta_dlogr[0] after the
-    # gradient using a two-point forward difference anchored to the exact
-    # physical boundary value zeta_inner = delta_Nstar.  No right-endpoint
-    # override is needed: the spline is smooth there and np.gradient gives
-    # the correct result.
-    dzeta_dlogr = np.gradient(zeta_dense, log_r_dense)
-
-    # zeta_v[0] is the exact computed zeta at the first sample point,
-    # which equals delta_Nstar only approximately. Using the actual value
-    # avoids a spurious derivative from the discrepancy.
-    dzeta_dlogr[0] = (zeta_dense[1] - zeta_v[0]) / (log_r_dense[1] - log_r_dense[0])
-    zeta_prime_dense = dzeta_dlogr / r_dense
+    r_dense, zeta_dense, zeta_prime_dense = densify_zeta_profile(r_v, zeta_v)
 
     # Evaluate dζ/dr at sample points via linear interpolation in log-r.
+    log_r_dense = np.log(r_dense)
     log_r_v = np.log(r_v)
     zeta_prime_v = np.interp(log_r_v, log_r_dense, zeta_prime_dense)
 
     C_v = (2.0 / 3.0) * (1.0 - (1.0 + r_v * zeta_prime_v) ** 2)
 
-    C_min     = float(np.nanmin(C_v))
-    type_II   = C_min < -1.0
-    compensated = C_min < 0.0
+    C_min_info = classify_C_min(C_v)
+    C_min = C_min_info["C_min"]
+    type_II = C_min_info["type_II"]
+    compensated = C_min_info["compensated"]
 
-    # C_bar integration — reuse r_dense / zeta_dense / zeta_prime_dense
-    rz_dense = r_dense * zeta_prime_dense
-    integrand = (
-        r_dense**2
-        * np.exp(3.0 * zeta_dense)
-        * (2.0 * rz_dense + 3.0 * rz_dense**2 + rz_dense**3)
-    )
-
-    # Accumulate integral to each sample r_i using trapezoid
-    cumulative = np.zeros(N_dense)
-    for j in range(1, N_dense):
-        cumulative[j] = cumulative[j - 1] + 0.5 * (integrand[j - 1] + integrand[j]) * (
-            r_dense[j] - r_dense[j - 1]
-        )
-
-    # Interpolate cumulative integral to sample points.
-    # r_v is a subset of [r_dense[0], r_dense[-1]] by construction so no
-    # extrapolation occurs.
-    cumulative_at_r = SplineWrapper(r_dense, cumulative, x_transform='log', k=3)
-
-    C_bar_v = np.array(
-        [
-            -2.0 * float(cumulative_at_r(r_v[i])) / (r_v[i] ** 3 * exp(3.0 * zeta_v[i]))
-            for i in range(len(r_v))
-        ]
-    )
+    C_bar_v = compute_C_bar(r_dense, zeta_dense, zeta_prime_dense, r_v, zeta_v)
 
     # ── Step E: radii ─────────────────────────────────────────────────────
     r_max, r_peak, r_max_at_grid_edge, r_peak_at_grid_edge = (
-        _classify_radii(r_v, C_v, C_threshold)
+        classify_radii(r_v, C_v, C_threshold)
     )
 
     # ── Step F: PBH mass ──────────────────────────────────────────────────
@@ -366,13 +294,8 @@ def _compute_instanton_path(
     C_max    = float(np.nanmax(C_v))
     C_bar_max = float(np.nanmax(C_bar_v))
 
-    M_max = None
-    if r_max is not None and C_max >= C_threshold:
-        M_max = (1.0 + C_max) * 5.6e15 * (k_star * r_max) ** 2 * units.SolarMass
-
-    M_peak = None
-    if r_peak is not None and C_max >= C_threshold:
-        M_peak = (1.0 + C_max) * 5.6e15 * (k_star * r_peak) ** 2 * units.SolarMass
+    M_max = pbh_mass(C_max, r_max, C_threshold, k_star, units.SolarMass)
+    M_peak = pbh_mass(C_max, r_peak, C_threshold, k_star, units.SolarMass)
 
     return {
         "failure": False,
