@@ -165,10 +165,23 @@ def _compute_gradient_coupled_instanton(
             the corresponding diagonal diffusion coefficient is zero
             everywhere (e.g. noise_mom_* for MasslessDecoupledDiffusion,
             whose D22 is identically zero).
+        "C_peak", "C_bar_peak", "C_min", "compensated", "type_II",
+        "r_max", "r_peak", "M_max", "M_peak",
+        "V_end_downflow", "N_end_downflow"
+            -- the parity scalar set matching CompactionFunction's own
+            exposed set (design §7.1), all single scalars (not per-node
+            arrays). C_peak/C_bar_peak/C_min are nanmax(C)/nanmax(C_bar)/
+            nanmin(C); r_max/r_peak are scales["r_max"]/scales["r_peak"]
+            (already the densified-grid classification, U2a); M_max/M_peak
+            use C_max (never C_bar_max -- there is no barred M_PBH/r_PBH);
+            V_end_downflow/N_end_downflow are the per-shell downflow values
+            at the raw-grid node of maximum C (see the r_peak_node
+            DESIGN-DECISION comment below).
         "diagnostics"
     """
     import time
 
+    from ComputeTargets import compaction_scalars
     from ComputeTargets.GradientCoupledInstanton.extraction import extract_zeta_profile
     from ComputeTargets.GradientCoupledInstanton.forward_rhs import diluted_diffusion_coefficients
     from ComputeTargets.GradientCoupledInstanton.msr_action import compute_msr_action
@@ -230,6 +243,11 @@ def _compute_gradient_coupled_instanton(
             "msr_action": None,
             "noise_field_min": None, "noise_field_mean": None, "noise_field_max": None,
             "noise_mom_min": None, "noise_mom_mean": None, "noise_mom_max": None,
+            "C_peak": None, "C_bar_peak": None,
+            "C_min": None, "compensated": None, "type_II": None,
+            "r_max": None, "r_peak": None,
+            "M_max": None, "M_peak": None,
+            "V_end_downflow": None, "N_end_downflow": None,
             "diagnostics": diagnostics,
         }
 
@@ -301,6 +319,26 @@ def _compute_gradient_coupled_instanton(
         diagnostics["scale_assignment"] = scales.get("diagnostics")
         diagnostics["extraction_failure_mask"] = extraction["failure_mask"].tolist()
         return _failure_result(diagnostics)
+
+    # ── Step 7b: parity scalar set (design §7.1, matching CompactionFunction's
+    # own exposed set) ────────────────────────────────────────────────────────
+    C_max = float(np.nanmax(scales["C"]))
+    C_bar_max = float(np.nanmax(scales["C_bar"]))
+
+    classification = compaction_scalars.classify_C_min(scales["C"])
+    C_min = classification["C_min"]
+    compensated = classification["compensated"]
+    type_II = classification["type_II"]
+
+    # DESIGN-DECISION: V_end_downflow/N_end_downflow are reported at the raw-grid node of maximum C (argmax on the un-densified node array), consistent with the C_max-based mass classification — not an index into assign_scales' internal densified classification grid, which has no single corresponding node. See design doc §7.3.
+    r_peak_node = int(np.nanargmax(scales["C"]))
+
+    V_end_downflow = potential.V(extraction["phi_end_downflow"][r_peak_node])
+    N_end_downflow = float(extraction["N_end_downflow"][r_peak_node])
+
+    k_star = 0.05 / units.Mpc
+    M_max = compaction_scalars.pbh_mass(C_max, scales["r_max"], _C_THRESHOLD, k_star, units.SolarMass)
+    M_peak = compaction_scalars.pbh_mass(C_max, scales["r_peak"], _C_THRESHOLD, k_star, units.SolarMass)
 
     # ── Step 8: noise summary stats at the core node (y=+1), across every
     # row of the dense solver grid -- physically analogous to FullInstanton's
@@ -429,6 +467,17 @@ def _compute_gradient_coupled_instanton(
         "noise_mom_min": noise_mom_min,
         "noise_mom_mean": noise_mom_mean,
         "noise_mom_max": noise_mom_max,
+        "C_peak": C_max,
+        "C_bar_peak": C_bar_max,
+        "C_min": C_min,
+        "compensated": compensated,
+        "type_II": type_II,
+        "r_max": scales["r_max"],
+        "r_peak": scales["r_peak"],
+        "M_max": M_max,
+        "M_peak": M_peak,
+        "V_end_downflow": V_end_downflow,
+        "N_end_downflow": N_end_downflow,
         "diagnostics": diagnostics,
     }
 
