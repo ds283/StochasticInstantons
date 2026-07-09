@@ -100,5 +100,5 @@ In this prompt, the targets are:
    narrative from scratch. **Commit** your changes to the repository. Then copy the final `INFRASTRUCTURE.md` to the
    `claude-context` folder.
 
-The contents of the `claude-context` folder are **ephemeral** and are regenerated when necessary. **Do not**
+**Note.** The contents of the `claude-context` folder are **ephemeral** and are regenerated when necessary. **Do not**
 commit **anything** in the `claude-context` folder to the git repository.
