@@ -14,7 +14,7 @@ In this prompt, the targets are:
    directory already exists, you will need to remove the current contents. There is no need to save any of these files,
    which are ephemeral copies of files elsewhere in the source tree.
 2. Inspect the `./.documents` folder to determine whether there are `FILE_MAP.md`, `NUMERICAL_SCHEMES.md` and
-   `INFRASTRUCTURE.md` files. If these are present, use these as a base for the steps below, but be aware thate these
+   `INFRASTRUCTURE.md` files. If these are present, use these as a base for the steps below, but **be aware** that these
    files may be stale and require updates.
 
 ### PREPARE SOURCE FILE CONTEXT BUNDLE AND UPDATE `FILE_MAP.md`
