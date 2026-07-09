@@ -26,10 +26,21 @@ compare_gradient_full.py's own pre-22a wiring -- see this module's own
 so it is the only part carried forward here: before spending minutes-to-
 tens-of-minutes on a full Picard/shooting solve at some (alpha, n) point, it
 is cheap to first check whether even the ZEROTH Picard iterate survives
-there at all (``explore_onion_stiffness.run_case``, an existing, external
-helper this module depends on but does not reproduce -- see harness.py's own
-module docstring for why). This is a pre-screen, not a substitute for
-Diagnostic 8a's own full converged-solve alpha sweep.
+there at all (``explore_onion_stiffness.run_case``, a helper this module
+depends on but does not reproduce -- see harness.py's own module docstring
+for why). This is a pre-screen, not a substitute for Diagnostic 8a's own
+full converged-solve alpha sweep.
+
+KNOWN BROKEN as of this refactor: ``run_case`` calls ``forward_rhs`` with
+the pre-SAT-penalty positional signature. Current production
+``forward_rhs`` requires a ``g_pi_core_spline`` argument that ``run_case``
+never supplies and unconditionally dereferences whenever
+``disable_spatial_coupling=False`` -- it predates the SAT-penalty machinery
+entirely. Fixing this requires a physics decision (what
+``disable_spatial_coupling``/``g_pi_core_spline`` should mean for a
+zeroth-Picard-iterate screen with no FullInstanton profile yet) that is out
+of scope for this refactor; this subcommand will raise until that follow-up
+lands.
 
 Historical note: the original compare_gradient_full.py's Part A used the
 PRE-22a degenerate phi_end formula (``traj.phi_at(N_offset + N_total)``,
@@ -53,12 +64,7 @@ import os
 import numpy as np
 
 from . import harness as h
-
-try:
-    from explore_onion_stiffness import run_case
-except ImportError as exc:  # pragma: no cover - environment-dependent
-    run_case = None
-    _IMPORT_ERROR = exc
+from .explore_onion_stiffness import run_case
 
 OUT_DIR = h.output_dir("seed_screen")
 
@@ -74,14 +80,6 @@ def scan_alpha_vs_n_colloc(m: float = 1.0e-5, N_init: float = h.N_INIT,
     the full convergence check (use diagnostic_8_alpha_sensitivity for that,
     on whichever (alpha, n) combinations this screen flags as promising).
     """
-    if run_case is None:
-        raise ImportError(
-            "seed_screen.scan_alpha_vs_n_colloc requires "
-            "explore_onion_stiffness.run_case, which could not be imported "
-            f"({_IMPORT_ERROR!r}). Check STOCHASTIC_INSTANTONS_REPO / "
-            "PYTHONPATH."
-        )
-
     potential, units, traj, dm = h.setup(m)
     atol = rtol = h.ATOL
 

@@ -67,7 +67,7 @@ def advection_term(f: np.ndarray, A_array: np.ndarray, D: np.ndarray) -> np.ndar
     SUPERSEDED by advection_split_term for the production forward/response
     RHS (prompt 21a) -- see that function's docstring for why the plain
     product form is destabilizing under strong boundary elimination. Kept
-    here (still used by analyze_StiffnessSpectrum.py's strong-BC baseline
+    here (still used by tools/diagnostics/GradientCoupledInstanton/spectrum.py's strong-BC baseline
     operator, prompt 20) as the explicit "wrong/old" comparison point the
     SBP-SAT closure is measured against; do not use it in new production code.
     """
@@ -110,7 +110,7 @@ def advection_split_matrix(A_array: np.ndarray, D: np.ndarray) -> np.ndarray:
     ENERGY-ESTIMATE REFERENCE: .documents/gradient-coupled-instanton/
     21-sbp-sat-design-note.md, Section 3 ("Exact SBP defect of the
     split-form advection operator"). Ported here, unchanged in form, from
-    the validated Phase-1 prototype (analyze_StiffnessSpectrum.py's own
+    the validated Phase-1 prototype (tools/diagnostics/GradientCoupledInstanton/spectrum.py's own
     advection_split_matrix) -- this IS the production home for that
     construction; the prototype's own copy is left in place as the frozen,
     independently-tested reference the Phase-1 gate was passed against.

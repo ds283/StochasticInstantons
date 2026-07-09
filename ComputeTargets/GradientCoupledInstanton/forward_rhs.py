@@ -94,7 +94,7 @@ emerging from phi's own regularity through pi = dphi/dN, rather than being
 separately imposed.
 
 HOW TO VERIFY THIS IS STILL CORRECT: three checks must stay green --
-  (a) the prompt-20/21 abscissa diagnostic (analyze_StiffnessSpectrum.py
+  (a) the prompt-20/21 abscissa diagnostic (tools/diagnostics/GradientCoupledInstanton/spectrum.py
       --mode spectrum --closure sbp-sat): spectral_abscissa flat in n_max;
   (b) tests/test_sbp_sat_boundary_closure.py's SAT energy-cancellation check
       (the boundary energy term is <= 0 after the penalty, Phase-1 prototype);

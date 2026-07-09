@@ -52,7 +52,7 @@ construction plus rmom_full's OWN Neumann elimination at the core (see
 unpack_response_state below) would produce the same n_max-growing spectral
 defect forward_rhs.py had before prompt 21/21a.
 
-Prompt 23 Phase 1 tested this directly (analyze_StiffnessSpectrum.py's
+Prompt 23 Phase 1 tested this directly (tools/diagnostics/GradientCoupledInstanton/spectrum.py's
 response-sector diagnostic section: assemble_response_operator_strong,
 assemble_response_operator_sbp_sat, response_spectral_stability_metrics) and
 found the symmetry argument does NOT hold once the response sector's actual
@@ -60,7 +60,7 @@ integration direction is correctly accounted for. response_rhs is integrated
 BACKWARD in N (picard.py's solve_ivp call uses a decreasing t_span), and for
 backward integration the numerically catastrophic eigenvalue direction is
 the OPPOSITE of the forward sector's (see the diagnostic section's own
-module comment in analyze_StiffnessSpectrum.py for the full sign argument).
+module comment in tools/diagnostics/GradientCoupledInstanton/spectrum.py for the full sign argument).
 Correctly analyzed, the pre-port "strong" closure's backward-relevant
 spectral abscissa is ALREADY bounded/n_max-independent across the full
 default (alpha, N) sweep grid at n_max=8..192 -- there is no disease to
@@ -112,7 +112,7 @@ HOW TO VERIFY THIS IS STILL CORRECT -- three checks must stay green:
       tests/test_response_spectrum_prompt23.py's
       test_sat_forward_vs_unchanged_response_mismatch_bounded_in_n -- the
       forward sector's own closure evolving further (a future prompt) could
-      reopen this; re-run analyze_StiffnessSpectrum.py's
+      reopen this; re-run tools/diagnostics/GradientCoupledInstanton/spectrum.py's
       compute_forward_sat_vs_response_adjoint_mismatch against whatever the
       forward operator becomes.
   (c) lambda-scaling round-trip (Part B regression):

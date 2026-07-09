@@ -70,9 +70,14 @@ independently reimplemented:
   schema any future diagnostic can reuse.
 
 `explore_onion_stiffness.py` (`StubPotential`, `build_real_trajectory`,
-`run_case`) is treated as an **existing external dependency**, not
-reproduced here — it predates every diagnostic this suite consolidates and
-was not one of the scripts being merged.
+`run_case`) lives alongside `harness.py` in this package — it predates every
+diagnostic this suite consolidates and was not one of the scripts being
+merged, but it was relocated here (from the old `out-gradient-coupled-stiffness/`
+scratch directory) so the package no longer depends on anything outside
+itself. **`run_case` is currently broken against production `forward_rhs`**
+(it predates the `g_pi_core_spline` SAT-penalty argument — see `seed_screen.py`'s
+own module docstring), so `seed-screen` is a known-broken subcommand pending
+a follow-up physics decision; it is not fixed by this relocation.
 
 ---
 

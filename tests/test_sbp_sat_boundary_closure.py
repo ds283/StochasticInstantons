@@ -15,7 +15,7 @@
 
 """
 Tests for prompt 21 Phase 1 -- the standalone SBP-SAT boundary-closure
-prototype in analyze_StiffnessSpectrum.py. Full derivation this validates:
+prototype in tools/diagnostics/GradientCoupledInstanton/spectrum.py. Full derivation this validates:
 .documents/gradient-coupled-instanton/21-sbp-sat-design-note.md.
 
 These are the executable form of the prompt's Phase 1c acceptance gate:

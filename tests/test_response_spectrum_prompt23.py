@@ -15,7 +15,7 @@
 
 """
 Tests for prompt 23 Phase 1 -- the response-sector spectral diagnostic
-extension of analyze_StiffnessSpectrum.py. Full derivation and findings:
+extension of tools/diagnostics/GradientCoupledInstanton/spectrum.py. Full derivation and findings:
 .documents/gradient-coupled-instanton/23-response-sbp-sat-design-note.md.
 
 These are the executable form of the prompt's Phase 1 acceptance checklist:

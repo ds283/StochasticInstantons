@@ -35,10 +35,11 @@ Design constraints carried over unchanged from the scripts this replaces:
     (or, for the deliberate monkeypatch helpers below, module-level private)
     API.
   - ``explore_onion_stiffness.py`` (StubPotential, build_real_trajectory,
-    run_case) is treated as an existing, external dependency of this
-    package, not reproduced here -- it predates every prompt this suite
-    documents and is not itself one of the diagnostic scripts being
-    consolidated. If it moves, only the import below needs updating.
+    run_case) lives alongside this module in the package -- it predates
+    every prompt this suite documents and is not itself one of the
+    diagnostic scripts being consolidated, but it is no longer external:
+    it was relocated here from the old ``out-gradient-coupled-stiffness/``
+    scratch directory so the package is self-contained.
 
 Repo path bootstrap: every script this replaces hardcoded
 ``sys.path.insert(0, "/Users/ds283/Documents/Code/StochasticInstantons")``.
@@ -71,7 +72,7 @@ _REPO_PATH = os.environ.get("STOCHASTIC_INSTANTONS_REPO", _DEFAULT_REPO_PATH)
 if _REPO_PATH not in sys.path:
     sys.path.insert(0, _REPO_PATH)
 
-from explore_onion_stiffness import StubPotential, build_real_trajectory  # noqa: E402
+from .explore_onion_stiffness import StubPotential, build_real_trajectory  # noqa: E402
 from Numerics.LGLCollocation import LGLCollocationGrid  # noqa: E402
 from Numerics.ShootingSolver import ShootingResult  # noqa: E402
 from ComputeTargets.GradientCoupledInstanton import picard as picard_module  # noqa: E402

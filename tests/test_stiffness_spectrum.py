@@ -14,8 +14,8 @@
 # limitations under the License.
 
 """
-Tests for prompt 17 Part A -- analyze_StiffnessSpectrum.py, the assembled-
-operator eigenvalue sweep for the gradient-coupled instanton's onion-model
+Tests for prompt 17 Part A -- tools/diagnostics/GradientCoupledInstanton/spectrum.py,
+the assembled-operator eigenvalue sweep for the gradient-coupled instanton's onion-model
 spatial discretisation -- and prompt 18's discrete adjoint-consistency
 diagnostic (`--mode adjoint`), amended in prompt 18a to fix `L_selfadj`
 (now inversion-free) and replace the `*_eliminated` columns with full-node
@@ -62,7 +62,7 @@ def test_assembled_operator_matches_finite_difference_jacobian(n_max, alpha, N):
     The frozen-coefficient assembled operator must faithfully reflect the
     real forward_rhs's own spatial-only Jacobian (relative tolerance, since
     the coordinate-singularity regime produces very large matrix entries --
-    see analyze_StiffnessSpectrum.py's own module docstring for why the
+    see spectrum.py's own module docstring for why the
     finite-difference construction uses a constant-H_sq/epsilon stub
     potential to make this an exact-up-to-roundoff comparison rather than a
     leading-order one).

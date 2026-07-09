@@ -536,7 +536,7 @@ def test_disable_spatial_coupling_decouples_every_node_uniformly():
 def test_advection_split_matrix_matches_phase1_prototype():
     """
     Numerics.DiscretizedOperators.advection_split_matrix (the production
-    home, prompt 21a) must reproduce analyze_StiffnessSpectrum.py's own
+    home, prompt 21a) must reproduce tools/diagnostics/GradientCoupledInstanton/spectrum.py's own
     advection_split_matrix (the frozen, independently-tested Phase-1
     prototype the abscissa gate was passed against) EXACTLY -- this is a
     straight port, not a reimplementation, so any numerical difference here
