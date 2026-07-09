@@ -167,6 +167,7 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
             )
         tags = payload.get("tags", [])
         do_not_populate = payload.get("_do_not_populate", False)
+        profile_only = payload.get("_profile_only", False)
         label = payload.get("label", None)
         # Prompt 21a -- SAT seed only, not part of the identity query below;
         # None is the normal case ("no pre-fetched FullInstanton available,
@@ -313,7 +314,33 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
             json.loads(row_data.diagnostics_json) if row_data.diagnostics_json else None
         )
 
-        if not do_not_populate:
+        # Three mutually exclusive fetch modes (design doc §4.1):
+        #
+        # | Method / property                        | do_not_populate | profile_only | full (dense-stored) | full (scalars-only stored) |
+        # |-------------------------------------------|-----------------|--------------|----------------------|-----------------------------|
+        # | scalars (msr_action, C_peak, M_*, r_*,    | value           | value        | value                | value                       |
+        # |          noise_*, C_bar_peak, ...)        |                 |              |                      |                             |
+        # | diagnostics                                | value           | value        | value                | value                       |
+        # | profile (zeta/C/C_bar/r)                   | [] (empty)      | populated    | populated            | populated                   |
+        # | values (dense y,N)                         | [] (empty)      | [] (empty)   | populated            | build() raises              |
+        # | radial_profile() (adapter, P4)              | None            | populated    | populated            | populated                   |
+        # | field_2d(name)                              | raise           | raise        | value                | n/a (never loads)           |
+        # | zeta_C_r_at_time(N)                         | raise           | raise        | value                | n/a                         |
+        #
+        # do_not_populate takes priority over profile_only: neither _populate
+        # nor _populate_profile is called, regardless of profile_only's value.
+        if do_not_populate:
+            pass
+        elif profile_only:
+            # profile_only loads the always-persisted profile rows without
+            # touching the dense (y,N) grid, and without requiring dense
+            # values to have been stored -- see the relocated raise below.
+            self._populate_profile(obj, tables, conn, units=units)
+        else:
+            # DESIGN-DECISION: this raise now fires only when dense (y,N)
+            # values are requested (not profile_only), so a profile_only
+            # fetch of a scalars-only-stored record succeeds -- see design
+            # doc §4.1.
             if obj._diagnostics is not None and obj._diagnostics.get("full_values_stored", True) is False:
                 raise RuntimeError(
                     f"GradientCoupledInstanton(id={obj.store_id}) was stored in "
