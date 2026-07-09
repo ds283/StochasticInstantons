@@ -95,6 +95,7 @@ def solve_shooting(
     stall_growth: float = DEFAULT_STALL_GROWTH,
     bootstrap_target: Optional[float] = None,
     deadline: Optional[float] = None,
+    lam_bounds: Optional[Tuple[float, float]] = None,
 ) -> ShootingResult:
     """
     Find lam such that ``evaluate(lam)``'s residual is within ``tol`` of
@@ -138,6 +139,28 @@ def solve_shooting(
     until it reaches a region where lam actually has an effect. Once a real
     secant slope is available, ordinary trust-region-clipped secant steps
     resume.
+
+    ``lam_bounds`` (prompt 24b -- ``(lo, hi)``, ``lo`` may be negative):
+    an optional FEASIBLE-region clamp, physics-free from this module's own
+    point of view (the caller derives ``lo``/``hi`` from whatever closed-form
+    reasoning applies to its own BVP -- see
+    ``ComputeTargets/GradientCoupledInstanton/picard.py``'s own corridor
+    computation for the motivating case, a narrow window outside which the
+    noise-sourcing feedback drives the forward pass's ``H^2_local<0``).
+    ``None`` (default) disables clamping entirely -- every pre-existing
+    caller (``FullInstanton``, whose own ``lambda`` legitimately spans many
+    orders of magnitude with no such wall) is completely unaffected. When
+    set, EVERY proposed evaluation point -- the bootstrap step, a stall
+    escalation, a trust-region-clipped secant step, and every backtracking
+    probe derived from any of those -- is clipped into ``[lo, hi]`` before
+    ``evaluate`` is ever called on it, so a poorly-scaled guess or a runaway
+    escalation can never itself request an infeasible point; the existing
+    Armijo backtracking (which still applies afterwards) is therefore never
+    asked to recover from a point ``evaluate`` was never going to accept.
+    ``lam0`` itself is NOT clamped (the caller's responsibility to supply a
+    value already inside ``[lo, hi]``, exactly like the existing
+    "``evaluate`` is known-safe at ``lam0``" contract for ``bootstrap_target``
+    above).
 
     ``evaluate(lam)`` must return ``(residual, success, aux)``: ``success``
     is False if lam is infeasible for the underlying BVP solve (e.g. an
@@ -254,6 +277,20 @@ def solve_shooting(
             # overshoot regardless.
             trust_radius = min(trust_radius * stall_growth, abs(step), trust_radius_max)
             step = math.copysign(trust_radius, step)
+
+        # Corridor clamp (prompt 24b -- see lam_bounds's own docstring
+        # above): clip the PROPOSED TARGET (not the step in isolation) into
+        # [lo, hi], then re-derive step from the clipped target, so every
+        # source of `step` above (bootstrap, stall escalation, trust-region-
+        # clipped secant) is covered by one shared clamp rather than three
+        # separate ones. Applied BEFORE backtracking begins, so no probe in
+        # the loop below can ever request a point outside the corridor
+        # (halving a step that already lands inside [lo, hi] can only move
+        # the probe closer to lam, i.e. still inside).
+        if lam_bounds is not None:
+            lo, hi = lam_bounds
+            target = min(max(lam + step, lo), hi)
+            step = target - lam
 
         # Armijo-style backtracking: halve the step until a probe succeeds
         # and does not make |residual| worse, or exhaust max_backtrack and

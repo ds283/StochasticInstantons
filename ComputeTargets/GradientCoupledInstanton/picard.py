@@ -156,6 +156,110 @@ live, every RHS call, via neumann_boundary_value from the OTHER, currently-
 integrated phi nodes -- never self-referential, never lagged, not a
 contested closure at any point in this history.
 
+Lambda-seed conversion and feasible-lambda corridor (prompt 24b)
+-------------------------------------------------------------------------
+Prompt 22c seeded the outer loop's bootstrap_target directly at
+lambda_FI -- FullInstanton's own converged terminal multiplier. This is
+WRONG SIGN and ~3 ORDERS OF MAGNITUDE TOO LARGE for GCI's own lambda:
+FullInstanton's lambda is P1(N_total), the terminal condition of a
+DIFFERENT boundary-value problem (see ComputeTargets/FullInstanton.py's
+own bwd_rhs, ~line 150: "Backward pass: terminal conds
+P1(N_total)=lambda, P2(N_total)=0"), whereas GCI's own terminal condition
+(response_rhs.terminal_response_state) is
+
+    rfield_core(N_total) = -lambda_GCI / (w_core * mu(N_total))
+
+with w_core = grid.weights[-1] (the LGL boundary quadrature weight) and
+mu(y,N) = exp(-1.5*Delta_s(N)*y) (Numerics/OnionCoordinate.measure).
+Equating the physical terminal response (rfield <-> P1 -- both source the
+SAME dphi/dN equation: forward_rhs.noise_source_terms's own
+D_phi*rfield + ... term plays the role of FullInstanton's own
+2*D11*P1 + ... term in fwd_rhs, confirmed directly from source, not
+assumed) at gradient-enhancement factor E=1 (the core/homogeneous
+baseline -- the true root's E, driven by the core fighting the drag of
+outer shells pinned to the background, is O(10)-O(100) and NOT known a
+priori, see the bracket-expansion below) gives
+
+    lambda_seed = -lambda_FI * w_core * mu(N_total)
+
+lambda_seed replaces the raw lambda_FI as bootstrap_target below.
+
+Feasible-lambda corridor. The forward blow-up mode is H^2_local<0 (i.e.
+epsilon>1), driven by the noise-sourcing feedback D11*lambda*r_tilde
+(forward_rhs.noise_source_terms). The corridor derivation this module
+docstring section had inherited (.prompts/gradient-coupled-instanton/
+24b-lambda-conversion-seeding-and-trajectory-validation.md's own "Check")
+asserted max|r_tilde| ~= 2.7/(w_core*mu(N_total)) -- VERIFIED AGAINST
+SOURCE AND FOUND NOT TO HOLD: directly comparing to prompt 24a's own
+Diagnostic-2 measurement (max|r_tilde|=9155.0 at m/Mp in
+{1e-3,1e-4,1e-5}, delta_Nstar=1.0, n=5, alpha=0.1, w_core=0.1) against
+1/(w_core*mu(N_total)) computed from the SAME config gives 8493.7 -- a
+ratio of 1.08, not 2.7. The correct closed form is therefore
+
+    max|r_tilde| ~= 1/(w_core * mu(N_total))     [kappa=1, not 2.7]
+
+i.e. very close to the terminal boundary value of r_tilde itself (the
+~8% excess is the modest additional growth the backward integration adds
+on top of the terminal condition, at this delta_Nstar; not itself
+resolved into a closed form here). This kappa=1 form independently
+reproduces the module's own worked "Check" (lambda_c ~= 6.9 at
+m/Mp=1e-2, delta_Nstar=1.0) to within 4%, using D11 evaluated at the
+TRANSITION-START state (phi_init, pi_init -- NOT the core's own N_total
+endpoint, which gives a visibly worse match): the check's own H^2~=1.24e-3
+matches H_sq_nl_init, not H_sq_core(N_total). Hence
+
+    D11, _, _ = diffusion_model.D_matrix(phi_init, pi_init, potential)
+    lambda_c_positive = w_core * mu(N_total) / D11
+
+The negative side is confirmed WIDER (prompt 24a Diagnostics 1 & 4: the
+sign of the noise kick decides whether it drives epsilon toward 1 or away
+from it) -- CORRIDOR_NEGATIVE_WIDENING=2.5 below is chosen to sit inside
+every bound implied by the four cross-checked data points available
+(m/Mp=1e-2: delta_Nstar in {0.3,0.5,0.7} converged at
+lambda/lambda_c_positive = 0.70, 1.01, 1.38 respectively -- i.e. NOT
+symmetric-corridor-feasible past delta_Nstar=0.5 without widening at all;
+delta_Nstar=1.0's own Diagnostic-1 boundary, lambda=-15.6 converges /
+lambda=-37.5 diverges, requires the widening factor to lie in
+[2.16, 5.19]). 2.5 is not a fit to any single point -- it is the
+documented, defensible middle of the prompt's own "~2-3x" language,
+verified (not merely asserted) to satisfy every constraint above.
+
+lambda_c_positive/lambda_c_negative bound solve_shooting's own lam_bounds
+(Numerics/ShootingSolver.py, prompt 24b) -- every step the outer loop
+proposes (bootstrap, stall escalation, trust-region-clipped secant, and
+every backtracking probe derived from any of those) is clamped into this
+corridor BEFORE evaluate() is ever called on it, so a "propose, blow up,
+backtrack" cascade cannot occur; the shooting solver only ever proposes
+points inside the feasible set.
+
+Bracket expansion from the seed (prompt 24b). Since E is O(10)-O(100) and
+not known a priori, the true root is typically NOT at lambda_seed (E=1)
+itself -- it is found by a geometric expansion FROM lambda_seed (same
+sign, corridor-clamped), evaluating each successive point through
+solve_picard's own evaluate()/commit() closures (so every expansion probe
+also warm-starts the next Picard inner solve, exactly like solve_shooting's
+own per-outer-iteration commit), until the residual's sign flips relative
+to the previous point -- a genuine bracket -- or the corridor edge is
+reached. The bracket's two endpoints are handed to solve_shooting as
+(lam0, bootstrap_target): lam0 is the last point evaluated (already
+known-feasible, unlike the pre-24b lam0=0.0 trivial-point convention),
+bootstrap_target is the point on the far side of the sign flip, so
+solve_shooting's own existing bootstrap-step logic (Numerics/
+ShootingSolver.py) aims its very first outer-loop step directly at the
+already-bracketed root instead of restarting a fresh escalation from
+lambda=0. See _bracket_from_seed's own docstring below for the exact
+algorithm and the graceful fallback (ordinary escalation from
+lambda_seed, no bootstrap_target) when no bracket is found before the
+corridor edge.
+
+E = lambda_root / lambda_seed is logged in solve_picard's own returned
+"diagnostics" dict ("gradient_enhancement_E") on every converged solve --
+a physically interesting quantity (how much extra terminal response the
+core needs beyond the homogeneous baseline to fight the drag of the outer
+shells) and a cheap regression signal (prompt 22a/22c/23's own precedent
+of quantifying, not just fixing, whatever bias/rescaling a given prompt
+introduces).
+
 FullInstanton seed (prompt 21a; extended prompt 22c)
 -------------------------------------------------------------------------
 _fetch_full_instanton_profile implements a three-tier fetch-then-fallback
@@ -222,6 +326,7 @@ iteration converges to (or whether/how fast it converges), never the
 per-sweep operator's own spectrum.
 """
 
+import math
 import time
 from contextlib import contextmanager
 from typing import Optional
@@ -231,7 +336,7 @@ import scipy.integrate._ivp.rk as _scipy_rk
 from scipy.integrate import solve_ivp
 
 from Interpolation.spline_wrapper import SplineWrapper
-from Numerics.OnionCoordinate import delta_s
+from Numerics.OnionCoordinate import delta_s, measure
 from Numerics.ShootingSolver import solve_shooting
 from ComputeTargets.FullInstanton import _compute_full_instanton
 from ComputeTargets.GradientCoupledInstanton.forward_rhs import (
@@ -247,6 +352,11 @@ from ComputeTargets.GradientCoupledInstanton.response_rhs import (
 
 MAX_OUTER = 50
 MAX_INNER = 30
+
+# Floor applied to OUTER_TOL = max(atol*1e6, OUTER_TOL_FLOOR) below (prompt
+# 24b: extracted into a module constant so it can be monkeypatched by a
+# diagnostic harness -- see that computation's own comment).
+OUTER_TOL_FLOOR = 1.0e-2
 
 # Number of consecutive inner sweeps required below INNER_TOL before
 # picard_inner declares convergence (prompt 22b -- see picard_inner's own
@@ -350,6 +460,31 @@ DEFAULT_MAX_STEP_FRACTION = 1.0 / 50.0
 # threshold used by _classify_bailout's residual-trend heuristic below.
 RESIDUAL_TREND_WINDOW = 5
 RESIDUAL_TREND_RELATIVE_THRESHOLD = 0.05
+
+# ---------------------------------------------------------------------------
+# Prompt 24b -- lambda-seed conversion + feasible-lambda corridor. See the
+# module docstring's own "Lambda-seed conversion and feasible-lambda
+# corridor" section for the full derivation and verification against prompt
+# 24a's own Diagnostic-2/4 data.
+# ---------------------------------------------------------------------------
+
+# Widening factor applied to the corridor's NEGATIVE edge only (the positive
+# edge uses kappa=1 unwidened) -- see the module docstring's own derivation;
+# verified to sit inside every bound implied by the four cross-checked
+# m/Mp=1e-2 data points available (delta_Nstar in {0.3,0.5,0.7}'s own
+# converged lambda/lambda_c_positive ratios, and delta_Nstar=1.0's own
+# Diagnostic-1 converges/diverges boundary), not fitted to any single one.
+CORRIDOR_NEGATIVE_WIDENING = 2.5
+
+# Geometric growth factor and step cap for _bracket_from_seed's own
+# expansion away from lambda_seed (E=1) toward the true root (E typically
+# O(10)-O(100), not known a priori -- see the module docstring). 3.0 reaches
+# a factor of ~590 in 6 steps, comfortably covering the documented E range
+# without excessive probing; corridor-clamped regardless (see
+# _bracket_from_seed), so an overly aggressive growth factor cannot itself
+# cause an infeasible evaluation.
+BRACKET_GROWTH_FACTOR = 3.0
+BRACKET_MAX_STEPS = 8
 
 
 class _WallclockBudgetExceeded(Exception):
@@ -793,6 +928,72 @@ def _seed_profile_weights(y: np.ndarray, seed_profile: str):
     return w_core, 1.0 - w_core
 
 
+def _bracket_from_seed(
+    evaluate,
+    commit,
+    lambda_seed: float,
+    lam_lo: float,
+    lam_hi: float,
+    growth: float = BRACKET_GROWTH_FACTOR,
+    max_steps: int = BRACKET_MAX_STEPS,
+):
+    """
+    Geometric expansion from lambda_seed (prompt 24b's own E=1 baseline)
+    toward the true root, whose gradient-enhancement factor E is O(10)-O(100)
+    but not known a priori (see the module docstring's own "Lambda-seed
+    conversion and feasible-lambda corridor" section) -- stops the moment two
+    successively evaluated residuals have opposite sign (a genuine bracket)
+    or the corridor edge [lam_lo, lam_hi] is reached first.
+
+    Every probe goes through the CALLER's own evaluate()/commit() closures
+    (solve_picard's own, exactly as the outer shooting loop uses them), so
+    each expansion step also warm-starts the next Picard inner solve from
+    the previous expansion point's converged grid -- identical to how
+    solve_shooting itself commits every evaluated point, accepted or not.
+
+    Returns (lam0, bootstrap_target):
+      - A genuine bracket found: lam0 is the LAST point evaluated (already
+        known-feasible), bootstrap_target is the point on the other side of
+        the sign flip -- handed to solve_shooting so its own first-step
+        bootstrap logic (Numerics/ShootingSolver.py) aims directly at the
+        already-bracketed root.
+      - No bracket found before the corridor edge (or lambda_seed itself is
+        infeasible, e.g. an unavailable/degenerate FullInstanton seed
+        collapsing lambda_seed to 0.0): falls back to lam0=lambda_seed (or
+        0.0 if even that failed), bootstrap_target=None -- solve_shooting's
+        own ordinary stall-escalation resumes from there, still corridor-
+        clamped via lam_bounds.
+    """
+    lam_prev = lambda_seed
+    res_prev, ok, aux = evaluate(lam_prev)
+    if not ok:
+        # lambda_seed itself was infeasible (e.g. an unavailable/degenerate
+        # FullInstanton seed) -- fall back to the always-feasible trivial
+        # point as lam0, but still hand lambda_seed through as
+        # bootstrap_target (rather than None/undirected) so solve_shooting's
+        # own Armijo backtracking gets a directed first step to shrink from,
+        # exactly like the pre-24b "let a bad guess safely backtrack"
+        # contract for bootstrap_target.
+        return 0.0, lambda_seed
+    commit(aux)
+    sign_prev = math.copysign(1.0, res_prev) if res_prev != 0.0 else 0.0
+
+    for _ in range(max_steps):
+        lam_next = max(lam_lo, min(lam_hi, lam_prev * growth))
+        if lam_next == lam_prev:
+            break  # corridor edge reached -- cannot expand further
+        res_next, ok, aux = evaluate(lam_next)
+        if not ok:
+            break  # infeasible past this point -- hand off what we have
+        commit(aux)
+        sign_next = math.copysign(1.0, res_next) if res_next != 0.0 else 0.0
+        if sign_next != sign_prev and sign_prev != 0.0:
+            return lam_prev, lam_next
+        lam_prev, sign_prev = lam_next, sign_next
+
+    return lam_prev, None
+
+
 def solve_picard(
     N_init: float,
     N_final: float,
@@ -938,7 +1139,14 @@ def solve_picard(
     # target converges the Picard sub-problem to machine precision in
     # practice (well below this tolerance) -- OUTER_TOL is the one that
     # actually gates outer-loop convergence for the fixed target.
-    OUTER_TOL = max(atol * 1.0e6, 1.0e-2)
+    # OUTER_TOL_FLOOR (prompt 24b: extracted from the previously-bare 1.0e-2
+    # literal into a module constant, purely so a diagnostic harness can
+    # monkeypatch it -- same technique already used for MAX_OUTER/MAX_INNER
+    # by tests/test_picard.py and this project's own diagnose_24a_
+    # convergence_floor.py -- to check whether tightening it moves
+    # msr_action, i.e. whether the floor is "doing physics" rather than
+    # being a harmless safety margin. No default-behavior change.
+    OUTER_TOL = max(atol * 1.0e6, OUTER_TOL_FLOOR)
     INNER_TOL = max(atol * 1.0e4, 1.0e-4)
 
     N_offset = trajectory.N_end - N_init
@@ -1049,26 +1257,20 @@ def solve_picard(
     # SAME uniform initial condition, so there is nothing on the grid for
     # the onion interpolation to distinguish, and no FullInstanton fetch is
     # worth paying for.
-    # lambda_FI (prompt 22c) seeds the outer loop's FIRST STEP TARGET, not
-    # its starting point: lam0 itself always stays at the always-feasible
-    # 0.0 (the trivial/background point, exactly like the pre-22c outer
-    # loop), and lambda_FI is passed to solve_shooting as bootstrap_target
-    # (see that function's own docstring). Jumping the outer loop's
-    # STARTING point itself directly to lambda_FI was tried and found
-    # UNSAFE in general -- FullInstanton's own converged lambda for the
-    # "same" nominal BVP is not always a good approximation to this BVP's
-    # own true lambda once genuine spatial/gradient coupling and SBP-SAT
-    # dissipation are active (observed directly: on several small test
-    # cases, lambda_FI put the very FIRST Picard evaluation in an
-    # infeasible, H_sq<0 region -- an unrecoverable failure with lam0 as
-    # the only evaluated point and no secant history to fall back on).
-    # Routing it through bootstrap_target instead means a bad guess safely
-    # backtracks to a smaller, feasible step (ordinary Armijo backtracking,
-    # unchanged), rather than failing the whole solve outright -- restoring
-    # the "seed quality only affects convergence speed" property for
-    # lambda too, not just the pi_core target/forward-field grid below.
+    # lambda_seed (prompt 24b -- see the module docstring's own "Lambda-seed
+    # conversion" section; replaces prompt 22c's raw lambda_FI, wrong sign
+    # and ~3 orders of magnitude too large for GCI's own lambda) seeds the
+    # outer loop's FIRST STEP TARGET. lam0 itself defaults to the
+    # always-feasible 0.0 (the trivial/background point) here, but is
+    # overridden below (once evaluate()/commit() exist) by
+    # _bracket_from_seed's own geometric-expansion result -- see that
+    # function's own docstring. bootstrap_target/lam_bounds default to
+    # None/unbounded (disable_spatial_coupling mode: no SAT, no onion
+    # structure, no corridor to compute).
     lam0 = 0.0
     bootstrap_target: Optional[float] = None
+    lambda_seed = 0.0
+    lam_bounds: Optional[tuple] = None
 
     if disable_spatial_coupling:
         g_pi_values = None
@@ -1090,7 +1292,26 @@ def solve_picard(
         # DEFAULT_ANDERSON_M=0 enforce this).
         g_pi_values = profile["phi2"]
         g_pi_core_spline = SplineWrapper(N_grid, g_pi_values, y_transform='linear', k=3)
-        bootstrap_target = profile["lambda_FI"]
+
+        # Prompt 24b -- lambda_seed and the feasible corridor, both computed
+        # a priori from D11, w_core, mu(N_total), lambda_FI (see the module
+        # docstring's own derivation). "lgl_w_core" is the LGL BOUNDARY
+        # QUADRATURE WEIGHT (grid.weights[-1]) -- deliberately named
+        # differently from _seed_profile_weights' own w_core/w_ext ONION-
+        # INTERPOLATION arrays a few lines below, an unrelated quantity
+        # despite the similar name.
+        lgl_w_core = grid.weights[-1]
+        H_sq_core_seed = potential.H_sq(profile["phi1"][-1], profile["phi2"][-1])
+        delta_s_N_final_seed = delta_s(N_total, 0.0, H_sq_core_seed, H_sq_nl_init, alpha)
+        mu_final_seed = measure(1.0, delta_s_N_final_seed)
+        lambda_seed = -profile["lambda_FI"] * lgl_w_core * mu_final_seed
+
+        D11_seed, _, _ = diffusion_model.D_matrix(phi_init, pi_init, potential)
+        lambda_c_positive = lgl_w_core * mu_final_seed / D11_seed
+        lambda_c_negative = CORRIDOR_NEGATIVE_WIDENING * lambda_c_positive
+        lam_bounds = (-lambda_c_negative, lambda_c_positive)
+
+        bootstrap_target = lambda_seed
 
         w_core, w_ext = _seed_profile_weights(grid.nodes, seed_profile)
         ext_phi_N = np.array([trajectory.phi_at(N_offset + N) for N in N_grid])
@@ -1366,6 +1587,29 @@ def solve_picard(
         fp_sol_f, bp_sol_f = fp_sol, bp_sol
         g_pi_values = g_pi_new
 
+    # Prompt 24b -- bracket the root by geometric expansion from lambda_seed
+    # (E=1) BEFORE handing off to the hardened secant/Armijo/trust-region
+    # solver below, replacing "propose lambda_FI, blow up, backtrack" with
+    # "propose only inside the feasible corridor, from an already correctly
+    # -signed and -scaled seed" (see the module docstring's own "Bracket
+    # expansion from the seed" section and _bracket_from_seed's own
+    # docstring). Only runs when a corridor was actually computed (skipped
+    # in disable_spatial_coupling mode, where lam_bounds/lambda_seed stay at
+    # their unbounded/0.0 defaults and the pre-24b lam0=0.0/
+    # bootstrap_target=None convention is unchanged). n_bracket_evaluations
+    # is read off outer_residual_history's own length (every evaluate() call
+    # appends to it, bracket-phase or not) purely for diagnostics -- these
+    # evaluations are NOT counted in solve_shooting's own
+    # outer_iterations/n_evaluations below, since they happen before that
+    # loop starts.
+    n_bracket_evaluations = 0
+    if lam_bounds is not None:
+        lam_lo, lam_hi = lam_bounds
+        lam0, bootstrap_target = _bracket_from_seed(
+            evaluate, commit, lambda_seed, lam_lo, lam_hi,
+        )
+        n_bracket_evaluations = len(outer_residual_history)
+
     # stall_growth is set far more conservatively than FullInstanton's own
     # call site (which needs to reach O(1e9) from O(0.05) -- see that
     # module's own comment): GCI's own lambda is expected to stay modest
@@ -1376,11 +1620,14 @@ def solve_picard(
     # feasible window (confirmed directly on a small test case where the
     # true, fixed-target-biased root sat within O(1) of lam0 but a 10x
     # per-stall escalation jumped to O(100) and back without ever probing
-    # the narrow window in between).
+    # the narrow window in between). lam_bounds (prompt 24b) additionally
+    # clamps every proposed step -- bootstrap, stall, secant, and every
+    # backtracking probe derived from any of those -- into the feasible
+    # corridor; see Numerics/ShootingSolver.py's own lam_bounds docstring.
     shoot = solve_shooting(
         evaluate, commit, lam0=lam0, tol=OUTER_TOL, max_outer=MAX_OUTER,
         bootstrap_target=bootstrap_target, stall_growth=1.5,
-        deadline=deadline,
+        deadline=deadline, lam_bounds=lam_bounds,
     )
 
     # Prompt 24 prerequisite -- non-convergence classification (see the
@@ -1432,6 +1679,24 @@ def solve_picard(
         "outer_residual_history": outer_residual_history,
         "wallclock_budget_seconds": wallclock_budget_seconds,
         "wallclock_budget_exceeded": shoot.budget_exceeded or budget_state["hit"],
+        # Prompt 24b -- lambda-seed conversion + feasible-lambda corridor
+        # (see the module docstring's own derivation). lambda_c_positive/
+        # negative and lambda_seed are None in disable_spatial_coupling mode
+        # (lam_bounds stays unset there -- no SAT, no corridor to compute).
+        # gradient_enhancement_E = final_lambda / lambda_seed is the
+        # physically interesting "how much extra terminal response the core
+        # needs beyond the homogeneous baseline" quantity the module
+        # docstring's own "Bracket expansion" section describes -- only
+        # defined on a converged solve with a nonzero lambda_seed.
+        "lambda_seed": lambda_seed if lam_bounds is not None else None,
+        "lambda_c_positive": lam_bounds[1] if lam_bounds is not None else None,
+        "lambda_c_negative": lam_bounds[0] if lam_bounds is not None else None,
+        "n_bracket_evaluations": n_bracket_evaluations,
+        "gradient_enhancement_E": (
+            shoot.lam / lambda_seed
+            if shoot.converged and lambda_seed not in (0.0, None)
+            else None
+        ),
         **_instrumentation_diagnostics(),
     }
 
