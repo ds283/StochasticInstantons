@@ -74,10 +74,13 @@ independently reimplemented:
 diagnostic this suite consolidates and was not one of the scripts being
 merged, but it was relocated here (from the old `out-gradient-coupled-stiffness/`
 scratch directory) so the package no longer depends on anything outside
-itself. **`run_case` is currently broken against production `forward_rhs`**
-(it predates the `g_pi_core_spline` SAT-penalty argument — see `seed_screen.py`'s
-own module docstring), so `seed-screen` is a known-broken subcommand pending
-a follow-up physics decision; it is not fixed by this relocation.
+itself. `run_case` builds the `g_pi_core_spline` pi_core SAT target current
+production `forward_rhs` requires (whenever `disable_spatial_coupling=False`)
+via `picard._fetch_full_instanton_profile` — the same fetch-then-fallback
+helper production `solve_picard` itself uses — fed by a real FullInstanton
+seed; `seed-screen` fetches that seed once per scan and reuses it across
+every `(alpha, n_collocation_points)` point (see `seed_screen.py`'s own
+module docstring).
 
 ---
 

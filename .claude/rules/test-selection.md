@@ -86,7 +86,6 @@ exceeded a 45-second cap (or, for the two borderline ones, came close):
 | `test_response_spectrum_prompt23.py` | Sweeps `n_max` up to 192 through dense eigendecompositions (via `tools/diagnostics/GradientCoupledInstanton/spectrum.py`) |
 | `test_sbp_sat_boundary_closure.py` | Same dense-eigendecomposition sweep, forward-sector version |
 | `test_gci_diagnostics_convergence_floor_cli.py` | One test (`test_diagnostic_4_direct_call_end_to_end`) drives a real, budget-capped `solve_picard` call via `convergence_floor.diagnostic_4` at the cheapest mass; its argparse/dispatch tests are not marked — they're cheap |
-| `test_gci_diagnostics_seed_screen_cli.py` | One test drives a real `solve_ivp` call via `seed_screen.scan_alpha_vs_n_colloc`, currently `xfail(strict=True)` (known-broken `run_case`/`forward_rhs` signature mismatch — see `DIAGNOSTICS_SUITE.md` §2); its argparse test is not marked |
 
 Whole-file-slow modules carry a module-level `pytestmark = pytest.mark.slow`
 (house style already uses per-test `@pytest.mark.integration` decorators for

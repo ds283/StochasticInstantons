@@ -31,16 +31,19 @@ depends on but does not reproduce -- see harness.py's own module docstring
 for why). This is a pre-screen, not a substitute for Diagnostic 8a's own
 full converged-solve alpha sweep.
 
-KNOWN BROKEN as of this refactor: ``run_case`` calls ``forward_rhs`` with
-the pre-SAT-penalty positional signature. Current production
-``forward_rhs`` requires a ``g_pi_core_spline`` argument that ``run_case``
-never supplies and unconditionally dereferences whenever
-``disable_spatial_coupling=False`` -- it predates the SAT-penalty machinery
-entirely. Fixing this requires a physics decision (what
-``disable_spatial_coupling``/``g_pi_core_spline`` should mean for a
-zeroth-Picard-iterate screen with no FullInstanton profile yet) that is out
-of scope for this refactor; this subcommand will raise until that follow-up
-lands.
+``run_case``'s ``g_pi_core_spline`` (the pi_core SAT target current
+production ``forward_rhs`` requires whenever ``disable_spatial_coupling=
+False``) is built from a real FullInstanton seed, fetched ONCE per mass/grid
+point here (via ``harness.fetch_full_instanton`` +
+``harness.full_instanton_seed_from``) and reused across every (alpha,
+n_collocation_points) pair in the scan -- the SAT target does not depend on
+either, so refetching per point would multiply a full Picard/shooting
+solve's cost across the whole scan and defeat the point of a cheap screen.
+This matches how production ``solve_picard`` itself sources
+``g_pi_core_spline`` (see ``picard._fetch_full_instanton_profile``), rather
+than inventing a separate zeroth-iterate-only convention (e.g. disabling
+spatial coupling, or a synthetic SAT target) that would screen something
+other than what this tool is meant to pre-check.
 
 Historical note: the original compare_gradient_full.py's Part A used the
 PRE-22a degenerate phi_end formula (``traj.phi_at(N_offset + N_total)``,
@@ -83,6 +86,18 @@ def scan_alpha_vs_n_colloc(m: float = 1.0e-5, N_init: float = h.N_INIT,
     potential, units, traj, dm = h.setup(m)
     atol = rtol = h.ATOL
 
+    # One real FullInstanton seed for the whole scan -- the pi_core SAT
+    # target run_case's forward_rhs call needs does not depend on alpha or
+    # n_collocation_points, so fetching it once here (rather than inside the
+    # loops below) keeps this screen cheap. See h.fetch_full_instanton's own
+    # docstring: this is the same inline (non-Ray) delegate call production
+    # solve_picard itself falls back to when no pre-fetched seed is passed in.
+    fi_data = h.fetch_full_instanton(potential, traj, dm, N_init, N_final, delta_Nstar,
+                                      atol=atol, rtol=rtol, label=f"seed_screen m={m:.4g} seed")
+    full_instanton_seed = h.full_instanton_seed_from(fi_data)
+    print(f"[seed_screen] FullInstanton seed: failure={fi_data.get('failure')} "
+          f"msr_action={fi_data.get('msr_action')!r}", flush=True)
+
     alphas = [float(np.exp(k)) for k in alpha_powers]
     threshold_table = {}
     for alpha in alphas:
@@ -90,7 +105,8 @@ def scan_alpha_vs_n_colloc(m: float = 1.0e-5, N_init: float = h.N_INIT,
         results = []
         for n_colloc in n_colloc_values:
             r = run_case(traj, potential, dm, N_init, N_final, delta_Nstar,
-                          n_colloc, alpha, atol, rtol, method=method)
+                          n_colloc, alpha, atol, rtol, method=method,
+                          full_instanton_seed=full_instanton_seed)
             results.append((n_colloc, bool(r["success"])))
             print(f"   n_collocation_points={n_colloc}: {'OK' if r['success'] else 'fail'}", flush=True)
         threshold_table[alpha] = results

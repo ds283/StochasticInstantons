@@ -30,6 +30,11 @@ by ``harness.py`` and ``seed_screen.py`` elsewhere in this package. This
 module predates the rest of the diagnostic suite and its own ``main()``/
 ``run_units_system()`` entry point (below) is retained standalone, run as
 ``python -m tools.diagnostics.GradientCoupledInstanton.explore_onion_stiffness``.
+
+``run_case``'s ``g_pi_core_spline`` (see its own docstring below) is built via
+``picard._fetch_full_instanton_profile`` -- the exact fetch-then-fallback
+helper production ``solve_picard`` itself uses for sweep 0's pi_core SAT
+target -- rather than inventing a separate zeroth-iterate-only convention.
 """
 
 import numpy as np
@@ -38,6 +43,7 @@ from scipy.integrate import solve_ivp
 from Interpolation.spline_wrapper import SplineWrapper
 from Numerics.LGLCollocation import LGLCollocationGrid
 from ComputeTargets.GradientCoupledInstanton.forward_rhs import forward_rhs, pack_state
+from ComputeTargets.GradientCoupledInstanton import picard as picard_module
 from InflationConcepts.DiffusionModel import MasslessDecoupledDiffusion
 
 
@@ -126,7 +132,22 @@ def build_real_trajectory(potential, phi0, pi0, atol, rtol):
 
 
 def run_case(traj, potential, dm, N_init, N_final, delta_Nstar, n_colloc, alpha,
-             atol, rtol, method="RK45", verbose=True, diagnose=False):
+             atol, rtol, method="RK45", verbose=True, diagnose=False,
+             full_instanton_seed=None):
+    """full_instanton_seed (optional): a pre-computed ``fetch_full_instanton``
+    -shaped dict (see ``harness.full_instanton_seed_from``), threaded straight
+    into ``picard._fetch_full_instanton_profile`` to build the pi_core SAT
+    target (``g_pi_core_spline``) forward_rhs now requires whenever
+    ``disable_spatial_coupling=False``. None (the default) makes
+    ``_fetch_full_instanton_profile`` fall back to computing one inline (or,
+    failing that, the noiseless background trajectory) -- see that function's
+    own docstring for the full three-tier preference order. Callers doing a
+    (alpha, n_colloc) screen over a fixed (traj, N_init, N_final, delta_Nstar)
+    should fetch ONE seed up front and pass it to every ``run_case`` call --
+    the SAT target does not depend on alpha or n_colloc, and refetching per
+    point would multiply a full Picard/shooting solve's cost across the
+    whole scan, defeating the point of a cheap screen.
+    """
     grid = LGLCollocationGrid(n_colloc)
     n_max = grid.n_max
     n_nodes = n_max + 1
@@ -137,6 +158,15 @@ def run_case(traj, potential, dm, N_init, N_final, delta_Nstar, n_colloc, alpha,
     phi_init = traj.phi_at(N_offset)
     pi_init = traj.pi_at(N_offset)
     H_sq_nl_init = potential.H_sq(phi_init, pi_init)
+    phi_end = traj.phi_at(traj.N_end - N_final)
+
+    N_grid = np.linspace(0.0, N_total, picard_module.N_GRID_SIZE)
+    profile = picard_module._fetch_full_instanton_profile(
+        N_grid, N_offset, phi_init, pi_init, phi_end, N_total,
+        traj, potential, dm, atol, rtol,
+        "seed_screen zeroth-iterate seed", full_instanton_seed,
+    )
+    g_pi_core_spline = SplineWrapper(N_grid, profile["phi2"], y_transform='linear', k=3)
 
     state_init = pack_state(np.full(n_nodes, phi_init), np.full(n_nodes, pi_init))
     zero_splines = [lambda N: 0.0 for _ in range(n_nodes)]
@@ -148,7 +178,8 @@ def run_case(traj, potential, dm, N_init, N_final, delta_Nstar, n_colloc, alpha,
         n_calls[0] += 1
         out = forward_rhs(
             N, y, N_offset, alpha, H_sq_nl_init, grid, traj, potential,
-            zero_splines, zero_splines, dm, disable_spatial_coupling=False,
+            zero_splines, zero_splines, dm, g_pi_core_spline,
+            disable_spatial_coupling=False,
         )
         if diagnose:
             last["N"] = N
