@@ -212,6 +212,7 @@ def test_guard_passes_for_valid_configuration():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.slow
 def test_compute_gradient_coupled_instanton_end_to_end_full_values():
     """
     Small, fast scenario (short transition, trivial background-anchored
@@ -285,6 +286,7 @@ def test_compute_gradient_coupled_instanton_end_to_end_full_values():
     assert all(len(row) == n_colloc for row in result["rfield"])
 
 
+@pytest.mark.slow
 def test_compute_gradient_coupled_instanton_scalars_only_skips_interpolation():
     """store_full_values=False -- profile still computed, per-sample arrays empty."""
     potential = _StubPotential()
@@ -569,6 +571,7 @@ class TestGradientCoupledInstantonPersistence:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.slow
 def test_zeta_c_r_at_time_reconstructs_stored_final_row():
     """
     zeta_C_r_at_time() at the final stored N_sample point should reproduce

@@ -44,6 +44,11 @@ from ComputeTargets.GradientCoupledInstanton.forward_rhs import noise_source_ter
 from Numerics.LGLCollocation import LGLCollocationGrid
 from Numerics.OnionCoordinate import delta_s
 
+# Parametrized solve_ivp backward passes across lambda values -- tens of
+# seconds per case, minutes total. Only worth running when ComputeTargets/
+# (or its numerical dependencies) change; see .claude/rules/test-selection.md.
+pytestmark = pytest.mark.slow
+
 
 class _StubPotential:
     def __init__(self, m_sq: float = 1.3):

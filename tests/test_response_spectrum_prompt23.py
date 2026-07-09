@@ -56,6 +56,11 @@ from analyze_StiffnessSpectrum import (
     compute_adjoint_diagnostics,
 )
 
+# Sweeps N_MAX_SWEEP (up to n_max=192) through dense eigendecompositions --
+# minutes, not seconds. Only worth running when ComputeTargets/ (or its
+# numerical dependencies, incl. analyze_StiffnessSpectrum.py) change; see
+# .claude/rules/test-selection.md.
+pytestmark = pytest.mark.slow
 
 N_MAX_SWEEP = [8, 16, 32, 64, 128, 192]
 

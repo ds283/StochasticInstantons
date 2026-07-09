@@ -1,4 +1,5 @@
 [tool.pytest.ini_options]
 markers = [
     "integration: tests that require a live Ray cluster and SQLite database (deselect with '-m not integration')",
+    "slow: computationally heavy tests exercising real ODE/spectral solves (Picard iteration, MSR action, stiffness spectra, GCI end-to-end) -- minutes each, only worth running when ComputeTargets/ or its numerical dependencies (Numerics/, Interpolation/, analyze_StiffnessSpectrum.py) change (deselect with '-m not slow')",
 ]

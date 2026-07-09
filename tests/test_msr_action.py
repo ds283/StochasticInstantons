@@ -34,6 +34,11 @@ from InflationConcepts.DiffusionModel import MasslessDecoupledDiffusion
 from Interpolation.spline_wrapper import SplineWrapper
 from Numerics.LGLCollocation import LGLCollocationGrid
 
+# Real solve_picard/solve_ivp runs underpin every test here -- minutes, not
+# seconds. Only worth running when ComputeTargets/ (or its numerical
+# dependencies) change; see .claude/rules/test-selection.md.
+pytestmark = pytest.mark.slow
+
 
 # ---------------------------------------------------------------------------
 # Stubs -- same pattern as tests/test_picard.py's own reduction-limit fixtures

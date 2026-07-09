@@ -34,6 +34,11 @@ from ComputeTargets.GradientCoupledInstanton.GradientCoupledInstanton import (
 from InflationConcepts.DiffusionModel import MasslessDecoupledDiffusion
 from Units.Planck_units import Planck_units
 
+# Each test runs a full GCI Picard solve -- minutes, not seconds. Only worth
+# running when ComputeTargets/ (or its numerical dependencies) change; see
+# .claude/rules/test-selection.md.
+pytestmark = pytest.mark.slow
+
 
 class _StubPotential:
     def __init__(self, m_sq: float = 1.3):

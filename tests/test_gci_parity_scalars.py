@@ -50,6 +50,11 @@ from ComputeTargets.GradientCoupledInstanton.GradientCoupledInstanton import (
 from InflationConcepts.DiffusionModel import MasslessDecoupledDiffusion
 from Units.Planck_units import Planck_units
 
+# Real solve_ivp downflows + a full GCI Picard solve -- minutes, not seconds.
+# Only worth running when ComputeTargets/ (or its numerical dependencies)
+# change; see .claude/rules/test-selection.md.
+pytestmark = pytest.mark.slow
+
 
 # ---------------------------------------------------------------------------
 # Stubs (mirroring tests/test_gradient_coupled_instanton_end_to_end.py's own)

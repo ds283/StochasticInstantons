@@ -50,6 +50,12 @@ from analyze_StiffnessSpectrum import (
 from Numerics.LGLCollocation import LGLCollocationGrid
 from Numerics.OnionCoordinate import advection_coefficient, delta_s
 
+# Sweeps DEFAULT_N_VALUES/DEFAULT_ALPHA_VALUES through dense eigendecomposition
+# and finite-difference checks -- minutes, not seconds. Only worth running
+# when ComputeTargets/ (or its numerical dependencies, incl.
+# analyze_StiffnessSpectrum.py) change; see .claude/rules/test-selection.md.
+pytestmark = pytest.mark.slow
+
 
 # ---------------------------------------------------------------------------
 # SBP self-check -- unaffected by this prompt, re-asserted as a regression

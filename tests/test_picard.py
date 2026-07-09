@@ -15,6 +15,11 @@ from InflationConcepts.DiffusionModel import MasslessDecoupledDiffusion
 from Interpolation.spline_wrapper import SplineWrapper
 from Numerics.LGLCollocation import LGLCollocationGrid
 
+# Every test here drives a real solve_picard/solve_ivp shooting solve --
+# minutes, not seconds. Only worth running when ComputeTargets/ (or its
+# numerical dependencies) change; see .claude/rules/test-selection.md.
+pytestmark = pytest.mark.slow
+
 
 # ---------------------------------------------------------------------------
 # Stubs

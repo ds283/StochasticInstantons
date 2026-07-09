@@ -13,6 +13,13 @@ python -c "..."   # used for acceptance-criteria checks in prompts
 
 Ray must be running. Start a local cluster with `ray start --head` before running.
 
+Default test run: `pytest -m "not integration and not slow"` (~464 of 571
+tests, well under a minute). A `slow`-marked block of the suite runs real
+ODE/spectral solves that take minutes each and is only worth including when
+the change touches `ComputeTargets/`, `Numerics/`, `Interpolation/`, or
+`analyze_StiffnessSpectrum.py`. See `.claude/rules/test-selection.md` for the
+full decision rule and the current list of `slow`-marked files.
+
 ## Critical rules — read before touching any file
 
 Five rules have caused rework when violated. They are detailed in
