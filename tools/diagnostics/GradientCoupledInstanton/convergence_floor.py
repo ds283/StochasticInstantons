@@ -1079,6 +1079,143 @@ def diagnostic_11_corridor_edge_proximity(
 
 
 # ---------------------------------------------------------------------------
+# Diagnostic 12 -- relaxed-corridor retry at n=9. Direct empirical test of
+# Diagnostic 11's own finding: n=9's outer loop was pinned bit-for-bit on
+# the corridor's UNwidened positive edge for its entire 50-iteration budget
+# (26a-corridor-edge-proximity.md). This diagnostic sweeps the new
+# CORRIDOR_POSITIVE_WIDENING production constant (default 1.0, added
+# specifically to enable this test -- see picard.py's own comment at its
+# definition) to see whether relaxing that wall lets n=9 actually converge.
+#
+# Reading the result:
+#   - Converges at some widening: the corridor WAS the limiting factor --
+#     a genuine root exists just beyond the unwidened kappa=1 bound. Next
+#     step is revisiting CORRIDOR_POSITIVE_WIDENING's own calibration (a
+#     production fix, needing the same multi-point verification 24b did for
+#     CORRIDOR_NEGATIVE_WIDENING), not the tau_multiplier study.
+#   - Never converges even at the widest widening tried: rules the corridor
+#     out. n=9's floor is genuine stiffness -- the tau_multiplier
+#     recommendation (already made in 26-sector-attribution-instrument-
+#     stiffness.md) stands, now on firmer ground.
+# ---------------------------------------------------------------------------
+
+def diagnostic_12_relaxed_corridor_retry(
+    m: float = 1.0e-2, delta_Nstar: float = 0.5, n: int = 9,
+    widenings=(1.0, 2.5, 5.0, 10.0), wallclock_budget: float = 900.0,
+):
+    """Sweeps CORRIDOR_POSITIVE_WIDENING at the corridor-clamped point
+    26a-corridor-edge-proximity.md identified ((m/Mp=1e-2, delta_Nstar=0.5,
+    n=9)). widenings[0]=1.0 reproduces Diagnostic 11's own n=9 floor exactly
+    (sanity check on this diagnostic's own harness, not a new result);
+    subsequent values relax the positive AND (via the existing
+    CORRIDOR_NEGATIVE_WIDENING=2.5x-of-positive relationship) negative edges
+    together, preserving their calibrated ratio rather than testing an
+    isolated, uncalibrated positive-only widening.
+
+    No physics is touched: CORRIDOR_POSITIVE_WIDENING multiplies only the
+    outer shooting loop's own feasibility clamp (picard.py's
+    lambda_c_positive/lambda_c_negative), never lambda_seed (the bootstrap
+    direction, which does not depend on it) and never anything inside
+    forward_rhs.py/response_rhs.py's own per-step physics.
+    """
+    print("\n" + "=" * 78, flush=True)
+    print(f"DIAGNOSTIC 12: relaxed-corridor retry at m={m:.4g}, "
+          f"delta_Nstar={delta_Nstar}, n={n}", flush=True)
+    print("=" * 78, flush=True)
+
+    potential, units, traj, dm = h.setup(m)
+    phi_end = h.production_phi_end(traj)
+    H_sq_nl_init = h.H_sq_nl_init_of(potential, traj, h.N_INIT)
+    fi_data = h.fetch_full_instanton(potential, traj, dm, h.N_INIT, h.N_FINAL, delta_Nstar,
+                                      label="D12 FI seed")
+    lambda_FI = fi_data.get("diagnostics", {}).get("final_lambda", 0.0)
+    full_instanton_seed = h.full_instanton_seed_from(fi_data)
+    print(f"[D12] FullInstanton: lambda_FI={lambda_FI!r} msr_action={fi_data.get('msr_action')!r}", flush=True)
+
+    grid = h.LGLCollocationGrid(n)
+    rows = []
+    for widening in widenings:
+        t0 = time.perf_counter()
+        with h.capture_shooting_result() as captured:
+            with h.MonkeypatchGuard(h.picard_module, CORRIDOR_POSITIVE_WIDENING=widening):
+                result = h.picard_module.solve_picard(
+                    h.N_INIT, h.N_FINAL, delta_Nstar, h.ALPHA, H_sq_nl_init, grid, traj, potential, dm,
+                    h.ATOL, h.RTOL, phi_end, instrument_stiffness=False, verbose=False,
+                    full_instanton_seed=full_instanton_seed,
+                    wallclock_budget_seconds=wallclock_budget,
+                    label=f"D12 n={n} widening={widening:.4g}",
+                )
+        dt = time.perf_counter() - t0
+        diag = result.get("diagnostics", {})
+        shoot = captured.get("result")
+        last_lambda_tried = shoot.lam if shoot is not None else None
+
+        lam_c_pos = diag.get("lambda_c_positive")
+        lam_c_neg = diag.get("lambda_c_negative")
+        nearest_edge_fraction = None
+        if last_lambda_tried is not None and lam_c_pos is not None and lam_c_neg is not None:
+            corridor_width = lam_c_pos - lam_c_neg
+            if corridor_width:
+                frac_from_positive = (lam_c_pos - last_lambda_tried) / corridor_width
+                frac_from_negative = (last_lambda_tried - lam_c_neg) / corridor_width
+                nearest_edge_fraction = min(frac_from_positive, frac_from_negative)
+
+        row = {
+            "widening": widening,
+            "converged": diag.get("converged"),
+            "bailout_tag": diag.get("bailout_tag"),
+            "bailout_reason": diag.get("bailout_reason"),
+            "final_residual": diag.get("final_residual"),
+            "outer_iterations": diag.get("outer_iterations"),
+            "lambda_c_positive": lam_c_pos,
+            "lambda_c_negative": lam_c_neg,
+            "final_lambda": result.get("final_lambda"),
+            "last_lambda_tried": last_lambda_tried,
+            "nearest_edge_fraction": nearest_edge_fraction,
+            "wallclock": dt,
+        }
+        if diag.get("converged"):
+            phi_grid = np.asarray(result["phi_grid"])
+            pi_grid = np.asarray(result["pi_grid"])
+            rfield_grid = np.asarray(result["rfield_grid"])
+            rmom_grid = np.asarray(result["rmom_grid"])
+            N_grid_arr = np.asarray(result["N_grid"])
+            row["msr_action"] = h.compute_msr_action(
+                N_grid_arr, phi_grid, pi_grid, rfield_grid, rmom_grid, grid, potential, dm,
+                H_sq_nl_init, h.ALPHA,
+            )
+        else:
+            row["msr_action"] = None
+        rows.append(row)
+        print(f"[D12] widening={widening:.4g}: converged={row['converged']} "
+              f"lambda_c=[{lam_c_neg!r}, {lam_c_pos!r}] final_lambda={row['final_lambda']!r} "
+              f"last_lambda_tried={last_lambda_tried!r} nearest_edge_fraction={nearest_edge_fraction!r} "
+              f"bailout={row['bailout_tag']} ({dt:.1f}s)", flush=True)
+
+    output = {"m": m, "delta_Nstar": delta_Nstar, "n": n, "widenings": list(widenings),
+              "lambda_FI": lambda_FI, "rows": rows}
+    h.save_json(f"{OUT_DIR}/diagnostic12_relaxed_corridor_retry.json", output)
+
+    def _fmt(v, spec="{:.4g}"):
+        return "n/a" if v is None else spec.format(v)
+
+    print("\n--- Diagnostic 12 summary ---", flush=True)
+    header = (f"  {'widening':>9} {'converged':>10} {'lambda_c_neg':>14} {'lambda_c_pos':>14} "
+              f"{'final_lambda':>14} {'nearest_edge_frac':>18} {'bailout_tag':>18}")
+    print(header, flush=True)
+    for row in rows:
+        print(
+            f"  {row['widening']:>9.4g} {str(row['converged']):>10} "
+            f"{_fmt(row['lambda_c_negative']):>14} {_fmt(row['lambda_c_positive']):>14} "
+            f"{_fmt(row['final_lambda']):>14} {_fmt(row['nearest_edge_fraction']):>18} "
+            f"{str(row['bailout_tag']):>18}",
+            flush=True,
+        )
+
+    return output
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -1097,6 +1234,7 @@ _DIAGNOSTIC_DISPATCH = {
     "9": lambda args: diagnostic_9_bias_corrected_n_retry(),
     "10": lambda args: diagnostic_10_sector_attribution(),
     "11": lambda args: diagnostic_11_corridor_edge_proximity(),
+    "12": lambda args: diagnostic_12_relaxed_corridor_retry(),
 }
 
 

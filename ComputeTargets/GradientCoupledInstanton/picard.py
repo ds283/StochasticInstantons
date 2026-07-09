@@ -476,6 +476,21 @@ RESIDUAL_TREND_RELATIVE_THRESHOLD = 0.05
 # Diagnostic-1 converges/diverges boundary), not fitted to any single one.
 CORRIDOR_NEGATIVE_WIDENING = 2.5
 
+# Widening factor applied to the corridor's POSITIVE edge (prompt 26a
+# diagnostic prerequisite). Default 1.0 reproduces the original kappa=1,
+# unwidened positive bound bit-for-bit -- this constant exists purely as a
+# monkeypatch point for diagnostics, the same role OUTER_TOL_FLOOR's own
+# extraction served for prompt 24b's Diagnostic 7. Motivated by
+# 26a-corridor-edge-proximity.md: at (m/Mp=1e-2, delta_Nstar=0.5, n=9), the
+# outer loop's own last-tried lambda was found sitting bit-for-bit on this
+# UNwidened positive edge for its entire 50-outer-iteration budget, raising
+# the question (not yet answered as of this constant's introduction) of
+# whether a genuine root exists just beyond it that the unwidened bound is
+# hiding -- see Diagnostic 12 (diagnostic_12_relaxed_corridor_retry) for the
+# direct test this constant enables. No non-default value is ever set outside
+# a diagnostic's own MonkeypatchGuard block.
+CORRIDOR_POSITIVE_WIDENING = 1.0
+
 # Geometric growth factor and step cap for _bracket_from_seed's own
 # expansion away from lambda_seed (E=1) toward the true root (E typically
 # O(10)-O(100), not known a priori -- see the module docstring). 3.0 reaches
@@ -1307,7 +1322,7 @@ def solve_picard(
         lambda_seed = -profile["lambda_FI"] * lgl_w_core * mu_final_seed
 
         D11_seed, _, _ = diffusion_model.D_matrix(phi_init, pi_init, potential)
-        lambda_c_positive = lgl_w_core * mu_final_seed / D11_seed
+        lambda_c_positive = CORRIDOR_POSITIVE_WIDENING * lgl_w_core * mu_final_seed / D11_seed
         lambda_c_negative = CORRIDOR_NEGATIVE_WIDENING * lambda_c_positive
         lam_bounds = (-lambda_c_negative, lambda_c_positive)
 

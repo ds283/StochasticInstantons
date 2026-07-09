@@ -245,10 +245,27 @@ This means `n=9`'s own RK45 statistics (Diagnostic 10's "both sectors
 explode together" data point) may reflect many near-duplicate evaluations at
 a clamped point rather than a clean stiffness signal, while `n=17`'s
 backward-leaning ratio is NOT under that cloud. See
-`26a-corridor-edge-proximity.md` for the full finding and the recommended
-follow-up (a diagnostic-only relaxed-corridor re-run of `n=9`, not yet done,
-to test directly whether a genuine root exists just beyond the current
-clamp).
+`26a-corridor-edge-proximity.md` for the full finding.
+
+**Diagnostic 12 then closed this question directly, and it is a clean
+negative: the corridor clamp is ruled out.** Sweeping a new
+`CORRIDOR_POSITIVE_WIDENING` production constant (`1.0→2.5→5.0→10.0`, added
+specifically to make this test possible — see 26b's own "Production change
+this diagnostic required" for why no pure-monkeypatch path existed) at
+`n=9`: the `widening=1.0` baseline reproduced Diagnostic 11's exact
+wall-pinning, but every wider setting — up to `10×`, giving the search a
+corridor `[−106.2, 42.48]` vs the original `[−10.62, 4.248]` — still failed
+to converge. The console trace shows why: the outer loop keeps running into
+genuine `Picard inner failed` errors at `λ≈5–12`, the **same specific values
+recurring verbatim** between `widening=5.0` and `widening=10.0`
+(`final_residual`/`outer_iterations` identical between those two runs) — a
+saturated search hitting real physics infeasibility, not one still finding
+new territory as the wall recedes. **`n=9`'s floor is genuine
+physics/discretisation stiffness, not a corridor-calibration artefact.** The
+`tau_multiplier` recommendation stands, now on firmer ground — the cheaper
+alternative this whole line of inquiry was checking for has been directly
+ruled out rather than merely not attempted. See
+`26b-relaxed-corridor-retry.md` for the full table and trace.
 
 ### 6.4 New data point: `n=7` converges, and is not just "`n=5` refined"
 

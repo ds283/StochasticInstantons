@@ -118,7 +118,19 @@ important caveat to that reading, without overturning it wholesale:
 
 ## Recommendation
 
-Two candidate next steps, in order of cost:
+> **Update: done.** Diagnostic 12 ran this exact test — see
+> `26b-relaxed-corridor-retry.md`. **Result: relaxing the corridor by up to
+> 10× does NOT produce convergence at `n=9`.** The clamp was genuinely
+> constraining the search at its default (`widening=1.0`, confirmed pinned
+> bit-for-bit as this note found), but freeing it just moves the failure
+> from "clamped at the wall" to "repeated genuine inner-Picard-solve
+> failures in a `λ≈5–12` band" — the same failure mode, saturating
+> identically at `widening=5.0` and `widening=10.0`. The corridor is ruled
+> out as the cause of `n=9`'s floor; it only coincided with where the
+> search would have stalled anyway.
+
+Two candidate next steps, in order of cost (kept for the record; superseded
+by the update above):
 
 1. **Cheapest, most direct test of this diagnostic's own finding**: re-run
    `n=9` with a temporarily widened/relaxed positive-side corridor bound
@@ -131,7 +143,9 @@ Two candidate next steps, in order of cost:
    this whole line of inquiry started from. Not run here — flagging as the
    natural next diagnostic (would need a new `n_collocation_points`-dependent
    `lam_bounds` override monkeypatch, a small addition in the same style as
-   `MonkeypatchGuard`) rather than assuming the answer.
+   `MonkeypatchGuard`) rather than assuming the answer. **(Turned out to need
+   a small production change, not a pure monkeypatch — see 26b's own
+   "Production change this diagnostic required" section for why.)**
 2. If (1) shows relaxing the clamp does NOT produce convergence, that
    strengthens rather than weakens Diagnostic 10's original reading (the
    floor is genuine stiffness, not a clamp artefact) and the `tau_multiplier`
