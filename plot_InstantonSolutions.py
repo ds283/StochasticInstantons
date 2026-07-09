@@ -124,6 +124,33 @@ def create_plot_parser():
         "to render in the instantons/ folder, evenly sampled across "
         f"the 3-D grid (default: {DEFAULT_MAX_INSTANTON_SAMPLES})",
     )
+    # Placeholder flags for P5b's opt-in spatial (y,N)/derived movies
+    # (plotting/figures/spatial.py: plot_spatial_field_movie,
+    # plot_spatial_derived_movie). This driver has no GradientCoupledInstanton
+    # figures at all yet -- P8 (.prompts/gradient-coupled-plotting/
+    # 13-P8-new-driver-and-compare-mode.md) owns plot_GradientCoupledSolutions.py
+    # and its full CLI/work-item surface, including actually dispatching the
+    # movie renderers behind --movies. These flags are accepted but unused
+    # here; re-check this wiring once P8 lands.
+    plot_grp.add_argument(
+        "--movies",
+        action="store_true",
+        default=False,
+        help="Render opt-in (y,N)/derived spatial movies for "
+        "GradientCoupledInstanton figures, in addition to the default "
+        "static heatmaps/slices (default: off -- movies are the most "
+        "expensive output in the design and stay strictly opt-in). "
+        "Not yet wired into this driver; see P8.",
+    )
+    plot_grp.add_argument(
+        "--movie-format",
+        type=str,
+        default="gif",
+        choices=["gif", "mp4"],
+        help="Movie container format when --movies is set (default: gif, "
+        "Pillow-only, no external dependency; mp4 requires ffmpeg on the "
+        "render node). Not yet wired into this driver; see P8.",
+    )
     return parser
 
 
