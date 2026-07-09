@@ -4,7 +4,7 @@ In this prompt, the targets are:
 
 - to assemble a sample of source files that can be uploaded to an online Claude.ai session, as context
 - to produce (or update) a map of these files, to guide Claude.ai's reasoning
-- to prouduce (or update) a narrative explanation of the numerical schemes and infrastructure used in the pipeline
+- to produce (or update) a narrative explanation of the numerical schemes and infrastructure used in the pipeline
 
 ## TASKS
 
@@ -20,7 +20,7 @@ In this prompt, the targets are:
 ### PREPARE SOURCE FILE CONTEXT BUNDLE AND UPDATE `FILE_MAP.md`
 
 3. Working from `FILE_MAP.md` as a guide, if present, review the source files and build a selection that illustrates the
-   main elements of the pipeline and its numerical machinery. Please include at least:
+   main elements of the pipeline and its numerical machinery. At a minimum, please include:
     - A representative sample of `ComputeTarget` elements, including all three key instanton targets,
       `SlowRollInstanton`, `FullInstanton` and `GradientCoupledInstanton`. For `GradientCoupledInstanton` there are a
       number of implementation files for specific elements of its complex numerical scheme. Please also include
