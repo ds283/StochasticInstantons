@@ -55,6 +55,11 @@ In this prompt, the targets are:
 6. Working from a stored version in `./.documents` as a guide, if present, produce a narrative explanation (stored in
    `NUMERICAL_SCHEMES.md`) of how the numerical schemes implemented by `SlowRollInstanton`, `FullInstanton`,
    `CompactionFunction` and `GradientCoupledInstanton`  work.
+    - Critically, eplain the `UnitsLike` concept and the units discipline used throughout the codebase: we work in
+      natural units where `c = hbar = 1`,
+      so all physical quantites have dimensions of mass or inverse mass. **Dimensionful** quantities need to be
+      specified in conjunction with an appropriate unit from a `UnitsLike` instance (such as `Planck_units` or
+      `GeV_units`).
     - Explain the Picard iteration structure used for `FullInstanton` and `GradientCoupledInstanton` (so we can solve
       for the response fields on a backwards pass) and explain its purpose (the noise fields have unwanted growing
       modes in a forward implementation).
@@ -80,6 +85,11 @@ In this prompt, the targets are:
     - Explain the `DatastoreObject` base class for all models that are persisted in the datastore.
     - Explain the underlying SQL persistence layer, the query model for lookup, and how this mints/persists new objects
       when needed.
+    - Explain the persistence discipline for dimensionful quantities: a sensible unit is chosen to serialize to the
+      database; quantities are converted into this unit before writing out, and must be rehydrated with the correct
+      unit. This allows the compute layer to use different units, while always serializing consistent results into the
+      database. Also, stored results in the database retain their value even if we elect to change the units used for
+      computation.
     - Explain the factory class pattern and describe the main responsibilities of a factory class (registration, build,
       store, validation, inventory, `read_table`).
     - Explain the `ShardedPool` concept and how it builds over a pool of `Datastore` actors
