@@ -40,6 +40,8 @@ In this prompt, the targets are:
       include a representative sample of object factories from `Datastore/SQL/ObjectFactories`. At a minimum, please
       include factories for the key instanton compute targets `SlowRollInstanton`, `FullInstanton`,
       `GradientCoupledInstanton` and `CompactionFunction`.
+    - A representative sampe of diagnostic tools from the `tools/diagnostics/` folder, includng Markdown documentation
+      of these tools, where this is available.
     - The `RayWorkPool.py` abstraction from `RayTools`
     - The main driver scripts `main.py`, `plot_InstantonSolutions.py` and `regression_InstantonOutputs.py`
     - The exemplar parameter file `quadratic-minimal.yaml`
