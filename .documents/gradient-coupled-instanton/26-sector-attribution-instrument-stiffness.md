@@ -1,5 +1,14 @@
 # Prompt 26 — Diagnostic 10: sector attribution via `instrument_stiffness` at n≥9: results
 
+> **Addendum (Diagnostic 11):** the `n=9` data point in this note's own
+> table below is now known to be corridor-clamped — the outer loop's last
+> `λ` sat exactly on the (unwidened) positive corridor edge for its entire
+> 50-iteration budget, not exploring a genuinely converging/diverging
+> nonlinear regime. `n=17` is confirmed clamp-clear. See
+> `26a-corridor-edge-proximity.md` for the full finding; it revises (does
+> not overturn) the "ambiguous" call below — `n=17`'s own backward-leaning
+> signal is now the cleaner of the two data points.
+
 Prompt: `.prompts/gradient-coupled-instanton/26-sector-attribution-instrument-stiffness.md`.
 Implementation: `diagnostic_10_sector_attribution` in
 `tools/diagnostics/GradientCoupledInstanton/convergence_floor.py`

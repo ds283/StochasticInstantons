@@ -951,6 +951,134 @@ def diagnostic_10_sector_attribution(
 
 
 # ---------------------------------------------------------------------------
+# Diagnostic 11 -- corridor-edge proximity check at n>=9. Follow-up to
+# Diagnostic 10's own ambiguous forward/backward attribution: the 24b
+# lam_bounds corridor clamp (lambda_c_positive = w_core*mu(N_total)/D11,
+# lambda_c_negative = 2.5x that) was derived and calibrated ONLY at n=5
+# (four delta_Nstar points, one mass). w_core = grid.weights[-1], the LGL
+# terminal quadrature weight, shrinks with n (0.1 at n=5, 0.0278 at n=9,
+# 0.00735 at n=17 -- confirmed directly), so the corridor itself narrows by
+# the same factor purely from discretisation, with no physics change. This
+# diagnostic checks whether the n=9/n=17 non-convergence Diagnostic 6/9/10
+# all found is (partly) an artefact of the outer loop being clamped against
+# an artificially-narrow wall, rather than genuine physical/discretisation
+# stiffness -- exactly the check 24b already did successfully for
+# delta_Nstar=1.0 (Diagnostic 5, "final probe nowhere near either edge"),
+# never yet done for n>=9.
+# ---------------------------------------------------------------------------
+
+def diagnostic_11_corridor_edge_proximity(
+    m: float = 1.0e-2, delta_Nstar: float = 0.5, ns=(5, 7, 9, 17),
+    wallclock_budget: float = 900.0,
+):
+    """Same (m, delta_Nstar) point as Diagnostics 6/9/10. For each n, captures
+    lambda_seed/lambda_c_positive/lambda_c_negative (already computed by
+    solve_picard regardless of convergence outcome) plus the LAST lambda the
+    outer shooting loop was sitting at when it stopped -- recovered via
+    harness.capture_shooting_result(), since solve_picard's own
+    diagnostics["final_lambda"] is masked to None on non-convergence, hiding
+    exactly the value this check needs. Reports how close that last lambda
+    sat to the nearer corridor edge, as a fraction of the corridor's own
+    width -- a value near 0 means the search was sitting right against the
+    clamp wall (corridor-limited, not ruled out); a value well away from 0
+    (as 24b found at delta_Nstar=1.0) means the clamp was not the limiting
+    factor at that n.
+
+    No production code is touched: lambda_seed/lambda_c_positive/
+    lambda_c_negative are pre-existing solve_picard diagnostics keys (used
+    already by Diagnostic 5); capture_shooting_result() monkeypatches
+    solve_shooting the same way capture_last_commit() already does elsewhere
+    in this suite, purely to observe its return value.
+    """
+    print("\n" + "=" * 78, flush=True)
+    print(f"DIAGNOSTIC 11: corridor-edge proximity at m={m:.4g}, "
+          f"delta_Nstar={delta_Nstar}", flush=True)
+    print("=" * 78, flush=True)
+
+    potential, units, traj, dm = h.setup(m)
+    phi_end = h.production_phi_end(traj)
+    H_sq_nl_init = h.H_sq_nl_init_of(potential, traj, h.N_INIT)
+    fi_data = h.fetch_full_instanton(potential, traj, dm, h.N_INIT, h.N_FINAL, delta_Nstar,
+                                      label="D11 FI seed")
+    lambda_FI = fi_data.get("diagnostics", {}).get("final_lambda", 0.0)
+    full_instanton_seed = h.full_instanton_seed_from(fi_data)
+    print(f"[D11] FullInstanton: lambda_FI={lambda_FI!r} msr_action={fi_data.get('msr_action')!r}", flush=True)
+
+    rows = []
+    for n in ns:
+        grid = h.LGLCollocationGrid(n)
+        w_core = float(grid.weights[-1])
+        t0 = time.perf_counter()
+        with h.capture_shooting_result() as captured:
+            result = h.picard_module.solve_picard(
+                h.N_INIT, h.N_FINAL, delta_Nstar, h.ALPHA, H_sq_nl_init, grid, traj, potential, dm,
+                h.ATOL, h.RTOL, phi_end, instrument_stiffness=False, verbose=False,
+                full_instanton_seed=full_instanton_seed,
+                wallclock_budget_seconds=wallclock_budget, label=f"D11 n={n}",
+            )
+        dt = time.perf_counter() - t0
+        diag = result.get("diagnostics", {})
+        shoot = captured.get("result")
+        last_lambda_tried = shoot.lam if shoot is not None else None
+
+        lam_c_pos = diag.get("lambda_c_positive")
+        lam_c_neg = diag.get("lambda_c_negative")
+        nearest_edge_fraction = None
+        if last_lambda_tried is not None and lam_c_pos is not None and lam_c_neg is not None:
+            corridor_width = lam_c_pos - lam_c_neg
+            if corridor_width:
+                frac_from_positive = (lam_c_pos - last_lambda_tried) / corridor_width
+                frac_from_negative = (last_lambda_tried - lam_c_neg) / corridor_width
+                nearest_edge_fraction = min(frac_from_positive, frac_from_negative)
+
+        row = {
+            "n_collocation_points": n,
+            "w_core": w_core,
+            "converged": diag.get("converged"),
+            "bailout_tag": diag.get("bailout_tag"),
+            "bailout_reason": diag.get("bailout_reason"),
+            "final_residual": diag.get("final_residual"),
+            "outer_iterations": diag.get("outer_iterations"),
+            "n_bracket_evaluations": diag.get("n_bracket_evaluations"),
+            "lambda_seed": diag.get("lambda_seed"),
+            "lambda_c_positive": lam_c_pos,
+            "lambda_c_negative": lam_c_neg,
+            "final_lambda": result.get("final_lambda"),
+            "last_lambda_tried": last_lambda_tried,
+            "nearest_edge_fraction": nearest_edge_fraction,
+            "wallclock": dt,
+        }
+        rows.append(row)
+        print(f"[D11] n={n}: converged={row['converged']} w_core={w_core:.6g} "
+              f"lambda_c=[{lam_c_neg!r}, {lam_c_pos!r}] last_lambda_tried={last_lambda_tried!r} "
+              f"nearest_edge_fraction={nearest_edge_fraction!r} "
+              f"n_bracket_evals={row['n_bracket_evaluations']!r} bailout={row['bailout_tag']} ({dt:.1f}s)",
+              flush=True)
+
+    output = {"m": m, "delta_Nstar": delta_Nstar, "ns": list(ns), "lambda_FI": lambda_FI, "rows": rows}
+    h.save_json(f"{OUT_DIR}/diagnostic11_corridor_edge_proximity.json", output)
+
+    def _fmt(v, spec="{:.4g}"):
+        return "n/a" if v is None else spec.format(v)
+
+    print("\n--- Diagnostic 11 summary ---", flush=True)
+    header = (f"  {'n':>4} {'converged':>10} {'w_core':>10} {'lambda_c_neg':>14} {'lambda_c_pos':>14} "
+              f"{'last_lambda':>14} {'nearest_edge_frac':>18} {'n_bracket_evals':>16}")
+    print(header, flush=True)
+    for row in rows:
+        print(
+            f"  {row['n_collocation_points']:>4} {str(row['converged']):>10} "
+            f"{_fmt(row['w_core'], '{:.4g}'):>10} "
+            f"{_fmt(row['lambda_c_negative']):>14} {_fmt(row['lambda_c_positive']):>14} "
+            f"{_fmt(row['last_lambda_tried']):>14} {_fmt(row['nearest_edge_fraction']):>18} "
+            f"{_fmt(row['n_bracket_evaluations'], '{:.0f}'):>16}",
+            flush=True,
+        )
+
+    return output
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -968,6 +1096,7 @@ _DIAGNOSTIC_DISPATCH = {
     "8t": lambda args: diagnostic_8_tau_sensitivity(),
     "9": lambda args: diagnostic_9_bias_corrected_n_retry(),
     "10": lambda args: diagnostic_10_sector_attribution(),
+    "11": lambda args: diagnostic_11_corridor_edge_proximity(),
 }
 
 

@@ -208,19 +208,47 @@ the largest magnitudes destabilizing the outer loop into `blown-up`/
 **Current standing explanation: genuinely under-resolved structure (a
 boundary-layer/regularity problem), not a seeding or target-bias artefact.**
 
-26's Diagnostic 10 (in progress as of this writing — `n=5,7,9` done,
-`n=17` pending) is now sector-attributing that under-resolved structure
+26's Diagnostic 10 then sector-attributed that under-resolved structure
 between the forward (onion, SBP-SAT-ported) and response/backward
 (deliberately un-ported) directions, via `solve_picard`'s existing
-`instrument_stiffness` RK45 step statistics. Partial read, not yet a
-conclusion: total RK45 step counts explode in **both** sectors from `n=7` to
-the first floored point `n=9` (forward `24,993→339,983`, backward
-`21,939→319,292` — both ~14×), which on its own looks more like "both
-sectors are being stressed together" than a clean single-sector
-attribution — but the rejected-step *fraction* and `steps_per_efold` ratios
-(the diagnostic's actual attribution signal, not raw totals) are not yet
-assessed pending `n=17`. See `26-sector-attribution-instrument-stiffness.md`
-for the completed call.
+`instrument_stiffness` RK45 step statistics. **Result: ambiguous, not a
+clean single-sector call.** Total RK45 step counts explode in **both**
+sectors from `n=7` to the first floored point `n=9` (forward
+`24,993→339,983`, backward `21,939→319,292` — both ~14×) — symmetric, not
+sector-specific — and `forward_rejected_fraction` actually *falls*
+monotonically across the whole sweep, the opposite of a forward-attributed
+signal. The one real secondary signal is `backward_to_forward_steps_per_efold_ratio`
+climbing monotonically and crossing 1 at `n=17` (`0.842→0.878→0.939→1.461`),
+which keeps the response sector from being ruled out without being decisive
+on its own. Recommendation: proceed to the `tau_multiplier` study, revisit
+the response sector if that's inconclusive. See
+`26-sector-attribution-instrument-stiffness.md` for the full table and
+reasoning.
+
+**Diagnostic 11 (addendum), prompted directly by the question "could the
+corridor clamp itself be hiding the true root?", adds an important caveat
+to that reading.** `lam_bounds`'s corridor (`λ_c,positive=w_core·μ(N_total)/D11`,
+`λ_c,negative=2.5×` that) was calibrated only at `n=5`, and `w_core =
+grid.weights[-1]` shrinks sharply with `n` (`0.1000→0.0476→0.0278→0.00735`
+at `n=5,7,9,17` — confirmed directly), narrowing the corridor by the same
+factor with no physics change. Checking where the outer loop's own
+last-tried `λ` sat relative to the corridor walls (recovered via a new
+harness helper, `capture_shooting_result()`, since `solve_picard`'s own
+`diagnostics["final_lambda"]` is masked to `None` on non-convergence) found:
+`n=9`'s last-tried `λ` sits **exactly** on the corridor's positive edge
+(`4.247941624378134`, bit-for-bit identical to `lambda_c_positive`), pinned
+there for its entire 50-outer-iteration budget — the clamp is directly
+implicated in `n=9`'s own floor, not ruled out as a confound. `n=17`, by
+contrast, sits 33% of the corridor's width from either edge — clamp-clear,
+genuinely wallclock-limited instead (only 7 outer iterations fit in 900s).
+This means `n=9`'s own RK45 statistics (Diagnostic 10's "both sectors
+explode together" data point) may reflect many near-duplicate evaluations at
+a clamped point rather than a clean stiffness signal, while `n=17`'s
+backward-leaning ratio is NOT under that cloud. See
+`26a-corridor-edge-proximity.md` for the full finding and the recommended
+follow-up (a diagnostic-only relaxed-corridor re-run of `n=9`, not yet done,
+to test directly whether a genuine root exists just beyond the current
+clamp).
 
 ### 6.4 New data point: `n=7` converges, and is not just "`n=5` refined"
 

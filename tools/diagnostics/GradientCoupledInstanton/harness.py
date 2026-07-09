@@ -90,7 +90,7 @@ __all__ = [
     "fetch_full_instanton", "full_instanton_seed_from",
     "save_json", "load_json", "save_grids_npz", "load_grids_npz",
     "MonkeypatchGuard", "lambda_grid", "classify_inner_status",
-    "sweep_evaluate", "capture_last_commit", "output_dir",
+    "sweep_evaluate", "capture_last_commit", "capture_shooting_result", "output_dir",
 ]
 
 # ---------------------------------------------------------------------------
@@ -452,6 +452,37 @@ def capture_last_commit():
             captured["aux"] = aux
             commit(aux)
         return _orig(evaluate, _wrapped_commit, *a, **kw)
+
+    with MonkeypatchGuard(picard_module, solve_shooting=_capturing_solve_shooting):
+        yield captured
+
+
+@contextmanager
+def capture_shooting_result():
+    """Wraps solve_shooting so its own returned ``ShootingResult`` is
+    captured regardless of convergence outcome -- needed because
+    ``solve_picard``'s own ``diagnostics["final_lambda"]`` is masked to
+    ``None`` whenever ``shoot.converged`` is False
+    (``ComputeTargets/GradientCoupledInstanton/picard.py``), discarding the
+    one piece of information a corridor-edge-proximity check needs most: the
+    LAST lambda the outer loop was actually sitting at when it gave up.
+    ``ShootingResult.lam`` itself carries no such masking (see
+    ``Numerics/ShootingSolver.py``'s own dataclass) -- this helper recovers
+    it without touching production code, the same monkeypatch idiom as
+    ``capture_last_commit`` above, just capturing the return value instead
+    of wrapping ``commit()``.
+
+    Yields a dict that will contain {"result": <ShootingResult>} once the
+    wrapped solve_picard call returns (empty if solve_shooting was never
+    reached at all, e.g. disable_spatial_coupling mode's own pre-24b path --
+    not expected for any call site this suite currently uses).
+    """
+    captured: dict = {}
+
+    def _capturing_solve_shooting(*a, _orig=picard_module.solve_shooting, **kw):
+        result = _orig(*a, **kw)
+        captured["result"] = result
+        return result
 
     with MonkeypatchGuard(picard_module, solve_shooting=_capturing_solve_shooting):
         yield captured
