@@ -620,6 +620,180 @@ def diagnostic_8_tau_sensitivity(*args, **kwargs):
 
 
 # ---------------------------------------------------------------------------
+# Diagnostic 9 (prompt 25) -- bias-corrected target retry at n>=9. A direct
+# splice of Diagnostic 3a's bias-injection mechanism onto Diagnostic 6's
+# n-retry: tests whether the n in {9, 17} non-convergence Diagnostic 6 found
+# is the SAME resolution-independent fixed-g_pi_core-target bias Diagnostic
+# 3a already cured at delta_Nstar=1, now biting at a resolution fine enough
+# to resolve it, rather than a genuine under-resolved boundary layer needing
+# new numerics.
+# ---------------------------------------------------------------------------
+
+def diagnostic_9_bias_corrected_n_retry(
+    m: float = 1.0e-2, delta_Nstar: float = 0.5, n_baseline: int = 5,
+    n_retry: int = 9, delta_fractions=(0.0, 0.3, 1.0, 3.0),
+    max_outer_cap: int = 30, wallclock_budget_seconds: float = 900.0,
+):
+    """Does Diagnostic 3a's fixed-``g_pi_core``-target bias explain the
+    n in {9, 17} non-convergence Diagnostic 6 found at (m=1e-2,
+    delta_Nstar=0.5) -- a point that converges cleanly at n=5 -- or does it
+    need new numerics?
+
+    Step 0 solves the ordinary (unperturbed, delta=0) problem at
+    ``n_baseline`` and measures ``bias_n5 = max|pi_core(N) -
+    g_pi_core_final(N)|``: the genuine sweep-0-to-convergence drift between
+    the frozen fixed target and the converged ``pi_core`` this specific
+    (m, delta_Nstar) point produces, at the resolution that DOES converge.
+    Unlike Diagnostic 3a's own literal ``delta=0.03`` (calibrated at a
+    different mass/delta_Nstar), this is measured fresh, not assumed.
+
+    Step 1 re-seeds ``n_retry`` with ``phi2`` shifted by
+    ``delta = frac * bias_n5`` for ``frac`` in ``delta_fractions`` (both
+    signs) and re-solves under a raised ``MAX_OUTER`` cap, exactly as
+    Diagnostic 3a does at its own (m, delta_Nstar).
+
+    Interpretation of the result:
+      - **Confirmed** (some swept delta converges at ``n_retry``): the
+        n>=9 floor is the SAME mechanism as Diagnostic 3a's delta_Nstar=1
+        floor, simply biting harder once the discretisation resolves more
+        structure -- the fixed target is measurably wrong at this
+        resolution, not that the resolution itself is inadequate. The cheap
+        next step is a corrected/self-consistent ``g_pi_core`` target, not
+        new numerics.
+      - **Not confirmed** (no swept delta converges within the tested
+        range): this rules out the cheap explanation. The n>=9 floor is
+        evidence of genuinely under-resolved structure (a boundary-layer /
+        regularity problem), and the next step is the ``tau_multiplier``
+        production study (Diagnostic 8t) rather than a target correction.
+        A clean negative here is a valid, complete result -- not grounds to
+        keep widening ``delta_fractions`` until something converges.
+    """
+    print("\n" + "=" * 78, flush=True)
+    print(f"DIAGNOSTIC 9: bias-corrected target retry at n={n_retry} "
+          f"(m={m:.4g}, delta_Nstar={delta_Nstar})", flush=True)
+    print("=" * 78, flush=True)
+
+    potential, units, traj, dm = h.setup(m)
+    phi_end = h.production_phi_end(traj)
+    H_sq_nl_init = h.H_sq_nl_init_of(potential, traj, h.N_INIT)
+    fi_data = h.fetch_full_instanton(potential, traj, dm, h.N_INIT, h.N_FINAL, delta_Nstar,
+                                      label="D9 FI seed")
+    lambda_FI = fi_data.get("diagnostics", {}).get("final_lambda", 0.0)
+    full_instanton_seed = h.full_instanton_seed_from(fi_data)
+    print(f"[D9] FullInstanton: lambda_FI={lambda_FI!r} msr_action={fi_data.get('msr_action')!r}", flush=True)
+
+    # ---- Step 0: measure the n=5 baseline bias, don't assume it. ----
+    grid_baseline = h.LGLCollocationGrid(n_baseline)
+    t0 = time.perf_counter()
+    baseline_result = h.picard_module.solve_picard(
+        h.N_INIT, h.N_FINAL, delta_Nstar, h.ALPHA, H_sq_nl_init, grid_baseline, traj, potential, dm,
+        h.ATOL, h.RTOL, phi_end, instrument_stiffness=False, verbose=False,
+        full_instanton_seed=full_instanton_seed,
+        wallclock_budget_seconds=wallclock_budget_seconds,
+        label=f"D9 n={n_baseline} baseline",
+    )
+    dt_baseline = time.perf_counter() - t0
+    baseline_diag = baseline_result.get("diagnostics", {})
+    if not baseline_diag.get("converged") or baseline_result.get("g_pi_core_final") is None:
+        raise RuntimeError(
+            f"diagnostic_9_bias_corrected_n_retry: baseline solve at n={n_baseline} "
+            f"(m={m:.4g}, delta_Nstar={delta_Nstar}) did not converge, or returned no "
+            f"g_pi_core_final -- bias_n5 cannot be measured. converged="
+            f"{baseline_diag.get('converged')!r} bailout_tag={baseline_diag.get('bailout_tag')!r}"
+        )
+    pi_grid_baseline = np.asarray(baseline_result["pi_grid"])
+    g_pi_core_final_baseline = np.asarray(baseline_result["g_pi_core_final"])
+    bias_n5 = float(np.max(np.abs(pi_grid_baseline[:, -1] - g_pi_core_final_baseline)))
+    print(f"[D9] baseline n={n_baseline}: converged=True final_lambda="
+          f"{baseline_result.get('final_lambda')!r} bias_n5={bias_n5:.6g} ({dt_baseline:.1f}s)", flush=True)
+
+    # ---- Step 1: sweep delta_fractions x bias_n5 at n_retry (both signs). ----
+    frac_signed = []
+    for frac in delta_fractions:
+        if frac == 0.0:
+            if 0.0 not in frac_signed:
+                frac_signed.append(0.0)
+        else:
+            frac_signed.append(frac)
+            frac_signed.append(-frac)
+
+    grid_retry = h.LGLCollocationGrid(n_retry)
+    sweep_rows = []
+    with h.MonkeypatchGuard(h.picard_module, MAX_OUTER=max_outer_cap):
+        for frac in frac_signed:
+            delta = frac * bias_n5
+            phi2_perturbed = np.asarray(fi_data["phi2"]) + delta
+            seed = {
+                "failure": False, "N_sample": fi_data["N_sample"],
+                "phi1": fi_data["phi1"], "phi2": phi2_perturbed.tolist(),
+                "final_lambda": lambda_FI,
+            }
+            t0 = time.perf_counter()
+            result = h.picard_module.solve_picard(
+                h.N_INIT, h.N_FINAL, delta_Nstar, h.ALPHA, H_sq_nl_init, grid_retry, traj, potential, dm,
+                h.ATOL, h.RTOL, phi_end, instrument_stiffness=False, verbose=False,
+                full_instanton_seed=seed,
+                wallclock_budget_seconds=wallclock_budget_seconds,
+                label=f"D9 n={n_retry} frac={frac:+.4g}",
+            )
+            dt = time.perf_counter() - t0
+            diag = result.get("diagnostics", {})
+            row = {
+                "delta": delta, "delta_frac": frac,
+                "converged": diag.get("converged"), "final_residual": diag.get("final_residual"),
+                "bailout_tag": diag.get("bailout_tag"), "bailout_reason": diag.get("bailout_reason"),
+                "final_lambda": result.get("final_lambda"),
+                "gradient_enhancement_E": diag.get("gradient_enhancement_E"),
+                "outer_iterations": diag.get("outer_iterations"), "wallclock": dt,
+            }
+            if diag.get("converged"):
+                phi_grid = np.asarray(result["phi_grid"])
+                pi_grid = np.asarray(result["pi_grid"])
+                rfield_grid = np.asarray(result["rfield_grid"])
+                rmom_grid = np.asarray(result["rmom_grid"])
+                N_grid_arr = np.asarray(result["N_grid"])
+                row["msr_action"] = h.compute_msr_action(
+                    N_grid_arr, phi_grid, pi_grid, rfield_grid, rmom_grid, grid_retry, potential, dm,
+                    H_sq_nl_init, h.ALPHA,
+                )
+            else:
+                row["msr_action"] = None
+            sweep_rows.append(row)
+            print(f"  [D9] n={n_retry} frac={frac:+.4g} delta={delta:+.6g}: "
+                  f"converged={row['converged']} final_lambda={row['final_lambda']!r} "
+                  f"msr_action={row['msr_action']!r} bailout={row['bailout_tag']} ({dt:.1f}s)", flush=True)
+
+    # ---- Step 3: persist baseline + sweep together. ----
+    output = {
+        "m": m, "delta_Nstar": delta_Nstar, "n_baseline": n_baseline, "n_retry": n_retry,
+        "bias_n5": bias_n5,
+        "baseline": {
+            "converged": baseline_diag.get("converged"),
+            "final_residual": baseline_diag.get("final_residual"),
+            "bailout_tag": baseline_diag.get("bailout_tag"),
+            "final_lambda": baseline_result.get("final_lambda"),
+            "outer_iterations": baseline_diag.get("outer_iterations"),
+            "wallclock": dt_baseline,
+        },
+        "sweep": sweep_rows,
+    }
+    h.save_json(f"{OUT_DIR}/diagnostic9_bias_corrected_n_retry.json", output)
+
+    # ---- Step 4: print a clear summary. ----
+    print("\n--- Diagnostic 9 summary ---", flush=True)
+    print(f"  bias_n5 (max|pi_core - g_pi_core_final| at n={n_baseline}) = {bias_n5:.6g}", flush=True)
+    print(f"  {'delta/bias_n5':>14} {'converged':>10} {'final_lambda':>16} "
+          f"{'msr_action':>16} {'bailout_tag':>18}", flush=True)
+    for row in sweep_rows:
+        lam_str = f"{row['final_lambda']:.6g}" if row["final_lambda"] is not None else "None"
+        msr_str = f"{row['msr_action']:.6g}" if row["msr_action"] is not None else "None"
+        print(f"  {row['delta_frac']:>+14.4g} {str(row['converged']):>10} "
+              f"{lam_str:>16} {msr_str:>16} {str(row['bailout_tag']):>18}", flush=True)
+
+    return output
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -635,6 +809,7 @@ _DIAGNOSTIC_DISPATCH = {
         alpha_values=tuple(float(x) for x in args.alpha_values.split(",")),
     ),
     "8t": lambda args: diagnostic_8_tau_sensitivity(),
+    "9": lambda args: diagnostic_9_bias_corrected_n_retry(),
 }
 
 
