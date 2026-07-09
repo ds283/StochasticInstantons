@@ -422,3 +422,59 @@ def flatten_doe_points_for_csv(points: list) -> list:
             }
         )
     return rows
+
+
+# ── Diagnostics CSV companion (P7, design §8 item 9) ─────────────────────────
+#
+# `collect_doe_scalar_points`'s returned points already carry each grid
+# point's fully-fetched adapters, and `InstantonAdapter.diagnostics()`
+# rehydrates on the very same `_do_not_populate=True` fetch used to build
+# `scalar_data.csv` -- the parent-row `diagnostics_json` blob rides along for
+# free (design §8: "this costs essentially nothing extra"). So there is no
+# second fetch pass here: `flatten_diagnostics_for_csv` just reads
+# `.diagnostics()` off the adapters `collect_doe_scalar_points` already
+# fetched, mirroring `flatten_doe_points_for_csv`'s own read-at-flatten-time
+# pattern for `.scalars()`.
+
+# Diagnostic keys common to every solver's diagnostics dict (verified
+# against ComputeTargets/FullInstanton.py, ComputeTargets/SlowRollInstanton.py
+# -- see .prompts/gradient-coupled-plotting/12-P7-diagnostics-figures.md).
+# Read with `.get(...)`; a key absent for a given kind (e.g. SlowRollInstanton
+# has no `outer_iterations`) yields `None` rather than raising.
+_DIAGNOSTIC_CSV_KEYS = (
+    "compute_time",
+    "converged",
+    "final_residual",
+    "total_ode_solves",
+    "outer_iterations",
+    "newton_fallback_count",
+    "final_lambda",
+    "mean_picard_iterations",
+)
+
+
+def flatten_diagnostics_for_csv(points: list) -> list:
+    """Builds `diagnostics_data.csv` rows sharing the exact same grid-point
+    identification columns (`N_init`, `N_final`, `delta_Nstar`, `delta_N`) as
+    `flatten_doe_points_for_csv`'s `scalar_data.csv` rows, so the two can be
+    joined downstream by `regression_InstantonOutputs.py` or a sibling script
+    (design §8 item 9). Mirrors `flatten_doe_points_for_csv`'s fixed
+    full/slow-roll adapter-position convention -- extending this to a third
+    (GCI) slot is P8's own driver-wiring job, not this function's."""
+    rows = []
+    for p in points:
+        full_adapter, sr_adapter = p["adapters"]
+        fd = full_adapter.diagnostics() or {}
+        sd = sr_adapter.diagnostics() or {}
+        coords = full_adapter.coords or sr_adapter.coords
+        row = {
+            "N_init": coords["N_init"],
+            "N_final": coords["N_final"],
+            "delta_Nstar": p["delta_Nstar"],
+            "delta_N": p["delta_N"],
+        }
+        for key in _DIAGNOSTIC_CSV_KEYS:
+            row[f"diag_{key}_full"] = fd.get(key)
+            row[f"diag_{key}_sr"] = sd.get(key)
+        rows.append(row)
+    return rows
