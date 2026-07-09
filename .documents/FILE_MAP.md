@@ -196,14 +196,51 @@ instanton scales to physical PBH masses and radii.
 
 ## 14. Plotting and analysis driver scripts
 
-| Flat filename                    | Original path                    | Purpose                                                                                                                                                                                   |
-|--------------------------------------|--------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `plot_InstantonSolutions.py`     | `plot_InstantonSolutions.py`     | Plotting driver: reads the database via `ShardedPool`; produces background-trajectory, instanton-field, noise-profile, MSR-action-sweep, compaction-profile, and DOE-scalar-summary figures using Ray-dispatched worker tasks |
-| `regression_InstantonOutputs.py` | `regression_InstantonOutputs.py` | GP regression driver: reads `scalar_data.csv` from the plot script; fits independent single-output GPs (C_bar_max, C_max, log S_MSR, log M_PBH, log r_PBH); writes diagnostic plots and serialised `.joblib` model bundles |
+Prompt P1 extracted most of `plot_InstantonSolutions.py`'s reusable machinery
+into the `plotting/` package (data fetch, solver-agnostic adapters, figure
+functions, annotation/provenance/sampling helpers); prompt P2/P2b then
+converted the figure functions to consume `InstantonAdapter` instances
+instead of raw `FullInstanton`/`SlowRollInstanton`/`CompactionFunction`
+objects, so a figure function never branches on which solver produced its
+data. `plot_InstantonSolutions.py` itself is now primarily orchestration:
+argument parsing, the background/epsilon plots that have no adapter (they
+plot `InflatonTrajectory` directly), the `@ray.remote` per-figure dispatch
+wrappers, the sweep/DOE data-collection loops, and `run_plots()`.
+
+| Flat filename                          | Original path                          | Purpose                                                                                                                                                                                   |
+|-----------------------------------------|-----------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `plot_InstantonSolutions.py`           | `plot_InstantonSolutions.py`           | Plotting driver: reads the database via `ShardedPool`; produces background-trajectory, instanton-field, noise-profile, MSR-action-sweep, compaction-profile, and DOE-scalar-summary figures using Ray-dispatched worker tasks; now delegates fetch/adapter/figure logic to `plotting/` |
+| `plotting_adapters_base.py`            | `plotting/adapters/base.py`            | `InstantonAdapter` — the solver-agnostic ABC every figure function is written against (`available`, `failure`, `time_history()`, `radial_profile()`, `scalars()`, `channel_label()`, …); design doc `.documents/gradient-coupled-plotting/DESIGN_gradient_coupled_plotting.md` §3.1-3.2 |
+| `plotting_adapters_full.py`            | `plotting/adapters/full.py`            | `FullInstantonAdapter` — concrete adapter wrapping a `FullInstanton` (+ paired `CompactionFunction`) onto the `InstantonAdapter` protocol; `SlowRollInstantonAdapter` in `slow_roll.py` follows the same shape (omitted as near-identical) |
+| `plotting_fetch.py`                    | `plotting/fetch.py`                    | Vectorized-availability grid fetch (`fetch_over_grid`) plus the P2b `ClassFetchSpec`/`fetch_adapters_over_grid` retrofit that fetches several solver classes over one grid and returns ready-built `InstantonAdapter` lists, so adding a new solver kind (e.g. GCI) means adding one `ClassFetchSpec`, not touching figure code |
+| `plotting_figures_time_history.py`     | `plotting/figures/time_history.py`     | Representative figure function: 2×2 grid of instanton field components vs N, consuming a flat list of `InstantonAdapter`; overlaying more solvers is just passing a longer list |
+| `regression_InstantonOutputs.py`       | `regression_InstantonOutputs.py`       | GP regression driver: reads `scalar_data.csv` from the plot script; fits independent single-output GPs (C_bar_max, C_max, log S_MSR, log M_PBH, log r_PBH); writes diagnostic plots and serialised `.joblib` model bundles |
 
 ---
 
-## 15. Tests
+## 15. Diagnostic tools — `tools/diagnostics/GradientCoupledInstanton`
+
+Standalone, Ray/Datastore-bypassing diagnostic suite for the
+`GradientCoupledInstanton` compute target; a consumer of the production API
+(`solve_picard`, `_compute_full_instanton`, `LGLCollocationGrid`, …), never
+the other way — nothing here is imported by `main.py`/`ComputeTargets/`/
+`Datastore/`. `DIAGNOSTICS_SUITE.md` is this package's own map (mirrors
+`FILE_MAP.md`'s per-file-purpose convention) and is included verbatim so the
+online session can navigate the rest of the sample without guessing at the
+CLI or the harness/module dependency direction.
+
+| Flat filename                                                            | Original path                                                  | Purpose                                                                                                                                                                    |
+|----------------------------------------------------------------------------|-------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `tools_diagnostics_GradientCoupledInstanton_DIAGNOSTICS_SUITE.md`        | `tools/diagnostics/GradientCoupledInstanton/DIAGNOSTICS_SUITE.md` | The package's own map: layout, CLI quick reference, diagnostic-to-provenance table, and known gaps (e.g. Diagnostic 8t requires a small production change first)         |
+| `tools_diagnostics_GradientCoupledInstanton_cli.py`                      | `tools/diagnostics/GradientCoupledInstanton/cli.py`               | Unified argparse dispatcher across all subcommands; each module also remains independently runnable as `python -m tools.diagnostics.GradientCoupledInstanton.<module>`   |
+| `tools_diagnostics_GradientCoupledInstanton_harness.py`                  | `tools/diagnostics/GradientCoupledInstanton/harness.py`           | Shared setup/fetch/IO/monkeypatch helpers factored out of three predecessor scripts (`_PotentialHolder`/`_TrajProxyStub`, `production_phi_end`, `fetch_full_instanton`, `MonkeypatchGuard`, `.npz` grid schema); every other diagnostic module imports from here, never the reverse |
+| `tools_diagnostics_GradientCoupledInstanton_convergence_floor.py`        | `tools/diagnostics/GradientCoupledInstanton/convergence_floor.py` | Diagnostics 1–8: the `delta_Nstar`/mass/`n_collocation_points`/`OUTER_TOL`/`alpha_regularization` convergence-floor campaign; the suite's main data-generating module     |
+| `tools_diagnostics_GradientCoupledInstanton_seed_screen.py`              | `tools/diagnostics/GradientCoupledInstanton/seed_screen.py`       | Cheap `alpha_regularization` vs `n_collocation_points` zeroth-Picard-iterate pre-screen, before spending a full solve budget on an untested corner                        |
+| `tools_diagnostics_GradientCoupledInstanton_trajectory_plots.py`         | `tools/diagnostics/GradientCoupledInstanton/trajectory_plots.py`  | Trajectory-validation plots (phi/pi(N) vs `FullInstanton`, epsilon(N), y-profile, action-ratio-vs-sweep-variable) for any converged-solve JSON+`.npz` record produced by `convergence_floor.py` |
+
+---
+
+## 16. Tests
 
 A representative sample illustrating the numerics core, the SBP-SAT closure,
 the U1/U2a compaction-scalar sharing, and the U2b/U3 GCI/CompactionFunction
@@ -218,6 +255,7 @@ parity cross-check and its persistence round trip.
 | `tests_test_gci_parity_scalars.py`                        | `tests/test_gci_parity_scalars.py`                        | Prompt U2b: the eleven-scalar parity set returned by `_compute_gradient_coupled_instanton`, cross-checked against `CompactionFunction`'s own scalars at a matching grid point |
 | `tests_test_gci_parity_persistence_roundtrip.py`          | `tests/test_gci_parity_persistence_roundtrip.py`          | Prompt U3: store → rehydrate round trip for the parity scalar columns, including the cheap (`_do_not_populate=True`) fetch tier                                    |
 | `tests_test_compaction_scalars_refactor_golden.py`        | `tests/test_compaction_scalars_refactor_golden.py`        | Prompt U1: golden-value regression proving `compaction_scalars.py`'s extracted helpers are bit-for-bit identical to the pre-refactor inlined `CompactionFunction` code |
+| `tests_test_plot_adapters_golden.py`                      | `tests/test_plot_adapters_golden.py`                      | Prompt P2: golden regression proving `FullInstantonAdapter`/`SlowRollInstantonAdapter` reproduce the pre-refactor plotting values bit-for-bit across `available`/`failure`/`time_history`/`radial_profile`/`scalars` |
 
 ---
 
@@ -253,6 +291,13 @@ text rather than by including the source directly.
 | `Caching/ExtractionCache.py`                             | Memoisation helper for repeated ζ-extraction calls; an optimisation, not part of the core numerical scheme |
 | `constants.py`                                           | Only defines `RadiationConstant` and `StefanBoltzmannConstant`; peripheral  |
 | `utilities.py`                                           | General-purpose utilities (timing, grouper, etc.); not needed for patterns  |
-| `tools/diagnostics/GradientCoupledInstanton/spectrum.py` | Standalone diagnostic script for the response-sector stiffness spectrum (prompt 23); a debugging tool, not part of the production pipeline |
-| `tests/` (remaining ~35 files)                           | Section 15 above is a deliberately small representative sample; the rest cover the same patterns at other grid points, seeds, or failure modes |
+| `plotting/adapters/slow_roll.py`                         | Near-identical to `plotting_adapters_full.py`; same `InstantonAdapter` shape with the slow-roll channel subset |
+| `plotting/dispatch.py`                                   | Generic `@ray.remote` render wrapper; not yet wired into any driver (figures still dispatch directly), a P2b scaffold |
+| `plotting/annotations.py`, `plotting/provenance.py`, `plotting/sampling.py` | Small presentation helpers (CF annotation text, provenance footer, even-sampling); not core to the adapter/fetch pattern illustrated by §14's selection |
+| `plotting/figures/compaction.py`, `noise.py`, `sweeps.py`, `doe.py` | Further figure functions of the same adapter-consuming shape as `plotting_figures_time_history.py`; `doe.py` is the one figure not yet converted to adapters (still `data_points` dicts) |
+| `tools/diagnostics/GradientCoupledInstanton/spectrum.py` | Assembled-operator eigenvalue-sweep diagnostic (prompts 17/18/18a/20/21/21a/23); large (~1800 lines) and self-contained (no `harness.py` dependency) — omitted from the representative sample in favour of `cli.py`/`harness.py`/`convergence_floor.py`/`seed_screen.py`/`trajectory_plots.py`, which better illustrate the package's shared-harness design |
+| `tools/diagnostics/GradientCoupledInstanton/explore_onion_stiffness.py` | Predates the harness refactor; relocated into the package so it has no external scratch-directory dependency, but not one of the consolidated diagnostics |
+| `tools/diagnostics/GradientCoupledInstanton/archive/prompt22_validation.py` | Frozen historical replay of prompt 22's own (pre-22a, deliberately degenerate) validation harness; kept for provenance only, not part of the active CLI |
+| `tools/diagnostics/GradientCoupledInstanton/__init__.py`, `__main__.py` | Package docstring/version and `python -m` entry point; no logic beyond what `DIAGNOSTICS_SUITE.md` §1 already documents |
+| `tests/` (remaining ~35 files)                           | Section 16 above is a deliberately small representative sample; the rest cover the same patterns at other grid points, seeds, or failure modes |
 | `.documents/gradient-coupled-instanton/onion_model.tex`  | Not copied into this bundle — the online session is assumed to have access to it directly per the source prompt; `NUMERICAL_SCHEMES.md` cites its section/equation numbers rather than reproducing them |
