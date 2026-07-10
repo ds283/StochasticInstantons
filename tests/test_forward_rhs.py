@@ -758,3 +758,159 @@ def test_sat_penalty_targets_are_not_self_referential():
     # all under full spatial coupling.
     dphi_core_idx = n_max - 1
     assert perturbed_result[dphi_core_idx] != pytest.approx(base_result[dphi_core_idx])
+
+
+# ---------------------------------------------------------------------------
+# Part J -- tau_multiplier (prompt 27)
+# ---------------------------------------------------------------------------
+
+
+def _tau_multiplier_fixture():
+    """Shared fixture for the tau_multiplier tests below: a fixed random
+    state under full spatial coupling (matching
+    test_sat_penalty_targets_are_not_self_referential's own setup, the
+    other test in this file that exercises the SAT penalty directly)."""
+    grid = _make_grid(9)
+    n_max = grid.n_max
+    n_nodes = n_max + 1
+    trajectory = _StubTrajectory()
+    potential = _StubPotential()
+    diffusion_model = MasslessDecoupledDiffusion()
+    rfield_splines = _zero_splines(n_nodes)
+    rmom_splines = _zero_splines(n_nodes)
+    g_pi_core_spline = _ConstantSpline(0.3)
+
+    rng = np.random.default_rng(11)
+    state = rng.uniform(-0.3, 0.3, size=2 * n_max)
+
+    return grid, n_max, trajectory, potential, diffusion_model, rfield_splines, rmom_splines, g_pi_core_spline, state
+
+
+def _expected_core_sat(grid, trajectory, potential, state, g_pi_core_spline, tau):
+    """
+    Independently reconstructs forward_rhs's own (A_core, sat_phi_core,
+    sat_pi_core) at a given tau, using the same live quantities (A_core,
+    w_core, g_phi_core, g_pi_core) forward_rhs itself computes, in the same
+    order of floating-point operations -- following the same
+    reconstruct-and-compare pattern already used by
+    test_sat_penalty_cancels_core_energy_defect_at_minimal_design_tau and
+    test_sat_penalty_production_tau_has_iteration_stability_margin above.
+    """
+    phi_full, pi_full = unpack_state(
+        state, _N, _N_OFFSET, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential
+    )
+    H_sq_core = potential.H_sq(phi_full[-1], pi_full[-1])
+    delta_s_N = delta_s(_N, 0.0, H_sq_core, _H_SQ_NL_INIT, _ALPHA)
+    epsilon_core = potential.epsilon(phi_full[-1], pi_full[-1])
+    A_array = advection_coefficient(grid.nodes, delta_s_N, epsilon_core)
+    A_core = float(A_array[-1])
+    w_core = float(grid.weights[-1])
+
+    g_phi_core = neumann_boundary_value(phi_full, grid.D, boundary_index=-1)
+    g_pi_core = float(g_pi_core_spline(_N))
+
+    sat_phi_core = -(tau / w_core) * (phi_full[-1] - g_phi_core)
+    sat_pi_core = -(tau / w_core) * (pi_full[-1] - g_pi_core)
+    return A_core, sat_phi_core, sat_pi_core
+
+
+def _assert_forward_rhs_matches_tau(grid, n_max, trajectory, potential, diffusion_model,
+                                     rfield_splines, rmom_splines, g_pi_core_spline, state,
+                                     tau_multiplier, tau):
+    """
+    Shared assertion for both tau_multiplier tests below: predicts
+    forward_rhs's full output at the given tau_multiplier as
+    (the tau_multiplier=0.0 "no SAT" baseline) + (independently-reconstructed
+    sat_phi_core/sat_pi_core at the given tau), then compares that prediction
+    bit-for-bit against forward_rhs's own output.
+
+    WHY THE BASELINE-PLUS-PREDICTED-DELTA FORM, NOT A DIRECT SUBTRACTION OF
+    TWO forward_rhs OUTPUTS: dphi_full[-1] is assembled as
+    base_value + sat_phi_core (a single float addition, rounded to nearest
+    once). Recovering sat_phi_core by computing
+    forward_rhs(tau)[idx] - forward_rhs(tau=0)[idx] performs a SECOND rounded
+    operation on an already-rounded sum, which is not guaranteed to invert
+    the first rounding exactly (this was tried and failed at the 1-ULP level
+    -- e.g. 41.398797572313924 vs 41.39879757231311). Reproducing the same
+    single addition ourselves -- base_value (exact, since x + (-0.0*tau) == x
+    for tau_multiplier=0.0, tau=0.0 exactly, no rounding at all) plus our own
+    independently-computed sat (bit-identical to forward_rhs's internal sat,
+    since it is the same formula applied to the same operands in the same
+    order) -- performs the identical single rounded addition forward_rhs
+    itself performs, so the two results are bit-for-bit equal by
+    construction, not merely close.
+    """
+    result_no_sat = forward_rhs(
+        _N, state, _N_OFFSET, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential,
+        rfield_splines, rmom_splines, diffusion_model, g_pi_core_spline,
+        tau_multiplier=0.0,
+    )
+    result_actual = forward_rhs(
+        _N, state, _N_OFFSET, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential,
+        rfield_splines, rmom_splines, diffusion_model, g_pi_core_spline,
+        tau_multiplier=tau_multiplier,
+    )
+
+    _, expected_sat_phi_core, expected_sat_pi_core = _expected_core_sat(
+        grid, trajectory, potential, state, g_pi_core_spline, tau=tau
+    )
+
+    phi_core_idx = n_max - 1
+    pi_core_idx = 2 * n_max - 1
+
+    expected_result = result_no_sat.copy()
+    expected_result[phi_core_idx] = result_no_sat[phi_core_idx] + expected_sat_phi_core
+    expected_result[pi_core_idx] = result_no_sat[pi_core_idx] + expected_sat_pi_core
+
+    np.testing.assert_array_equal(result_actual, expected_result)
+
+
+def test_tau_multiplier_default_reproduces_production_tau():
+    """
+    Prompt 27 acceptance test: tau_multiplier=1.0 (the new default) must
+    give tau == abs(A_core) EXACTLY -- the same value forward_rhs hardcoded
+    before this prompt -- not merely close. See _assert_forward_rhs_matches_tau's
+    own docstring for why the comparison is built as baseline-plus-predicted-
+    delta rather than a direct subtraction of two forward_rhs outputs.
+    """
+    (grid, n_max, trajectory, potential, diffusion_model,
+     rfield_splines, rmom_splines, g_pi_core_spline, state) = _tau_multiplier_fixture()
+
+    result_pre_change = forward_rhs(
+        _N, state, _N_OFFSET, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential,
+        rfield_splines, rmom_splines, diffusion_model, g_pi_core_spline,
+    )
+    result_explicit_default = forward_rhs(
+        _N, state, _N_OFFSET, _ALPHA, _H_SQ_NL_INIT, grid, trajectory, potential,
+        rfield_splines, rmom_splines, diffusion_model, g_pi_core_spline,
+        tau_multiplier=1.0,
+    )
+    # tau_multiplier=1.0 must be a complete no-op relative to the
+    # pre-prompt-27 call signature: bit-for-bit identical output.
+    np.testing.assert_array_equal(result_explicit_default, result_pre_change)
+
+    A_core, _, _ = _expected_core_sat(grid, trajectory, potential, state, g_pi_core_spline, tau=0.0)
+
+    _assert_forward_rhs_matches_tau(
+        grid, n_max, trajectory, potential, diffusion_model,
+        rfield_splines, rmom_splines, g_pi_core_spline, state,
+        tau_multiplier=1.0, tau=abs(A_core),
+    )
+
+
+def test_tau_multiplier_two_gives_double_production_tau():
+    """
+    Prompt 27 acceptance test companion: tau_multiplier=2.0 must give
+    tau == 2.0 * abs(A_core) EXACTLY, verified the same way as
+    test_tau_multiplier_default_reproduces_production_tau above.
+    """
+    (grid, n_max, trajectory, potential, diffusion_model,
+     rfield_splines, rmom_splines, g_pi_core_spline, state) = _tau_multiplier_fixture()
+
+    A_core, _, _ = _expected_core_sat(grid, trajectory, potential, state, g_pi_core_spline, tau=0.0)
+
+    _assert_forward_rhs_matches_tau(
+        grid, n_max, trajectory, potential, diffusion_model,
+        rfield_splines, rmom_splines, g_pi_core_spline, state,
+        tau_multiplier=2.0, tau=2.0 * abs(A_core),
+    )

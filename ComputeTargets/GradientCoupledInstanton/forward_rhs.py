@@ -364,6 +364,7 @@ def forward_rhs(
     g_pi_core_spline,
     disable_spatial_coupling: bool = False,
     lam: float = 1.0,
+    tau_multiplier: float = 1.0,
 ) -> np.ndarray:
     """
     Forward-sector RHS (eq. inst-phi/inst-pi), always sourced by the current
@@ -418,6 +419,16 @@ def forward_rhs(
     the response-field sourcing terms, which remain active (matching
     FullInstanton's own fwd_rhs, which always includes its P1/P2 sourcing
     terms regardless of gradient coupling).
+
+    tau_multiplier (prompt 27, optional, default 1.0): multiplies the core
+    SAT penalty strength tau = tau_multiplier * abs(A_core). The default
+    reproduces today's hardcoded tau = abs(A_core) exactly, bit-for-bit --
+    every pre-prompt-27 call site is unaffected. Exists solely so
+    tools/diagnostics/GradientCoupledInstanton/convergence_floor.py's
+    Diagnostic 8t/11 tau-sensitivity sweeps can probe values other than the
+    production default without duplicating this function; see the large
+    comment above the tau assignment below for why 1.0 (not the design
+    note's minimal 0.5) is the production value.
     """
     phi_full, pi_full = unpack_state(
         state, N, N_offset, alpha, H_sq_nl_init, grid, trajectory, potential
@@ -567,7 +578,16 @@ def forward_rhs(
         # regression guards, and the design note addendum
         # (.documents/gradient-coupled-instanton/21a-production-port-notes.md)
         # for the full empirical account.
-        tau = abs(A_core)
+        #
+        # tau_multiplier (prompt 27): exposes the scalar multiplying
+        # abs(A_core) as an ordinary keyword parameter, default 1.0,
+        # reproducing the tau = abs(A_core) derived above exactly. Added so
+        # tools/diagnostics/GradientCoupledInstanton/convergence_floor.py's
+        # Diagnostic 8t/11 can sweep tau away from its production value
+        # without touching this function -- it is NOT itself a reinterpretation
+        # of the two hardenings above; tau_multiplier=1.0 always means "use
+        # the empirically-hardened production tau exactly as derived".
+        tau = tau_multiplier * abs(A_core)
         w_core = float(grid.weights[-1])
 
         g_phi_core = neumann_boundary_value(phi_full, grid.D, boundary_index=-1)

@@ -116,6 +116,7 @@ def _compute_gradient_coupled_instanton(
     full_instanton=None,  # Optional[FullInstantonProxy] (prompt 21a, SAT seed only)
     wallclock_budget_seconds: Optional[float] = None,  # prompt 24 prerequisite
     max_step: Optional[float] = None,  # prompt 24 prerequisite
+    tau_multiplier: float = 1.0,  # prompt 27 -- not part of persisted identity, see solve_picard's own docstring
 ) -> dict:
     """
     Solve the gradient-coupled instanton BVP and extract its physical
@@ -286,6 +287,7 @@ def _compute_gradient_coupled_instanton(
         full_instanton_seed=full_instanton_seed,
         wallclock_budget_seconds=wallclock_budget_seconds,
         max_step=max_step,
+        tau_multiplier=tau_multiplier,
     )
 
     # ── Step 5: bail out on non-convergence ──────────────────────────────────

@@ -408,6 +408,16 @@ DEFAULT_SEED_PROFILE = "linear"
 # tuned production knob; see _seed_profile_weights).
 SEED_EXPONENTIAL_RATE = 3.0
 
+# Core SAT penalty multiplier (prompt 27): forward_rhs's own
+# tau = tau_multiplier * abs(A_core). 1.0 reproduces the tau =
+# abs(A_core) production value derived and hardened in forward_rhs.py's
+# own module docstring/comment block exactly, bit-for-bit -- this constant
+# exists solely so tools/diagnostics/GradientCoupledInstanton/
+# convergence_floor.py's Diagnostic 8t/11 tau-sensitivity sweeps have a
+# named default to compare against, same convention as DEFAULT_SAT_THETA/
+# DEFAULT_ANDERSON_M/DEFAULT_SEED_PROFILE above.
+DEFAULT_TAU_MULTIPLIER = 1.0
+
 # ---------------------------------------------------------------------------
 # Prompt 24 prerequisite -- wall-clock safeguard + non-convergence
 # classification. Companion timing analysis (24 Phase 0) found the
@@ -1032,6 +1042,7 @@ def solve_picard(
     seed_profile: str = DEFAULT_SEED_PROFILE,
     wallclock_budget_seconds: Optional[float] = None,
     max_step: Optional[float] = None,
+    tau_multiplier: float = DEFAULT_TAU_MULTIPLIER,
 ) -> dict:
     """
     Solve the gradient-coupled instanton BVP over the onion coordinate grid
@@ -1083,6 +1094,18 @@ def solve_picard(
     a generous fraction of the whole integration span so a pathological
     single step cannot itself run unbounded before the next RHS-level
     deadline check gets a chance to fire.
+
+    tau_multiplier (prompt 27, optional, default DEFAULT_TAU_MULTIPLIER=1.0):
+    forwarded straight through to every forward_rhs call as its own
+    tau_multiplier, scaling the core SAT penalty strength
+    tau = tau_multiplier * abs(A_core). The default reproduces today's
+    production tau exactly, bit-for-bit -- every pre-prompt-27 call site
+    (which does not pass this argument) is unaffected. Not part of
+    GradientCoupledInstanton's persisted identity/query key (see
+    forward_rhs.py's own tau_multiplier docstring for why); exists purely
+    so tools/diagnostics/GradientCoupledInstanton/convergence_floor.py's
+    Diagnostic 8t/11 can sweep it directly through this function, bypassing
+    Ray entirely, same as every other diagnostic in that package.
 
     instrument_stiffness (prompt 17 Part B; default True): when True,
     every forward/backward RK45 solve_ivp call made during this solve (every
@@ -1226,6 +1249,7 @@ def solve_picard(
             g_pi_core_spline,
             disable_spatial_coupling=disable_spatial_coupling,
             lam=lam,
+            tau_multiplier=tau_multiplier,
         )
 
     def _bwd_rhs(N, y, phi_splines, pi_splines):
