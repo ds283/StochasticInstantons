@@ -61,9 +61,10 @@ The fix (SBP-SAT) restores the discrete energy estimate by (a) writing the
 advection term in the skew-symmetric "split form" (Numerics.DiscretizedOperators
 .advection_split_term) instead of the plain product, and (b) adding a
 dissipative SAT ("Simultaneous Approximation Term") penalty at the core node
-that exactly cancels the one boundary term the split form still carries. This
-does NOT add a new physical boundary condition -- the SAT's *target* value g
-is chosen so that the penalty forcing vanishes at the true solution:
+that exactly cancels the one boundary term the split form still carries. The
+SAT's *target* value g is meant to make the penalty forcing vanish at the
+true solution -- this holds exactly for g_phi, but only approximately (with a
+small, quantified bias) for g_pi under the production parameters; see below:
 
   - g_phi (phi_core's target) is the same Neumann/regularity value the old
     strong elimination already imposed (neumann_boundary_value, recomputed
@@ -79,19 +80,37 @@ is chosen so that the penalty forcing vanishes at the true solution:
   - g_pi (pi_core's target) has no existing analogue to fall back on --
     pi_core previously had NO boundary condition at all (a totally free,
     unconstrained DOF). There is nothing "live" to compute it from, so its
-    target is instead the LAGGED, SELF-CONSISTENT core pi(N) trajectory from
-    the previous Picard sweep (threaded in as g_pi_core_spline, built by
-    picard.py the same way the rfield/rmom response-field splines already
-    are), seeded at sweep 0 from a FullInstanton profile. At Picard
-    convergence g_pi_core_spline(N) -> pi_core(N) exactly, so the penalty
-    forcing -> 0 there too. See picard.py's own module docstring for the
-    sweep-to-sweep update and the FullInstanton seed.
+    target is threaded in as g_pi_core_spline, built by picard.py the same
+    way the rfield/rmom response-field splines already are, and seeded at
+    sweep 0 from a FullInstanton profile.
 
-Either way, the SAT is a *stabiliser*, not new physics: at the converged
-solution both penalties vanish and the model reduces exactly to the
-unpenalised continuum dynamics, with regularity (d(pi)/dy -> 0 at the core)
-emerging from phi's own regularity through pi = dphi/dN, rather than being
-separately imposed.
+    As of prompt 22c, picard.py's PRODUCTION defaults (DEFAULT_SAT_THETA=0.0,
+    DEFAULT_ANDERSON_M=0) hold g_pi_core_spline PERMANENTLY FIXED at that
+    FullInstanton seed for the entire solve -- it is never updated
+    sweep-to-sweep. This is a deliberate trade: the earlier lagged/
+    self-consistent update rule (theta>0, anderson_m>0 -- prompts 21a/22b,
+    kept DORMANT for regression comparison only) converges the OUTER loop to
+    only a ~1e-4-1e-5 residual floor, whereas the fixed target converges
+    Picard to machine precision in one sweep. Because the target is fixed
+    rather than self-consistent, g_pi_core_spline(N) does NOT equal the true
+    converged pi_core(N) in general under the default parameters -- the
+    penalty forcing at pi_core does NOT vanish at convergence. This
+    introduces a small, QUANTIFIED bias in the converged msr_action (see
+    tests/test_picard.py's fixed-target-bias regression), kept small in
+    practice by seeding the outer loop at lambda_FI so it never drifts far
+    from where the fixed target was built. See picard.py's own module
+    docstring (prompt 22c) for the full derivation and tradeoff.
+
+Either way, the SAT adds no new physical boundary condition of its own: g_phi's
+target is always the live regularity value, so its penalty forcing vanishes at
+convergence exactly as described above. g_pi's penalty is different: under the
+PRODUCTION fixed-target parameters it does NOT vanish at convergence (see
+above) and the model does not reduce exactly to the unpenalised continuum
+dynamics -- regularity (d(pi)/dy -> 0 at the core) emerges from phi's own
+regularity through pi = dphi/dN only in the zero-bias limit. The penalty
+vanishes exactly, and the "stabiliser, not new physics" claim holds in full,
+only under the DORMANT self-consistent parameters (theta>0, anderson_m>0),
+which are not the production configuration.
 
 HOW TO VERIFY THIS IS STILL CORRECT: three checks must stay green --
   (a) the prompt-20/21 abscissa diagnostic (tools/diagnostics/GradientCoupledInstanton/spectrum.py
