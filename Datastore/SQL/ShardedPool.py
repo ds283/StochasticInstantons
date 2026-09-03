@@ -102,7 +102,7 @@ class ShardedPool:
         # if primary file is absent, all shard databases should be likewise absent
         if self._primary_file.is_dir():
             raise RuntimeError(
-                f'Specified database file "{str(self._db_file)}" is a directory'
+                f'Specified database file "{str(self._primary_file)}" is a directory'
             )
         if not self._primary_file.exists():
             # ensure parent directories also exist
@@ -356,12 +356,12 @@ class ShardedPool:
                 if num_config == 1:
                     if row.key_type != self._ShardKeyType_name:
                         raise RuntimeError(
-                            f'Existing ShardedPool was configured with shard key type "{row.key_attr}", but provided type was "{self._ShardKeyType_name}"'
+                            f'Existing ShardedPool was configured with shard key type "{row.key_type}", but provided type was "{self._ShardKeyType_name}"'
                         )
 
                 elif num_config > 1:
-                    raise print(
-                        f'ShardedPool has unexpected multiple shard key types: {num_config}="{row.key_attr}"'
+                    raise RuntimeError(
+                        f'ShardedPool has unexpected multiple shard key types: {num_config}="{row.key_type}"'
                     )
             if num_config == 0:
                 raise RuntimeError(f"No configured shard key type was found")
@@ -622,9 +622,9 @@ class ShardedPool:
             )
 
         shard_key_field = self._sharded_tables[cls_name]
-        if not hasattr(shard_key, shard_key_field):
+        if shard_key_field not in shard_key:
             raise RuntimeError(
-                f'ShardedPool: expected shard key "{shard_key_field}" to be provided for object type "{cls_name}", but instead received keys: {shard_key.__attrs__}'
+                f'ShardedPool: expected shard key "{shard_key_field}" to be provided for object type "{cls_name}", but instead received keys: {shard_key.keys()}'
             )
 
         shard_id = self._shard_keys[
