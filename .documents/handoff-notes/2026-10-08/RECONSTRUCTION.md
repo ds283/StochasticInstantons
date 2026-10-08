@@ -136,11 +136,104 @@ back to April.
 
 ### A0.2 Pipeline and compaction-function design (from `summary-E-june-pipeline.md`)
 
-*(to be completed when the pass lands)*
+The infrastructure decisions of 14–22 June are well recorded in the rules
+files, `INFRASTRUCTURE.md` and the base-implementation prompts. The physics
+rationale behind several code choices is not:
+
+- **The `g*` correction in the scale-matching equation is mis-stated.**
+  The 17 June discussion found the degrees-of-freedom shift to be about
+  `−1.1` in `ln k` for `g*_reh = 106.75`; the figure of `0.2` is only the
+  uncertainty from not integrating `g*(T)`. `handoff_instanton_boundary_conditions.md`
+  §2.1 records "~0.2 … omitted", which entered through a mis-recollection;
+  David never explicitly agreed to drop a shift of order one e-fold.
+  `ln_k_phys_Mpc` therefore carries an undocumented offset in scale
+  assignment of about one e-fold.
+- **Local instanton time on `[0, N_total]`** was chosen over absolute time
+  because `δN★` moves the end of inflation while `k_end` is the fixed
+  physical anchor; `N_inflaton = N_end − N_init + N_local`. The convention
+  is in the code, the reasoning is not.
+- **The diffusion model is a function of field-space position**, not of
+  `ν` as a parameter, because metric mixing moves `ν` off `3/2` and the
+  stochastic state may leave the background trajectory; Markov assumed for
+  now. The `epsilon_end` helper was rejected for Jordan-frame generality.
+  `H² = V/(3M_p² − π²/2)` was a correction found by Claude Code on 15 June
+  and is recorded only in the `AbstractPotential.H_sq` docstring.
+- **Origin of the Picard/shooting algorithm**: Bröcker et al. 1812.00681
+  §III.A, adopted after David's counting argument that direct shooting is a
+  two-dimensional root find on `(P₁(0), P₂(0))`; `solve_bvp` with `δN★`
+  continuation, `diffrax` ("JIT compilation … extremely fragile", 15 June)
+  and Julia were considered and set aside. (Decision 5 of 8 October
+  re-admits `diffrax`.)
+- **The `ζ = δN` peel-off construction is original** (no reference
+  implementation to check against); ζ conservation is assumed in the
+  growing mode away from features; first-crossing and non-monotone-`ρ`
+  cases are unhandled (`brentq` assumes a bracket).
+- David attributed the `ρ_final` non-convergence to field–momentum noise
+  correlations in the diffusion model (17 June) before the 18 June
+  resolution (A0.1).
+- The flat-`ζ` prescription for the unresolved interior of `C̄(r)` and its
+  proof as a no-op; the decision to audit rather than regenerate
+  `CompactionFunction` rows after the ordering bug (outcome unknown).
+- The Tomberg mass prefactor is unverified ("I'd need to check that
+  formula"); the C-versus-C̄ criterion comparison was never written up.
+- The `SamplesPerN` store tag agreed on 16 June does not exist; whether
+  sampling density is part of `InflatonTrajectory` identity should be
+  checked.
+- Minor: multi-field rationale for list-valued `fields_json`; the
+  provenance principle behind the `CosmologicalParams` table; seaborn
+  theme must be set inside each Ray worker; the Ray `EMFILE` crash and its
+  `ulimit` mitigation; "DOE" means design of experiments and is defined
+  nowhere.
 
 ### A0.3 The June science campaign (from `summary-F-june-science.md`)
 
-*(to be completed when the pass lands)*
+The repo records the campaign's *design* (sparse-sampling prompts, three
+grid-sampling handoffs) and the Goal-1 scaling result up to 23 June. Almost
+everything decisive from 23–25 June exists only in chat, and **every
+`S_MSR`-bearing number was computed with the defective FullInstanton
+response sector** (B.10), so must be re-run once the Hamiltonian module
+lands. Summary F's §2 table classifies all 32 claims.
+
+- **A recorded conclusion is wrong.** `handoff-large-grid.md` and
+  `handoff-goal2.md` state that the minimum-action pathway at fixed mass is
+  the broadest perturbation that still collapses ("analogous to a critical
+  bubble"). The 24 June fixed-`K` grids (`K = N_final + ΔN + δN★ ∈ {23, 33,
+  43, 53}`) showed this to be a fixed-`N_final` artefact: `S` increases
+  monotonically with `ΔN`, and the minimum-action pathway is the *smallest*
+  `(ΔN, δN★)` that still collapses, with no floor found down to
+  `ΔN ≈ 0.05`. The threshold is `δN★_th ≈ 0.55 ΔN` at small `δN★` and
+  `≈ 1.0 ΔN^0.68` at large, independent of `K` over 25 decades of mass.
+- Mass law `log₁₀(M/M☉) ≈ 0.86 (N_init + δN★) − 36.5` with 0.02–0.04 dex
+  residual; `N_final` alone is uninformative. Expected to survive
+  recomputation (kinematic).
+- The exponent of `S` in `δN★` saturates at about 1.2–1.4 rather than
+  Vennin's 1; this is recorded but is now doubly suspect (A0.1 and B.10).
+- `r_max ≠ r_peak` in 289 of 841 Phase-A rows, confined to `ΔN ≲ 0.45 δN★`
+  (a tall narrow spike on a broad base): the quantitative precursor of the
+  "Olympus Mons versus Cerro Torre" language. The mass estimate to use
+  when they diverge is unresolved ("talk to Sam Young").
+- David's self-consistency doubt at large `δN★`: the per-step kick is far
+  out on the Gaussian tail, so the saddle point probably *underestimates*
+  the probability; a Euclidean tunnelling amplitude per step was mooted and
+  is the Level-1 question of A0.1. The `σ_φ1` noise-amplitude columns were
+  built to track this; the ratio `δN★/(σ ΔN)` was never plotted.
+- The Vennin comparison restated (24 June): the instanton is the most
+  likely route to a PBH of *fixed mass*; Vennin's `Q_φ(N★)` marginalises
+  over masses; David's proposal to solve the backward Kolmogorov equation
+  with `δ(φ − φ₀)` at `K = 0` so that `Q` becomes a density on `φ` with `K`
+  a parameter, "the object comparable to our sum over instantons". Posed,
+  not attempted.
+- The 25 June email to collaborators asserts a maximum `δN★` for collapse;
+  the data showed the no-collapse island at large `(ΔN, δN★)` in the fixed-`K`
+  grids is a mixture of the `N_final > 3` squeeze and Picard failures, so
+  the sentence is unsupported as written.
+- Two documents written in chat only, `session_summary.md` and
+  `analysis_protocol.md` (portability to quartic and USR-like potentials),
+  are not in the repo. `regression_InstantonOutputs.py` still lists
+  pre-prompt-14 column names and cannot ingest any `scalar_data.csv` written
+  after 23 June.
+- Compute-time statistics on the 1024-point grid: FullInstanton median
+  0.86 s, SlowRollInstanton median 43 ms, Picard failures from `δN★ ≈ 7`.
 
 ---
 
@@ -716,6 +809,25 @@ field-dependent `D` its Jacobian is the one-loop determinant.
   conservation identities are unchanged. FullInstanton is the right pilot.
 
 ---
+
+## Part C0 — Repository documents contradicted by the June threads
+
+| Document | Problem | Source |
+|---|---|---|
+| `handoff-notes/handoff_instanton_boundary_conditions.md` §3–4 | Presents the `ρ_final` boundary condition as the open question for "the next conversation"; that conversation (18 June) dismissed it as a false premise. | A0.1 |
+| same, §2.1 | Records the `g*` correction as "~0.2 … omitted"; the shift is about `−1.1` in `ln k`, never agreed to be dropped. | A0.2 |
+| `grid-sampling/handoff-{sparse-sampling,large-grid,goal2}.md` | Attribute the `ρ_final` failure to "a degrees-of-freedom counting issue", explicitly rejected on 18 June. | A0.1 |
+| `grid-sampling/handoff-large-grid.md`, `handoff-goal2.md` | State the minimum-action pathway is the broadest collapsing perturbation ("critical bubble"); reversed by the 24 June fixed-`K` grids. | A0.3 |
+| same, "Vennin exponent → 1?" | Rests on the `S = λ₀ δN★` identification retracted on 18 June. | A0.1 |
+| `onion_model.tex` §scale-assignment | Says `CompactionFunction` uses "the same construction"; its `todo` was answered in discussion. | A.1 |
+| `gradient-coupled-instanton/28-tau-study-diagnostics-8t-and-13.md` | Recommends a finer τ sweep that the 9 July discussion rejected. | A.3 |
+| `regression_InstantonOutputs.py` | Column list predates prompt 14; cannot ingest current `scalar_data.csv`. | A0.3 |
+
+All June and July `S_MSR`-bearing results (scaling fits, thresholds,
+minimum-action locus, `r_max`/`r_peak` divergence, compute-time trends)
+were produced with the defective FullInstanton response sector and must be
+re-run after the Hamiltonian module lands; summary F §2 lists them claim by
+claim.
 
 ## Part C — What the 10 July handoff notes get wrong or incomplete, in light of Part B
 
