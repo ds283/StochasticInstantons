@@ -65,6 +65,27 @@ reuses the freed serials, causing UNIQUE constraint violations on the next run.
 Always `DELETE FROM <value_table> WHERE <fk_col> IN (serials)` first.
 See `.claude/rules/validate-on-startup.md` for the cascade map and pattern.
 
+## Campaigns, the campaign index and the open-issues board
+
+Work is organised in campaigns: prompts in `.prompts/<campaign>/`, results
+notes in `.documents/<campaign>/`. Every new campaign opens an
+`IMPLEMENTATION_STATE.md` status board in its prompt folder; the board is the
+record for that campaign's issues. Two project-wide files index them:
+
+- `.prompts/INDEX.md` — one line per campaign (status, dates, what it owns,
+  where its results and open issues are).
+- `.documents/OPEN-ISSUES.md` — one line per open issue, pointing at the
+  board (or, for issues no board owns yet, the reconstruction, a tex `todo` or
+  a results note) that holds its content. It is an index, not a record.
+
+**Maintenance rule.** Whenever an issue is opened, narrowed or closed — on a
+board, in a results note, in a tex `todo`, or by a decision of the user —
+update `OPEN-ISSUES.md` **in the same commit**: add the line, move it between
+sections, or move it to the closed section, and correct the count and the date
+in its header. When a campaign is created, changes status or closes, update
+its line in `INDEX.md` in the same commit. When a campaign's board adopts an
+issue that `OPEN-ISSUES.md` points elsewhere, re-point the row at the board.
+
 ## Protected infrastructure
 
 Never modify these files unless a prompt explicitly names them and describes
