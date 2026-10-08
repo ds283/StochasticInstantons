@@ -35,7 +35,7 @@ but its results note is `…-8t-and-13` (the note explains the renumbering);
 ## Planned
 
 The plan agreed on 8 October 2026, in order. Phase 0 (record and tidy) is done:
-`9f39645`, `f4080f5` and the document-corrections commit that follows them.
+`9f39645`, `f4080f5` and `416d1e0`.
 Phase 1 (the LaTeX rewrite to the 20 July position) is done: `e511f74`, moved
 to `notes/onion-model/` in `4c47faf`. The names below are working names; no
 folder exists yet.
