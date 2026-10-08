@@ -1,6 +1,6 @@
 # Open issues — project-wide index
 
-**Last updated:** 2026-10-08 · **53 open**, 11 closed. Seeded from
+**Last updated:** 2026-10-08 · **52 open**, 12 closed. Seeded from
 [`RECONSTRUCTION.md`](handoff-notes/2026-10-08/RECONSTRUCTION.md) Parts A0–D
 and D0, the open-issue `todo`s of
 [`onion_model.tex`](../notes/onion-model/onion_model.tex) as rewritten in
@@ -88,7 +88,6 @@ one, so every row here stays open until the onion rebuild lands.
 | `[gci-n5-n7-solutions-provisional]` | P28; SCS §5; HB §4 | P3, acceptance | All `n = 5` and `n = 7` solutions depend materially on `τ`; no `n ≥ 9` solve converges, so there is no `n`-convergence evidence. The core oscillation in the 24b trajectories (under-resolution or physics) is unexplained. Acceptance after the rebuild: `τ`-independence, then `n`-convergence. |
 | `[gci-decoupled-limit-degenerate]` | R A.1; tex `sec:open-issues` todo | P3 | No non-trivial reduction test to FullInstanton exists: with the core eliminated through a Neumann row from background neighbours, `φ_core` is pinned for every `λ`. The rebuild needs a non-degenerate decoupled-limit test against the P2 module. |
 | `[gci-extraction-never-run-on-non-flat-profile]` | HB §4 | P3 | `extraction.py` and `scale_assignment.py` have never run on a non-flat profile. |
-| `[gci-stale-g-pi-documentation]` | SCS §1.2; 8 October evaluation | P0 | The inline comment at `forward_rhs.py:530–545` still says the `g_π` target is lagged and its forcing vanishes at convergence; the module docstring (`:85–100`) calls the bias "small"; `NUMERICAL_SCHEMES.md` §3.5 repeats the lagged-target claim. Test A measured a peak forcing of 14.9. These misled prompts 25–26. |
 | `[gci-outer-tol-floor-loose]` | R A.2 | P3 | `OUTER_TOL_FLOOR = 1.0e-2` (`picard.py:359`) is loose for a stationary quantity. |
 | `[gci-main-no-store-values-crash]` | R A.2 | unowned | `main.py` crashes with `--no-store-values` together with `--targets homogeneous gradient`. Not reproduced on 8 October. |
 
@@ -153,3 +152,4 @@ rather than an in-place rewrite.
 | Live-Neumann `g_π` target and its abscissa sweep (SCS §4.4, §6) | 2026-07-11 | Dead on two grounds (R A.3 C1, C2; B.3); recorded here on 2026-10-08. |
 | `adjoint-full` mode of the prompt-18a diagnostic, never run (R A.2) | 2026-10-08 | Superseded by the Hamiltonian-structure check, tex `sec:discrete-hamiltonian`. |
 | `DIAGNOSTICS_SUITE.md` §5 said Diagnostic 8t raises `NotImplementedError` | 2026-10-08 | Corrected in the prompt-28 commit `3ea27e0`. |
+| `[gci-stale-g-pi-documentation]`: `forward_rhs.py` and `NUMERICAL_SCHEMES.md` §3.5 described the `g_π` target as lagged with a vanishing forcing; `picard.py` called the bias small (SCS §1.2) | 2026-10-08 | Docstrings, the inline comment and §3.5 corrected to the frozen target and Test A's measured forcing, with pointers to the target closure; `picard.py` corrected too. Docstring-only change (AST-identical). |

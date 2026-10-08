@@ -400,6 +400,17 @@ would wreck a linear solve instead set RK45's stability-limited step size.
 
 ### 3.5 Boundary treatment: from hard elimination to an SBP-SAT closure
 
+> **Status (8 October 2026).** This section describes the closure that is
+> implemented, not the one the model calls for. The two-penalty closure below
+> over-determines a boundary with one incoming characteristic, its `g_π`
+> target is frozen so the penalty does not vanish at convergence, and the
+> converged `n = 5`/`n = 7` solutions depend materially on `τ` (prompt 28).
+> The target scheme (no data at the core; one penalty on the incoming
+> characteristic in the volume-weighted norm; response sector obtained by
+> differentiating a discrete Hamiltonian) is in
+> `notes/onion-model/onion_model.tex`, `sec:no-data` and `sec:colloc-bcs`.
+> See `.documents/OPEN-ISSUES.md` §3.
+
 The original design called for **hard elimination** at both boundaries: a
 plain Dirichlet row at `y=-1`, and Neumann rows (`∂_yφ=0`, `∂_yπ̃=0`) at
 `y=+1` solved by substituting a single dot-product formula for the boundary
@@ -451,11 +462,12 @@ now in production for the forward sector:**
    boundary energy term cancels exactly (`τ = ½A(core)` from the frozen-
    coefficient linear analysis).
 
-The SAT is a **stabiliser, not new physics**: at the converged solution the
-penalty forcing vanishes and the model reduces to the unpenalised dynamics,
-provided the target `g` is chosen correctly. Two different kinds of target
-are needed, since the two fields' cores have different pre-existing
-conditions:
+The SAT was designed as a **stabiliser, not new physics**: at the converged
+solution the penalty forcing should vanish and the model reduce to the
+unpenalised dynamics, provided the target `g` is chosen correctly. That holds
+for `g_φ`; it does **not** hold for `g_π` in production (below). Two
+different kinds of target are used, since the two fields' cores have
+different pre-existing conditions:
 
 - **`g_φ`** (field, core): the *same* Neumann/regularity value the old strong
   elimination imposed, `neumann_boundary_value(φ_full, D, -1)`, recomputed
@@ -464,13 +476,21 @@ conditions:
   self-cancelling, and needs no Picard-sweep lagging.
 - **`g_π`** (momentum, core): `π_core` previously had **no boundary condition
   at all** — a totally free DOF — so there is no live formula to reuse.
-  Instead its target is the **lagged, self-consistent core `π(N)` trajectory
-  from the previous Picard sweep** (`g_pi_core_spline`, rebuilt every sweep
-  in `picard.solve_picard`), seeded at sweep 0 from an independent
-  `FullInstanton` profile (fetched from the datastore when available, else
-  computed inline, else falling back to the noiseless background's own
-  `π(N)` — seed quality only ever affects iteration count, never the
-  converged answer, verified directly by a dedicated regression test).
+  Prompt 21a made its target the **lagged, self-consistent core `π(N)`
+  trajectory from the previous Picard sweep** (`g_pi_core_spline`), seeded at
+  sweep 0 from an independent `FullInstanton` profile (fetched from the
+  datastore when available, else computed inline, else falling back to the
+  noiseless background's own `π(N)`). That update rule converged only to a
+  `~1e-4` residual floor, and **since prompt 22c the production defaults
+  (`DEFAULT_SAT_THETA = 0`, `DEFAULT_ANDERSON_M = 0`) freeze the target at the
+  `FullInstanton` seed `φ₂(N)` for the whole solve.** The seed is therefore
+  part of the answer, and the penalty forcing does not vanish at convergence:
+  prompt 28's Test A measured it at 2–19× the background terms of the
+  `π_core` row at peak (peak 14.9), with a prefactor `τ/w_core ∝ n_max²`, and
+  Diagnostic 8t found every `n = 5` and `n = 7` solution materially
+  `τ`-dependent (`.documents/gradient-coupled-instanton/
+  28-tau-study-diagnostics-8t-and-13.md`; `.documents/handoff-notes/
+  2026-07-10/SAT-CLOSURE-STATUS.md` §2). Those solutions are provisional.
 
 Two empirical hardenings beyond the frozen-coefficient derivation were
 required to make the actual *nonlinear* Picard/shooting iteration converge on
@@ -483,14 +503,18 @@ than the Phase-1 minimum) was needed to suppress a persistent O(1)
 Picard-sweep oscillation that appeared once `φ_core` was promoted to a free
 DOF with genuine dynamical memory it never had under elimination.
 
-**The response sector (`response_rhs.py`) has deliberately not been ported**
-to this closure — it shares the identical destabilizing mechanism in
-principle (`rmom_core` is still Neumann-eliminated with the same
-`advection_coefficient` formula), and is flagged explicitly in its own module
-docstring as a known follow-on rather than a silent gap. It was specifically
+**The response sector (`response_rhs.py`) was not ported** to this closure:
+`rmom_core` is still Neumann-eliminated with the same `advection_coefficient`
+formula. Prompt 23 tested the port and recorded a clean negative — the
+response sector is integrated backward in `N`, which flips which sign of the
+spectrum is dangerous (`.documents/gradient-coupled-instanton/
+23-response-sbp-sat-design-note.md`, Part A). The response sector was also
 ruled out as the cause of the oscillation described above (confirmed by
 zeroing its gradient/advection terms and reproducing an identical failure
-from the forward sector alone).
+from the forward sector alone). The consequence of porting one sector and not
+the other is that the forward and response discretisations are no longer
+adjoint (`.documents/handoff-notes/2026-07-10/HFP-STRUCTURE-STATUS.md` §1);
+the planned rebuild obtains the response sector by differentiation instead.
 
 ### 3.6 ζ(y) extraction: density matching, not a crossing scan
 

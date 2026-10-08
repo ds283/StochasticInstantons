@@ -63,8 +63,9 @@ advection term in the skew-symmetric "split form" (Numerics.DiscretizedOperators
 dissipative SAT ("Simultaneous Approximation Term") penalty at the core node
 that exactly cancels the one boundary term the split form still carries. The
 SAT's *target* value g is meant to make the penalty forcing vanish at the
-true solution -- this holds exactly for g_phi, but only approximately (with a
-small, quantified bias) for g_pi under the production parameters; see below:
+true solution -- this holds for g_phi, but NOT for g_pi under the production
+parameters, whose target is frozen and whose forcing at convergence is O(1)
+or larger; see below:
 
   - g_phi (phi_core's target) is the same Neumann/regularity value the old
     strong elimination already imposed (neumann_boundary_value, recomputed
@@ -94,23 +95,35 @@ small, quantified bias) for g_pi under the production parameters; see below:
     Picard to machine precision in one sweep. Because the target is fixed
     rather than self-consistent, g_pi_core_spline(N) does NOT equal the true
     converged pi_core(N) in general under the default parameters -- the
-    penalty forcing at pi_core does NOT vanish at convergence. This
-    introduces a small, QUANTIFIED bias in the converged msr_action (see
-    tests/test_picard.py's fixed-target-bias regression), kept small in
-    practice by seeding the outer loop at lambda_FI so it never drifts far
-    from where the fixed target was built. See picard.py's own module
-    docstring (prompt 22c) for the full derivation and tradeoff.
+    penalty forcing at pi_core does NOT vanish at convergence, and it is
+    NOT small: measured on the four converged n=5 solutions (prompt 28,
+    Test A) it peaks at 2-19x the background terms of the pi_core row
+    (peak 14.9), is 5-20% of them at late N, rings, and grows with
+    delta_Nstar. Its prefactor tau/w_core grows as n_max^2, and every
+    n=5 and n=7 solution depends materially on tau (prompt 28, Diagnostic
+    8t), so all of them are PROVISIONAL. See .documents/gradient-coupled-
+    instanton/28-tau-study-diagnostics-8t-and-13.md and .documents/
+    handoff-notes/2026-07-10/SAT-CLOSURE-STATUS.md Sections 2 and 5;
+    picard.py's module docstring (prompt 22c) gives the original tradeoff.
 
 Either way, the SAT adds no new physical boundary condition of its own: g_phi's
 target is always the live regularity value, so its penalty forcing vanishes at
 convergence exactly as described above. g_pi's penalty is different: under the
 PRODUCTION fixed-target parameters it does NOT vanish at convergence (see
 above) and the model does not reduce exactly to the unpenalised continuum
-dynamics -- regularity (d(pi)/dy -> 0 at the core) emerges from phi's own
-regularity through pi = dphi/dN only in the zero-bias limit. The penalty
+dynamics. (Nor should d(pi)/dy be expected to vanish at the core: with
+advection, pi = dphi/dN - A dphi/dy, so d(pi)/dy at the core is
+-A_core d2(phi)/dy2 there, which is nonzero in general.) The penalty
 vanishes exactly, and the "stabiliser, not new physics" claim holds in full,
 only under the DORMANT self-consistent parameters (theta>0, anderson_m>0),
 which are not the production configuration.
+
+This two-penalty closure is SUPERSEDED as a model: no data enters at the
+core, and the target closure is a single penalty on the incoming
+characteristic in the volume-weighted norm (notes/onion-model/
+onion_model.tex, sections "No data enters at the core" and "Boundary
+conditions" of the collocation basis). It remains the implemented closure
+until the onion rebuild; see .documents/OPEN-ISSUES.md Section 3.
 
 HOW TO VERIFY THIS IS STILL CORRECT: three checks must stay green --
   (a) the prompt-20/21 abscissa diagnostic (tools/diagnostics/GradientCoupledInstanton/spectrum.py
@@ -537,13 +550,15 @@ def forward_rhs(
         #     state at every RHS call (never from phi_core itself, so it
         #     can never be identically self-cancelling).
         #   g_pi: NO existing condition to weakly reproduce (pi_core was
-        #     previously completely unconstrained), so its target is the
-        #     LAGGED SELF-CONSISTENT core pi(N) trajectory from the previous
-        #     Picard sweep, reconstructed via g_pi_core_spline (built and
-        #     updated by picard.py; seeded from a FullInstanton profile at
-        #     sweep 0). At Picard convergence g_pi_core_spline(N) ->
-        #     pi_core(N), so this penalty's forcing -> 0 there too, exactly
-        #     like g_phi's.
+        #     previously completely unconstrained), so its target is
+        #     g_pi_core_spline, built by picard.py and seeded from a
+        #     FullInstanton profile at sweep 0. Under the PRODUCTION
+        #     parameters (prompt 22c: DEFAULT_SAT_THETA=0.0,
+        #     DEFAULT_ANDERSON_M=0) it is FROZEN at that seed for the whole
+        #     solve -- NOT the lagged self-consistent trajectory of prompt
+        #     21a -- so this penalty's forcing does NOT vanish at
+        #     convergence; it is O(1) or larger (prompt 28, Test A; see the
+        #     module docstring).
         # ---------------------------------------------------------------
         A_core = float(A_array[-1])
         # tau = |A_core|, NOT 0.5*A_core (design note Section 4's literal,

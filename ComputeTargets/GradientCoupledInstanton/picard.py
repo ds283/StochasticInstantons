@@ -140,11 +140,16 @@ just-computed pi_core trajectory:
         the entire solve (never updated sweep-to-sweep or outer-iteration-
         to-outer-iteration).
 
-    This trades a small, QUANTIFIED bias (the converged msr_action moves by
-    an amount that vanishes as the fixed target's own mismatch with the
-    true solution shrinks -- see tests/test_picard.py's fixed-target-bias
-    regression) for machine-precision Picard convergence and a well-
-    conditioned outer loop. The self-consistent/lagged/Anderson path
+    This trades a bias (the converged msr_action moves by an amount that
+    vanishes as the fixed target's own mismatch with the true solution
+    shrinks -- see tests/test_picard.py's fixed-target-bias regression) for
+    machine-precision Picard convergence and a well-conditioned outer loop.
+    The bias was expected to be small; it is NOT. Prompt 28 (Test A)
+    measured the penalty forcing at convergence at 2-19x the background
+    terms of the pi_core row at peak, and Diagnostic 8t found every n=5
+    and n=7 solution materially tau-dependent, so those solutions are
+    provisional (.documents/gradient-coupled-instanton/
+    28-tau-study-diagnostics-8t-and-13.md). The self-consistent/lagged/Anderson path
     (theta>0, anderson_m>0) is kept DORMANT for regression comparison only
     (DEFAULT_SAT_THETA=0.0, DEFAULT_ANDERSON_M=0 now reduce _AndersonMixer's
     update() to an exact no-op -- see _AndersonMixer's own docstring) -- it
