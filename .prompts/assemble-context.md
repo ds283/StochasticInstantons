@@ -77,7 +77,7 @@ In this prompt, the targets are:
     - You can use the Markdown-format implementation notes and design documents in the
       `./.documents/gradient-coupled-instanton` folder. However, you **should no**t assume that the Claude.ai model will
       have direct access to these. Use them as input to drive your summary, but do not refer to them.
-    - However, you **can** use the mathematical notes `./.documents/gradient-coupled-instanton/onion_model.tex`, which
+    - However, you **can** use the mathematical notes `./notes/onion-model/onion_model.tex`, which
       provides the physics derivation of the onion model, and you **can** assume the online Claude.ai will have access
       to these notes.
 7. If `./documents/NUMERICAL_SCHEMES.md` is present, **update in place** as needed rather than writing a completely new

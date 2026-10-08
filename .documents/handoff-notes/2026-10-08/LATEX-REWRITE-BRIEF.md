@@ -1,7 +1,7 @@
 # Brief: rewriting `onion_model.tex` to the 20 July 2026 position
 
 **Purpose.** Instructions for a fresh session to rewrite
-`.documents/gradient-coupled-instanton/onion_model.tex` so that it states the
+`notes/onion-model/onion_model.tex` (moved from `.documents/gradient-coupled-instanton/` on 8 October 2026) so that it states the
 model as it was understood on 20 July 2026 and as decided on 8 October 2026,
 rather than as it was on 6 July. The source of truth for every change is
 `RECONSTRUCTION.md` in this directory (section references below are to it);

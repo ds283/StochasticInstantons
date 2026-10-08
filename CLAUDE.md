@@ -13,6 +13,11 @@ python -c "..."   # used for acceptance-criteria checks in prompts
 
 Ray must be running. Start a local cluster with `ray start --head` before running.
 
+The physics notes for the onion model live in `notes/onion-model/onion_model.tex`
+(build with `latexmk -pdf`; `jcappub.sty` must be installed). They are the
+reference for how the calculation should be performed and carry no
+implementation details.
+
 Default test run: `pytest -m "not integration and not slow"` (~464 of 571
 tests, well under a minute). A `slow`-marked block of the suite runs real
 ODE/spectral solves that take minutes each and is only worth including when

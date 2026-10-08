@@ -2,7 +2,7 @@
 
 This document explains the numerical machinery behind the instanton compute
 targets, in increasing order of complexity. It assumes the reader has
-`.documents/gradient-coupled-instanton/onion_model.tex` available for the full
+`notes/onion-model/onion_model.tex` available for the full
 derivation of the gradient-coupled ("onion") model; this document cites its
 section/equation labels (`§4.1`, `eq:Lop-definition`, …) rather than
 reproducing the algebra. Physics notation follows the tex: `φ` (field), `π`
@@ -525,7 +525,7 @@ standard `δN` formalism.
 
 The single-trajectory pipeline gets away with one comoving radius playing
 three different roles at once; the profile case must separate them
-(`onion_model.tex` §11, `ComputeTargets_GradientCoupledInstanton_scale_assignment.py`):
+(`onion_model.tex` §12, `ComputeTargets_GradientCoupledInstanton_scale_assignment.py`):
 
 1. **Comoving radius** `r(y_j, N_final)` — read directly off the coordinate
    map, eq. 4.3, using the already-solved `Δs(N_final)`. No separate
@@ -631,7 +631,7 @@ matching `(trajectory, N_init, N_final, delta_Nstar)` grid point.
 
 ### 3.8 Open issues (do not present as settled)
 
-Two theoretical questions remain open per `onion_model.tex` §14 and are not
+Two theoretical questions remain open per `onion_model.tex` §15 and are not
 resolved by the numerical scheme above: (1) how to compare the 2D onion
 action's magnitude to the existing 1D `FullInstanton` action's probability
 interpretation, given that outer shells genuinely participate in the
