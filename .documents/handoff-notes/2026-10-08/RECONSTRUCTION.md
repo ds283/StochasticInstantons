@@ -31,6 +31,34 @@ stalled Gaussian-expansion argument. **The window should be extended back to
 14 June (the Project's creation date).** At the far end the last relevant
 conversation was last active on 20 July, so 1 August is a safe upper bound.
 
+**Errata (8 October 2026).** Three statements below were found to be wrong
+while the derivations were redone for the rewrite of
+`notes/onion-model/onion_model.tex` (`e511f74`). They are left in place,
+because this document records what the threads concluded, and are marked
+**[Erratum E1–E3]** where they occur. Where they disagree, the tex is right.
+
+- **E1 (B.9, chain-rule `Δ̇s`).** The second term of `K` has a *plus* sign,
+  `K = (1/Δs)[(V'/V)(∂_yφ)_core + π_core (∂_yπ)_core / (3−ε_core)]`, and the
+  numerator also carries the `φ`-row forcing,
+  `Δ̇s = [1 − ε_core + (V'/2V) 𝓕^φ_core + π_core 𝓕^π_core / (2(3−ε_core))] / (1 − K)`,
+  where `𝓕^φ`, `𝓕^π` are the non-advective core forcings (noise in both rows,
+  gradient in the `π` row). Tex eq. `Deltas-dot-closed`.
+- **E2 (B.9 and Part C, the incoming invariant).** The incoming Riemann
+  invariant is the left eigenvector `w_in = π_core + (2/Δs)(∂_yφ)_core`.
+  `(2/Δs)(1 + Δ̇s) ≈ (2/Δs)(2 − ε_core)` is the coefficient of `w_in²` in the
+  boundary flux, not a weight inside `w_in`. The relative weighting of the two
+  terms is set by `Δs` alone: `w_in` is gradient-dominated at early times
+  (`Δs ∼ ln(1+α)`) and `π`-dominated only at late times (`Δs ∼ 10`), and a
+  penalty on either term alone is the characteristic projection in neither
+  limit. The "`π`-dominated near de Sitter" reading, and the remark that a
+  penalty on `(Dφ)_core` alone is the projection only if `ε_core ≈ 2`, are
+  wrong. Tex eqs. `riemann-variables`, `core-flux`, `w-in`.
+- **E3 (B.1, response boundary condition).** With the `L(g π̃)` ordering of
+  B.4 the natural response condition at the core is `∂_y(g π̃) = 0`, which
+  reduces to `∂_y π̃ = 0` only where `g` is `y`-independent at the core. The
+  count in B.1 (one condition) stands; the form changes. Tex
+  `sec:no-data`, response-sector paragraph.
+
 ---
 
 ## Part A0 — June 2026: foundations, pipeline, and the first science campaign
@@ -514,7 +542,7 @@ Follow-ups on 14 and 16 July, **[unrecorded]**:
 - **Response sector (16 July).** Same principal symbol (adjoint of a
   hyperbolic operator), same characteristics traversed backward; in backward
   time the roles swap, so again exactly one incoming characteristic at the
-  core and the current `∂_y π̃ = 0` has the right count. The response's
+  core and the current `∂_y π̃ = 0` has the right count **[Erratum E3]**. The response's
   incoming mode is the slow, nearly sonic one. `φ̃(−1) = 0` is an identity
   given `π̃(−1) = 0` and `A(−1) = 0`, mirroring the forward sector. The
   response sector needs **no data**: the variational boundary term is affine
@@ -753,7 +781,7 @@ field-dependent `D` its Jacobian is the one-loop determinant.
   scale as `1/Δs`); the stiffness ratio `2/ε_core` is geometric.
 - **Then (17 July):** `ρ ≡ 1` is the definition, so `Δ̇s` is *derived*, not
   posited. `ε = π²/2` is exact in FRW but its proof consumes the homogeneous
-  `π̇` equation; the core row is not homogeneous. Hence
+  `π̇` equation; the core row is not homogeneous. Hence **[Erratum E1]**
   `Δ̇s = [1 − ε_core + π_core 𝓛_core / (2(3−ε_core))] / (1 − K)`,
   `K = (1/Δs)[(V'/V)(Dφ)_core − π_core (Dπ)_core / (3−ε_core)]`, with
   `𝓛_core` the non-advective core forcing; closed form, linear, no extra
@@ -768,7 +796,7 @@ field-dependent `D` its Jacobian is the one-loop determinant.
   derivation of the adjoint is long and error-prone (the error "treat `Δs` as
   a coordinate" was made three times in the thread). This is the strongest
   argument for obtaining the response sector numerically.
-- **Characteristic variable for the single penalty:** the incoming null
+- **Characteristic variable for the single penalty [Erratum E2]:** the incoming null
   covector is `(A + C, 1)`, so `w_in = (2(2−ε_core)/Δs) π_core + (Dφ)_core`,
   which is `π`-dominated in the near-de-Sitter limit (coefficient `≈ 4/Δs`,
   about 400 at `α = 0.01`). A rank-one penalty on `(Dφ)_core` alone is the
@@ -868,7 +896,7 @@ claim.
 | Note / section | Status after 20 July |
 |---|---|
 | `HFP-STRUCTURE-STATUS.md` §1 (non-adjointness, `−M_SAT^T`) | Stands; extend with the response-sector characteristic analysis (B.1, 16 July). |
-| `HFP-STRUCTURE-STATUS.md` §2(d) (`g_π` is a model closure supplying data) | **Reversed** (B.3): no data enters at the core; Neumann is the correct data-free closure; the `π_core` penalty is a flat-norm artefact. The single penalty should act on `w_in` (B.9), which is `π`-dominated, so the practical conclusion partly survives in a different form. |
+| `HFP-STRUCTURE-STATUS.md` §2(d) (`g_π` is a model closure supplying data) | **Reversed** (B.3): no data enters at the core; Neumann is the correct data-free closure; the `π_core` penalty is a flat-norm artefact. The single penalty should act on `w_in` (B.9), which is `π`-dominated, so the practical conclusion partly survives in a different form. **[Erratum E2]:** `w_in` is not `π`-dominated in general; the weighting is set by `Δs`. |
 | `HFP-STRUCTURE-STATUS.md` §3 (Maupertuis test) | Stands; sharpened by the closed form `H_FP = λφ₂ + D₁₁λ²` (B.10). |
 | `HFP-STRUCTURE-STATUS.md` §4 (dropped terms "understated") | Stands and is now quantified: leading order, sign flip for quadratic `V` (B.10). |
 | `HFP-CALCULATION.md` §7 (tex plan) | Still the right skeleton, but written for the `μ` measure with the bracket; must be redone in the `V'` convention with `Z = 0`, `L(gπ̃)` ordering, core anchor and chain-rule `Δ̇s`. |

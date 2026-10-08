@@ -2,6 +2,32 @@
 _Last updated: 2026-06-23. Generated at the close of the Goal 1 scaling
 analysis session._
 
+> **Status (8 October 2026): partly superseded.** Read with
+> `handoff-notes/2026-10-08/RECONSTRUCTION.md` Parts A0 and C0. The text
+> below is unchanged; these points override it:
+>
+> - **Every `S_MSR` number** in this note was computed with the defective
+>   FullInstanton response sector (leading-order terms dropped, a sign flip
+>   for the quadratic potential; B.10). Fits, exponents and thresholds are
+>   provisional until re-run (`.documents/OPEN-ISSUES.md`
+>   `[june-smsr-results-provisional]`).
+> - **Minimum-action pathway** (§4): the claim that the cheapest
+>   pathway at fixed mass is the broadest perturbation that still collapses
+>   ("critical bubble") is a fixed-`N_final` artefact. The 24 June fixed-`K`
+>   grids found `S` rising monotonically with `ΔN`: the cheapest pathway is
+>   the *smallest* `(ΔN, δN★)` that collapses, with no floor found. The
+>   ratio `δN★/ΔN ≈ 0.55` is the collapse threshold, not a minimum-action
+>   locus (A0.3).
+> - **`ρ_final` boundary condition** (§5): the failure is geometric,
+>   not a degrees-of-freedom count, and the question is a false premise. The
+>   terminal condition is a label dividing the noise-active phase from the
+>   noiseless downflow (18 June; RECONSTRUCTION A0.1).
+> - **Vennin comparison** (§3, §5): the identification `S = λ₀ δN★` behind
+>   the "exponent → 1?" question was retracted on 18 June. The Gaussian
+>   constraint integral gives a *quadratic* action; the linear law is the
+>   Donsker–Varadhan long-time regime, not the Freidlin–Wentzell one that
+>   applies here. The question has no basis as posed (A0.1, B.2).
+
 ---
 
 ## 1. What the pipeline does
@@ -196,6 +222,9 @@ domain over which Question 2 is optimised.
 (ΔN ≤ 6) suggested a roughly constant ratio ~0.55–0.62, but this needs
 extension to large ΔN.
 
+> **Superseded (8 October 2026):** the 0.55–0.62 ratio came from an optimiser
+> running to the largest sampled `ΔN`; see the status note at the top.
+
 ### Strategy: two-phase grid
 
 **Phase A** (exploratory, 800 Sobol points):
@@ -272,6 +301,7 @@ grid, and flag the comparison as an open question.
   Contact Sam Young.
 - **ρ_final boundary condition**: switching `FullInstanton`'s terminal BC
   from φ_final to ρ_final failed due to a degrees-of-freedom counting issue.
+  *[Superseded 8 October 2026: not a counting issue; a false premise. See the status note at the top.]*
 - **S_instanton vs spectral eigenvalue sum** (Ezquiaga–García-Bellido–Vennin):
   Sturm-Liouville orthogonality obstacle stalled the derivation.
 - **FullHankelDiffusion**: architecture in place; implementation deferred.

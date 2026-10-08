@@ -14,6 +14,30 @@ O(1)-to-dominant spurious forcing from the core SAT penalty, are demonstrably
 τ-dependent, and must be treated as *provisional*, not physics. The mechanism is
 identified and quantified. The fix is not yet established.
 
+> **Status (8 October 2026): partly superseded** by the 10–20 July analysis in
+> `../2026-10-08/RECONSTRUCTION.md` (Parts A.3, B and C). The status line
+> above, §2 and §5's "settled" list stand. The text below is unchanged; these
+> points override it:
+>
+> - **§3.1's table is wrong about production `g_phi`.** For LGL nodes
+>   `w_core D[-1,-1] = 1/2` exactly, so the `φ` penalty toward
+>   `neumann_boundary_value(φ)` is `−2τ (Dφ)_core`: a *derivative-type*
+>   condition (R A.3, C1). The live-Neumann-`π` proposal is dead on two
+>   grounds: it would swap the one negative-definite term for an indefinite
+>   one (C1), and with advection `∂_y π|_core = −A_core ∂²_y φ ≠ 0`, so its
+>   regularity premise is false (C2; Test A2's `O(1)` ratio is expected).
+> - **§4.1** is the wrong control; the right one compares `(Dπ)_core` with
+>   `−A_core (D²φ)_core` (C2). **§4.2–4.3** remain informative only as
+>   diagnostics of the current code. **§4.4** is moot. **§4.5** stands and is
+>   now a zero-compute check (R B.10). **§4.6**: do not transpose the current
+>   over-determined operator (R A.3, Q2); the response sector is to be
+>   obtained by differentiating a discrete Hamiltonian (decision D0.1).
+> - **§6**: both options are superseded, and the "model closure" framing is
+>   reversed (R B.3). The answer is one characteristic penalty on `w_in`,
+>   derivable from a boundary term of the discrete action, in the `H_μ` norm
+>   (tex `sec:no-data`, `sec:colloc-bcs`).
+
+
 ---
 
 ## 1. The central finding, and how it arose
@@ -210,6 +234,10 @@ construction.** What was tested and failed:
 | Production `g_pi` | `π_core` (value-type) | frozen `FullInstanton phi2(N)` | stable, **inconsistent** |
 | **Proposed** | `π_core` (**value-type**) | `neumann_boundary_value(π)` (live) | **abscissa never checked** |
 
+> **Superseded (8 October 2026).** The `g_phi` row is wrong: the production `φ`
+> penalty is derivative-type (C1). See the status note at the top.
+
+
 The proposal is value-type. `∂(SAT)/∂π_core = −τ/w_core` exactly as for any fixed
 `g`, because `neumann_boundary_value` excludes `π_core` itself (`c[-1] = 0`), so
 the stabilising diagonal entry is unchanged. `g_phi` is an existence proof that
@@ -356,6 +384,9 @@ including Diagnostic 12's and Test D's conclusions — needs rewriting.
 
 ### 4.4 Frozen-coefficient abscissa sweep for the proposed live-Neumann-π closure  *(gate on any production change)*
 
+> **Superseded (8 October 2026).** Moot: the live-Neumann-`π` closure is dead (C1, C2). See the status note at the top.
+
+
 `tools/diagnostics/GradientCoupledInstanton/spectrum.py --mode spectrum --closure sbp-sat`,
 `n_max = 8…192`, across the `α`/`Δs` grid, for the **complete two-field closure**
 with `g_pi = neumann_boundary_value(pi_full, D, -1)` (value-type penalty, live
@@ -451,6 +482,9 @@ synthesised rather than read in sequence.
 ---
 
 ## 6. The question for the synthesis
+
+> **Superseded (8 October 2026).** Both options are superseded; the core supplies no data (R B.3). See the status note at the top.
+
 
 Given (a) an inconsistent core closure with an `n²`-amplified spurious forcing, and
 (b) a forward/response pair that is not discretely adjoint:

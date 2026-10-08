@@ -4,6 +4,30 @@
 tested numerically. Everything below is analytic and should be treated as a
 hypothesis set to be checked, not as established repo state.
 
+> **Status (8 October 2026): partly superseded** by the 11–20 July analysis in
+> `../2026-10-08/RECONSTRUCTION.md` (Parts B and C). The text below is unchanged;
+> these points override it:
+>
+> - **§1 stands**, but lacks the response-sector characteristic analysis of
+>   16 July (R B.1): the response sector has the same principal symbol, one
+>   incoming characteristic at the core in backward time, and needs no data;
+>   prompt 23's negative was a strong-versus-weak mismatch. The natural
+>   condition is `∂_y(g π̃) = 0` (R Erratum E3). Tex `sec:no-data`.
+> - **§2(a)–(c) stand**; under the core anchor there is exactly one incoming
+>   characteristic for `0 < ε_core < 2` (tex `sec:characteristics`).
+>   **§2(d) is reversed** (11 July, R B.3): no data enters at the core;
+>   Neumann is the reflecting, data-free closure; the `π_core` penalty cancels
+>   a physical piston flux and is a flat-norm artefact. The target closure is
+>   one penalty on the incoming invariant `w_in` in the `H_μ` norm (R B.9,
+>   Erratum E2).
+> - **§3 stands**, sharpened by the FullInstanton closed form
+>   `H_FP = λ φ₂(N_total) + D₁₁ λ²` (R B.10; tex `sec:hfp`).
+> - **§4 stands** and is now quantified: the dropped terms are leading order,
+>   a sign flip for the quadratic potential (R B.10; tex
+>   `sec:fullinstanton-eqs`).
+> - **"Suggested ordering"** ("instrument `H_FP` first") was demoted on
+>   10 July. The current plan is in `.prompts/INDEX.md`, "Planned".
+
 **Scope:** the MSR action of `onion_model.tex` (eq. `msr-action`) admits a
 Fokker–Planck Hamiltonian `H_FP`. Examining it turns up four things, of which
 one is a genuine bug-class finding (#1), one is a physics-interpretation
@@ -134,7 +158,11 @@ growth at rate `A` — the piston work of a boundary sweeping into the shrinking
 horizon) but it is *not* energy-decaying at the core, and `pi_core` is
 genuinely underdetermined by data.
 
-**(d) Therefore `g_pi` is a model closure, not a stabiliser.** This is the
+**(d) Therefore `g_pi` is a model closure, not a stabiliser.**
+
+> **Reversed 11 July 2026** (R B.3): no data enters at the core. See the status
+> note at the top.
+ This is the
 substantive correction to `21-sbp-sat-design-note.md` §6 and to
 `forward_rhs.py`'s module docstring, both of which assert "the SAT is a
 stabiliser, not new physics: at the converged solution the penalty forcing → 0".

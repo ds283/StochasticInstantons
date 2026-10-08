@@ -2,6 +2,32 @@
 _Last updated: 2026-06-23. Generated at the close of the sparse-sampling and
 GP regression session._
 
+> **Status (8 October 2026): partly superseded.** Read with
+> `handoff-notes/2026-10-08/RECONSTRUCTION.md` Parts A0 and C0. The text
+> below is unchanged; these points override it:
+>
+> - **Every `S_MSR` number** in this note was computed with the defective
+>   FullInstanton response sector (leading-order terms dropped, a sign flip
+>   for the quadratic potential; B.10). Fits, exponents and thresholds are
+>   provisional until re-run (`.documents/OPEN-ISSUES.md`
+>   `[june-smsr-results-provisional]`).
+> - **Minimum-action pathway** (§3): the claim that the cheapest
+>   pathway at fixed mass is the broadest perturbation that still collapses
+>   ("critical bubble") is a fixed-`N_final` artefact. The 24 June fixed-`K`
+>   grids found `S` rising monotonically with `ΔN`: the cheapest pathway is
+>   the *smallest* `(ΔN, δN★)` that collapses, with no floor found. The
+>   ratio `δN★/ΔN ≈ 0.55` is the collapse threshold, not a minimum-action
+>   locus (A0.3).
+> - **`ρ_final` boundary condition** (§5): the failure is geometric,
+>   not a degrees-of-freedom count, and the question is a false premise. The
+>   terminal condition is a label dividing the noise-active phase from the
+>   noiseless downflow (18 June; RECONSTRUCTION A0.1).
+> - **Vennin comparison** (§3, §4): the identification `S = λ₀ δN★` behind
+>   the "exponent → 1?" question was retracted on 18 June. The Gaussian
+>   constraint integral gives a *quadratic* action; the linear law is the
+>   Donsker–Varadhan long-time regime, not the Freidlin–Wentzell one that
+>   applies here. The question has no basis as posed (A0.1, B.2).
+
 ---
 
 ## 1. What the pipeline does
@@ -166,6 +192,9 @@ shallowest density profile (largest ΔN) that still collapses. This is
 analogous to a critical bubble in a first-order phase transition — the
 "critical instanton" is the one that barely crosses threshold.
 
+> **Superseded (8 October 2026):** a fixed-`N_final` artefact; see the status
+> note at the top.
+
 ### GP regression results
 
 Five single-output GPs with Matérn(5/2) + ARD:
@@ -289,6 +318,7 @@ Plot this ratio vs δN★ and vs ΔN to characterise the regime of validity.
 
 - **ρ_final boundary condition**: switching `FullInstanton`'s terminal BC
   from φ_final to ρ_final failed due to a degrees-of-freedom counting issue.
+  *[Superseded 8 October 2026: not a counting issue; a false premise. See the status note at the top.]*
 - **S_instanton vs spectral eigenvalue sum** (Ezquiaga–García-Bellido–Vennin):
   Sturm-Liouville orthogonality obstacle stalled the derivation.
 - **FullHankelDiffusion**: architecture is in place (registry, model_ids);

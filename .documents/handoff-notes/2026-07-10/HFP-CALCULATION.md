@@ -10,6 +10,14 @@ depends on it). Notation follows the tex's macro set:
 Nothing here is new physics. It is a rewriting of eq. `msr-action` in
 Hamiltonian form, plus the consequences.
 
+
+> **Status (8 October 2026): superseded by `notes/onion-model/onion_model.tex`
+> `sec:hfp`** (`e511f74`), which carries out §7's plan. The derivation here is
+> right in structure but is written for the `μ` measure, with the response
+> bracket `(1−ε_core)[1/Δs − 3/2]`. The noise selects the physical volume
+> element `V'`, in which that bracket vanishes (`Z[V'] = 0`), and the response
+> gradient term must be `L(g π̃)`, not `g L(π̃)` (`../2026-10-08/RECONSTRUCTION.md` B.4, B.6). Use the tex.
+
 ---
 
 ## 1. Reading the MSR action as `p q̇ - H`
@@ -307,6 +315,9 @@ over-determine it.
 ---
 
 ## 7. Suggested `onion_model.tex` structure
+
+> **Superseded (8 October 2026).** Executed in `e511f74` in the `V'` convention. See the status note at the top.
+
 
 - **New section `sec:hfp`**, after `sec:instanton-eqs`.
   - §1–§2 above as the derivation, with the canonical-pair subtlety in a

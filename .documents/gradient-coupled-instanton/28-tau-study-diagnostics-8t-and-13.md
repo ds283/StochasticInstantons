@@ -7,6 +7,17 @@ Implementation: `diagnostic_8_tau_sensitivity` and
 (`--diagnostic 8t 13`). Depends on prompt 27 (`tau_multiplier` threaded
 through `forward_rhs`/`solve_picard`, landed in `5e8d08c`), already merged.
 
+> **Status (8 October 2026).** The measurements and both classifications
+> stand. The "Combined recommendation" below is superseded: a finer
+> `tau_multiplier` sweep would fit a numerical penalty to a preferred result.
+> The `τ`-dependence comes from the frozen `g_pi` target and the
+> over-determined two-penalty closure (Test A; `handoff-notes/2026-07-10/SAT-CLOSURE-STATUS.md`),
+> and the closure is to be replaced, not tuned: one characteristic penalty in
+> the `H_μ` norm, with `τ`-independence as the acceptance test (planned onion
+> rebuild, `.prompts/INDEX.md`). The argument against the sweep was made on
+> 10 July (`handoff-notes/2026-10-08/summary-C-boundary-handoff.md`); David
+> did not rule on it, and the 8 October plan makes it moot.
+
 ## Numbering deviation (read first)
 
 The prompt names part 2 `diagnostic_11_tau_unlock_n_retry`, dispatched as
@@ -273,6 +284,8 @@ Per the prompt's own instruction, this negative result is not grounds to
 widen `tau_multipliers` speculatively.
 
 ## Combined recommendation
+
+> **Superseded (8 October 2026):** see the status note at the top.
 
 The prompt's own decision framework covers exactly this combination:
 **"(1) material tau-dependence found: this is the more concerning outcome

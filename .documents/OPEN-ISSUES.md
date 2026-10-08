@@ -1,6 +1,6 @@
 # Open issues — project-wide index
 
-**Last updated:** 2026-10-08 · **52 open**, 12 closed. Seeded from
+**Last updated:** 2026-10-08 · **41 open**, 23 closed. Seeded from
 [`RECONSTRUCTION.md`](handoff-notes/2026-10-08/RECONSTRUCTION.md) Parts A0–D
 and D0, the open-issue `todo`s of
 [`onion_model.tex`](../notes/onion-model/onion_model.tex) as rewritten in
@@ -35,7 +35,7 @@ the board in the same commit. The campaign index is
 **sumF** = [`handoff-notes/2026-10-08/summary-F-june-science.md`](handoff-notes/2026-10-08/summary-F-june-science.md).
 
 **Owners** are phases of the plan of 8 October 2026 (see `.prompts/INDEX.md`,
-"Planned"): **P0** record and tidy; **P2** FullInstanton Hamiltonian module;
+"Planned"): **P0** record and tidy (done 8 October 2026); **P2** FullInstanton Hamiltonian module;
 **P3** onion rebuild; **P4** tex numerics brought to the final scheme. Also
 **David** (a decision that is the user's), **research** (no code owner;
 belongs to the paper or later work) and **unowned**.
@@ -80,7 +80,7 @@ one, so every row here stays open until the onion rebuild lands.
 |---|---|---|---|
 | `[gci-response-bracket-is-mu-artefact]` | R B.4, B.6; tex `sec:onion-eqs` | P3 | `ComputeTargets/GradientCoupledInstanton/response_rhs.py:183–192` applies `(1−ε_core)[1/Δs − 3/2]`. In the `V'` convention `Z = 0`; the bracket is a convention artefact. |
 | `[gci-response-gradient-operator-ordering]` | R B.4; tex `sec:onion-eqs` | P3 | `response_rhs.py:287` computes `e^{−2Δs_loc} L(π̃)`; the variation gives `L(g π̃)`. Two terms of the same order are missing, and the adjoint residual cannot vanish while this stands. |
-| `[gci-delta-s-rate-is-background-identity]` | R B.8, B.9; tex `sec:coordinate` | P3 | `delta_s_derivative()` at `Numerics/OnionCoordinate.py:81` returns `1 − ε_core`, a background identity inconsistent with `delta_s()`. The target is the chain-rule `Δ̇s` through the actual core row. It changes `A` in the forward sector and so every `n = 5` solve; `K = 1` is a singularity to guard. Use the tex, not R, for the sign of `K` (§5, `[doc-reconstruction-errata]`). |
+| `[gci-delta-s-rate-is-background-identity]` | R B.8, B.9; tex `sec:coordinate` | P3 | `delta_s_derivative()` at `Numerics/OnionCoordinate.py:81` returns `1 − ε_core`, a background identity inconsistent with `delta_s()`. The target is the chain-rule `Δ̇s` through the actual core row. It changes `A` in the forward sector and so every `n = 5` solve; `K = 1` is a singularity to guard. Use the tex, not R, for the sign of `K` (R Erratum E1). |
 | `[gci-measure-is-not-volume-element]` | R B.8; tex `sec:noise-measure` | P3 | `measure()` at `Numerics/OnionCoordinate.py:91` is `e^{−1.5 Δs y}`, which differs from `V'` by a `Δs`-dependent prefactor that `∂H/∂Δs` must see. |
 | `[gci-variation-truncated]` | R B.6 ledger, B.10; tex `sec:onion-eqs` | P3 | The state dependence of `Δs`, `A`, `μ`, `n_count` through the core node, and `∂H²/∂u`, `∂ε/∂u`, `∂(aH)_loc/∂φ`, are absent from the response sector. The target is to differentiate `H_h` with JAX (D0.1, D0.5). |
 | `[gci-sectors-not-adjoint]` | HSS §1; R B.1, A.3 (Q2) | P3 | Forward sector SAT-closed with a free core node; response sector hard-eliminates `∂_y π̃ = 0`. The Picard fixed point is the stationary point of no discrete action. Do not transpose the current over-determined operator. |
@@ -109,23 +109,12 @@ outside the instanton solvers.
 ## 5. Documents that contradict the current position
 
 Each should be corrected or marked superseded with a pointer to its
-replacement. The reconstruction is a dated record, so it gets an errata note
-rather than an in-place rewrite.
+replacement. Dated records get a status note and inline markers, not an
+in-place rewrite. Phase 0 (8 October 2026) dealt with all but the one below.
 
 | Issue | Source | Owner | Hook |
 |---|---|---|---|
-| `[doc-reconstruction-errata]` | `e511f74` commit message; tex `sec:coordinate`, `sec:no-data` | P0 | Three corrections found while writing the tex. (i) In the chain-rule `Δ̇s` the second term of `K` has a plus sign, and the numerator also carries the `φ`-row noise forcing. (ii) The incoming Riemann invariant is `w_in = π + (2/Δs) ∂_y φ`; `(2/Δs)(2−ε)` is its flux weight, so R B.9's "`π`-dominated near de Sitter" and the matching Part C row are wrong. (iii) The natural response condition with `L(g π̃)` ordering is `∂_y(g π̃) = 0`. |
-| `[doc-bc-handoff-rho-final-false-premise]` | R A0.1, C0 | P0 | `handoff-notes/handoff_instanton_boundary_conditions.md` §3–4 presents the `ρ_final` condition as open; 18 June dismissed it as a false premise. |
-| `[doc-bc-handoff-gstar-recorded-as-0.2]` | R A0.2, C0 | P0 | Same note §2.1. The physics row is `[gstar-offset-in-scale-matching]` in §4. |
-| `[doc-grid-sampling-dof-counting]` | R A0.1, C0 | P0 | `grid-sampling/handoff-{sparse-sampling,large-grid,goal2}.md` attribute the `ρ_final` failure to degrees-of-freedom counting; 18 June rejected this. |
-| `[doc-grid-sampling-critical-bubble]` | R A0.3, C0 | P0 | `handoff-large-grid.md` and `handoff-goal2.md` say the minimum-action pathway is the broadest collapsing perturbation; the 24 June fixed-`K` grids reversed this. |
-| `[doc-grid-sampling-vennin-exponent]` | R A0.1, C0 | P0 | The same notes' "exponent → 1?" programme rests on the `S = λ₀ δN★` identification retracted on 18 June. |
-| `[doc-tau-study-recommends-finer-sweep]` | R A.3, C0 | P0 | P28 recommends a finer `τ` sweep as the next step; the 9 July discussion rejected it, and P3 replaces the closure anyway. |
-| `[doc-hfp-structure-status]` | R C, B.1, B.3 | P0 | HSS §2(d) (`g_π` as a data-supplying closure) is reversed. §1 lacks the response-sector characteristic analysis David asked for on 16 July. §3 and §4 stand. |
-| `[doc-sat-closure-status]` | R C, A.3 (C1) | P0 | SCS §3.1's penalised-quantity table is wrong (the `φ` penalty is derivative-type); §4.4 is moot; §6 is superseded. §4.1–4.3 remain informative only as diagnostics of the current code. |
-| `[doc-hfp-calculation-mu-convention]` | R C | P0 | HCalc §7 is written for the `μ` measure with the bracket; tex `sec:hfp` supersedes it. |
 | `[doc-collaborator-email-max-delta-nstar]` | R A0.3 | David | The 25 June email to collaborators asserts a maximum `δN★` for collapse. The data do not support this as written. |
-| `[doc-chat-only-documents]` | R A0.3 | P0, optional | `session_summary.md` and `analysis_protocol.md` (25 June) were written in chat only and are recoverable from the raw dumps under `.documents/transcripts/`. |
 
 ## 6. Minor and parked
 
@@ -153,3 +142,9 @@ rather than an in-place rewrite.
 | `adjoint-full` mode of the prompt-18a diagnostic, never run (R A.2) | 2026-10-08 | Superseded by the Hamiltonian-structure check, tex `sec:discrete-hamiltonian`. |
 | `DIAGNOSTICS_SUITE.md` §5 said Diagnostic 8t raises `NotImplementedError` | 2026-10-08 | Corrected in the prompt-28 commit `3ea27e0`. |
 | `[gci-stale-g-pi-documentation]`: `forward_rhs.py` and `NUMERICAL_SCHEMES.md` §3.5 described the `g_π` target as lagged with a vanishing forcing; `picard.py` called the bias small (SCS §1.2) | 2026-10-08 | Docstrings, the inline comment and §3.5 corrected to the frozen target and Test A's measured forcing, with pointers to the target closure; `picard.py` corrected too. Docstring-only change (AST-identical). |
+| `[doc-reconstruction-errata]`: three statements in R wrong (the sign in `K`, the form of `w_in`, the natural response condition) | 2026-10-08 | Errata E1–E3 added at the head of R, with markers at each occurrence; status note on `LATEX-REWRITE-BRIEF.md`. |
+| `[doc-bc-handoff-rho-final-false-premise]` and `[doc-bc-handoff-gstar-recorded-as-0.2]`: `handoff_instanton_boundary_conditions.md` §3–4 and §2.1 | 2026-10-08 | Status note and inline markers. The `g*` physics stays open as `[gstar-offset-in-scale-matching]` (§4). |
+| `[doc-grid-sampling-dof-counting]`, `[doc-grid-sampling-critical-bubble]`, `[doc-grid-sampling-vennin-exponent]`: the three `grid-sampling/handoff-*.md` | 2026-10-08 | Status notes (all `S_MSR` numbers provisional; minimum-action pathway reversed; `ρ_final` a false premise; Vennin identification retracted) and inline markers. |
+| `[doc-tau-study-recommends-finer-sweep]`: P28's "Combined recommendation" | 2026-10-08 | Status note: superseded, the closure is to be replaced, not tuned. Correction to the earlier hook: the argument against the sweep was made on 10 July (summary C), not 9 July, and David did not rule. |
+| `[doc-hfp-structure-status]`, `[doc-sat-closure-status]`, `[doc-hfp-calculation-mu-convention]`: the three 10 July notes | 2026-10-08 | Status notes saying which sections stand and which are superseded, with inline markers at HSS §2(d), SCS §3.1, §4.4, §6 and HCalc §7. |
+| `[doc-chat-only-documents]`: `session_summary.md`, `analysis_protocol.md` (24–25 June) | 2026-10-08 | Recovered verbatim from the claude.ai export into `grid-sampling/2026-06-24-session-summary.md` and `2026-06-25-analysis-protocol.md`, with provenance and status headers. |

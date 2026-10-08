@@ -6,6 +6,23 @@
 boundary condition physics and the gluing of the instanton onto subsequent
 inflationary evolution.
 
+> **Status (8 October 2026): partly superseded.** Two parts of this note are
+> contradicted by the June conversations reconstructed in
+> `handoff-notes/2026-10-08/RECONSTRUCTION.md`:
+>
+> - **§3–4** present the `rho_final` boundary condition as an open question.
+>   The 18 June conversation (the "next conversation" this note was written
+>   for) concluded it is a false premise: the terminal condition is a label
+>   dividing the noise-active phase from the noiseless downflow, and the
+>   failure is geometric, not a degrees-of-freedom count. See
+>   RECONSTRUCTION A0.1 and `summary-D-june-physics.md`.
+> - **§2.1** records the `g*` correction as "~0.2 … omitted". The correction
+>   is about −1.1 in `ln k`; 0.2 is only the error from not integrating
+>   `g*(T)`. Whether to restore it is open. See RECONSTRUCTION A0.2 and
+>   `.documents/OPEN-ISSUES.md` `[gstar-offset-in-scale-matching]`.
+>
+> The rest of the note stands. The text below is unchanged.
+
 ---
 
 ## 1. Codebase state at hand-off
@@ -69,6 +86,11 @@ A `g_star` correction of `(1/3) * ln(g_star_s_0 / g_star_reh)` was discussed
 and found to be `~0.2` in `ln k`, which is within the uncertainty of the
 instantaneous reheating approximation. It has been **omitted** from the
 formula for simplicity. It can be added later if needed.
+
+> **Superseded (8 October 2026).** The correction itself is about −1.1 in
+> `ln k` for `g*_reh = 106.75`; ~0.2 is only the uncertainty from not
+> integrating `g*(T)` numerically. Dropping it was never agreed. See the
+> status note at the top.
 
 ### 2.2 δN computed to constant-ρ surface
 
@@ -135,6 +157,10 @@ scale when scanning from the instanton start toward its end.
 ---
 
 ## 3. Open physics question: the `rho_final` boundary condition failure
+
+> **Superseded (8 October 2026).** Resolved on 18 June as a false premise,
+> and §4's choice between `phi_final` and `rho_final` dissolves with it: see
+> the status note at the top.
 
 ### 3.1 What was attempted
 

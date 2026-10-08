@@ -3,6 +3,20 @@
 _Last updated: 2026-06-22. Generated at the close of the sparse-sampling
 implementation session._
 
+> **Status (8 October 2026): partly superseded.** Read with
+> `handoff-notes/2026-10-08/RECONSTRUCTION.md` Parts A0 and C0. The text
+> below is unchanged; these points override it:
+>
+> - **`ρ_final` boundary condition** (§6): the failure is geometric,
+>   not a degrees-of-freedom count, and the question is a false premise. The
+>   terminal condition is a label dividing the noise-active phase from the
+>   noiseless downflow (18 June; RECONSTRUCTION A0.1).
+> - **Vennin comparison** (§6): the identification `S = λ₀ δN★` behind
+>   the "exponent → 1?" question was retracted on 18 June. The Gaussian
+>   constraint integral gives a *quadratic* action; the linear law is the
+>   Donsker–Varadhan long-time regime, not the Freidlin–Wentzell one that
+>   applies here. The question has no basis as posed (A0.1, B.2).
+
 ---
 
 ## 1. What the pipeline does
@@ -241,9 +255,11 @@ These were identified and discussed but deliberately set aside:
 - **`ρ_final` boundary condition**: switching `FullInstanton`'s terminal BC
   from `φ_final` to `ρ_final` was attempted but failed due to a
   degrees-of-freedom counting issue. Left for a future session.
+  *[Superseded 8 October 2026: not a counting issue; a false premise. See the status note at the top.]*
 - **Relationship between `S_instanton` and spectral eigenvalue sum** in the
   Ezquiaga–García-Bellido–Vennin formalism: the Sturm-Liouville
   orthogonality obstacle stalled a derivation. Unresolved.
+  *[Superseded 8 October 2026: the identification it rests on was retracted. See the status note at the top.]*
 - **Double-failure handling in pipeline**: when both `FullInstanton` and
   `SlowRollInstanton` fail for the same grid point, `_persist_pipeline_item`
   raises rather than persisting the failure rows. Acceptable for DOE runs

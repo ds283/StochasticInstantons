@@ -1,5 +1,10 @@
 # Brief: rewriting `onion_model.tex` to the 20 July 2026 position
 
+> **Status (8 October 2026): executed** in `e511f74`. Two formulas below,
+> the `K` of §1 and the `w_in` of §5, were corrected during the rewrite; see
+> `RECONSTRUCTION.md`, Errata E1 and E2. The tex is the reference, not this
+> brief.
+
 **Purpose.** Instructions for a fresh session to rewrite
 `notes/onion-model/onion_model.tex` (moved from `.documents/gradient-coupled-instanton/` on 8 October 2026) so that it states the
 model as it was understood on 20 July 2026 and as decided on 8 October 2026,
