@@ -31,6 +31,119 @@ conversation was last active on 20 July, so 1 August is a safe upper bound.
 
 ---
 
+## Part A0 — June 2026: foundations, pipeline, and the first science campaign
+
+Added on 8 October 2026 from a second export covering 1 June to 1 July
+(`summary-D-june-physics.md`, `summary-E-june-pipeline.md`,
+`summary-F-june-science.md`, kept beside this file). Three conversations listed in
+the Project — "First passage probabilities and backward Kolmogorov equations",
+"Real time vs Euclidean instantons", "Spacetime interpretation of stochastic
+δN noise" — are absent from both exports because they predate 1 June: the
+third was read directly from the browser pane on 8 October and is dated
+**29 April 2026** (captured, in condensed form, under
+`.documents/transcripts/2026-04-browser-capture/`). It is the origin of the
+onion-model programme: David's reading of Briaud et al. (2509.05124) as a
+reference-volume-plus-shell scheme, his point that noise differences between
+patches arise at spacelike separation and cannot be a single-patch history
+integral, and the two agreed limitations of Briaud et al. for the PBH
+problem (typical rather than conditioned neighbours; no slope–peak coupling
+in the rare-event geometry), with the conclusion that a gradient-corrected
+formalism conditioned on the rare event is "a natural next step". The other
+two chats should be recovered the same way, or by an export window reaching
+back to April.
+
+### A0.1 Physics foundations (from `summary-D-june-physics.md`)
+
+- **The `ρ_final` boundary-condition question is a false premise (18 June).**
+  The repo still carries it as open: `handoff_instanton_boundary_conditions.md`
+  §3–4 presents Interpretations A/B for "the next conversation", and the
+  three `grid-sampling/handoff-*.md` files say it failed on "a
+  degrees-of-freedom counting issue". The 18 June conversation (which *was*
+  that next conversation) concluded: the failure is geometric, not counting
+  (the one-parameter `λ`-family of endpoints need not meet the constant-`ρ`
+  level set); and more fundamentally the terminal condition is *"just a
+  label that divides the trajectory"* into the noise-active and noiseless
+  phases; enforcing `ρ(T) = ρ_noiseless` assumed the volume rejoins the
+  background, which is wrong for the interesting cases (permanent
+  dislocation). `δN★` and `φ_final` are parallel proxies (amplitude and
+  smallest affected scale); neither is privileged; the `δN★` shard key
+  stands. **Both repo documents need correcting.**
+- **The Vennin comparison (18 June), in full.** The apples-to-apples
+  instanton has `N_final = 0` and no downflow. David's central objection to
+  the eigenvalue formalism is that the Kolmogorov average is over *all*
+  noise realisations, so it is unknown *where it puts the noise* and hence
+  what collapse criterion its tail probability describes. The attempted
+  diagonalisation `S = Σ λ_i c_i²` stalled because the cross integral's
+  weight `w/A` is not the Sturm–Liouville weight. The linear law
+  `S = λ₀ δN★` was retracted twice: the Gaussian constraint integral gives a
+  *quadratic* `S = λ₀ (δN★/α₀)²`, and the linear form is the
+  Donsker–Varadhan long-time regime, which David rejected because it would
+  force exponential tails always; the right framework is
+  Freidlin–Wentzell with `λ₀ ∼ 1/D` and case-by-case `δN★` scaling. David's
+  closing conjecture: per-instanton scaling may *"collapse to something
+  simpler in the sum-over-instantons framework"*. The grid-sampling
+  handoffs' "exponent → 1?" programme rests on the identification this
+  thread showed to be unfounded.
+- **Picard versus shooting (15 June).** Shooting is a `2N`-dimensional
+  root-find on `(P₁(0), P₂(0))` with an ill-conditioned dense Jacobian over
+  long `N_total`; the Lagrange-multiplier/Picard scheme is a root-find in
+  `N_constrained ≤ N` multipliers; cost `≈ 2 k_outer k_inner + 2 N_constrained k_outer`.
+  The inner convergence norm is over the whole trajectory, not the endpoint.
+  The sensitivity `∂φ₁(T)/∂λ` needs one linear backward *and* one linear
+  forward pass (David caught the hidden second pass). Only the conditioning
+  half is in `NUMERICAL_SCHEMES.md` §2.2.
+- **Level 1 / Level 2 (29 June), the conceptual frame for everything
+  since.** The MSR action does not compute the horizon-exit fluctuation; that
+  is a Level-1 calculation (Mukhanov–Sasaki at low amplitude, a Euclidean
+  tunnelling instanton at large amplitude). The MSR instanton (Level 2)
+  stitches copies of Level-1 kicks. The Fokker–Planck equation is the
+  Schrödinger equation of the MSR action, so one approximates the path
+  integral rather than solving the (pseudo-differential, for non-Gaussian
+  kicks) FPE; the Kramers–Moyal series cannot be truncated in the tail. If
+  the Level-1 action grows slower than `η²`, the Level-2 saddle may collapse
+  to a single dressed kick. **Nowhere in the repo.**
+- **Halliwell–Hawking (30 June).** HH is strictly quadratic in the modes, so
+  `δρ/ρ ∼ O(1)` cannot be read from it; δN cannot give the horizon-exit
+  fluctuation either. There is no Level-1 calculation at all. The one
+  constructive idea: keep `π` as an independent variable of the Euclidean
+  instanton, end the Euclidean segment at the turning point `Im π → 0`
+  (the field-space analogue of HH's equator), take `ρ = V/(1 − ε/3)` there,
+  and `ζ ≈ −H δφ/π` with the *local* `π(φ)`; the reference trajectory for
+  `δφ` was left undecided. **Nowhere in the repo.**
+- **Origin of the onion model (30 June – 1 July).** The tex records the
+  motivation, the conditioning argument, CLT suppression, nearest-neighbour
+  correlations and the mean-field `V'` correction. Unrecorded: David's
+  acceptance that CLT validity fails for the innermost layers (*"inevitable
+  in a mean-field approximation. I don't mind this"*); the discrete
+  three-region windowing scheme (`M₁` stochastic shells, `M₁ < i ≤ M₂`
+  deterministic gradient-coupled, beyond `M₂` pinned, outermost frozen at
+  its accumulated value, with a transfer-matrix "semi-infinite lead" for the
+  linearised tail); David's governing principle *"I only actually want to
+  solve the instanton equations"*, which dismissed the seam/continuation
+  worry; the Eulerian-versus-Lagrangian detour and the three-scales
+  confusion that produced the first coordinate `y = 1 − r (aH)₀`; the June
+  argument that fixed sinc truncation needs exponentially many modes because
+  the horizon locus `y_H → 1` cancels the `e^{−2N}` prefactor (the reason the
+  exterior-only coordinate was later adopted); the caveat that a shell
+  reheating before the core ends inflation is *"a genuinely problematic
+  physical situation"*; and the quiet change of justification for Neumann at
+  the core from "regularity at `r = 0`" (June) to "a physical smoothness
+  assumption" (tex).
+- Minor, unrecorded, open: which Picard–Lefschetz method avoids
+  constructing the upflow trajectory (9 June, never answered); the BVP
+  solver survey (11 June, no decision); the 1D `N_turn > N_final`
+  insensitivity test in the tex `todo` was apparently never run.
+
+### A0.2 Pipeline and compaction-function design (from `summary-E-june-pipeline.md`)
+
+*(to be completed when the pass lands)*
+
+### A0.3 The June science campaign (from `summary-F-june-science.md`)
+
+*(to be completed when the pass lands)*
+
+---
+
 ## Part A — 1 to 11 July: derivation and implementation threads
 
 Summarised by three reading passes, kept beside this file as
@@ -640,7 +753,15 @@ field-dependent `D` its Jacobian is the one-loop determinant.
    committed to the public repository. Only distilled documents are
    committed.
 4. The export window is to be extended back to 1 June 2026 and the June
-   threads reconstructed in the same way.
+   threads reconstructed in the same way. (Done the same day; see Part A0.)
+5. **Automatic differentiation via JAX** is the method for the runtime
+   differentiation of decision 1, in preference to complex-step, on cost
+   (one reverse-mode pass versus `2n+1` complex evaluations), on the need
+   for second derivatives in any implicit `N`-integrator, and on the
+   non-analytic operations (`abs`, `min`/`max`, splines) that break
+   complex-step silently. Complex-step remains the independent conformance
+   test. The `N`-integration need not stay on `scipy.integrate.solve_ivp`;
+   `diffrax` is acceptable to remain inside the JAX ecosystem.
 
 ## Part D — Decisions recorded as taken (by David) and decisions still open
 
