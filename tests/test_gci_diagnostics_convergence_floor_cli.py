@@ -15,14 +15,14 @@
 
 """
 Coverage for the `convergence-floor` subcommand of the
-tools/diagnostics/GradientCoupledInstanton package. Diagnostics 1-8a each
+tools/diagnostics/GradientCoupledInstanton package. Diagnostics 1-13 each
 drive real Picard/shooting solves with no CLI-exposed way to shrink the
-mass/grid/budget, so a genuine end-to-end run of any of them is minutes of
-wall-clock -- too expensive for routine coverage. This file splits the
-difference: fast, unmarked tests for the CLI's own argument-parsing/dispatch
-glue (including diagnostic 8t, which is a real dispatch path but raises
-NotImplementedError before any numerics run -- see the module's own
-docstring), plus one @pytest.mark.slow test that calls diagnostic_4 directly
+mass/grid/budget, so a genuine end-to-end run of any of them is minutes
+(8t) to well over an hour (13, a 7-point n=9 sweep) of wall-clock -- too
+expensive for routine coverage. This file splits the difference: fast,
+unmarked tests for the CLI's own argument-parsing/dispatch glue (verified
+by monkeypatching the target diagnostic function so no real numerics run),
+plus one @pytest.mark.slow test that calls diagnostic_4 directly
 (bypassing the CLI, since no flag controls mass/budget for it) at the
 cheapest mass and a short wallclock_budget, to confirm the actual
 setup/fetch/solve/JSON-write path still works end to end.
@@ -46,9 +46,18 @@ def test_create_parser_diagnostic_choices():
     assert args.alpha_values == "0.1,0.2"
 
 
-def test_diagnostic_8t_cli_raises_not_implemented():
-    with pytest.raises(NotImplementedError):
-        cf.main(["--diagnostic", "8t"])
+def test_diagnostic_8t_cli_dispatches_without_running_real_numerics(monkeypatch):
+    calls = []
+    monkeypatch.setattr(cf, "diagnostic_8_tau_sensitivity", lambda *a, **k: calls.append((a, k)))
+    cf.main(["--diagnostic", "8t"])
+    assert len(calls) == 1
+
+
+def test_diagnostic_13_cli_dispatches_without_running_real_numerics(monkeypatch):
+    calls = []
+    monkeypatch.setattr(cf, "diagnostic_13_tau_unlock_n_retry", lambda *a, **k: calls.append((a, k)))
+    cf.main(["--diagnostic", "13"])
+    assert len(calls) == 1
 
 
 @pytest.mark.slow

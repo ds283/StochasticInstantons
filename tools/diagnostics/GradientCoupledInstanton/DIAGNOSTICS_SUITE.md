@@ -144,30 +144,23 @@ behaviour unmodified).
 
 ## 5. Known gaps (read before running Diagnostic 8)
 
-**Diagnostic 8t (tau-sensitivity) is not implemented and will raise
-`NotImplementedError` if called.** `tau = abs(A_core)` is currently a
-hardcoded local inside `ComputeTargets/GradientCoupledInstanton/forward_rhs.py`'s
-core SAT penalty, not a parameter threaded through `solve_picard` — unlike
-`OUTER_TOL_FLOOR`, which prompt 24b already extracted into a module constant
-specifically so a diagnostic could override it. There is no monkeypatch
-point available from outside production code for a value computed inline
-mid-function.
-
-Running the tau study needs a small, explicitly-scoped **production** change
-first (a follow-on numbered prompt, not part of this diagnostics-package
-refactor):
-
-> Add `tau_multiplier: float = 1.0` to `forward_rhs`'s core-SAT-penalty
-> construction (`tau = tau_multiplier * abs(A_core)`), threaded through
-> `picard.solve_picard`'s own signature, default reproducing current
-> behaviour bit-for-bit. Single commit, single acceptance test: "with
-> `tau_multiplier=1.0`, every existing golden result
-> (`delta_Nstar∈{0.2,0.3,0.5,0.7}`, `m=1e-2`, `n=5`) reproduces bit-for-bit."
-
-Once that lands, `diagnostic_8_tau_sensitivity` in `convergence_floor.py`
-should sweep `tau_multiplier∈{0.5, 1.0, 2.0}` (i.e. the design note's minimal
-admissible value, the current production value, and a further hardening) at
-every Diagnostic-4 point, following the same pattern as `diagnostic_8_alpha_sensitivity`.
+**Diagnostic 8t (tau-sensitivity) — gap closed.** It originally raised
+`NotImplementedError` because `tau = abs(A_core)` was a hardcoded local
+inside `ComputeTargets/GradientCoupledInstanton/forward_rhs.py`'s core SAT
+penalty with no monkeypatch point. Prompt 27 (`5e8d08c`) threaded
+`tau_multiplier: float = 1.0` through `forward_rhs` and `picard.solve_picard`
+(default reproducing prior behaviour bit-for-bit), and prompt 28 implemented
+`diagnostic_8_tau_sensitivity` (`--diagnostic 8t`, sweeping
+`tau_multiplier∈{0.5, 1.0, 2.0}` at every Diagnostic-4 point, optionally at a
+second resolution via its `n` keyword) together with
+`diagnostic_13_tau_unlock_n_retry` (`--diagnostic 13`, the `n=9` unlock
+sweep; numbered 13 because 11 and 12 were taken by the corridor diagnostics
+before prompt 28 ran). Results and their interpretation — material
+τ-dependence of every `n=5`/`n=7` solution, no genuine `n=9` unlock — are in
+`.documents/gradient-coupled-instanton/28-tau-study-diagnostics-8t-and-13.md`.
+Note that the finer τ sweep that document recommends as the "immediate next
+step" was rejected in the 9 July discussion as fitting a numerical penalty to
+a preferred result; see `.documents/handoff-notes/2026-10-08/RECONSTRUCTION.md`.
 
 **`archive/prompt22_validation.py` is frozen, not maintained.** Its own
 `production_phi_end` deliberately reproduces the pre-22a degenerate formula

@@ -30,19 +30,20 @@ blocked at the time by the phi_end degeneracy and Picard divergence findings
 (22-validation.md) and are now runnable now that non-trivial converged
 solutions exist (24b).
 
-Diagnostic 8's alpha-sensitivity half is fully implemented (alpha is already
-a first-class solve_picard parameter, no production code change needed). Its
-tau-sensitivity half is NOT yet runnable: tau is currently a hardcoded local
-(``tau = abs(A_core)``) inside forward_rhs.py, not a parameter threaded
-through solve_picard, so there is no monkeypatch point for it (unlike
-OUTER_TOL_FLOOR, which prompt 24b already extracted into a module constant
-for exactly this reason). Running the tau study needs a small, explicitly-
-scoped production change first (add a ``tau_multiplier: float = 1.0``
-parameter, default reproducing current behaviour bit-for-bit) -- see
-DIAGNOSTICS_SUITE.md's "Known gaps" section. diagnostic_8's tau branch
-raises NotImplementedError with this same explanation rather than silently
-no-op'ing or guessing at an implementation of a production change nobody has
-reviewed yet.
+Diagnostic 8's alpha-sensitivity half (8a) and tau-sensitivity half (8t) are
+both fully implemented. tau_multiplier is now a first-class solve_picard
+parameter (prompt 27: ``tau = tau_multiplier * abs(A_core)`` in
+forward_rhs.py, default 1.0 reproducing prior behaviour bit-for-bit), so 8t
+needs no monkeypatch point and no further production change -- see
+DIAGNOSTICS_SUITE.md's "Known gaps" section (now closed) for the prompt-27
+history.
+
+Diagnostic 13 (prompt 28 part 2) answers the companion "unlock" question at
+n=9: does some tau_multiplier make the known Diagnostic 6/9/10/12 floor
+converge at all? See that function's own docstring for the numbering note
+explaining why this is "13" rather than the "11" the originating prompt file
+names -- Diagnostics 11/12 (corridor-edge proximity / relaxed-corridor
+retry) claimed those numbers first, answering an unrelated question.
 
 Run as a module:
     python -m tools.diagnostics.GradientCoupledInstanton.convergence_floor \\
@@ -600,23 +601,101 @@ def diagnostic_8_alpha_sensitivity(m: float = 1.0e-2, delta_Nstars=(0.2, 0.3, 0.
     return rows
 
 
-def diagnostic_8_tau_sensitivity(*args, **kwargs):
-    """NOT YET RUNNABLE -- see this module's own docstring and
-    DIAGNOSTICS_SUITE.md's "Known gaps" section. tau is a hardcoded local in
-    forward_rhs.py (``tau = abs(A_core)``), not a solve_picard parameter, so
-    there is no monkeypatch point available from outside production code.
-    Raises immediately rather than silently doing nothing or guessing at an
-    un-reviewed production change.
+def diagnostic_8_tau_sensitivity(m: float = 1.0e-2, delta_Nstars=(0.2, 0.3, 0.5, 0.7),
+                                  tau_multipliers=(0.5, 1.0, 2.0),
+                                  wallclock_budget: float = 600.0,
+                                  n: int = N_COLLOC):
+    """Prompt 22 Study C (regularity), tau half: re-solves every converged
+    24b point at each tau_multiplier in tau_multipliers. tau_multiplier is
+    now a first-class solve_picard parameter (prompt 27), so this needs no
+    production code change -- direct structural copy of
+    diagnostic_8_alpha_sensitivity with alpha fixed at h.ALPHA (production
+    value; alpha is NOT swept here, see this module's Diagnostic 8a for
+    that already-separately-answered question).
+
+    n (default N_COLLOC=5, prompt 28's own fixed resolution): kept as an
+    explicit keyword, not hardcoded, so this same sweep can be re-run at a
+    second still-cheap resolution (n=7) as a robustness cross-check on
+    whatever tau-dependence is found at n=5 -- does it persist at a finer
+    grid, or is it an n=5-specific artefact? Not part of prompt 28's own
+    acceptance test, which is defined at the default n=5 only; the n=7 rerun
+    is exploratory follow-up requested directly by the user. Output is
+    written to the default diagnostic8t_tau_sensitivity.json filename only
+    when n==N_COLLOC (preserving prompt 28's own acceptance-test path);
+    otherwise the filename carries the resolution to avoid clobbering it.
+
+    Interpretation: tau is the core SAT penalty strength (forward_rhs.py,
+    tau = tau_multiplier * abs(A_core)), and per
+    21a-production-port-notes.md's own admissibility claim any
+    tau >= A(core)/2 (i.e. tau_multiplier >= 0.5) should give a numerically
+    stable but otherwise tau-independent solution once the discretisation
+    has genuinely converged. A convergent solution's msr_action/
+    final_lambda/max_epsilon_core should therefore be stable across this
+    range; material dependence indicates the solutions reported since
+    Diagnostic 4 are sensitive to the exact SAT penalty strength rather
+    than converged to a tau-independent continuum answer. Per
+    21a's own sign-robustness caveat, this sweep does not go below
+    tau_multiplier=0.5 -- that region is expected, on theoretical grounds,
+    to risk the pi_core -> -sqrt(6) runaway failure mode, and a failure
+    there would not be informative about tau-independence of the
+    already-converged points.
     """
-    raise NotImplementedError(
-        "diagnostic_8_tau_sensitivity requires a small production change "
-        "first: thread a `tau_multiplier: float = 1.0` parameter (default "
-        "reproducing current behaviour bit-for-bit) from "
-        "ComputeTargets/GradientCoupledInstanton/forward_rhs.py's core SAT "
-        "penalty through picard.solve_picard. See DIAGNOSTICS_SUITE.md's "
-        "'Known gaps' section for the scoped, single-commit prompt this "
-        "needs before this function can be implemented."
-    )
+    print("\n" + "=" * 78, flush=True)
+    print(f"DIAGNOSTIC 8t: tau_multiplier sensitivity at every converged point (n={n})", flush=True)
+    print("=" * 78, flush=True)
+
+    grid = h.LGLCollocationGrid(n)
+    potential, units, traj, dm = h.setup(m)
+    phi_end = h.production_phi_end(traj)
+    H_sq_nl_init = h.H_sq_nl_init_of(potential, traj, h.N_INIT)
+
+    rows = []
+    for dNstar in delta_Nstars:
+        fi_data = h.fetch_full_instanton(potential, traj, dm, h.N_INIT, h.N_FINAL, dNstar,
+                                          label=f"D8t n={n} dNstar={dNstar} FI seed")
+        full_instanton_seed = h.full_instanton_seed_from(fi_data)
+        for tau_multiplier in tau_multipliers:
+            t0 = time.perf_counter()
+            result = h.picard_module.solve_picard(
+                h.N_INIT, h.N_FINAL, dNstar, h.ALPHA, H_sq_nl_init, grid, traj, potential, dm,
+                h.ATOL, h.RTOL, phi_end, instrument_stiffness=False, verbose=False,
+                full_instanton_seed=full_instanton_seed,
+                wallclock_budget_seconds=wallclock_budget,
+                label=f"D8t n={n} dNstar={dNstar} tau_multiplier={tau_multiplier}",
+                tau_multiplier=tau_multiplier,
+            )
+            dt = time.perf_counter() - t0
+            diag = result.get("diagnostics", {})
+            row = {
+                "n_collocation_points": n, "delta_Nstar": dNstar, "tau_multiplier": tau_multiplier,
+                "converged": diag.get("converged"), "final_residual": diag.get("final_residual"),
+                "bailout_tag": diag.get("bailout_tag"), "final_lambda": result.get("final_lambda"),
+                "gradient_enhancement_E": diag.get("gradient_enhancement_E"),
+                "outer_iterations": diag.get("outer_iterations"), "wallclock": dt,
+            }
+            if diag.get("converged"):
+                phi_grid = np.asarray(result["phi_grid"])
+                pi_grid = np.asarray(result["pi_grid"])
+                rfield_grid = np.asarray(result["rfield_grid"])
+                rmom_grid = np.asarray(result["rmom_grid"])
+                N_grid_arr = np.asarray(result["N_grid"])
+                row["msr_action"] = h.compute_msr_action(
+                    N_grid_arr, phi_grid, pi_grid, rfield_grid, rmom_grid, grid, potential, dm,
+                    H_sq_nl_init, h.ALPHA,
+                )
+                row["max_epsilon_core"] = float(np.max(0.5 * pi_grid[:, -1] ** 2))
+            else:
+                row["msr_action"] = None
+                row["max_epsilon_core"] = None
+            rows.append(row)
+            print(f"[D8t] n={n} dNstar={dNstar} tau_multiplier={tau_multiplier}: converged={row['converged']} "
+                  f"final_lambda={row['final_lambda']!r} msr_action={row['msr_action']!r} "
+                  f"max_eps={row['max_epsilon_core']!r} ({dt:.1f}s)", flush=True)
+
+    out_path = (f"{OUT_DIR}/diagnostic8t_tau_sensitivity.json" if n == N_COLLOC
+                else f"{OUT_DIR}/diagnostic8t_tau_sensitivity_n{n}.json")
+    h.save_json(out_path, rows)
+    return rows
 
 
 # ---------------------------------------------------------------------------
@@ -1216,6 +1295,127 @@ def diagnostic_12_relaxed_corridor_retry(
 
 
 # ---------------------------------------------------------------------------
+# Diagnostic 13 (prompt 28 part 2) -- tau_multiplier unlock retry at n=9.
+# NUMBERING NOTE: prompt 28 (.prompts/gradient-coupled-instanton/
+# 28-tau-study-diagnostics-8t-and-11.md) names this diagnostic_11_tau_unlock_
+# n_retry, dispatched as "11". That prompt was written (a01962a) before
+# Diagnostic 11 (corridor-edge proximity, c57c2c2) and Diagnostic 12
+# (relaxed-corridor retry, 2e2b1e5) landed and claimed those numbers for an
+# unrelated question. Renumbered to 13 (the next free slot) rather than
+# silently overwriting the "11" entry in _DIAGNOSTIC_DISPATCH, which would
+# have shadowed diagnostic_11_corridor_edge_proximity with no error (a plain
+# dict literal, last key wins) and made it unreachable from the CLI.
+#
+# Directly follows Diagnostic 12's own closing finding: the corridor clamp is
+# ruled out (widening it up to 10x never converges n=9; the real obstruction
+# is a genuine "Picard inner failed" physics wall in lambda~5-12), which
+# leaves tau as the next lever per Diagnostic 10's original recommendation.
+# Same (m=1e-2, delta_Nstar=0.5, n=9) point as Diagnostics 6/9/10/11/12.
+# ---------------------------------------------------------------------------
+
+def diagnostic_13_tau_unlock_n_retry(m: float = 1.0e-2, delta_Nstar: float = 0.5,
+                                      n_retry: int = 9,
+                                      tau_multipliers=(0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0),
+                                      max_outer_cap: int = 30,
+                                      wallclock_budget_seconds: float = 900.0):
+    """Can a different tau_multiplier make n=9 converge at all, at the same
+    (m=1e-2, delta_Nstar=0.5) point Diagnostics 6/9/10/12 established fails
+    under the production value (tau_multiplier=1.0)? tau_multiplier=1.0 is
+    already the middle entry of the default sweep, giving a free cross-check
+    against Diagnostic 6/10's own recorded n=9 result
+    (final_residual~0.112, bailout floored/max_outer_exhausted).
+
+    Fetches the FullInstanton seed once, outside the loop -- identical seed
+    for every tau_multiplier (unlike Diagnostic 9's bias study, this is not
+    perturbing the seed itself, only the SAT penalty strength each re-solve
+    uses).
+
+    Interpretation: if some tau_multiplier in this range converges at n=9
+    where 1.0 floors, that is a direct unlock -- report which value, and
+    whether the resulting solution's msr_action/final_lambda is close to
+    the n=5 extrapolation. If none converge, this is a second clean negative
+    for tau specifically (distinct from, but complementary to, Diagnostic
+    9's bias clean negative and Diagnostic 12's corridor clean negative) and
+    strengthens the case for revisiting the response sector per Diagnostic
+    10's own recommendation. Per 21a-production-port-notes.md's sign-
+    robustness caveat, this sweep does not go below tau_multiplier=0.5.
+
+    A clean negative here does not by itself constitute the response-sector
+    investigation Diagnostic 10 recommended as the fallback -- it only
+    motivates it.
+    """
+    print("\n" + "=" * 78, flush=True)
+    print(f"DIAGNOSTIC 13: tau_multiplier unlock retry at n={n_retry} "
+          f"(m={m:.4g}, delta_Nstar={delta_Nstar})", flush=True)
+    print("=" * 78, flush=True)
+
+    potential, units, traj, dm = h.setup(m)
+    phi_end = h.production_phi_end(traj)
+    H_sq_nl_init = h.H_sq_nl_init_of(potential, traj, h.N_INIT)
+    fi_data = h.fetch_full_instanton(potential, traj, dm, h.N_INIT, h.N_FINAL, delta_Nstar,
+                                      label="D13 FI seed")
+    lambda_FI = fi_data.get("diagnostics", {}).get("final_lambda", 0.0)
+    full_instanton_seed = h.full_instanton_seed_from(fi_data)
+    print(f"[D13] FullInstanton: lambda_FI={lambda_FI!r} msr_action={fi_data.get('msr_action')!r}", flush=True)
+
+    grid_retry = h.LGLCollocationGrid(n_retry)
+    rows = []
+    with h.MonkeypatchGuard(h.picard_module, MAX_OUTER=max_outer_cap):
+        for tau_multiplier in tau_multipliers:
+            t0 = time.perf_counter()
+            result = h.picard_module.solve_picard(
+                h.N_INIT, h.N_FINAL, delta_Nstar, h.ALPHA, H_sq_nl_init, grid_retry, traj, potential, dm,
+                h.ATOL, h.RTOL, phi_end, instrument_stiffness=False, verbose=False,
+                full_instanton_seed=full_instanton_seed,
+                wallclock_budget_seconds=wallclock_budget_seconds,
+                label=f"D13 n={n_retry} tau_multiplier={tau_multiplier}",
+                tau_multiplier=tau_multiplier,
+            )
+            dt = time.perf_counter() - t0
+            diag = result.get("diagnostics", {})
+            row = {
+                "tau_multiplier": tau_multiplier,
+                "converged": diag.get("converged"), "final_residual": diag.get("final_residual"),
+                "bailout_tag": diag.get("bailout_tag"), "bailout_reason": diag.get("bailout_reason"),
+                "final_lambda": result.get("final_lambda"),
+                "gradient_enhancement_E": diag.get("gradient_enhancement_E"),
+                "outer_iterations": diag.get("outer_iterations"), "wallclock": dt,
+            }
+            if diag.get("converged"):
+                phi_grid = np.asarray(result["phi_grid"])
+                pi_grid = np.asarray(result["pi_grid"])
+                rfield_grid = np.asarray(result["rfield_grid"])
+                rmom_grid = np.asarray(result["rmom_grid"])
+                N_grid_arr = np.asarray(result["N_grid"])
+                row["msr_action"] = h.compute_msr_action(
+                    N_grid_arr, phi_grid, pi_grid, rfield_grid, rmom_grid, grid_retry, potential, dm,
+                    H_sq_nl_init, h.ALPHA,
+                )
+            else:
+                row["msr_action"] = None
+            rows.append(row)
+            print(f"  [D13] tau_multiplier={tau_multiplier}: converged={row['converged']} "
+                  f"final_lambda={row['final_lambda']!r} msr_action={row['msr_action']!r} "
+                  f"bailout={row['bailout_tag']} ({dt:.1f}s)", flush=True)
+
+    output = {
+        "m": m, "delta_Nstar": delta_Nstar, "n_retry": n_retry,
+        "tau_multipliers": list(tau_multipliers), "lambda_FI": lambda_FI,
+        "rows": rows,
+    }
+    h.save_json(f"{OUT_DIR}/diagnostic13_tau_unlock_n_retry.json", output)
+
+    print("\n--- Diagnostic 13 summary ---", flush=True)
+    print(f"  {'tau_multiplier':>14} {'converged':>10} {'final_residual':>16} {'bailout_tag':>24}", flush=True)
+    for row in rows:
+        res_str = f"{row['final_residual']:.6g}" if row["final_residual"] is not None else "None"
+        print(f"  {row['tau_multiplier']:>14} {str(row['converged']):>10} "
+              f"{res_str:>16} {str(row['bailout_tag']):>24}", flush=True)
+
+    return output
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -1235,6 +1435,7 @@ _DIAGNOSTIC_DISPATCH = {
     "10": lambda args: diagnostic_10_sector_attribution(),
     "11": lambda args: diagnostic_11_corridor_edge_proximity(),
     "12": lambda args: diagnostic_12_relaxed_corridor_retry(),
+    "13": lambda args: diagnostic_13_tau_unlock_n_retry(),
 }
 
 
@@ -1248,8 +1449,9 @@ def create_parser() -> argparse.ArgumentParser:
         "--diagnostic", nargs="+", default=["all"],
         choices=sorted(_DIAGNOSTIC_DISPATCH) + ["all"],
         help="Which diagnostic(s) to run (default: all). '8a'=alpha "
-             "sensitivity, '8t'=tau sensitivity (currently raises "
-             "NotImplementedError -- see module docstring).",
+             "sensitivity, '8t'=tau sensitivity, '13'=tau_multiplier "
+             "unlock retry at n=9 (prompt 28; see that function's own "
+             "docstring for why this is '13' and not '11').",
     )
     parser.add_argument(
         "--alpha-values", type=str, default="0.01,0.05,0.1,0.3",
