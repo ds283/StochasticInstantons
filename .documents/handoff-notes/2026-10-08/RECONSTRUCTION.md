@@ -23,7 +23,9 @@ The Project's own listing shows about 25 earlier instanton conversations
 between 15 June and 30 June (the FullInstanton boundary-condition work, the
 first-passage/backward-Kolmogorov thread, the Ito-isometry and Euclidean-vs-
 real-time threads, the DOE/Latin-hypercube sampling work, the Halliwell–Hawking
-reading). The 12 July SBP thread cites the 18 June conversation
+reading). (The first-passage and Euclidean-vs-real-time threads in fact date
+from 27–28 April and 7 May; their 30 June last-activity stamps placed them in
+this range of the listing. See Part A0.) The 12 July SBP thread cites the 18 June conversation
 "StochasticInstanton codebase and FullInstanton boundary conditions" for the
 stalled Gaussian-expansion argument. **The window should be extended back to
 14 June (the Project's creation date).** At the far end the last relevant
@@ -48,9 +50,40 @@ patches arise at spacelike separation and cannot be a single-patch history
 integral, and the two agreed limitations of Briaud et al. for the PBH
 problem (typical rather than conditioned neighbours; no slope–peak coupling
 in the rare-event geometry), with the conclusion that a gradient-corrected
-formalism conditioned on the rare event is "a natural next step". The other
-two chats should be recovered the same way, or by an export window reaching
-back to April.
+formalism conditioned on the rare event is "a natural next step".
+
+The other two were captured verbatim on 8 October through the conversation
+API from the same browser pane (same directory; SHA-256 checked against the
+source) and change nothing below:
+
+- **"First passage probabilities and backward Kolmogorov equations"
+  (27–28 April).** The origin of three ideas that A0.1 and A0.3 take as
+  given. (i) The density character of a BKE solution is fixed by its
+  boundary/initial data, not by the PDE: Ezquiaga–García-Bellido–Vennin's
+  `P_Φ(𝒩) = δ(𝒩)` on `𝒞_end` makes `P` a density in `𝒩` and a scalar in
+  `Φ`. The survival-probability conditions of 2510.04707 Eqs. (2.10a,b),
+  built from a transition density in both `x` and `x₀`, give a density in
+  `x₀`. Their construction is correct but differs from the standard one, and
+  neither the choice nor the reading of `Φ` as the scale/mass label is
+  stated in their paper ("may have to ask Vincent"). This is the
+  background to the 24 June `δ(φ − φ₀)` proposal in A0.3. (ii) **Olympus
+  Mons versus Cerro Torre:** in the rare limit the eigenmode result reports
+  the least-suppressed channel (slow accumulation, broad base). PBH
+  formation needs the rapid-accumulation channel, so
+  `P_CerroTorre ≤ P_OlympusMons ≈ P_Φ(𝒩)`, and the instanton can select
+  that channel through its boundary conditions. (iii) A transition is the
+  triple (initial field, final field, `N★`), with `δN = N★ − N_det`. The
+  mass depends on all three, and `P(M)` integrates over the initial and
+  final configurations with a prior, which needs density character in
+  both. This is the motivation for the `δN★` / `φ_final` parametrisation
+  in A0.1.
+- **"Real time vs Euclidean instantons" (7 May).** General background, not
+  specific to the project: an instanton is a saddle of the complexified
+  path integral, and the Euclidean contour only makes that saddle real (an
+  "accident" of the saddle, not a property of the framework). It continues
+  into a digression on the geometric reading of GR. It bears loosely on the
+  A0.1 brainstorm about ending a Euclidean segment at `Im π → 0`, but
+  records no decision.
 
 ### A0.1 Physics foundations (from `summary-D-june-physics.md`)
 
@@ -209,8 +242,9 @@ lands. Summary F's §2 table classifies all 32 claims.
 - The exponent of `S` in `δN★` saturates at about 1.2–1.4 rather than
   Vennin's 1; this is recorded but is now doubly suspect (A0.1 and B.10).
 - `r_max ≠ r_peak` in 289 of 841 Phase-A rows, confined to `ΔN ≲ 0.45 δN★`
-  (a tall narrow spike on a broad base): the quantitative precursor of the
-  "Olympus Mons versus Cerro Torre" language. The mass estimate to use
+  (a tall narrow spike on a broad base): the first quantitative instance of
+  the "Olympus Mons versus Cerro Torre" distinction, which itself dates from
+  the 28 April first-passage conversation (Part A0). The mass estimate to use
   when they diverge is unresolved ("talk to Sam Young").
 - David's self-consistency doubt at large `δN★`: the per-step kick is far
   out on the Gaussian tail, so the saddle point probably *underestimates*
