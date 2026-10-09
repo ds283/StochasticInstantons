@@ -1,6 +1,6 @@
 # Open issues — project-wide index
 
-**Last updated:** 2026-10-08 · **41 open**, 23 closed. Seeded from
+**Last updated:** 2026-10-09 · **53 open**, 24 closed. Seeded from
 [`RECONSTRUCTION.md`](handoff-notes/2026-10-08/RECONSTRUCTION.md) Parts A0–D
 and D0, the open-issue `todo`s of
 [`onion_model.tex`](../notes/onion-model/onion_model.tex) as rewritten in
@@ -61,6 +61,28 @@ Decisions and research questions about the model itself. The tex states the
 | `[no-level-1-calculation]` | R A0.1, A0.3 | research | The MSR instanton (Level 2) stitches Level-1 horizon-exit kicks, but no Level-1 calculation at `O(1)` amplitude exists. At large `δN★` the per-step kick is far out on the Gaussian tail and the saddle probably underestimates the probability; `δN★/(σ ΔN)` was never plotted. The Euclidean "end at `Im π → 0`" idea is recorded only in R. |
 | `[non-markovian-noise]` | tex `sec:open-issues` todo; R B.2 | research | A diffusion model with memory (Mukhanov–Sasaki mode functions) is non-Markovian and changes the phase space of `H_FP`, not only its coefficients. The present construction is the truncated Markovian problem. |
 | `[shell-ends-inflation-before-core]` | R A0.1 | research | A shell reaching the end of inflation before the core is "a genuinely problematic physical situation" (30 June). The model does not handle it and the tex does not mention it. |
+
+## 1a. Calculation review R1 (2026-10-08) — board: [`notes/OPEN-ISSUES.md`](../notes/OPEN-ISSUES.md)
+
+Issues with the calculation in `onion_model.tex` raised by the review
+[`notes/reviews/2026-10-08-onion-model-calculation-review.md`](../notes/reviews/2026-10-08-onion-model-calculation-review.md)
+(index: [`notes/reviews/INDEX.md`](../notes/reviews/INDEX.md)). The board
+holds the content; these rows are pointers only.
+
+| Issue | Source | Owner | Hook |
+|---|---|---|---|
+| `[noise-correlation-inverted-inequality]` | board §1 | David | tex `sec:shell-averaging` inverts `1/(σaH)` against the Hubble radius; the angle-averaged noise is rank one (sinc) or banded (smooth window), not `δ(y−y')`. Transcription error agreed 2026-10-09. |
+| `[point-constraint-uv-divergence]` | board §1 | David / rebuild | White-in-`y` noise plus a point terminal constraint under hyperbolic dynamics: continuum cost zero, discrete cost `∝ w_c n_c`; `λ_GCI ∝ w_core` is the symptom. Decisive test: action against `n_max`. |
+| `[advection-noise-dependence-breaks-canonical-structure]` | board §1 | rebuild | `A` carries the core noise sourcing, so `H_FP` is not `⟨P,b⟩ + ½⟨P,ΣP⟩` and the forward flow is not linear in `P`; canonical momentum is shifted. Small in slow roll. |
+| `[gradient-term-order-sigma-squared]` | board §2 | David | Size of the gradient term at the core undecided (small against slow-roll drifts, not obviously against a stalled core's drift); diagnostic on existing embeddings specified on the board. `σ` policy decided; `ln σ` shift in scale assignment (cf. `[core-scale-mass-attribution]`). |
+| `[terminal-constraint-on-patch-average]` | board §2 | rebuild | Constrain the innermost-patch average, not the point value. |
+| `[alpha-order-one]` | board §2 | rebuild | Take `α = O(1)` once a kernel is in place. |
+| `[noise-kernel-in-discrete-hamiltonian]` | board §3 | rebuild | Carry `K_ij` in `H_h`; rank one or banded; `σ` and window explicit. |
+| `[newton-on-hamiltonian-bvp]` | board §3 | rebuild | Lagrangian-built `H_h`; Newton on the full `(u,P)` BVP with `λ` augmented, not Picard. |
+| `[discrete-gcl-moving-grid]` | board §3 | rebuild | Enforce `V̇_j = (D(𝒱A))_j` discretely or use split-form advection. |
+| `[grid-core-resolution]` | board §3 | rebuild | Radau, mapped or multi-element grid to resolve `1/n(1)` and `δ*` at the core. |
+| `[response-caustic-layer-at-core]` | board §3 | rebuild | Slow characteristic changes sign at `δ* ≈ 2ε/(Δs−1)`; response field piles up there. |
+| `[neumann-as-natural-bc]` | board §3 | rebuild | Neumann is the natural BC of the symmetric-form gradient term; no penalty needed for it. |
 
 ## 2. FullInstanton — the Hamiltonian-module pilot (P2)
 
@@ -148,3 +170,4 @@ in-place rewrite. Phase 0 (8 October 2026) dealt with all but the one below.
 | `[doc-tau-study-recommends-finer-sweep]`: P28's "Combined recommendation" | 2026-10-08 | Status note: superseded, the closure is to be replaced, not tuned. Correction to the earlier hook: the argument against the sweep was made on 10 July (summary C), not 9 July, and David did not rule. |
 | `[doc-hfp-structure-status]`, `[doc-sat-closure-status]`, `[doc-hfp-calculation-mu-convention]`: the three 10 July notes | 2026-10-08 | Status notes saying which sections stand and which are superseded, with inline markers at HSS §2(d), SCS §3.1, §4.4, §6 and HCalc §7. |
 | `[doc-chat-only-documents]`: `session_summary.md`, `analysis_protocol.md` (24–25 June) | 2026-10-08 | Recovered verbatim from the claude.ai export into `grid-sampling/2026-06-24-session-summary.md` and `2026-06-25-analysis-protocol.md`, with provenance and status headers. |
+| `[inner-edge-coarse-graining-radius-or-fixed]` (board `notes/OPEN-ISSUES.md`) | 2026-10-09 | David's decision: inner edge at the current coarse-graining scale `R_σ(N)`; a change of definition. Fixed-edge alternative not taken up. |
