@@ -1,8 +1,8 @@
 # Campaign — dk-and-rpk-migration
 
 **Written:** 2026-10-11 on `main` at `7bb3efd`, by Claude Opus 5.5. **Status: reviewed; prompts
-01–04 written (2026-10-12).** All eight decisions of §6.1 are ruled: U3 and U8 on their own, and
-U1, U2 and U4–U7 as recommended, on 2026-10-12. P1–P19 stand as proposed (§6.2). The DatastoreKit
+01–04 and 01a written (2026-10-12); 01 landed.** All nine decisions of §6.1 are ruled: U3, U8 and
+U9 on their own, and U1, U2 and U4–U7 as recommended, on 2026-10-12. P1–P19 stand as proposed (§6.2). The DatastoreKit
 release U3 asked for is out, as `v0.3.0` (§0.4).
 
 *Revised 2026-10-12, when the user ruled U3: the row's timestamp goes into DatastoreKit's
@@ -13,6 +13,13 @@ loses its timestamp half, and 08 pins that release in place of `v0.2.3`.*
 *Revised 2026-10-12 again, when DatastoreKit released it as **`v0.3.0`** (tag object `bf0a3b2`,
 commit `2f5417e`), a minor release since it adds to the API. The brief keeps its name, as the
 record of the request; the plan pins `v0.3.0` (§0.4).*
+
+*Revised 2026-10-12 a third time, after 01's review, when the user ruled **U9**: SI's rehearsal
+cluster is isolated from other projects' (its own temp dir and ports) and stops only itself, never
+by `ray stop`, and a lock shared with ChamPBH and SecondaryGWKit lets one rehearsal run at a time
+on this machine. The contract is [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md); a new
+prompt, 01a, implements SI's side before 02. §2, §4, §4.1, §5 (rules 17–18) and §6.1 amended, and
+prompt 02 with them.*
 
 It is planned from:
 - **the two packages' adoption checklists for StochasticInstantons (SI)**, which are data, not
@@ -361,6 +368,7 @@ Released by DatastoreKit's `object-timestamp` campaign (closed at `5f972be`), fr
 | # | Prompt | Covers | Model |
 |---|---|---|---|
 | 01 | `01-rehearsal-tooling-and-run-provenance.md` | P5: each driver prints the installed `datastorekit` and `raypoolkit`. `tools/compare_stores.py` (§4.2), with its tests. The rehearsal scripts (§4.1) | Opus |
+| 01a | `01a-isolate-the-rehearsal-cluster.md` | **U9.** `ray_cluster.sh start\|stop\|status`: SI's cluster on its own temp dir and ports, stopped by a targeted stop, never `ray stop`, under the shared rehearsal lock ([`rehearsal-lock-brief.md`](rehearsal-lock-brief.md)). Proved on a real cluster beside a decoy, with no build | Sonnet |
 | 02 | `02-rehearse-the-start-tree.md` | **RH0.** §4.1 at 01's tree. It measures whether two builds of one tree agree bit for bit, which sets RH1's and RH2's criterion (§4.3). It also measures the `slow` block once, for 09 | Opus |
 | 03 | `03-pin-raypoolkit-v0.2.0.md` | The `raypoolkit` pin in a commit of its own, installed; one distribution added | Sonnet |
 | 04 | `04-adopt-raypoolkit.md` | **The RayPoolKit swap.** `RayTools/` goes; 3 imports rewritten; `_default_store_handler` dropped (7 lines). **RayPoolKit's G4 holds** by its checklist | Sonnet |
@@ -380,6 +388,7 @@ on another's *scope*. The files are still written in batches, each just before i
 that each carries the previous review's findings:
 - **01–04** are written first, once the user has reviewed this plan and ruled on U1–U7 and
   P1–P19. *Written 2026-10-12.*
+- **01a** follows 01's review and the ruling U9. *Written 2026-10-12.* 02 waits on it.
 - **05–07** follow 02's review. RH0's reproducibility (§4.3) fixes 07's criterion.
 - **08–11** follow 07's review. 07's results note fixes the counts and names they cite. The
   release U3 asked for is tagged (`v0.3.0`, §0.4), so 08 waits on nothing else.
@@ -439,6 +448,18 @@ before each dispatch.
   5. **Suites:** the default run gives 631 plus the new tests, all passing; `integration` gives
      61.
 - **Out.** Any run of `main.py` on a store (02 does that).
+
+**01a — Isolate the rehearsal cluster** (Sonnet; added for U9).
+- **What it adds.** `.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh`: `start` takes the
+  shared lock and starts SI's cluster on `/tmp/ray-si` and its own ports; `stop` stops it by a
+  targeted stop and releases the lock; `status` reports both. The contract is
+  [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md) §2–§3, shared with ChamPBH and SGK.
+- **Acceptance.** A real start and stop, with no build: a second acquire refused; a decoy cluster
+  on Ray's defaults left running by SI's stop; SI's actors listed by an invocation that reaches
+  SI's cluster alone; a lock held by another project neither broken nor released. Three
+  breakages. The suites unchanged.
+- **Out.** Any build; any change to 01's scripts; ChamPBH and SGK, which carry out the brief
+  themselves.
 
 **02 — Rehearse the start tree, RH0** (Opus).
 - **What it does.** Runs §4.1's protocol with slug prefix `dk-and-rpk-migration-02`, at 01's tree,
@@ -863,6 +884,8 @@ and it is why §4.2 reads files directly. Neither 09 nor 10 opens one through th
   - `tools/compare_stores.py` and its schema snapshot, run by 02, 05, 06, 07, 09 and 11;
   - the rehearsal scripts, which 07 and 11 run **unchanged**. A change to one is a deviation,
     logged and reviewed, since L4 compares their outputs.
+- **01a ships** `ray_cluster.sh` (U9), with which 02, 07 and 11 start and stop SI's cluster under
+  the shared rehearsal lock (§4.1).
 - **02, 07 and 11 each add a section** to `.documents/dk-and-rpk-migration/verification.md`, which
   02 creates: §1 RH0, §2 RH1, §3 RH2. 12 adds §4, the close.
 - **03 and 08 ship the pins**, exactly as §2.2 gives them, in `requirements.txt` and in no other
@@ -881,15 +904,23 @@ and it is why §4.2 reads files directly. Neither 09 nor 10 opens one through th
 
 Run by the agent in the session (U2), for prompts 02, 07 and 11 only. NN is the prompt's number.
 
-**The cluster.**
-- Before anything, the agent checks that no Ray cluster is up (`./venv/bin/ray status`). If one
-  is, it stops and asks: the cluster may be the user's, or CPBH's campaign's.
-- Otherwise it starts one with `./venv/bin/ray start --head --num-cpus 4`, and passes its address
-  to every driver with `--ray-address`. Four CPUs make the ten gradient solves run in three waves,
+**The cluster** (*amended 2026-10-12 for U9*; [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md)).
+- Before anything, the agent starts SI's cluster with 01a's
+  `.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start "dk-and-rpk-migration NN (RHk)"`.
+  It takes the rehearsal lock shared with ChamPBH and SGK, and starts a cluster on `/tmp/ray-si`
+  and SI's own ports, four CPUs, at `127.0.0.1:6390`. **If the lock is held, the script refuses
+  and prints its owner; the agent stops and asks** (another project's rehearsal is running, or a
+  stale lock needs the user). It never waits on the lock and never breaks it.
+- It passes `127.0.0.1:6390` to every driver with `--ray-address`, and addresses every `ray` CLI
+  call explicitly, as `start` prints. Four CPUs make the ten gradient solves run in three waves,
   so that an interrupt can fall between waves (build 2 below). The CPU count changes no result:
   each solve is one task.
-- It runs `./venv/bin/ray stop` at the end, and after any stop. It never stops a cluster it did not
-  start.
+- At the end, and after any stop, it runs `ray_cluster.sh stop`, which stops SI's processes alone
+  and releases the lock. **No prompt runs `ray stop`** (§5 rule 17): it stops every Ray process on
+  the machine, other projects' included.
+- Other projects' clusters may be up meanwhile (isolated, not rehearsing); the agent leaves them
+  alone. The machine should still be otherwise idle: the lock keeps rehearsals apart, not test
+  suites, so the agent asks the user to hold other heavy work off if the load is high.
 
 **The grid** (P1) is `quadratic-minimal.yaml`, a configuration in the tree:
 - quadratic potential, `m = 10⁻⁵ M_P`, `φ₀ = 15 M_P`, `π₀ = 0`, 10 shards, tolerances `10⁻⁸`,
@@ -1085,6 +1116,15 @@ convention), plus:
       `Datastore/`, `config/` or the drivers;
     - and the `slow` block once more in 09, which touches `ComputeTargets/`
       (`.claude/rules/test-selection.md`).
+17. **Ray** (U9, ruled 2026-10-12). **No prompt runs `ray stop`**, which stops every Ray process on
+    the machine. A cluster is started and stopped only by 01a's `ray_cluster.sh` (from 01a on),
+    and every driver and `ray` CLI call is given its address. The `integration` suite runs as
+    `RAY_ADDRESS=local ./venv/bin/python -m pytest -m integration …`, so that `live_pool`'s bare
+    `ray.init()` starts a private instance and can never attach to another cluster.
+18. **The rehearsal lock** (U9). A rehearsal (02, 07, 11) holds
+    `~/ScienceData/.rehearsal-lock` from before its cluster starts until after it has stopped
+    ([`rehearsal-lock-brief.md`](rehearsal-lock-brief.md) §2). A held lock is a stop, never a
+    wait.
 
 ### 5.1 The results-note template
 
@@ -1100,8 +1140,8 @@ convention), plus:
 
 ### 6.1 Ruled by the user
 
-Each row gives the planner's recommendation first. **All eight are ruled.** U3 and U8 were ruled
-on 2026-10-12, as their rows say. **U1, U2 and U4–U7 were ruled on 2026-10-12 as recommended**:
+Each row gives the planner's recommendation first. **All nine are ruled.** U3, U8 and U9 were
+ruled on 2026-10-12, as their rows say. **U1, U2 and U4–U7 were ruled on 2026-10-12 as recommended**:
 the recommendation in each row is the decision, and the alternative beside it is rejected.
 
 | | Recommended | The alternative, and why not |
@@ -1114,6 +1154,7 @@ the recommendation in each row is the decision, and the alternative beside it is
 | **U6** — the inventory | **Port it** (10): `inventory_spec` on the factories, `read_inventory` on a closed store, an SI report. It also brings the problem checks (orphans, unresolved parents) that the old inventory never had | Keep a reader of SI's own over the closed store: a second implementation of what the package now provides |
 | **U7** — when, relative to P2 | **Before P2.** 07 tags its commit `pre-datastorekit`, the last commit on SI's own layer, rehearsed. P2's audit of the June and July stores runs from a worktree at that tag | After P2's audit, at the start of P2 proper, as the checklist advises. That interleaves two campaigns, and P2's first builds would be on the old layer |
 | **U8** — spec coverage, for the fingerprint (**ruled 2026-10-12**) | **10 proves that every registered class is covered** (10's acceptance item 5): a spec of its own, read through an owner's, or excluded by name with a reason, enforced by a test. SGK is extracting its `RunRegistry` into RunRegistryKit, which SI is expected to adopt after this campaign; its store fingerprint is taken through `read_inventory`, which reads only the classes that declare a spec and passes over the rest **silently**, and the user ruled that its store layer will not run without a fingerprinter. Item 1's "each factory whose class the report covers" is the right test for a report, not for a fingerprint. Measured at `7bb3efd`, item 1's list misses `redshift` and `IntegrationSolver`, and `GradientCoupledInstanton`'s second child table cannot be reached by a spec. The reasoning is SGK's `docs/runregistry-extraction-audit.md` §0 (D4, D5) and §7. Adopting RunRegistryKit stays out of this campaign's scope | Leaving item 1 as written: a store fingerprint would omit two registered classes and one table of results without saying so |
+| **U9** — other projects' Ray clusters (**ruled 2026-10-12**) | **Isolate, and take a shared lock.** SI's cluster runs on its own temp dir and ports and is stopped by a targeted stop, never `ray stop`; one lock, `~/ScienceData/.rehearsal-lock`, shared with ChamPBH and SGK, lets one rehearsal run at a time. ChamPBH adopts the same targeted stop, and SGK takes the lock (its in-process clusters are already isolated). The contract is [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md); 01a implements SI's side. Raised at 01's review: SGK's rehearsal ran beside this campaign's suites, ChamPBH's protocol runs a bare `ray stop`, and ChamPBH's BBN wall-clock limit makes its results sensitive to load | Moving SI's campaign to another machine: a rebuilt venv, two unpushed branches, and sibling repositories at the same paths, for nothing isolation does not give. Interleaving by hand, with no lock: a `ray stop` from either side still kills the other's build |
 
 ### 6.2 Proposed by the planner
 

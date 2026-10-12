@@ -1,7 +1,7 @@
 # dk-and-rpk-migration campaign — implementation state
 
-**Last updated:** 2026-10-12 · **Status: LIVE — 4 of 12 prompts written (01–04), 01 landed and reviewed.
-U1–U8 ruled (2026-10-12); P1–P19 stand as proposed. The DatastoreKit release requested by
+**Last updated:** 2026-10-12 · **Status: LIVE — 5 of 13 prompts written (01–04, 01a), 01 landed and reviewed.
+U1–U9 ruled (2026-10-12); P1–P19 stand as proposed. The DatastoreKit release requested by
 [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is out, as `v0.3.0` (README §0.4).**
 The plan is [`README.md`](README.md), written on 2026-10-11 at `7bb3efd` and reviewed on
 2026-10-12. Prompts 01–04 were written once the user had ruled (README §2.1).
@@ -41,6 +41,7 @@ planner recommended:
 | **U6** — the inventory | ported to `inventory_spec` and `read_inventory` (10) |
 | **U7** — relative to P2 | before P2; the tag `pre-datastorekit` on 07's commit; P2's audit reads the June and July stores at the tag |
 | **U8** — spec coverage, for the fingerprint | **ruled 2026-10-12:** 10 proves every registered class is covered by a spec, read through one, or excluded with a reason (10's acceptance item 5); it settles `redshift`, `IntegrationSolver` and `GradientCoupledInstanton`'s second child table (README §6.1) |
+| **U9** — other projects' Ray clusters | **ruled 2026-10-12, after 01's review:** isolate and lock. SI's cluster runs on `/tmp/ray-si` and its own ports and stops only itself, never by `ray stop`; one lock, `~/ScienceData/.rehearsal-lock`, shared with ChamPBH and SGK, lets one rehearsal run at a time. ChamPBH adopts the targeted stop; SGK takes the lock. Contract: [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md); SI's side is 01a (README §6.1) |
 
 **Proposed by the planner (README §6.2):** P1–P19, accepted as proposed: the user gave no ruling
 on any of them.
@@ -52,6 +53,7 @@ on any of them.
 | # | Prompt | Covers | Model | Written? | Landed? | Commit | Results note |
 |---|---|---|---|---|---|---|---|
 | 01 | [Rehearsal tooling and run provenance](01-rehearsal-tooling-and-run-provenance.md) | P3, P5; README §4.1–§4.2 | Opus | ✍️ 2026-10-12 | ✅ 2026-10-12 | `84a5cfc` | [`01-rehearsal-tooling-and-run-provenance.md`](../../.documents/dk-and-rpk-migration/01-rehearsal-tooling-and-run-provenance.md) |
+| 01a | [Isolate the rehearsal cluster](01a-isolate-the-rehearsal-cluster.md) | **U9**; `ray_cluster.sh`, the shared rehearsal lock | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
 | 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12 | ⬜ | — | — |
 | 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
 | 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
@@ -68,6 +70,7 @@ on any of them.
 
 **Held, by design (README §2.1).**
 - **01–04** are written after the user's review of the plan. *Written 2026-10-12.*
+- **01a** is written after 01's review, for U9. *Written 2026-10-12.* 02 waits on it.
 - **05–07** are written after 02's review: RH0's reproducibility sets RH1's criterion.
 - **08–11** are written after 07's review (`v0.3.0` is released).
 - **12** is written after 11's review.
@@ -83,6 +86,9 @@ before each dispatch:
 | **T1** | 01 | `utilities.installed_package_provenance()` and `format_package_provenance()`; one line in each of the three drivers, before `ray.init(`; `tests/test_package_provenance.py` | ✅ 20 tests; today `>> packages: datastorekit not installed; raypoolkit not installed` |
 | **T2** | 01 | `tools/compare_stores.py`: comparison by value, with the polymorphic references, the JSON columns and their timing keys, and the schema snapshot; `tests/test_compare_stores.py` | ✅ 24 tests; four polymorphic pairs, nine JSON columns, six timing keys |
 | **T3** | 01 | `.documents/dk-and-rpk-migration/rehearsal/`: `build.sh`, `interrupt_when.py`, `stage_counts.py` (with `tests/test_rehearsal_stage_counts.py`), `run_readers.sh` | ✅ 5 tests; usage checked; never run on a build |
+| **C1** | 01a | `ray_cluster.sh start\|stop\|status` in `.documents/dk-and-rpk-migration/rehearsal/`: SI's cluster on `/tmp/ray-si`, ports 6390/6391/8266/52366; the targeted stop | ⬜ |
+| **C2** | 01a | the shared rehearsal lock, by [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md) §2: acquire, refuse when held, owner file, checked release | ⬜ |
+| **C3** | 01a | the proof on a real cluster, no build: second acquire refused, a decoy on Ray's defaults survives SI's stop, SI's actors listed alone, another project's lock left alone | ⬜ |
 | **L1**–**L4** (RH0) | 02 | README §4.1 at 01's tree; §4.3's reproducibility measured for the dense and the scalars-only mode; L4 recorded as the baseline | ⬜ |
 | **V1** | 02 | `.documents/dk-and-rpk-migration/verification.md` created, with §1 RH0; the two schema snapshots | ⬜ |
 | **S1** | 02 | the `slow` block's result at the start tree, the baseline for 09 | ⬜ |
@@ -322,3 +328,23 @@ this follow-up, and one issue is opened from Observation 2.
   - *To 04's note:* `main.py`'s lines after `:47` have moved by one or two (results note,
     Observation 7); 04's citations of `:410`, `:497`, `:664`, `:824`, `:848`, `:1097` need the
     new numbers.
+
+### 5.6 U9 ruled, and prompt 01a written (2026-10-12)
+
+- **Why.** At 01's dispatch, SGK's `runregistry-extraction` rehearsal was running on this machine
+  (an in-process Ray instance, load average up to ≈ 500). Reading Ray 2.55.1 showed that `ray stop`
+  takes no address and stops every Ray process on the machine, and that ChamPBH's protocol runs it
+  after every rehearsal; two default `ray start --head` clusters also collide on 6379, 10001, 8265,
+  52365 and `/tmp/ray/ray_current_cluster`. ChamPBH's BBN wall-clock limit makes its results
+  sensitive to load.
+- **The user ruled U9:** stay on this machine; isolate SI's cluster and stop it by a targeted stop;
+  ChamPBH adopts the same stop; one lock shared by SI, ChamPBH and SGK keeps rehearsals apart. The
+  alternative considered was moving the campaign to another machine (a rebuilt venv, two unpushed
+  branches, the sibling repositories at the same paths, and all of RH0–RH2 there).
+- **Written:** [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md), the shared contract, for the
+  user to hand to ChamPBH's and SGK's sessions; prompt **01a**; README §2, §2.1, §2.2, §4, §4.1,
+  §5 (rules 17–18) and §6.1 (U9) amended; prompt 02 amended to use `ray_cluster.sh`, with its
+  board entry renumbered to §5.8 (01a's is §5.7).
+- **Prompts 03 and 04** run only the suites, so rule 17 covers them: their orchestrator notes give
+  the `RAY_ADDRESS=local` form. Their text is unchanged.
+

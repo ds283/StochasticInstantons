@@ -3,12 +3,18 @@
 **Campaign:** [`README.md`](README.md) · **Board items:** **L1**–**L4** (RH0), **V1**, **S1** ·
 **Board:** [`IMPLEMENTATION_STATE.md`](IMPLEMENTATION_STATE.md)
 **Written:** 2026-10-12, with prompts 01, 03 and 04, after the user's rulings (README §6.1).
+*Amended 2026-10-12 for **U9**, after 01's review: the cluster is started and stopped by 01a's
+`ray_cluster.sh`, under the rehearsal lock shared with ChamPBH and SGK, and never by `ray stop`
+(README §4.1, §5 rules 17–18).*
 **Gate:**
-- 01 landed and reviewed (board §1), and its scripts and tool are as its results note describes;
+- 01 and 01a landed and reviewed (board §1), and their scripts and tool are as their results notes
+  describe;
 - on branch `dk-and-rpk-migration`, no tracked change in `git status`;
 - the venv holds neither `datastorekit` nor `raypoolkit`;
-- **no Ray cluster is up** (`./venv/bin/ray status` finds none). If one is, stop and ask: it may be
-  the user's, or ChamPBH's campaign's;
+- **the rehearsal lock is free** (`.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh status`)
+  and no process names `/tmp/ray-si`. If the lock is held, stop and ask: another project is
+  rehearsing, or a stale lock needs the user. Other projects' clusters may be up; they are not
+  yours, and you leave them alone;
 - **the machine is otherwise idle.** No other session's test suite, rehearsal or build is running.
   ChamPBH's R0 ran at a load of 100 or more on 10 CPUs, because another session's suite shared the
   machine (ChamPBH board §5.3). If you cannot tell, ask the user before starting the cluster.
@@ -28,6 +34,9 @@ agent's work for prompts 02, 07 and 11, within README §4.1 and no further.
 3. Prompt 01's results note
    (`.documents/dk-and-rpk-migration/01-rehearsal-tooling-and-run-provenance.md`): the provenance
    line's format, the bookkeeping list, and each script's usage.
+4. Prompt 01a's results note (`.documents/dk-and-rpk-migration/01a-isolate-the-rehearsal-cluster.md`)
+   and [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md) §2–§3: how `ray_cluster.sh` starts and
+   stops SI's cluster, the actor line it prints, and the lock.
 4. ChamPBH's R0, as done (read only):
    - `/Users/ds283/Documents/Code/ChamPBH/prompts/dk-and-rpk-migration/logs/02-rehearse-the-start-tree.md`;
    - its board's §5.3 and the review below it.
@@ -81,14 +90,15 @@ answers three questions before anything changes:
 ### 1.2 The cluster
 
 1. Record `uptime` and the number of CPUs.
-2. Run `./venv/bin/ray start --head --num-cpus 4 --disable-usage-stats` from the repository root.
-   Four CPUs make the ten gradient solves run in three waves (README §4.1).
-   - Record the address. If `ray start` prints none, it is in `/tmp/ray/ray_current_cluster`
-     (`127.0.0.1:6379` by default; ChamPBH board §5.3).
-   - Pass it to every driver as `--ray-address`.
-3. At the end, and after any stop, run `./venv/bin/ray stop` **as a command of its own**. ChamPBH
-   found that it also kills a shell whose command line names Ray's processes. You stop only the
-   cluster you started.
+2. Run `.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start "dk-and-rpk-migration 02
+   (RH0)"` from the repository root. It takes the rehearsal lock and starts SI's cluster with four
+   CPUs, which make the ten gradient solves run in three waves (README §4.1).
+   - If it exits 3, the lock is held: stop and ask. Do not wait, retry or remove the lock.
+   - Record the address it prints (`127.0.0.1:6390`) and its actor line. Pass the address to every
+     driver as `--ray-address`, and use the actor line for every actor check.
+3. At the end, and after any stop, run `ray_cluster.sh stop` **as a command of its own**, and
+   confirm it reports the lock released. **Never run `ray stop`**: it stops every Ray process on the
+   machine, other projects' included (README §5 rule 17).
 
 ### 1.3 The builds
 
@@ -117,8 +127,8 @@ Wait for each to end before starting the next. **Do not poll.**
 4. **Between `resumed-a` and `resumed-b`:**
    - Read the closed `02-resumed.sqlite` read-only, and record how many `GradientCoupledInstanton`
      rows it holds, validated and not.
-   - Confirm that the killed driver's actors are gone (`./venv/bin/ray list actors --filter
-     "state=ALIVE"`), and record what you saw. If an actor of the killed job is still alive after
+   - Confirm that the killed driver's actors are gone, with the actor line `ray_cluster.sh start`
+     printed (filtered to `state=ALIVE`), and record what you saw. If an actor of the killed job is still alive after
      a minute, stop and ask.
 5. **`resumed-b`:** `build.sh 02 resumed resumed-b <address> dense`. Its open prunes what
    `resumed-a` left unvalidated.
@@ -141,11 +151,11 @@ Wait for each to end before starting the next. **Do not poll.**
 4. **The stage counts:** `stage_counts.py` on all five logs, saved.
 5. **The profile database** of `reference`: read it read-only, and record its tables and their
    row counts. It must exist and hold rows.
-6. `ray stop`, as its own command.
+6. `ray_cluster.sh stop`, as its own command; the lock released.
 
 ### 1.5 The `slow` block (S1)
 
-After `ray stop`, with the machine idle, run `./venv/bin/python -m pytest -m "slow and not
+After `ray_cluster.sh stop`, with the machine idle, run `./venv/bin/python -m pytest -m "slow and not
 integration"` once, in the foreground (69 tests at planning). Record:
 - the count and the duration;
 - each failure or error by test id, and each skip.
@@ -210,7 +220,9 @@ do `scalars` and `scalars-2`.
 5. **S1:** the `slow` block's result at the start tree is recorded.
 6. **No deliberate breakage** (README §5 rule 8): 02 changes no code. Each of its checks is one a
    bad build would fail.
-7. **The suites**, before `ray start`: the default and `integration` runs give 01's counts. 02
+7. **The suites**, before `ray_cluster.sh start`: the default and `integration` runs give 01's
+   counts (the latter as `RAY_ADDRESS=local ./venv/bin/python -m pytest -m integration`, README §5
+   rule 17). 02
    changes no code; record them, as `CLAUDE.md` asks.
 8. **The records**, in the same commit:
    - `.documents/dk-and-rpk-migration/verification.md`, created. It has an introduction (what the
@@ -222,14 +234,15 @@ do `scalars` and `scalars-2`.
      - the commands, verbatim.
    - `.documents/dk-and-rpk-migration/out/02-*`;
    - this board: the §1 row for 02; items L1–L4 (RH0), V1 and S1; gate RH0 in §2; and
-     `### 5.6 After prompt 02 (<date>)`;
+     `### 5.8 After prompt 02 (<date>)`;
    - a §3 entry for anything opened, with `.documents/OPEN-ISSUES.md` in the same commit.
 
 ---
 
 ## 4. Stop conditions — stop and ask
 
-- A Ray cluster is already up, the machine is not idle, or a store of §1.1 already exists.
+- The rehearsal lock is held, an SI cluster is already up, the machine is not idle, or a store of
+  §1.1 already exists.
 - `reference` takes more than 45 minutes (P1).
 - A build fails, raises, or does not end as §2 says. The start tree is SI's: the failure is not
   this campaign's to fix, and nothing after 02 is dispatched until the user has ruled.
@@ -249,7 +262,7 @@ do `scalars` and `scalars-2`.
   `.documents/dk-and-rpk-migration/out/02-*`, the results note and this board. No code.
 - It opens no store but its own four (and the readers' copies). It does not open
   `test-gradient*.sqlite`, anything under `out-*/`, or any June or July store.
-- It installs nothing, and leaves no Ray cluster running.
+- It installs nothing, never runs `ray stop`, and leaves no SI cluster running and the lock free.
 
 ---
 
