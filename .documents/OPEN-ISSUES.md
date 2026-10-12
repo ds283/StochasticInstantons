@@ -1,6 +1,6 @@
 # Open issues — project-wide index
 
-**Last updated:** 2026-10-12 · **59 open**, 24 closed. Seeded from
+**Last updated:** 2026-10-12 · **60 open**, 24 closed. Seeded from
 [`RECONSTRUCTION.md`](handoff-notes/2026-10-08/RECONSTRUCTION.md) Parts A0–D
 and D0, the open-issue `todo`s of
 [`onion_model.tex`](../notes/onion-model/onion_model.tex) as rewritten in
@@ -160,6 +160,7 @@ Opened at the campaign's planning, 2026-10-11, or at a review where the row says
 | `[test-counts-stale-in-claude-md]` | board §3 | dk-12 | `CLAUDE.md` and `test-selection.md` say 464 of 571; the default run selects 631 of 761. |
 | `[show-all-flag-unused]` | board §3 | dk-10 | `--show-all` is parsed and read by nothing. |
 | `[unified-pipeline-stores-null-instanton-labels]` | board §3 (01's review) | unowned | The unified pipeline stores `FullInstanton` and `SlowRollInstanton` with `label` NULL, so a scalars-only store's figure footers lack it. |
+| `[ray-address-auto-attaches-to-foreign-cluster]` | board §3 (SGK's review of the lock brief) | orchestrator (brief); the user (SI's default) | Drivers default to `--ray-address auto`, which attaches to any running cluster once isolated clusters keep `ray_current_cluster` out of `/tmp/ray`; only Ray's version check stops a cross-project attach today. |
 
 ## 7. Closed
 

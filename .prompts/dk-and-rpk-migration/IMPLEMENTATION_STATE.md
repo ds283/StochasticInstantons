@@ -136,6 +136,7 @@ Opened at planning, 2026-10-11, unless the row says otherwise.
 | `[test-counts-stale-in-claude-md]` | `CLAUDE.md:21` and `.claude/rules/test-selection.md:10`, `:26` say "464 of 571"; at `7bb3efd` the default run selects 631 of 761 | 12 |
 | `[show-all-flag-unused]` | `--show-all` is parsed (`config/argument_parser.py`) but read by nothing: `main.py`'s inventory truncates at 20 values regardless | 10 (`verbose`) |
 | `[unified-pipeline-stores-null-instanton-labels]` | *Opened 2026-10-12 at 01's review, from its Observation 2.* The unified pipeline (`--no-store-values`) constructs `FullInstanton` and `SlowRollInstanton` with no label (`ComputeTargets/pipeline.py:288-298`, `:304-314`), so they are stored with `label` NULL, where the per-stage queues store the factory's default (`Datastore/SQL/ObjectFactories/FullInstanton.py:149-155`, `SlowRollInstanton.py:148-154`). No science value differs and no reader fails, but the provenance footers read `label` (`plotting/provenance.py:46`), so a scalars-only store's figures lack it. `tools/compare_stores.py` treats the two columns as bookkeeping for this reason | unowned |
+| `[ray-address-auto-attaches-to-foreign-cluster]` | *Opened 2026-10-12, from SecondaryGWKit's review of the lock brief (§5.9).* Every project's drivers default to `--ray-address auto` (SI: `config/argument_parser.py:82`; ChamPBH: `DEFAULT_RAY_ADDRESS`; SGK: `main.py` and its `extract_*.py`). With `RAY_ADDRESS` unset and no `/tmp/ray/ray_current_cluster`, which the isolated clusters no longer write, `auto` attaches to an arbitrary running raylet's GCS, found by scanning processes, with no warning (Ray 2.55.1 `ray/_private/services.py:408-454`; SGK's 2.43.0 `:389-430`). Today a cross-project attach fails at `ray.init` on Ray's version check (`worker.py:2583`; SI 2.55.1 / Python 3.13, ChamPBH 2.53.0 / 3.13, SGK 2.43.0 / 3.12), reasoned from the code, not run. That guard is incidental: it does not cover a same-project instance (an integration suite's in-process Ray) and vanishes if the versions converge. Brief §3's "Address it explicitly" covers rehearsal drivers only, not a long build or an ad hoc run. Fix: amend the brief (§3, §5); whether SI's default changes is the user's to rule | orchestrator (brief); the user (SI's default) |
 
 ## 4. Resolved issues
 
@@ -431,3 +432,17 @@ here, with one addition.
 - **For 02's note:** ChamPBH has now carried out the amended brief (its 05a), so §5.7's caveat
   that ChamPBH's `ray stop` could kill SI's cluster no longer holds for ChamPBH's rehearsals; the
   lock still decides who runs.
+
+### 5.9 SGK's review of the lock brief; `[ray-address-auto-attaches-to-foreign-cluster]` opened (2026-10-12)
+
+SecondaryGWKit's agent raised two objections, handed over by the user.
+- **"SI's script hard-wires the lock to SI"** (owner file, release check). True, and intended: the
+  script is SI's tool for SI's cluster, and brief §5 asks SGK for a few protocol lines, not a
+  script. SI's script handles an SGK in-process owner correctly: `start` exits 3, `stop` and
+  `release_lock` refuse on the project mismatch and touch nothing, `status` checks the driver's
+  pid. No change.
+- **"`--ray-address auto` can attach SGK to another project's cluster."** The mechanism is
+  confirmed in both Ray versions; the consequence is, today, a loud failure at `ray.init` (version
+  mismatch), not work in the wrong cluster. The gap is the brief's and applies to all three
+  projects. Opened as `[ray-address-auto-attaches-to-foreign-cluster]` (§3). The brief amendment
+  (§3 "Address it explicitly", §5) is drafted for the user's review.
