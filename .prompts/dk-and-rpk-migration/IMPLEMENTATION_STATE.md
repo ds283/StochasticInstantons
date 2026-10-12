@@ -53,7 +53,7 @@ on any of them.
 | # | Prompt | Covers | Model | Written? | Landed? | Commit | Results note |
 |---|---|---|---|---|---|---|---|
 | 01 | [Rehearsal tooling and run provenance](01-rehearsal-tooling-and-run-provenance.md) | P3, P5; README §4.1–§4.2 | Opus | ✍️ 2026-10-12 | ✅ 2026-10-12 | `84a5cfc` | [`01-rehearsal-tooling-and-run-provenance.md`](../../.documents/dk-and-rpk-migration/01-rehearsal-tooling-and-run-provenance.md) |
-| 01a | [Isolate the rehearsal cluster](01a-isolate-the-rehearsal-cluster.md) | **U9**; `ray_cluster.sh`, the shared rehearsal lock | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
+| 01a | [Isolate the rehearsal cluster](01a-isolate-the-rehearsal-cluster.md) | **U9**; `ray_cluster.sh`, the shared rehearsal lock | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-12 (not yet reviewed) | this commit | [`01a-isolate-the-rehearsal-cluster.md`](../../.documents/dk-and-rpk-migration/01a-isolate-the-rehearsal-cluster.md) |
 | 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12 | ⬜ | — | — |
 | 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
 | 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
@@ -86,9 +86,9 @@ before each dispatch:
 | **T1** | 01 | `utilities.installed_package_provenance()` and `format_package_provenance()`; one line in each of the three drivers, before `ray.init(`; `tests/test_package_provenance.py` | ✅ 20 tests; today `>> packages: datastorekit not installed; raypoolkit not installed` |
 | **T2** | 01 | `tools/compare_stores.py`: comparison by value, with the polymorphic references, the JSON columns and their timing keys, and the schema snapshot; `tests/test_compare_stores.py` | ✅ 24 tests; four polymorphic pairs, nine JSON columns, six timing keys |
 | **T3** | 01 | `.documents/dk-and-rpk-migration/rehearsal/`: `build.sh`, `interrupt_when.py`, `stage_counts.py` (with `tests/test_rehearsal_stage_counts.py`), `run_readers.sh` | ✅ 5 tests; usage checked; never run on a build |
-| **C1** | 01a | `ray_cluster.sh start\|stop\|status` in `.documents/dk-and-rpk-migration/rehearsal/`: SI's cluster on `/tmp/ray-si`, ports 6390/6391/8266/52366; the targeted stop | ⬜ |
-| **C2** | 01a | the shared rehearsal lock, by [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md) §2: acquire, refuse when held, owner file, checked release | ⬜ |
-| **C3** | 01a | the proof on a real cluster, no build: second acquire refused, a decoy on Ray's defaults survives SI's stop, SI's actors listed alone, another project's lock left alone | ⬜ |
+| **C1** | 01a | `ray_cluster.sh start\|stop\|status` in `.documents/dk-and-rpk-migration/rehearsal/`: SI's cluster on `/tmp/ray-si`, ports 6390/6391/8266/52366; the targeted stop | ✅ `bash` 3.2 and 5.3; the stop also matches the Ray client server by its `--address` (D1) |
+| **C2** | 01a | the shared rehearsal lock, by [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md) §2: acquire, refuse when held, owner file, checked release | ✅ refusal exit 3, owner printed; stop refuses another's lock (exit 1) |
+| **C3** | 01a | the proof on a real cluster, no build: second acquire refused, a decoy on Ray's defaults survives SI's stop, SI's actors listed alone, another project's lock left alone | ✅ nine steps; decoy 19 processes before and after SI's stop; the actor line `ray list actors --address 127.0.0.1:6390` lists SI's actor alone; three breakages caught |
 | **L1**–**L4** (RH0) | 02 | README §4.1 at 01's tree; §4.3's reproducibility measured for the dense and the scalars-only mode; L4 recorded as the baseline | ⬜ |
 | **V1** | 02 | `.documents/dk-and-rpk-migration/verification.md` created, with §1 RH0; the two schema snapshots | ⬜ |
 | **S1** | 02 | the `slow` block's result at the start tree, the baseline for 09 | ⬜ |
@@ -348,3 +348,24 @@ this follow-up, and one issue is opened from Observation 2.
 - **Prompts 03 and 04** run only the suites, so rule 17 covers them: their orchestrator notes give
   the `RAY_ADDRESS=local` form. Their text is unchanged.
 
+### 5.7 After prompt 01a (2026-10-12)
+
+- **Landed:** this commit; [results note](../../.documents/dk-and-rpk-migration/01a-isolate-the-rehearsal-cluster.md).
+  `.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start|stop|status`, items C1–C3. No
+  Python changed; the suites are as at `84a5cfc` (680 and 61). No issue opened;
+  `.documents/OPEN-ISSUES.md` unchanged.
+- **The proof** (nine steps, on a real cluster, no build) passed under `/bin/bash` 3.2. A decoy on
+  Ray's defaults and `/tmp/ray-decoy` ran beside SI's cluster; SI's stop left its 19 processes
+  running and the decoy was then stopped by the same function. Another project's lock was refused
+  by `start` (exit 3) and left by `stop` (exit 1). A start takes 6 to 18 s, a stop about 19 s
+  (`gcs_server` ignores SIGTERM, so the 15 s grace always runs).
+- **The actor line** is `./venv/bin/ray list actors --address 127.0.0.1:6390`. The bare form
+  fails with two clusters up. `ray start --temp-dir /tmp/ray-si` writes `ray_current_cluster` into
+  `/tmp/ray-si`; nothing is written to `/tmp/ray`; the file survives the stop.
+- **A finding for the shared contract (D1).** Brief §3's stop (temp-dir match and descendants)
+  leaves Ray's client server (`python -m ray.util.client.server --address=127.0.0.1:<GCS>
+  --port=<client port>`) running: it has parent pid 1 and no temp dir. SI's stop adds it as a
+  second seed. **ChamPBH's stop needs the same;** the brief is the orchestrator's to amend.
+- **Breakages** B1–B3 caught (B2 by the start's stale-process guard, exit 4, not by the lock
+  alone; B3 needs both owner checks removed).
+- **To 02:** use `ray_cluster.sh start|stop` as README §4.1 says; exit 3 means stop and ask.
