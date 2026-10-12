@@ -53,7 +53,7 @@ on any of them.
 | # | Prompt | Covers | Model | Written? | Landed? | Commit | Results note |
 |---|---|---|---|---|---|---|---|
 | 01 | [Rehearsal tooling and run provenance](01-rehearsal-tooling-and-run-provenance.md) | P3, P5; README §4.1–§4.2 | Opus | ✍️ 2026-10-12 | ✅ 2026-10-12 | `84a5cfc` | [`01-rehearsal-tooling-and-run-provenance.md`](../../.documents/dk-and-rpk-migration/01-rehearsal-tooling-and-run-provenance.md) |
-| 01a | [Isolate the rehearsal cluster](01a-isolate-the-rehearsal-cluster.md) | **U9**; `ray_cluster.sh`, the shared rehearsal lock | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-12 (not yet reviewed) | this commit | [`01a-isolate-the-rehearsal-cluster.md`](../../.documents/dk-and-rpk-migration/01a-isolate-the-rehearsal-cluster.md) |
+| 01a | [Isolate the rehearsal cluster](01a-isolate-the-rehearsal-cluster.md) | **U9**; `ray_cluster.sh`, the shared rehearsal lock | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-12 | `3556148` | [`01a-isolate-the-rehearsal-cluster.md`](../../.documents/dk-and-rpk-migration/01a-isolate-the-rehearsal-cluster.md) |
 | 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12 | ⬜ | — | — |
 | 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
 | 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
@@ -78,6 +78,7 @@ on any of them.
 Orchestrator notes are written one prompt at a time, in [`orchestrator/`](orchestrator/), just
 before each dispatch:
 - [`prompt-01.md`](orchestrator/prompt-01.md) — used for 01 (`b4088d1`).
+- [`prompt-01a.md`](orchestrator/prompt-01a.md) — used for 01a (`37126a2`).
 
 ### 1.1 Items
 
@@ -350,7 +351,7 @@ this follow-up, and one issue is opened from Observation 2.
 
 ### 5.7 After prompt 01a (2026-10-12)
 
-- **Landed:** this commit; [results note](../../.documents/dk-and-rpk-migration/01a-isolate-the-rehearsal-cluster.md).
+- **Landed:** `3556148`; [results note](../../.documents/dk-and-rpk-migration/01a-isolate-the-rehearsal-cluster.md).
   `.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start|stop|status`, items C1–C3. No
   Python changed; the suites are as at `84a5cfc` (680 and 61). No issue opened;
   `.documents/OPEN-ISSUES.md` unchanged.
@@ -369,3 +370,40 @@ this follow-up, and one issue is opened from Observation 2.
 - **Breakages** B1–B3 caught (B2 by the start's stale-process guard, exit 4, not by the lock
   alone; B3 needs both owner checks removed).
 - **To 02:** use `ray_cluster.sh start|stop` as README §4.1 says; exit 3 means stop and ask.
+
+**Orchestrator review of prompt 01a (2026-10-12)**, by orchestrator note
+[`prompt-01a.md`](orchestrator/prompt-01a.md), at `3556148`. All six checks pass. Residue fixed in
+this follow-up, and the shared brief amended with D1.
+- **(1) Scope.** Three files: the script, the results note, the board. The tree is clean.
+- **(2) Reading.** No `ray stop` command in the script. The lock: `mkdir` without `-p` on
+  `$HOME/ScienceData/.rehearsal-lock`, the seven owner keys in the brief's order, written through
+  `owner.tmp`, released only after the owner's `project` and `ray_temp_dir` are checked (in `stop`
+  before anything is signalled, and again in the release). The stop: the temp dir as a whole path
+  component in both spellings, the client-server seed, descendants captured before signalling,
+  the script and its ancestors exempt, `SIGTERM`, grace, `SIGKILL`, and the GCS port confirmed free.
+- **(3) The proof, re-run by the orchestrator** under `/bin/bash` 3.2, with no other Ray process on
+  the machine: `start` in 8 s with the owner file as specified; a second `start` exit 3 with the
+  owner printed; a decoy on Ray's defaults with `/tmp/ray-decoy`; a detached actor on each cluster,
+  each listed by its own `--address` and not by the other's. SI's set was 19 processes (the
+  actor's worker included), the decoy's 19, disjoint, and together every Ray process running.
+  `stop` took 18 s (`gcs_server` and the raylet `SIGKILL`ed after the grace); every SI pid gone;
+  6390, 6391, 8266 and 52366 free; the lock released; the decoy's set identical and its actor still
+  answering. The decoy then stopped by the same function; nothing left; all eight ports free.
+- **(4) Breakages**, replayed without signalling anything: B1 widens SI's targets from 0 to 3 of a
+  running decoy's processes; B2 makes `acquire_lock` succeed on a held lock (the start's
+  stale-process guard, D3, is then the only defence, as the agent found); B3 lets `stop` remove a
+  stand-in ChamPBH lock. Each reverted; the tree clean.
+- **(5) Suites.** No Python changed since `84a5cfc` (`git diff --stat 84a5cfc 3556148 -- '*.py'`
+  is empty); the agent's runs, before any cluster, gave 680 and 61.
+- **(6) Records and leftovers.** Results note (README §5.1) and board §1 row, C1–C3, §5.7 present.
+  No Ray process, no lock; the 17 store files unchanged.
+- **D1 is accepted and carried into the brief** (§3 now names the client-server seed, the four
+  ports, the measured actor command and where `ray_current_cluster` goes, and the hazard to a user
+  shell that names the temp dir). D2–D8 are accepted.
+- *Residue fixed here:* "this commit" → `3556148` (board and results note); "(not yet reviewed)"
+  removed; this note added to the list of orchestrator notes.
+- **Handed to 02's note:** the stop takes about 19 s; nothing else may name `/tmp/ray-si` during a
+  stop; 01a's `ray_current_cluster` is in `/tmp/ray-si`, so `ray` CLI calls without `--address`
+  still go wrong with two clusters up. ChamPBH and SGK must carry out the amended brief before
+  their next rehearsal; until ChamPBH does, its `ray stop` can still kill SI's cluster, so 02
+  runs only when the user confirms ChamPBH is not about to rehearse.

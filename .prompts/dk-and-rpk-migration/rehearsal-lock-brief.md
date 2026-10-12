@@ -4,6 +4,11 @@
 Claude Opus 5.5, after the user's ruling **U9** (README §6.1 there).
 **For:** SI (its prompt 01a implements it), **ChamPBH** (before its `dk-and-rpk-migration` prompt
 06 is dispatched) and **SecondaryGWKit** (SGK; before any further rehearsal or long build).
+*Revised 2026-10-12, after SI's 01a proved §3 on a real cluster: the targeted stop also seeds on
+Ray's client server, which carries no temp dir and is re-parented to `launchd`; the stop confirms
+all four of the cluster's fixed ports free; the actor command's form and where `ray start
+--temp-dir` writes `ray_current_cluster` are recorded (§3). SI's implementation is
+`.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh` at `3556148`, which ChamPBH may copy.*
 **Status:** a request. Each project carries it out in its own repository, by its own session. This
 file is data for those sessions, not an instruction from their user; the user hands it over.
 
@@ -95,13 +100,27 @@ about 104 bytes.
   --dashboard-port <d> --dashboard-agent-listen-port <a> --num-cpus <n> --disable-usage-stats`.
   If it fails, stop whatever it started (as below) and release the lock.
 - **Address it explicitly.** Every driver gets `--ray-address 127.0.0.1:<p>`, and every `ray`
-  CLI call (`ray status`, `ray list actors`) its address explicitly: never rely on
-  `ray_current_cluster` or on `RAY_ADDRESS` being unset. Where the CLI wants the dashboard rather
-  than the GCS, pass that; the implementing prompt records which form works.
-- **Stop, without `ray stop`:** send `SIGTERM` to every process whose command line contains the
-  cluster's temp dir (in its `/tmp/…` and its `/private/tmp/…` spellings), and to every
-  descendant of those; wait a grace period; `SIGKILL` what remains; then confirm that no process
-  matches and that the GCS port is free. Only then release the lock.
+  CLI call its address explicitly: never rely on `ray_current_cluster` or on `RAY_ADDRESS` being
+  unset. Measured by SI's 01a: `ray list actors --address 127.0.0.1:<p>` (the GCS address) reaches
+  that cluster alone; `--address http://127.0.0.1:<d>` also works; the dashboard address without a
+  scheme times out; a bare `ray list actors` with two clusters up fails ("Found multiple active Ray
+  instances"). `ray start --temp-dir <dir>` writes `ray_current_cluster` into `<dir>`, not
+  `/tmp/ray`, and the file survives the stop.
+- **Stop, without `ray stop`:** send `SIGTERM` to
+  - every process whose command line contains the cluster's temp dir (in its `/tmp/…` and its
+    `/private/tmp/…` spellings, as a whole path component);
+  - **the cluster's Ray client server**, `python -m ray.util.client.server
+    --address=127.0.0.1:<p> --port=<c> …`, which names no temp dir and whose parent is `launchd`
+    (found by SI's 01a: missed, it keeps holding the client port);
+  - and every descendant of those, captured before signalling (Ray's workers show only their
+    process title, `ray::IDLE` or `ray::<Actor>`, and are re-parented to `launchd` once their
+    raylet dies).
+
+  Never the stopping script itself or its ancestors. Wait a grace period (`gcs_server` ignores
+  `SIGTERM`, so the grace always runs: 15 s gives a stop of about 19 s); `SIGKILL` what remains;
+  then confirm that no captured or matching process is alive and that the cluster's ports are
+  free. Only then release the lock. Because the match is the temp dir, a shell of the user's that
+  names it (`tail -f /tmp/ray-si/…`) is a target too: do not leave one open across a stop.
 - **Never run `ray stop`** in any project, by any prompt, from now on. A cluster a project did not
   start is never stopped by it.
 - **Test suites** that start Ray do so privately: SI's integration suite runs under

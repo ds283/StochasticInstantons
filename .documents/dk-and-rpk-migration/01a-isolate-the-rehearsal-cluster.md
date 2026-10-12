@@ -1,7 +1,7 @@
 # 01a — isolate the rehearsal cluster
 
 **Subject:** Isolate SI's rehearsal cluster and take the shared rehearsal lock
-**Commit:** this commit, on branch `dk-and-rpk-migration`, on top of `37126a2`
+**Commit:** `3556148`, on branch `dk-and-rpk-migration`, on top of `37126a2`
 **Date:** 2026-10-12, by Claude Sonnet 5.5
 **Result:** **COMPLETE.** C1–C3 shipped: `ray_cluster.sh start|stop|status`, the lock of
 `rehearsal-lock-brief.md` §2, and the proof on a real cluster (nine steps, shown below). The
@@ -344,9 +344,9 @@ No UNINTENDED DRIFT was found.
 
 ## The deliberate-breakage record
 
-Each diff is against the committed script, was applied to a tree at this commit with `git apply`,
+Each diff is against the committed script, was applied to a tree at `3556148` with `git apply`,
 the proof's step rerun, and reversed. Each passes `git apply --check`, and `git apply -R --check`
-once applied, in `bash`, on the tree at this commit. None is committed. All three are caught.
+once applied, in `bash`, on the tree at `3556148`. None is committed. All three are caught.
 
 | | Mutation | Step rerun, and what it shows |
 |---|---|---|
