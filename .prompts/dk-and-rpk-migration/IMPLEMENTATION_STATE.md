@@ -407,3 +407,27 @@ this follow-up, and the shared brief amended with D1.
   still go wrong with two clusters up. ChamPBH and SGK must carry out the amended brief before
   their next rehearsal; until ChamPBH does, its `ray stop` can still kill SI's cluster, so 02
   runs only when the user confirms ChamPBH is not about to rehearse.
+
+### 5.8 ChamPBH's port fixes taken into `ray_cluster.sh` (2026-10-12)
+
+Made directly at the user's request, not by a prompt. ChamPBH's prompt 05a adapted SI's script
+(ChamPBH `babd9d5`, reviewed in `ca2779d`) and added two fixes that SI's lacked; both are taken
+here, with one addition.
+- **The stop confirms all four ports free** (6390, 6391, 8266, 52366), as brief §3 asks, not the
+  GCS port alone; the orchestrator's by-hand check in §5.7 (3) is now the script's own. `status`
+  reports all four.
+- **`start` refuses a held port**: after the lock and the stale-process guard, if any of the four
+  is held it prints the listener, releases the lock and exits 4. Without this, a `ray start` that
+  fails on a foreign listener leaves a stop whose port check cannot pass, and the lock held.
+- **Addition (not in ChamPBH's):** `stop_cluster` requires all five arguments (temp dir and four
+  ports) and returns 2 otherwise, so a two-argument call, as recorded in 01a's results note,
+  cannot silently check one port.
+- **Checked:** `bash -n` under 3.2 and 5.3; `--help` 0, no arguments 2; a two-argument
+  `stop_cluster` exits 2; with `nc` on 6391, `start` exits 4 and starts nothing; a real cycle
+  (lock free, no other Ray) started in 16 s, showed 18 processes and the four ports held, and
+  stopped in 35 s (`gcs_server` and one other `SIGKILL`ed after the grace), leaving the four ports
+  free and the lock released. 01a's decoy proof and breakages were not re-run. No Python changed;
+  no issue opened; `.documents/OPEN-ISSUES.md` unchanged.
+- **For 02's note:** ChamPBH has now carried out the amended brief (its 05a), so §5.7's caveat
+  that ChamPBH's `ray stop` could kill SI's cluster no longer holds for ChamPBH's rehearsals; the
+  lock still decides who runs.

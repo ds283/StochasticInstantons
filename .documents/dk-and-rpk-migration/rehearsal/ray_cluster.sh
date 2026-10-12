@@ -25,7 +25,11 @@
 # parent). It never waits on a held lock, and never removes a lock that is not SI's.
 #
 # It may be sourced (its functions used, its main skipped): the proof of prompt 01a stops a
-# decoy cluster by calling stop_cluster with the decoy's temp dir.
+# decoy cluster by calling stop_cluster with the decoy's temp dir and ports.
+#
+# Two fixes are taken from ChamPBH's adaptation of this script (ChamPBH commit babd9d5, its
+# prompt 05a changes 3 and 4): the stop confirms all four fixed ports free, as brief section 3
+# asks, not the GCS port alone; and start refuses when any of the four ports is already held.
 
 set -u
 
@@ -42,13 +46,16 @@ Run from the repository root.
                   head on /tmp/ray-si: GCS 6390, client 6391, dashboard 8266, dashboard agent
                   52366, N CPUs (default 4). PURPOSE is written to the lock's owner file, e.g.
                   "dk-and-rpk-migration 02 (RH0)". If the lock is held, prints its owner file and
-                  exits 3, starting nothing. Prints the cluster's address and the command that
-                  lists its actors.
-  stop            stop SI's processes (SIGTERM to every process naming /tmp/ray-si, and to their
-                  descendants; a grace period of $RAY_CLUSTER_GRACE seconds, default 15; then
-                  SIGKILL), confirm none is left and port 6390 is free, then release the lock if
-                  its owner is SI's. Touches nothing if the lock is another project's.
-  status          the lock, its owner file, whether the owner's pid is alive, and SI's processes.
+                  exits 3, starting nothing. If any of the four ports is already held, releases
+                  the lock and exits 4, starting nothing. Prints the cluster's address and the
+                  command that lists its actors.
+  stop            stop SI's processes (SIGTERM to every process naming /tmp/ray-si, to the Ray
+                  client server whose address is 127.0.0.1:6390, and to their descendants; a grace
+                  period of $RAY_CLUSTER_GRACE seconds, default 15; then SIGKILL), confirm none is
+                  left and all four ports (6390, 6391, 8266, 52366) are free, then release the
+                  lock if its owner is SI's. Touches nothing if the lock is another project's.
+  status          the lock, its owner file, whether the owner's pid is alive, SI's processes and
+                  its four ports.
 
 Never runs `ray stop`. Never waits on a held lock.
 EOF2
@@ -192,8 +199,14 @@ port_listeners() {
 alive() { kill -0 "$1" 2>/dev/null; }
 
 stop_cluster() {
-    # stop_cluster DIR GCS_PORT. Returns 0 when nothing is left and the port is free.
-    local dir="$1" port="$2" pids p remaining left i n
+    # stop_cluster DIR GCS_PORT CLIENT_PORT DASHBOARD_PORT AGENT_PORT. Returns 0 when nothing is
+    # left and all four ports are free. All five arguments are required: a call with fewer would
+    # silently check fewer ports.
+    if [ $# -ne 5 ]; then
+        err "usage: stop_cluster DIR GCS_PORT CLIENT_PORT DASHBOARD_PORT AGENT_PORT"
+        return 2
+    fi
+    local dir="$1" port="$2" ports="$2 $3 $4 $5" pids p remaining left i n q held
     pids="$(list_cluster_pids "$dir" "$port" | tr '\n' ' ')"
     pids="${pids% }"
     if [ -z "$pids" ]; then
@@ -234,12 +247,16 @@ stop_cluster() {
         err "processes still alive after SIGKILL:$left"
         return 1
     fi
-    if [ -n "$(port_listeners "$port")" ]; then
-        err "port $port is still held:"
-        port_listeners "$port" >&2
-        return 1
-    fi
-    say "no process names $dir; port $port is free"
+    held=""
+    for q in $ports; do
+        if [ -n "$(port_listeners "$q")" ]; then
+            err "port $q is still held:"
+            port_listeners "$q" >&2
+            held="$held $q"
+        fi
+    done
+    [ -z "$held" ] || return 1
+    say "no process names $dir; ports $ports are free"
     return 0
 }
 
@@ -268,7 +285,22 @@ cmd_start() {
         return 4
     fi
 
-    trap 'err "interrupted; stopping what was started"; stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT"; release_lock; exit 130' INT TERM
+    # A held port is not ours to take. Without this, a ray start that fails on a foreign listener
+    # leaves a stop whose port check cannot pass, and the lock held.
+    local q held=""
+    for q in "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT"; do
+        if [ -n "$(port_listeners "$q")" ]; then
+            err "port $q is already held; not starting:"
+            port_listeners "$q" >&2
+            held="$held $q"
+        fi
+    done
+    if [ -n "$held" ]; then
+        release_lock
+        return 4
+    fi
+
+    trap 'err "interrupted; stopping what was started"; stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT"; release_lock; exit 130' INT TERM
 
     local t0=$SECONDS
     "$RAY_BIN" start --head --temp-dir "$SI_TEMP_DIR" --port "$SI_GCS_PORT" \
@@ -277,7 +309,7 @@ cmd_start() {
     local rc=$?
     if [ "$rc" -ne 0 ]; then
         err "ray start failed (exit $rc); stopping what it started and releasing the lock"
-        stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT"
+        stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT"
         release_lock
         trap - INT TERM
         return 1
@@ -289,7 +321,7 @@ cmd_start() {
     done | head -n 1)"
     if [ -z "$gcs" ]; then
         err "ray start succeeded but no gcs_server names $SI_TEMP_DIR; stopping"
-        stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT"
+        stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT"
         release_lock
         trap - INT TERM
         return 1
@@ -315,7 +347,7 @@ cmd_stop() {
             return 1
         fi
     fi
-    stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" || return 1
+    stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT" || return 1
     release_lock || return 1
     say "stopped in $((SECONDS - t0))s"
     return 0
@@ -343,7 +375,10 @@ cmd_status() {
         local p
         for p in $pids; do describe_pid "$p" | sed 's/^/    /'; done
     fi
-    if [ -n "$(port_listeners "$SI_GCS_PORT")" ]; then echo "port $SI_GCS_PORT: held"; else echo "port $SI_GCS_PORT: free"; fi
+    local q
+    for q in "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT"; do
+        if [ -n "$(port_listeners "$q")" ]; then echo "port $q: held"; else echo "port $q: free"; fi
+    done
     return 0
 }
 
