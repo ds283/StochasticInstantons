@@ -11,15 +11,18 @@ its status when the campaign closes. The open-issue column is a snapshot of
 
 Campaigns here keep their prompts in `.prompts/<campaign>/` and their results
 notes in `.documents/<campaign>/` (the June science campaign's are in
-`.documents/grid-sampling/`). None of the five has an `IMPLEMENTATION_STATE.md`
-board. Every campaign from now on opens one in its prompt folder (see
-`CLAUDE.md`).
+`.documents/grid-sampling/`). None of the five campaigns before October has an
+`IMPLEMENTATION_STATE.md` board. Every campaign from then on opens one in its
+prompt folder (see `CLAUDE.md`); `dk-and-rpk-migration` is the first.
 
-**Last updated:** 2026-10-08 · 5 campaigns: 1 halted, 4 complete; 2 planned.
-Open-issue counts taken from `OPEN-ISSUES.md` on 2026-10-08.
+**Last updated:** 2026-10-12 · 6 campaigns: 1 live, 1 halted, 4 complete; 2 more planned
+without a folder.
+Open-issue counts taken from `OPEN-ISSUES.md` on 2026-10-08, and on 2026-10-11 for
+`dk-and-rpk-migration`.
 
 | Campaign | Status | Opened → last activity | Owns | Results and records | Open issues (§ of `OPEN-ISSUES.md`; rows) |
 |---|---|---|---|---|---|
+| [`dk-and-rpk-migration`](dk-and-rpk-migration/README.md) | **live** 2026-10-12: plan reviewed, U1–U8 ruled, prompts 01–04 written, none landed. Adopts `raypoolkit` `v0.2.0` and `datastorekit` `v0.3.0` (released 2026-10-12 at the campaign's request); proposed to run before Phase 2 (U7). Board: [`IMPLEMENTATION_STATE.md`](dk-and-rpk-migration/IMPLEMENTATION_STATE.md) | 2026-10-11 → 2026-10-12 | `RayTools/` and the layer files of `Datastore/` (deleted), `config/datastore.py`, the pool constructions, `tools/compare_stores.py`, `tools/inventory_report.py` | `.documents/dk-and-rpk-migration/` (created by its prompt 02) | §6a; 5 |
 | [`gradient-coupled-instanton`](gradient-coupled-instanton/) | **halted** 2026-07-10 after prompt 28. The code implements the 6–10 July scheme, which the 10–20 July analysis superseded; the model in force is the one in `notes/onion-model/onion_model.tex`. To be replaced by the planned onion rebuild. | 2026-07-04 → 2026-07-10 (prompt 28 committed 2026-10-08) | `ComputeTargets/GradientCoupledInstanton/`, `Numerics/` (LGL collocation, onion coordinate), `tools/diagnostics/GradientCoupledInstanton/` | [`.documents/gradient-coupled-instanton/`](../.documents/gradient-coupled-instanton/) (notes 21–28, planning, implementation review); [`HANDOFF-gradient-coupled-instanton.md`](../.documents/handoff-notes/HANDOFF-gradient-coupled-instanton.md) (9 July); [`handoff-notes/2026-07-10/`](../.documents/handoff-notes/2026-07-10/) | §1, §3; 12 in §3 |
 | [`gradient-coupled-plotting`](gradient-coupled-plotting/00-README.md) | complete 13 / 13 (U1–U3, P1–P8, plus P2b) | 2026-07-07 → 2026-07-09 | `plotting/`, `plot_GradientCoupledSolutions.py`, the GCI parity scalar columns | [`.documents/gradient-coupled-plotting/`](../.documents/gradient-coupled-plotting/) (design and authoring brief) | —; 0 |
 | [`sparse-sampling`](sparse-sampling/) | complete 16 / 16 (01–14, 02b, 12b). Its science results are provisional: every `S_MSR` number used the defective FullInstanton response sector. | 2026-06-21 → 2026-06-23 (analysis in chat to 2026-06-25) | DOE / Latin-hypercube sampling pipeline, scalars-only instanton and compaction targets, GP regression, noise-amplitude scalars, `r_max`/`r_peak` split | [`.documents/grid-sampling/`](../.documents/grid-sampling/) (three handoffs, marked where superseded; the recovered 24 June session summary and 25 June analysis protocol); [`summary-F-june-science.md`](../.documents/handoff-notes/2026-10-08/summary-F-june-science.md) | §2, §4, §5; 1 in §2, 2 in §4, 1 in §5 |
@@ -47,6 +50,11 @@ folder exists yet.
 
 Phase 4 (bringing the tex numerics sections to the scheme actually built) has
 no campaign of its own; it closes the `todo`s P3 leaves behind.
+
+`dk-and-rpk-migration` (above, planned 2026-10-11) is proposed to run before
+Phase 2, so that Phase 2 builds its stores through the packages. Phase 2's
+first prompt would then read the June and July stores at the tag
+`pre-datastorekit` (its README §0.3, U7; not yet ruled).
 
 ## Records outside any campaign
 

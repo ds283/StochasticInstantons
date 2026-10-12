@@ -1,0 +1,211 @@
+# dk-and-rpk-migration campaign — implementation state
+
+**Last updated:** 2026-10-12 · **Status: LIVE — 4 of 12 prompts written (01–04), none landed.
+U1–U8 ruled (2026-10-12); P1–P19 stand as proposed. The DatastoreKit release requested by
+[`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is out, as `v0.3.0` (README §0.4).**
+The plan is [`README.md`](README.md), written on 2026-10-11 at `7bb3efd` and reviewed on
+2026-10-12. Prompts 01–04 were written once the user had ruled (README §2.1).
+
+The campaign adopts `raypoolkit` `v0.2.0` and then `datastorekit` `v0.3.0`, released for it
+(U3). A rehearsal by value
+comes before any change (RH0), before the DatastoreKit swap (RH1) and after it (RH2). Each
+package's gate G4 is recorded here when it holds.
+
+**Campaign:** [`README.md`](README.md) ·
+**Checklists:** DatastoreKit's and RayPoolKit's `docs/adoption/stochasticinstantons.md` (read, never
+edited) ·
+**Code:** `utilities.py`, `tools/`, `requirements.txt`, `RayTools/`, `Datastore/`, `config/`,
+`main.py`, `plot_InstantonSolutions.py`, `plot_GradientCoupledSolutions.py`, `plotting/fetch.py`,
+`tests/` ·
+**Results:** `.documents/dk-and-rpk-migration/` (results notes; `verification.md`, created by
+02) ·
+**Index:** [`.documents/OPEN-ISSUES.md`](../../.documents/OPEN-ISSUES.md) §6a
+
+> **Maintenance rule.** Whenever an entry is added to, narrowed in, or closed out of §3 or §4
+> below, [`.documents/OPEN-ISSUES.md`](../../.documents/OPEN-ISSUES.md) is updated **in the same
+> commit**: the row is added, moved or deleted, and the count and date in its header are
+> corrected. See `CLAUDE.md`.
+
+### Decisions
+
+**Ruled by the user (README §6.1), all on 2026-10-12.** U1, U2 and U4–U7 were ruled as the
+planner recommended:
+
+| Decision | Decided |
+|---|---|
+| **U1** — the order | RayPoolKit first, then DatastoreKit |
+| **U2** — the rehearsals | the agent runs them (README §4.1) at RH0, RH1 and RH2: reference, killed-and-resumed, scalars-only, readers |
+| **U3** — `DatastoreObject.timestamp` | **ruled 2026-10-12: fix the package.** DatastoreKit's `DatastoreObject` takes and exposes the row's timestamp, released as `v0.3.0` (README §0.4), which 08 pins |
+| **U4** — `InflatonTrajectory` under the replicated protocol | the cascade (orphan fix), `owner_column`, `validated_column` with `revalidate`, and the `prune` keyword, all before the swap (06) |
+| **U5** — a drop that leaves references | refused before Ray starts, naming the groups to add (09) |
+| **U6** — the inventory | ported to `inventory_spec` and `read_inventory` (10) |
+| **U7** — relative to P2 | before P2; the tag `pre-datastorekit` on 07's commit; P2's audit reads the June and July stores at the tag |
+| **U8** — spec coverage, for the fingerprint | **ruled 2026-10-12:** 10 proves every registered class is covered by a spec, read through one, or excluded with a reason (10's acceptance item 5); it settles `redshift`, `IntegrationSolver` and `GradientCoupledInstanton`'s second child table (README §6.1) |
+
+**Proposed by the planner (README §6.2):** P1–P19, accepted as proposed: the user gave no ruling
+on any of them.
+
+---
+
+## 1. Prompts
+
+| # | Prompt | Covers | Model | Written? | Landed? | Commit | Results note |
+|---|---|---|---|---|---|---|---|
+| 01 | [Rehearsal tooling and run provenance](01-rehearsal-tooling-and-run-provenance.md) | P3, P5; README §4.1–§4.2 | Opus | ✍️ 2026-10-12 | ⬜ | — | — |
+| 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12 | ⬜ | — | — |
+| 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
+| 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
+| 05 | Move SI's data out of the layer | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ⬜ | ⬜ | — | — |
+| 06 | Prepare the `InflatonTrajectory` factories | **U4**, P17 | Opus | ⬜ | ⬜ | — | — |
+| 07 | Rehearse before the DatastoreKit swap (RH1) | **RH1**; the tag (**U7**) | Opus | ⬜ | ⬜ | — | — |
+| 08 | Pin `datastorekit` `v0.3.0` | the DatastoreKit pin (**U3**; `2f5417e`) | Sonnet | ⬜ | ⬜ | — | — |
+| 09 | Adopt `datastorekit` | the DatastoreKit swap; **U5** | Opus | ⬜ | ⬜ | — | — |
+| 10 | Port the inventory | **U6**; `inventory_spec`, `tools/inventory_report.py` | Opus | ⬜ | ⬜ | — | — |
+| 11 | Rehearse through both packages (RH2) | **RH2**; **DatastoreKit G4** | Opus | ⬜ | ⬜ | — | — |
+| 12 | Close the migration | `CLAUDE.md`, rules, documents, handover to P2, close | Sonnet | ⬜ | ⬜ | — | — |
+
+**Legend.** ✍️ written · ⏸ held, with what it waits on · ⬜ not yet · ✅ landed.
+
+**Held, by design (README §2.1).**
+- **01–04** are written after the user's review of the plan. *Written 2026-10-12.*
+- **05–07** are written after 02's review: RH0's reproducibility sets RH1's criterion.
+- **08–11** are written after 07's review (`v0.3.0` is released).
+- **12** is written after 11's review.
+
+Orchestrator notes are written one prompt at a time, in [`orchestrator/`](orchestrator/), just
+before each dispatch.
+
+### 1.1 Items
+
+| Item | Prompt | What | State |
+|---|---|---|---|
+| **T1** | 01 | `utilities.installed_package_provenance()` and `format_package_provenance()`; one line in each of the three drivers, before `ray.init(`; `tests/test_package_provenance.py` | ⬜ |
+| **T2** | 01 | `tools/compare_stores.py`: comparison by value, with the polymorphic references, the JSON columns and their timing keys, and the schema snapshot; `tests/test_compare_stores.py` | ⬜ |
+| **T3** | 01 | `.documents/dk-and-rpk-migration/rehearsal/`: `build.sh`, `interrupt_when.py`, `stage_counts.py` (with `tests/test_rehearsal_stage_counts.py`), `run_readers.sh` | ⬜ |
+| **L1**–**L4** (RH0) | 02 | README §4.1 at 01's tree; §4.3's reproducibility measured for the dense and the scalars-only mode; L4 recorded as the baseline | ⬜ |
+| **V1** | 02 | `.documents/dk-and-rpk-migration/verification.md` created, with §1 RH0; the two schema snapshots | ⬜ |
+| **S1** | 02 | the `slow` block's result at the start tree, the baseline for 09 | ⬜ |
+| **K1** | 03 | the `raypoolkit` pin in `requirements.txt` | ⬜ |
+| **K2** | 03 | the venv installed from it | ⬜ |
+| **K3** | 03 | the proof: one distribution added, at `eaef0ce6…`, the tag's files, not editable | ⬜ |
+| **W1** | 04 | `RayTools/` deleted | ⬜ |
+| **W2** | 04 | the 3 imports rewritten to `from raypoolkit import RayWorkPool` | ⬜ |
+| **W3** | 04 | `_default_store_handler` dropped: 7 lines of `main.py` | ⬜ |
+| **W4** | 04 | no other pool site changed (P7) | ⬜ |
+| **W5** | 04 | the prose naming the copy made true: `CLAUDE.md:95`, `ray-dispatch.md:99-106`, `FILE_MAP.md`, `INFRASTRUCTURE.md`, `architecture-summary.md` (P13) | ⬜ |
+
+Items of 05–12 are added when they are written.
+
+The measurement the plan was written against is [`measure/out/`](measure/out/). It holds:
+- both packages' scripts at `7bb3efd`, each equal to its checklist's appendix byte for byte;
+- the suites' counts (default 631 of 761, 630 passed and 1 skipped; integration 61, 60 passed and
+  1 skipped);
+- the venv's `pip freeze` (README §0.2).
+
+## 2. The gates
+
+| Gate | Holds when | Prompt | State |
+|---|---|---|---|
+| RH0 | the start tree builds the grid, resumes it, builds it scalars-only, and its readers run (README §4.1); its reproducibility is measured (§4.3) | 02 | ⬜ |
+| RayPoolKit G4 | `RayTools/` is gone; 0 imports of it and of `_default_store_handler`; the pin is installed; the suites pass; all 16 sites construct (RayPoolKit checklist item 8) | 04 (RH1, 07, adds the run under real Ray) | ⬜ |
+| RH1 | 06's tree equals RH0 by value; `pre-datastorekit` tagged | 07 | ⬜ |
+| DatastoreKit `v0.2.3` | tagged on DatastoreKit's remote, with `store`, `validate` and `validate_on_startup` defaulted | — (carried into `v0.3.0`) | ✅ **released** 2026-10-11 for CPBH: tag object `8dac562`, commit `0de2b16`. Checked on the remote at planning |
+| DatastoreKit `v0.3.0` | tagged on DatastoreKit's remote, its `DatastoreObject` taking and exposing `timestamp` (U3; made in DatastoreKit from the brief, not here) | — (08 pins it) | ✅ **released** 2026-10-12 by DatastoreKit's `object-timestamp` campaign: tag object `bf0a3b2`, commit `2f5417e`; checked on the remote and by `git show` of `object.py` (README §0.4) |
+| DatastoreKit G4 | the 9 layer files are gone (two emptied, P6), the pin is installed, the default and integration suites pass, and a small grid rebuilt through the package (RH2) equals RH1 by value | 09, 10, 11 | ⬜ |
+
+Recording each gate on its package's own extraction board is a commit in that repository, not
+here (README P14).
+
+## 3. Active and unresolved issues
+
+Opened at planning, 2026-10-11.
+
+| Issue | What | Owner |
+|---|---|---|
+| `[inflaton-trajectory-prune-orphans-value-rows]` | `InflatonTrajectory.validate_on_startup` (`Datastore/SQL/ObjectFactories/InflatonTrajectory.py:256-266`) deletes unvalidated trajectories and leaves their `InflatonTrajectoryValue` rows. This is the orphaning `.claude/rules/validate-on-startup.md` forbids, but its cascade map omits the class. A reused serial then meets its own orphans (a UNIQUE violation, as in the rule's recorded `SlowRollInstantonValue` incident). Under the package the fix also needs `owner_column` on the value table (README §0.1 item 9) | 06 (U4) |
+| `[plot-scripts-stale-version-label]` | Both plot scripts open **read-write** under `plotting/provenance.py:18`'s `"2026.3.0"`, while `main.py:49` writes `"2026.6.1"`. So each plot run adds a `version` row to the store it reads, and the figure footers say `v2026.3.0`. Read-only plot pools are the goal (README P9, P10) | unowned; P2 when it bumps the label |
+| `[redshift-registered-in-neither-table-list]` | `redshift` is registered (`Datastore/SQL/Datastore.py:99`) and has a batch size, but is in neither `replicated_tables` nor `sharded_tables`, and no SI code uses it: a ChamPBH leftover. `IntegrationSolver` is registered and replicated, but likewise unwritten by any driver (README P12) | unowned |
+| `[test-counts-stale-in-claude-md]` | `CLAUDE.md:21` and `.claude/rules/test-selection.md:10`, `:26` say "464 of 571"; at `7bb3efd` the default run selects 631 of 761 | 12 |
+| `[show-all-flag-unused]` | `--show-all` is parsed (`config/argument_parser.py`) but read by nothing: `main.py`'s inventory truncates at 20 values regardless | 10 (`verbose`) |
+
+## 4. Resolved issues
+
+None yet.
+
+## 5. Dispatch record
+
+### 5.0 Planning (2026-10-11)
+
+- Read both packages' SI checklists, with their addenda, the adoption READMEs and the client
+  contract, and the CPBH and SGK campaign plans of the same name.
+- Re-measured at `7bb3efd`:
+  - both checklists' appendices reproduced byte for byte;
+  - the default run 631 of 761 (630 passed, 1 skipped); integration 61 (60 passed, 1 skipped);
+  - neither package installed; both tags on their remotes (README §0.2).
+- Found in planning, beyond the checklists:
+  - the `InflatonTrajectory` orphan bug and its interaction with the package's unit check (§3;
+    README §0.1 item 9);
+  - the hashing test stub that the mapping-form shard key breaks (README §0.1 item 3);
+  - the polymorphic references and the timings inside JSON that a comparison by value must handle
+    (README §0.1 item 11, §4.2);
+  - the two version labels (§3).
+
+### 5.1 U3 ruled (2026-10-12)
+
+- The user asked whether the row's timestamp should be implemented in DatastoreKit rather than on a
+  class of SI's own (the planner's first recommendation), and ruled that it should.
+- Found while checking it: all three clients' factories write the `timestamp` column (SGK 19
+  files, CPBH 16, SI 21 of 22), and only SI reads it back. No client class assigns a `timestamp`
+  attribute that a read-only base property would break. The package inspects no object attribute
+  that a new one would change. And no DatastoreKit decision chose to leave the timestamp out: its
+  `object.py` is SGK's, verbatim.
+- The plan was revised: 06 loses its timestamp half, and is the `InflatonTrajectory` work alone; 08
+  pins the requested release; 09 rewrites the 18 `DatastoreObject` imports and changes no class.
+  The request is [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md).
+
+### 5.2 U8 ruled (2026-10-12)
+
+- Ruled in SGK, while planning the extraction of its run registry into RunRegistryKit
+  (`docs/runregistry-extraction-audit.md`): RunRegistryKit's store layer requires a fingerprinter,
+  and a client earns one by covering its registry with `inventory_spec()`, in its own DatastoreKit
+  migration. ChamPBH's prompt 09 took the same acceptance the same day.
+- Measured read-only at `7bb3efd`: 30 registered entries, 24 owners and 6 child tables; item 1's
+  list misses `redshift` and `IntegrationSolver`; `GradientCoupledInstantonProfile` and
+  `GradientCoupledInstantonValue` compete for one `values` slot.
+- The plan was revised: 10 gains acceptance item 5 (README §2.2), U8 is added to §6.1 and a
+  question for the user to §6.3. No other charter changes.
+
+### 5.3 DatastoreKit `v0.3.0` (2026-10-12)
+
+- DatastoreKit's `object-timestamp` campaign (closed at `5f972be`) released the brief's change as
+  **`v0.3.0`**: tag object `bf0a3b2`, commit `2f5417e`. It is a minor release because it adds API.
+  Checked here on the remote (`git ls-remote`), by `git show v0.3.0:datastorekit/object.py`, and
+  by `git diff --stat v0.2.3 v0.3.0`: `object.py`, the version and tests, nothing else.
+- The implementing agent relayed five points (README §0.4). The two that bear on SI:
+  - `timestamp` is keyword-only, which all 24 SI sites satisfy;
+  - a DatastoreKit test of `vars()` gained `_timestamp`, and no SI file calls `vars(`.
+- The plan was revised: the pin is `v0.3.0` throughout. 08's hold on the release is lifted, and
+  its acceptance gains the keyword-only check. U3's fallback is retired. The brief keeps its file
+  name, as the record of the request.
+
+### 5.4 The rulings, and prompts 01–04 written (2026-10-12)
+
+- **The user ruled U1, U2 and U4–U7 as recommended**, and gave no ruling on P1–P19, which stand as
+  proposed. With U3 and U8 (§5.1, §5.2), all eight decisions are ruled.
+- **Prompts 01–04 written**, following ChamPBH's 01–04, which were dispatched and reviewed the same
+  day. Its records gave these prompts six points:
+  - a `SIGTERM`ed driver exits 134, not 143;
+  - `ray stop` is run as a command of its own;
+  - the throwaway commit is made with `commit-tree`, on no branch;
+  - the recorded VCS URL has no `git+`;
+  - the builds need a machine no other session is loading;
+  - `ray start` may print no address, which is then in `/tmp/ray/ray_current_cluster`.
+- **Beyond the README, found while writing:**
+  - 01 models SI's tool and scripts on ChamPBH's (landed at ChamPBH `d7791c5`), and adds what
+    ChamPBH's lacks: the structural comparison of JSON columns with their timing keys set aside.
+  - **RH0 builds a second scalars-only store**, `02-scalars-2.sqlite`, so that the scalars-only
+    mode's reproducibility is measured too. README §3, §4.1 and §4.3 amended.
+  - 06's diff touches no `ComputeTargets/` file (the 12 prune hooks are all factories), so only 09
+    runs the `slow` block. 02 records its baseline (S1).
+- **Before 01 is dispatched:** the branch `dk-and-rpk-migration` is cut from `main` and carries the
+  planning commit (P15). Each prompt's gate names it.

@@ -1,6 +1,6 @@
 # Open issues — project-wide index
 
-**Last updated:** 2026-10-09 · **53 open**, 24 closed. Seeded from
+**Last updated:** 2026-10-11 · **58 open**, 24 closed. Seeded from
 [`RECONSTRUCTION.md`](handoff-notes/2026-10-08/RECONSTRUCTION.md) Parts A0–D
 and D0, the open-issue `todo`s of
 [`onion_model.tex`](../notes/onion-model/onion_model.tex) as rewritten in
@@ -12,7 +12,7 @@ the document that holds the argument, the measurements and the next step.
 Do not put issue content here. If this file and its source disagree, the
 source is right.
 
-**No campaign has a status board yet; every future campaign will.** Until a
+**One campaign has a status board (`dk-and-rpk-migration`, §6a); every future campaign will.** Until a
 campaign opens one, the source column points at the reconstruction, a tex
 `todo`, or a results note under `.documents/<campaign>/`. When a campaign
 opens an `IMPLEMENTATION_STATE.md` board and adopts a row, re-point the row at
@@ -147,6 +147,18 @@ in-place rewrite. Phase 0 (8 October 2026) dealt with all but the one below.
 | `[numerical-schemes-picard-rationale-half]` | R A0.1 | P4 | `NUMERICAL_SCHEMES.md` §2.2 records only the conditioning half of the Picard-versus-shooting argument, not the cost model or the hidden second pass in `∂φ₁(T)/∂λ`. |
 | `[k-sigma-unused]` | R A.1 | unowned | `k_σ` enters no computed quantity. |
 | `[doe-undefined]` | R A0.2 | unowned | "DOE" (design of experiments) is used throughout and defined nowhere. |
+
+## 6a. Infrastructure — DatastoreKit and RayPoolKit adoption — board: [`.prompts/dk-and-rpk-migration/IMPLEMENTATION_STATE.md`](../.prompts/dk-and-rpk-migration/IMPLEMENTATION_STATE.md)
+
+Opened at the campaign's planning, 2026-10-11. Owners are the campaign's prompts (`dk-NN`).
+
+| Issue | Source | Owner | Hook |
+|---|---|---|---|
+| `[inflaton-trajectory-prune-orphans-value-rows]` | board §3 | dk-06 | `InflatonTrajectory`'s startup prune leaves its value rows behind; the cascade map of `validate-on-startup.md` omits the class. |
+| `[plot-scripts-stale-version-label]` | board §3 | unowned; P2 | The plot scripts open read-write under `"2026.3.0"`, adding a `version` row to every store they read. |
+| `[redshift-registered-in-neither-table-list]` | board §3 | unowned | `redshift` is registered but in neither table list and unused; `IntegrationSolver` is registered and unwritten. |
+| `[test-counts-stale-in-claude-md]` | board §3 | dk-12 | `CLAUDE.md` and `test-selection.md` say 464 of 571; the default run selects 631 of 761. |
+| `[show-all-flag-unused]` | board §3 | dk-10 | `--show-all` is parsed and read by nothing. |
 
 ## 7. Closed
 
