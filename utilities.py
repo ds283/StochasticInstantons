@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib.metadata
+import json
 import time
 from itertools import zip_longest
 from math import fabs, log
@@ -164,3 +166,107 @@ def to_float(val) -> float:
     if hasattr(val, "item"):
         return float(val.item())
     return float(val)
+
+
+# The distributions whose installed release a driver records in its output (dk-and-rpk-migration
+# prompt 01; README P5): the two packages that campaign adopts. From the RayPoolKit swap on, a run
+# executes code that is not in this repository's tree, so its log says which release ran.
+RECORDED_DISTRIBUTIONS = ("datastorekit", "raypoolkit")
+
+
+def installed_package_provenance(names=RECORDED_DISTRIBUTIONS) -> dict:
+    """
+    What is installed of each named distribution, read from its metadata.
+
+    Maps each name to `None` when the distribution is not installed, and otherwise to a dict with
+    exactly these keys:
+    - `version`: the installed distribution's version;
+    - `url`: `url` in the distribution's PEP 610 `direct_url.json`, or `None`;
+    - `commit`: its `vcs_info.commit_id`, or `None`;
+    - `requested_revision`: its `vcs_info.requested_revision` (the tag or branch asked for), or
+      `None`;
+    - `editable`: `True` when `dir_info.editable` is the boolean `true`, and `False` otherwise.
+
+    These are the fields, with the same meaning, of SecondaryGWKit's
+    `RunRegistry.package_provenance()` and of ChamPBH's helper of this name, so that a later move
+    to a shared registry is a substitution (README P5). Only the standard library is used, and no
+    package being described is imported. An absent, unreadable or malformed `direct_url.json` (one
+    that is not a JSON object), or a `vcs_info` or `dir_info` that is not an object, gives `None`
+    for the three fields it would have supplied and `False` for `editable`. It never raises on odd
+    metadata, and it never refuses an install: an editable one is recorded as such.
+    """
+    packages = {}
+    for name in names:
+        try:
+            distribution = importlib.metadata.distribution(name)
+        except importlib.metadata.PackageNotFoundError:
+            packages[name] = None
+            continue
+
+        try:
+            origin = json.loads(distribution.read_text("direct_url.json"))
+        except (TypeError, ValueError, OSError):
+            # TypeError: no direct_url.json (read_text returned None); ValueError: not JSON, or
+            # not UTF-8 (UnicodeDecodeError); OSError: present but unreadable
+            origin = None
+        if not isinstance(origin, dict):
+            origin = {}
+
+        vcs_info = origin.get("vcs_info")
+        if not isinstance(vcs_info, dict):
+            vcs_info = {}
+        dir_info = origin.get("dir_info")
+        if not isinstance(dir_info, dict):
+            dir_info = {}
+
+        packages[name] = {
+            "version": distribution.version,
+            "url": origin.get("url"),
+            "commit": vcs_info.get("commit_id"),
+            "requested_revision": vcs_info.get("requested_revision"),
+            "editable": dir_info.get("editable") is True,
+        }
+    return packages
+
+
+def format_package_provenance(provenance: dict) -> str:
+    """
+    One line saying what `installed_package_provenance()` found, for a driver to print. Worded as
+    ChamPBH's, so that the clients' logs read alike. Each distribution is one of:
+    - `NAME not installed`;
+    - `NAME VERSION (URL@COMMIT, requested REVISION)` for a VCS install, the commit in full and
+      the URL as pip recorded it (without a `git+` prefix);
+    - `NAME VERSION (editable, URL)` for an editable install;
+    - `NAME VERSION (no recorded origin)` for an install whose `direct_url.json` is absent or
+      records nothing usable.
+    They are joined by `; ` after the prefix `>> packages: `.
+    """
+    items = []
+    for name, entry in provenance.items():
+        if entry is None:
+            items.append(f"{name} not installed")
+            continue
+
+        details = []
+        if entry.get("editable"):
+            details.append("editable")
+
+        url = entry.get("url")
+        commit = entry.get("commit")
+        if url is not None and commit is not None:
+            details.append(f"{url}@{commit}")
+        elif url is not None:
+            details.append(url)
+        elif commit is not None:
+            details.append(f"commit {commit}")
+
+        revision = entry.get("requested_revision")
+        if revision is not None:
+            details.append(f"requested {revision}")
+
+        if len(details) == 0:
+            details.append("no recorded origin")
+
+        items.append(f"{name} {entry.get('version')} ({', '.join(details)})")
+
+    return ">> packages: " + "; ".join(items)

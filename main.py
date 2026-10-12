@@ -45,6 +45,7 @@ from MetadataConcepts import store_tag, tolerance
 from RayTools.RayWorkPool import RayWorkPool, _default_store_handler
 from Units import Planck_units
 from Units.base import UnitsLike
+from utilities import format_package_provenance, installed_package_provenance
 
 VERSION_LABEL = "2026.6.1"
 
@@ -94,6 +95,7 @@ if args.database is None:
     parser.print_help()
     sys.exit()
 
+print(format_package_provenance(installed_package_provenance()), flush=True)
 ray.init(address=args.ray_address)
 
 

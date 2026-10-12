@@ -1,6 +1,6 @@
 # dk-and-rpk-migration campaign — implementation state
 
-**Last updated:** 2026-10-12 · **Status: LIVE — 4 of 12 prompts written (01–04), none landed.
+**Last updated:** 2026-10-12 · **Status: LIVE — 4 of 12 prompts written (01–04), 01 landed.
 U1–U8 ruled (2026-10-12); P1–P19 stand as proposed. The DatastoreKit release requested by
 [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is out, as `v0.3.0` (README §0.4).**
 The plan is [`README.md`](README.md), written on 2026-10-11 at `7bb3efd` and reviewed on
@@ -51,7 +51,7 @@ on any of them.
 
 | # | Prompt | Covers | Model | Written? | Landed? | Commit | Results note |
 |---|---|---|---|---|---|---|---|
-| 01 | [Rehearsal tooling and run provenance](01-rehearsal-tooling-and-run-provenance.md) | P3, P5; README §4.1–§4.2 | Opus | ✍️ 2026-10-12 | ⬜ | — | — |
+| 01 | [Rehearsal tooling and run provenance](01-rehearsal-tooling-and-run-provenance.md) | P3, P5; README §4.1–§4.2 | Opus | ✍️ 2026-10-12 | ✅ 2026-10-12 | this commit | [`01-rehearsal-tooling-and-run-provenance.md`](../../.documents/dk-and-rpk-migration/01-rehearsal-tooling-and-run-provenance.md) |
 | 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12 | ⬜ | — | — |
 | 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
 | 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
@@ -79,9 +79,9 @@ before each dispatch.
 
 | Item | Prompt | What | State |
 |---|---|---|---|
-| **T1** | 01 | `utilities.installed_package_provenance()` and `format_package_provenance()`; one line in each of the three drivers, before `ray.init(`; `tests/test_package_provenance.py` | ⬜ |
-| **T2** | 01 | `tools/compare_stores.py`: comparison by value, with the polymorphic references, the JSON columns and their timing keys, and the schema snapshot; `tests/test_compare_stores.py` | ⬜ |
-| **T3** | 01 | `.documents/dk-and-rpk-migration/rehearsal/`: `build.sh`, `interrupt_when.py`, `stage_counts.py` (with `tests/test_rehearsal_stage_counts.py`), `run_readers.sh` | ⬜ |
+| **T1** | 01 | `utilities.installed_package_provenance()` and `format_package_provenance()`; one line in each of the three drivers, before `ray.init(`; `tests/test_package_provenance.py` | ✅ 20 tests; today `>> packages: datastorekit not installed; raypoolkit not installed` |
+| **T2** | 01 | `tools/compare_stores.py`: comparison by value, with the polymorphic references, the JSON columns and their timing keys, and the schema snapshot; `tests/test_compare_stores.py` | ✅ 24 tests; four polymorphic pairs, nine JSON columns, six timing keys |
+| **T3** | 01 | `.documents/dk-and-rpk-migration/rehearsal/`: `build.sh`, `interrupt_when.py`, `stage_counts.py` (with `tests/test_rehearsal_stage_counts.py`), `run_readers.sh` | ✅ 5 tests; usage checked; never run on a build |
 | **L1**–**L4** (RH0) | 02 | README §4.1 at 01's tree; §4.3's reproducibility measured for the dense and the scalars-only mode; L4 recorded as the baseline | ⬜ |
 | **V1** | 02 | `.documents/dk-and-rpk-migration/verification.md` created, with §1 RH0; the two schema snapshots | ⬜ |
 | **S1** | 02 | the `slow` block's result at the start tree, the baseline for 09 | ⬜ |
@@ -209,3 +209,34 @@ None yet.
     runs the `slow` block. 02 records its baseline (S1).
 - **Before 01 is dispatched:** the branch `dk-and-rpk-migration` is cut from `main` and carries the
   planning commit (P15). Each prompt's gate names it.
+
+### 5.5 After prompt 01 (2026-10-12)
+
+- **Landed:** this commit, results note
+  [`01-rehearsal-tooling-and-run-provenance.md`](../../.documents/dk-and-rpk-migration/01-rehearsal-tooling-and-run-provenance.md).
+  **COMPLETE**: T1–T3; no §4 stop met; nothing opened.
+- **T1.** `utilities.installed_package_provenance()` / `format_package_provenance()`; each driver
+  prints one line, before `ray.init(` and its `ShardedPool(`, in the scope where it calls
+  `ray.init` (the plot scripts' `__main__` block, not `run_plots`). Today:
+  `>> packages: datastorekit not installed; raypoolkit not installed`.
+- **T2.** `tools/compare_stores.py`, reading every file `mode=ro` through `sqlite3`, shards by glob,
+  never a recorded path. Bookkeeping: `serial`, `timestamp`; `FullInstanton.label` and
+  `SlowRollInstanton.label` (the unified pipeline stores them NULL, `ComputeTargets/pipeline.py:288`,
+  `:304`); the JSON timing keys `compute_time`, `compute_time_total`,
+  `mean_time_per_picard_iteration`, `picard_sweep_wallclock_min`/`_mean`/`_max`, at any depth.
+  `GradientCoupledInstanton.label` is compared. Nine JSON columns compared structurally.
+  **Four** polymorphic pairs (the README names two): `InflatonTrajectory.potential_*` and
+  `diffusion_*` on `FullInstanton`, `SlowRollInstanton` and `GradientCoupledInstanton`. An SI
+  primary holds the five layer tables and no client table (from the code). `redshift` is noted and
+  compared as sharded.
+- **T3.** The four rehearsal scripts; usage checked; `interrupt_when.py` tried on a scratch
+  `sleep`; never run on a build.
+- **Suites:** default 631 → **680** (679 passed, 1 skipped; +24 `test_compare_stores`, +20
+  `test_package_provenance`, +5 `test_rehearsal_stage_counts`); integration 61 (60 passed, 1
+  skipped), unchanged.
+- **Breakages:** all six of prompt §3.6 caught, each recorded in the results note as a diff that
+  `git apply` replays.
+- **For 02:** `run_readers.sh` exits 1 when its step 4 finds the expected `2026.3.0` `version` row
+  (read `status.txt`); `diagnostics_data.csv`'s timing columns are `diag_compute_time_<kind>`
+  (results note, Observation 6). **For 04:** `main.py`'s lines after `:47` have moved by one or two
+  (Observation 7).

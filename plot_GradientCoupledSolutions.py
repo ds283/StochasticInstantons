@@ -99,6 +99,7 @@ from plotting.provenance import VERSION_LABEL
 from plotting.sampling import _evenly_sample, _safe_name, _safe_num
 from RayTools.RayWorkPool import RayWorkPool
 from Units import Planck_units
+from utilities import format_package_provenance, installed_package_provenance
 
 DEFAULT_MAX_TRAJECTORIES = 3
 DEFAULT_MAX_COMBINATIONS = 10
@@ -968,6 +969,7 @@ if __name__ == "__main__":
         parser.print_help()
         sys.exit()
 
+    print(format_package_provenance(installed_package_provenance()), flush=True)
     ray.init(address=args.ray_address, ignore_reinit_error=True)
     units = Planck_units()
 
