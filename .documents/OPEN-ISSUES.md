@@ -1,6 +1,6 @@
 # Open issues — project-wide index
 
-**Last updated:** 2026-10-12 · **60 open**, 24 closed. Seeded from
+**Last updated:** 2026-10-12 · **59 open**, 25 closed. Seeded from
 [`RECONSTRUCTION.md`](handoff-notes/2026-10-08/RECONSTRUCTION.md) Parts A0–D
 and D0, the open-issue `todo`s of
 [`onion_model.tex`](../notes/onion-model/onion_model.tex) as rewritten in
@@ -160,7 +160,6 @@ Opened at the campaign's planning, 2026-10-11, or at a review where the row says
 | `[test-counts-stale-in-claude-md]` | board §3 | dk-12 | `CLAUDE.md` and `test-selection.md` say 464 of 571; the default run selects 631 of 761. |
 | `[show-all-flag-unused]` | board §3 | dk-10 | `--show-all` is parsed and read by nothing. |
 | `[unified-pipeline-stores-null-instanton-labels]` | board §3 (01's review) | unowned | The unified pipeline stores `FullInstanton` and `SlowRollInstanton` with `label` NULL, so a scalars-only store's figure footers lack it. |
-| `[ray-address-auto-attaches-to-foreign-cluster]` | board §3 (SGK's review of the lock brief) | orchestrator (brief); the user (SI's default) | Drivers default to `--ray-address auto`, which attaches to any running cluster once isolated clusters keep `ray_current_cluster` out of `/tmp/ray`; only Ray's version check stops a cross-project attach today. |
 
 ## 7. Closed
 
@@ -185,3 +184,4 @@ Opened at the campaign's planning, 2026-10-11, or at a review where the row says
 | `[doc-hfp-structure-status]`, `[doc-sat-closure-status]`, `[doc-hfp-calculation-mu-convention]`: the three 10 July notes | 2026-10-08 | Status notes saying which sections stand and which are superseded, with inline markers at HSS §2(d), SCS §3.1, §4.4, §6 and HCalc §7. |
 | `[doc-chat-only-documents]`: `session_summary.md`, `analysis_protocol.md` (24–25 June) | 2026-10-08 | Recovered verbatim from the claude.ai export into `grid-sampling/2026-06-24-session-summary.md` and `2026-06-25-analysis-protocol.md`, with provenance and status headers. |
 | `[inner-edge-coarse-graining-radius-or-fixed]` (board `notes/OPEN-ISSUES.md`) | 2026-10-09 | David's decision: inner edge at the current coarse-graining scale `R_σ(N)`; a change of definition. Fixed-edge alternative not taken up. |
+| `[ray-address-auto-attaches-to-foreign-cluster]` (dk-and-rpk-migration board §4) | 2026-10-12 | The lock brief's §3 and §5 amended; SI's `--ray-address` made required by the user's ruling. |

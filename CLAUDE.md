@@ -7,11 +7,17 @@ chameleon/dark-energy physics with inflationary physics.
 ## Build and test
 
 ```bash
-python main.py --database <path> [--inventory]
+python main.py --database <path> --ray-address <address> [--inventory]
 python -c "..."   # used for acceptance-criteria checks in prompts
 ```
 
-Ray must be running. Start a local cluster with `ray start --head` before running.
+`--ray-address` is required by `main.py` and both plot scripts; there is no
+`auto` default. Pass `local` for a private in-process Ray instance, or a
+cluster's GCS address. Rehearsals and long builds run on SI's isolated cluster
+under the shared rehearsal lock: `.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
+start PURPOSE`, then `--ray-address 127.0.0.1:6390`. Never run `ray stop`: it
+stops every Ray process on the machine, other projects' clusters included (see
+`.prompts/dk-and-rpk-migration/rehearsal-lock-brief.md`).
 
 The physics notes for the onion model live in `notes/onion-model/onion_model.tex`
 (build with `latexmk -pdf`; `jcappub.sty` must be installed). They are the

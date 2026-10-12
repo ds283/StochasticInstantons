@@ -136,11 +136,12 @@ Opened at planning, 2026-10-11, unless the row says otherwise.
 | `[test-counts-stale-in-claude-md]` | `CLAUDE.md:21` and `.claude/rules/test-selection.md:10`, `:26` say "464 of 571"; at `7bb3efd` the default run selects 631 of 761 | 12 |
 | `[show-all-flag-unused]` | `--show-all` is parsed (`config/argument_parser.py`) but read by nothing: `main.py`'s inventory truncates at 20 values regardless | 10 (`verbose`) |
 | `[unified-pipeline-stores-null-instanton-labels]` | *Opened 2026-10-12 at 01's review, from its Observation 2.* The unified pipeline (`--no-store-values`) constructs `FullInstanton` and `SlowRollInstanton` with no label (`ComputeTargets/pipeline.py:288-298`, `:304-314`), so they are stored with `label` NULL, where the per-stage queues store the factory's default (`Datastore/SQL/ObjectFactories/FullInstanton.py:149-155`, `SlowRollInstanton.py:148-154`). No science value differs and no reader fails, but the provenance footers read `label` (`plotting/provenance.py:46`), so a scalars-only store's figures lack it. `tools/compare_stores.py` treats the two columns as bookkeeping for this reason | unowned |
-| `[ray-address-auto-attaches-to-foreign-cluster]` | *Opened 2026-10-12, from SecondaryGWKit's review of the lock brief (§5.9).* Every project's drivers default to `--ray-address auto` (SI: `config/argument_parser.py:82`; ChamPBH: `DEFAULT_RAY_ADDRESS`; SGK: `main.py` and its `extract_*.py`). With `RAY_ADDRESS` unset and no `/tmp/ray/ray_current_cluster`, which the isolated clusters no longer write, `auto` attaches to an arbitrary running raylet's GCS, found by scanning processes, with no warning (Ray 2.55.1 `ray/_private/services.py:408-454`; SGK's 2.43.0 `:389-430`). Today a cross-project attach fails at `ray.init` on Ray's version check (`worker.py:2583`; SI 2.55.1 / Python 3.13, ChamPBH 2.53.0 / 3.13, SGK 2.43.0 / 3.12), reasoned from the code, not run. That guard is incidental: it does not cover a same-project instance (an integration suite's in-process Ray) and vanishes if the versions converge. Brief §3's "Address it explicitly" covers rehearsal drivers only, not a long build or an ad hoc run. Fix: amend the brief (§3, §5); whether SI's default changes is the user's to rule | orchestrator (brief); the user (SI's default) |
 
 ## 4. Resolved issues
 
-None yet.
+| Issue | Resolved | How |
+|---|---|---|
+| `[ray-address-auto-attaches-to-foreign-cluster]` | 2026-10-12 (opened and closed the same day, §5.9, §5.10) | Every project's drivers defaulted to `--ray-address auto`, which attaches to any running cluster once the clusters are isolated (`ray_current_cluster` is no longer in `/tmp/ray`). The brief's §3 "Address it explicitly" now covers every run that takes the lock and forbids leaving a driver at `auto`; §5 asks SGK to pass `local` to its long builds. The user ruled SI's default: `--ray-address` is now required (`config/argument_parser.py`), for `main.py` and both plot scripts; `CLAUDE.md`'s run instructions say so. ChamPBH's and SGK's defaults are theirs to change |
 
 ## 5. Dispatch record
 
@@ -446,3 +447,21 @@ SecondaryGWKit's agent raised two objections, handed over by the user.
   mismatch), not work in the wrong cluster. The gap is the brief's and applies to all three
   projects. Opened as `[ray-address-auto-attaches-to-foreign-cluster]` (§3). The brief amendment
   (§3 "Address it explicitly", §5) is drafted for the user's review.
+
+### 5.10 The brief amended; SI's `--ray-address` made required (2026-10-12)
+
+At the user's request, not by a prompt.
+- **The brief** (`rehearsal-lock-brief.md`): a second revision note; §3 "Address it explicitly"
+  covers every run that takes the lock, long builds included, forbids leaving a driver at
+  `auto` and says why; §5 asks SGK to give its long builds' drivers `--ray-address local`.
+- **The user ruled SI's default:** `--ray-address` is required (`config/argument_parser.py`), so
+  `main.py`, `plot_InstantonSolutions.py` and `plot_GradientCoupledSolutions.py` exit 2 without
+  it. A value from a `--config` YAML file (`ray-address: local`) satisfies it. SI's rehearsal
+  tooling (`build.sh`, `run_readers.sh`) already passes an address; no test parses the shared
+  arguments. `CLAUDE.md`'s "Build and test" gives the flag, `local`, `ray_cluster.sh` and the
+  ban on `ray stop`.
+- **Checked:** the parser accepts the flag on the command line and from YAML and exits 2 without
+  it; `main.py` without it exits with "the following arguments are required: --ray-address". The
+  default suite gives 679 passed, 1 skipped (680, as at `84a5cfc`).
+- `[ray-address-auto-attaches-to-foreign-cluster]` is closed (§4). ChamPBH and SGK receive the
+  amended brief from the user; their defaults are theirs.

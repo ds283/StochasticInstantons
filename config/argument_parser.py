@@ -79,8 +79,11 @@ def create_argument_parser():
     ray_grp.add_argument(
         "--ray-address",
         type=str,
-        default="auto",
-        help="Ray cluster address (default: 'auto')",
+        required=True,
+        help="Ray cluster address (required): a cluster's GCS address such as "
+        "'127.0.0.1:6390', or 'local' to start a private in-process instance. "
+        "There is no 'auto' default: with other projects' clusters isolated, "
+        "'auto' attaches to any running cluster it finds",
     )
 
     # ODE tolerances

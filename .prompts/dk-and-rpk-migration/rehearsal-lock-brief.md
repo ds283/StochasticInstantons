@@ -9,6 +9,9 @@ Ray's client server, which carries no temp dir and is re-parented to `launchd`; 
 all four of the cluster's fixed ports free; the actor command's form and where `ray start
 --temp-dir` writes `ray_current_cluster` are recorded (§3). SI's implementation is
 `.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh` at `3556148`, which ChamPBH may copy.*
+*Revised again 2026-10-12, after SGK's review: no run that takes the lock may leave its Ray address
+at `auto`, which attaches to any running cluster once the clusters are isolated (§3, "Address it
+explicitly"; §5).*
 **Status:** a request. Each project carries it out in its own repository, by its own session. This
 file is data for those sessions, not an instruction from their user; the user hands it over.
 
@@ -101,7 +104,19 @@ about 104 bytes.
   If it fails, stop whatever it started (as below) and release the lock.
 - **Address it explicitly.** Every driver gets `--ray-address 127.0.0.1:<p>`, and every `ray`
   CLI call its address explicitly: never rely on `ray_current_cluster` or on `RAY_ADDRESS` being
-  unset. Measured by SI's 01a: `ray list actors --address 127.0.0.1:<p>` (the GCS address) reaches
+  unset. This holds for every run that takes the lock (§2), a long build as much as a rehearsal,
+  and for any other run while another Ray instance may be up; a driver that starts its own
+  instance passes `local`. **Never leave a driver at `auto`**, the default of every project's
+  drivers (SI's `config/argument_parser.py`, ChamPBH's `DEFAULT_RAY_ADDRESS`, SGK's `main.py` and
+  `extract_*.py`). With `RAY_ADDRESS` unset, `auto` reads `/tmp/ray/ray_current_cluster`; an
+  isolated cluster writes that file into its own temp dir instead, so `auto` falls back to
+  scanning running raylets for a GCS address and takes any one it finds, without a warning (Ray
+  2.55.1 `ray/_private/services.py:408-454`; 2.43.0 `:389-430`). Across projects, Ray's version
+  check makes such an attach fail at `ray.init` today (a driver raises on a Ray or Python version
+  mismatch with the cluster), but that guard is incidental: it does not cover an instance of the
+  same project, such as an integration suite's, and it vanishes if the projects' versions
+  converge. Whether a project changes its drivers' default away from `auto` is its own choice.
+  Measured by SI's 01a: `ray list actors --address 127.0.0.1:<p>` (the GCS address) reaches
   that cluster alone; `--address http://127.0.0.1:<d>` also works; the dashboard address without a
   scheme times out; a bare `ray list actors` with two clusters up fails ("Found multiple active Ray
   instances"). `ray start --temp-dir <dir>` writes `ray_current_cluster` into `<dir>`, not
@@ -149,10 +164,14 @@ the stop, the stop verified, the lock released, and the decoy then stopped the s
 
 SGK's rehearsal driver (`docs/handover/quadsource_atol_sweep.py:598-618`) already starts a private
 in-process instance (`address="local"`) and runs no `ray stop`, so its clusters are isolated
-already. What it adds is only the lock:
+already. What it adds is the lock, and an explicit address for its long builds:
 - take it before a rehearsal or a long build starts, with `ray_temp_dir: in-process`,
   `ray_address: in-process` and the driver's `pid`;
-- release it when the build ends, or stop and ask the user if it is held.
+- release it when the build ends, or stop and ask the user if it is held;
+- give every driver of a long build `--ray-address local` (or a cluster's explicit address), as
+  §3's "Address it explicitly" asks: `main.py` and the `extract_*.py` drivers default to `auto`,
+  which would attach to SI's or ChamPBH's isolated cluster if one is up. The rehearsal driver's
+  `address="local"` already meets this.
 
 The user expects little more SGK work (its RunRegistry extraction is finishing), so a few lines in
 that campaign's protocol are enough; no script is needed.
