@@ -1,6 +1,6 @@
 # dk-and-rpk-migration campaign — implementation state
 
-**Last updated:** 2026-10-12 · **Status: LIVE — 4 of 12 prompts written (01–04), 01 landed.
+**Last updated:** 2026-10-12 · **Status: LIVE — 4 of 12 prompts written (01–04), 01 landed and reviewed.
 U1–U8 ruled (2026-10-12); P1–P19 stand as proposed. The DatastoreKit release requested by
 [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is out, as `v0.3.0` (README §0.4).**
 The plan is [`README.md`](README.md), written on 2026-10-11 at `7bb3efd` and reviewed on
@@ -51,7 +51,7 @@ on any of them.
 
 | # | Prompt | Covers | Model | Written? | Landed? | Commit | Results note |
 |---|---|---|---|---|---|---|---|
-| 01 | [Rehearsal tooling and run provenance](01-rehearsal-tooling-and-run-provenance.md) | P3, P5; README §4.1–§4.2 | Opus | ✍️ 2026-10-12 | ✅ 2026-10-12 | this commit | [`01-rehearsal-tooling-and-run-provenance.md`](../../.documents/dk-and-rpk-migration/01-rehearsal-tooling-and-run-provenance.md) |
+| 01 | [Rehearsal tooling and run provenance](01-rehearsal-tooling-and-run-provenance.md) | P3, P5; README §4.1–§4.2 | Opus | ✍️ 2026-10-12 | ✅ 2026-10-12 | `84a5cfc` | [`01-rehearsal-tooling-and-run-provenance.md`](../../.documents/dk-and-rpk-migration/01-rehearsal-tooling-and-run-provenance.md) |
 | 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12 | ⬜ | — | — |
 | 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
 | 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
@@ -73,7 +73,8 @@ on any of them.
 - **12** is written after 11's review.
 
 Orchestrator notes are written one prompt at a time, in [`orchestrator/`](orchestrator/), just
-before each dispatch.
+before each dispatch:
+- [`prompt-01.md`](orchestrator/prompt-01.md) — used for 01 (`b4088d1`).
 
 ### 1.1 Items
 
@@ -118,7 +119,7 @@ here (README P14).
 
 ## 3. Active and unresolved issues
 
-Opened at planning, 2026-10-11.
+Opened at planning, 2026-10-11, unless the row says otherwise.
 
 | Issue | What | Owner |
 |---|---|---|
@@ -127,6 +128,7 @@ Opened at planning, 2026-10-11.
 | `[redshift-registered-in-neither-table-list]` | `redshift` is registered (`Datastore/SQL/Datastore.py:99`) and has a batch size, but is in neither `replicated_tables` nor `sharded_tables`, and no SI code uses it: a ChamPBH leftover. `IntegrationSolver` is registered and replicated, but likewise unwritten by any driver (README P12) | unowned |
 | `[test-counts-stale-in-claude-md]` | `CLAUDE.md:21` and `.claude/rules/test-selection.md:10`, `:26` say "464 of 571"; at `7bb3efd` the default run selects 631 of 761 | 12 |
 | `[show-all-flag-unused]` | `--show-all` is parsed (`config/argument_parser.py`) but read by nothing: `main.py`'s inventory truncates at 20 values regardless | 10 (`verbose`) |
+| `[unified-pipeline-stores-null-instanton-labels]` | *Opened 2026-10-12 at 01's review, from its Observation 2.* The unified pipeline (`--no-store-values`) constructs `FullInstanton` and `SlowRollInstanton` with no label (`ComputeTargets/pipeline.py:288-298`, `:304-314`), so they are stored with `label` NULL, where the per-stage queues store the factory's default (`Datastore/SQL/ObjectFactories/FullInstanton.py:149-155`, `SlowRollInstanton.py:148-154`). No science value differs and no reader fails, but the provenance footers read `label` (`plotting/provenance.py:46`), so a scalars-only store's figures lack it. `tools/compare_stores.py` treats the two columns as bookkeeping for this reason | unowned |
 
 ## 4. Resolved issues
 
@@ -212,7 +214,7 @@ None yet.
 
 ### 5.5 After prompt 01 (2026-10-12)
 
-- **Landed:** this commit, results note
+- **Landed:** `84a5cfc`, results note
   [`01-rehearsal-tooling-and-run-provenance.md`](../../.documents/dk-and-rpk-migration/01-rehearsal-tooling-and-run-provenance.md).
   **COMPLETE**: T1–T3; no §4 stop met; nothing opened.
 - **T1.** `utilities.installed_package_provenance()` / `format_package_provenance()`; each driver
@@ -240,3 +242,83 @@ None yet.
   (read `status.txt`); `diagnostics_data.csv`'s timing columns are `diag_compute_time_<kind>`
   (results note, Observation 6). **For 04:** `main.py`'s lines after `:47` have moved by one or two
   (Observation 7).
+
+**Orchestrator review of prompt 01 (2026-10-12)**, by orchestrator note
+[`prompt-01.md`](orchestrator/prompt-01.md), at `84a5cfc`. All ten checks pass. Residue is fixed in
+this follow-up, and one issue is opened from Observation 2.
+- **(1) Scope.** 14 files, all on the prompt's §5 list; `OPEN-ISSUES.md` untouched. The tree is
+  clean.
+- **(2–3) T1.** Each field is read from its PEP 610 place. Eleven odd `direct_url.json` cases (a
+  list, a string, not JSON, not UTF-8, `vcs_info` a list, `dir_info` a string, `editable` the
+  string `"true"` or `false`, absent) and a `read_text` raising `PermissionError` all return
+  without raising. With a stand-in `datastorekit-0.3.0.dist-info` first on `sys.path` and no mock,
+  a VCS install reads
+  `>> packages: datastorekit 0.3.0 (https://github.com/ds283/DatastoreKit@2f5417ea76cdcd0d15d64d80d9085429bfacad21, requested v0.3.0); raypoolkit not installed`;
+  an editable one reads `(editable, file:///…)`, one with no `direct_url.json`
+  `(no recorded origin)`.
+- **(4) Drivers, by `ast` against `0209137`.** `main.py` differs by one import and one module-level
+  print, directly before `ray.init(` and well before the `with ShardedPool(`. Each plot script
+  differs by one import and one statement in its `__main__` block, directly before `ray.init(`
+  and its `with`. `utilities.py` only gains two imports, the constant and the two functions.
+- **(5) Opens.** On two copies of `test-gradient.sqlite` and its ten shards, under a logger around
+  `sqlite3.connect`: 22 opens, all `file:…?mode=ro` with `uri=True`, all inside the copies, none
+  of the originals that the copies' `shards` tables name. The tool imports the standard library
+  only, and has no `ATTACH`.
+- **(6) The real store.** A against B: exit 0, `RESULT: equal`, 30 tables (≈ 250,000 rows on the
+  sharded side), 26 s at load average ≈ 100, `redshift` noted. Each perturbation applied to B
+  only:
+  - one ulp in a `FullInstantonValue.fields_json` float: exit 1, paired as a near miss with both
+    hex values (relative difference 2.0e-16);
+  - `GradientCoupledInstanton`'s `compute_time` and `mean_time_per_picard_iteration`, and one
+    `FullInstanton.timestamp`, changed: exit 0, all three reported as bookkeeping;
+  - one ulp in `FullInstanton.diagnostics_json["final_lambda"]`: exit 1, a near miss (1.6e-16);
+    its 196 value rows and its `CompactionFunction` and 392 samples reported as "paired rows
+    differing only through" their parent, which is better than ChamPBH's tool;
+  - `FullInstanton.diffusion_type = 99`: exit 1, "unknown type value", no traceback;
+  - `InflatonTrajectory.potential_type = 2` on every shard: exit 1, "unresolved reference …
+    QuarticPotential" on each shard;
+  - one shard's `tolerance` moved one ulp: exit 1, "replicated copies differ" for `tolerance` and
+    for the two replicated tables that reference it;
+  - one `CompactionFunction` and its 1,008 samples deleted: exit 1, A-only rows;
+  - one shard file removed: exit 2, the count mismatch named;
+  - the schema snapshot round-trips; a dropped `FullInstanton` index is reported.
+
+  The copies were deleted afterwards. No store in the tree holds a gradient child row, so those
+  two tables are exercised for real first by RH0.
+- **(7) The maps.** Every bookkeeping entry, JSON column and timing key carries its `path:line` in
+  the tool, and each was confirmed. No physics column is set aside. **The `label` ruling is
+  accepted:** a per-stage row stores the factory's `.4g` rendering of values its foreign keys
+  already compare, and the unified pipeline constructs the object with no label
+  (`ComputeTargets/pipeline.py:288-298`), so the column carries no physics the comparison would
+  miss. `GradientCoupledInstanton.label` is compared. The four polymorphic pairs are declared and
+  test 12 checks both registries, non-empty, in both directions.
+- **(8) Scripts and breakages.**
+  - `build.sh`'s command matches README §4.1 token for token in both modes, under macOS
+    `/bin/bash` 3.2 (the empty `EXTRA` array is safe under `set -u`), and it refuses an existing
+    log.
+  - `interrupt_when.py` on a `sleep 600`: it waited for the banner and then 2 s, sent `SIGTERM` to
+    that pid only (exit 143; a second `sleep` was left alone). When the process exited first, it
+    said so and returned 1.
+  - `stage_counts.py` on a synthetic log keeps the two `STAGE 4` lines apart.
+  - All six breakage diffs pass `git apply --check` and, replayed in bash, each fails exactly its
+    named test(s); the tree is clean after `git apply -R`.
+- **(9) Stores.** The 17 store files in the tree have unchanged mtimes and sizes.
+  `~/ScienceData/StochasticInstantons-rehearsals/` does not exist.
+- **(10) Records and suites.** The results note has README §5.1's sections and the prompt's §6
+  additions. At `84a5cfc`: default **680** (679 passed, 1 skipped; 45 s), integration **61** (60
+  passed, 1 skipped; 57 s, `RAY_ADDRESS=local`). Every new file has the licence header.
+  - *Residue, fixed here:* "this commit" → `84a5cfc` (board and results note); this note added to
+    the list of orchestrator notes; README §0.1 item 11, §2.2 (10's charter) and §4.2 now say
+    four polymorphic references; the campaign's line in `.prompts/INDEX.md`.
+- **Deviations D1–D10 are accepted.** D1–D3 are the brief's corrections.
+- **Observations.** *Opened:* Observation 2, as §3
+  `[unified-pipeline-stores-null-instanton-labels]`. *Not opened:* 1 is fixed here; 3, 5 and 6
+  are recorded for the notes that use them; 4 and 7 are handed on.
+- **Handed on.**
+  - *To 02's note:* `run_readers.sh` exits 1 when step 4 finds the expected `2026.3.0` `version`
+    row, so L3 reads `status.txt`; a `SIGTERM`ed driver exits 134, not 143; the
+    `diagnostics_data.csv` timing columns are `diag_compute_time_<kind>`; the integration suite
+    runs under `RAY_ADDRESS=local`, and `ray stop` stops every Ray process on the machine.
+  - *To 04's note:* `main.py`'s lines after `:47` have moved by one or two (results note,
+    Observation 7); 04's citations of `:410`, `:497`, `:664`, `:824`, `:848`, `:1097` need the
+    new numbers.

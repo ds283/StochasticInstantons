@@ -1,6 +1,6 @@
 # Open issues — project-wide index
 
-**Last updated:** 2026-10-11 · **58 open**, 24 closed. Seeded from
+**Last updated:** 2026-10-12 · **59 open**, 24 closed. Seeded from
 [`RECONSTRUCTION.md`](handoff-notes/2026-10-08/RECONSTRUCTION.md) Parts A0–D
 and D0, the open-issue `todo`s of
 [`onion_model.tex`](../notes/onion-model/onion_model.tex) as rewritten in
@@ -150,7 +150,7 @@ in-place rewrite. Phase 0 (8 October 2026) dealt with all but the one below.
 
 ## 6a. Infrastructure — DatastoreKit and RayPoolKit adoption — board: [`.prompts/dk-and-rpk-migration/IMPLEMENTATION_STATE.md`](../.prompts/dk-and-rpk-migration/IMPLEMENTATION_STATE.md)
 
-Opened at the campaign's planning, 2026-10-11. Owners are the campaign's prompts (`dk-NN`).
+Opened at the campaign's planning, 2026-10-11, or at a review where the row says so. Owners are the campaign's prompts (`dk-NN`).
 
 | Issue | Source | Owner | Hook |
 |---|---|---|---|
@@ -159,6 +159,7 @@ Opened at the campaign's planning, 2026-10-11. Owners are the campaign's prompts
 | `[redshift-registered-in-neither-table-list]` | board §3 | unowned | `redshift` is registered but in neither table list and unused; `IntegrationSolver` is registered and unwritten. |
 | `[test-counts-stale-in-claude-md]` | board §3 | dk-12 | `CLAUDE.md` and `test-selection.md` say 464 of 571; the default run selects 631 of 761. |
 | `[show-all-flag-unused]` | board §3 | dk-10 | `--show-all` is parsed and read by nothing. |
+| `[unified-pipeline-stores-null-instanton-labels]` | board §3 (01's review) | unowned | The unified pipeline stores `FullInstanton` and `SlowRollInstanton` with `label` NULL, so a scalars-only store's figure footers lack it. |
 
 ## 7. Closed
 

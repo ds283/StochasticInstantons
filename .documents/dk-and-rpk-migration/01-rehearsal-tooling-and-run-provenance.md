@@ -1,7 +1,7 @@
 # 01 — rehearsal tooling and run provenance
 
 **Subject:** Add run provenance and the tooling for the migration rehearsals
-**Commit:** this commit, on branch `dk-and-rpk-migration`, on top of `b4088d1`
+**Commit:** `84a5cfc`, on branch `dk-and-rpk-migration`, on top of `b4088d1`
 **Date:** 2026-10-12, by Claude Opus 5.5
 **Result:** **COMPLETE.** T1–T3 shipped. The default run is 631 → **680** (679 passed, 1
 skipped): +24 `test_compare_stores`, +20 `test_package_provenance`, +5
@@ -425,7 +425,7 @@ No UNINTENDED DRIFT was found.
 
 ## The deliberate-breakage record
 
-Each diff below is exactly as applied, from a clean tree at this commit, and was replayed with
+Each diff below is exactly as applied, from a clean tree at `84a5cfc`, and was replayed with
 `git apply`, the three new test modules run, and reversed with `git apply -R`. All six were
 caught; the named tests fail for the stated reason.
 
@@ -606,6 +606,6 @@ caught; the named tests fail for the stated reason.
   yet (`~/ScienceData/` does, made by ChamPBH's campaign). `build.sh` creates `logs/` under it. The diagnostics CSV's timing columns are
   Observation 6's.
 - **For 04:** `main.py`'s line numbers after `:47` have moved (Observation 7).
-- **Suites at this commit:** default 680 (679 passed, 1 skipped); integration 61 (60 passed, 1
+- **Suites at `84a5cfc`:** default 680 (679 passed, 1 skipped); integration 61 (60 passed, 1
   skipped).
 - **Nothing opened**; `.documents/OPEN-ISSUES.md` is unchanged.

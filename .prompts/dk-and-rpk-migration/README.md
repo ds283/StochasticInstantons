@@ -154,10 +154,13 @@ carry over:
     times. What it passes is the default (RayPoolKit checklist item 3).
 11. **References without a foreign key, and timings inside JSON.** These matter for comparing two
     stores by value (§4.2):
-    - **two references are polymorphic, with no foreign key:**
+    - **four references are polymorphic, with no foreign key** (*corrected 2026-10-12, at 01's
+      review: the plan first named two, and 01 found the other two*):
       - `potential_serial`, disambiguated by `potential_type`
         (`Datastore/SQL/ObjectFactories/InflatonTrajectory.py:53-63`);
-      - `diffusion_serial`, disambiguated by `diffusion_type` (`GradientCoupledInstanton.py:91`).
+      - `diffusion_serial`, disambiguated by `diffusion_type`, on three tables:
+        `FullInstanton.py:78-79`, `SlowRollInstanton.py:77-78` and
+        `GradientCoupledInstanton.py:91-92`.
     - **every compute target writes `compute_time` into `diagnostics_json`**, and
       `GradientCoupledInstanton` adds Picard timings. So two builds of one tree never agree
       byte for byte on those columns.
@@ -729,8 +732,10 @@ deletes, and the seven protected factories, the files of `MetadataConcepts/` and
      Some points are settled here and some are the prompt's:
      - The quantity factories' specs are instance methods, since their table is held on the
        instance. The package reads the spec by `getattr` on the registry entry.
-     - **The two polymorphic references are `Parent(types=…, type_column=…)`**, with the type
-       column among the leaves.
+     - **The four polymorphic references are `Parent(types=…, type_column=…)`**, with the type
+       column among the leaves: `InflatonTrajectory`'s potential, and the diffusion model of
+       `FullInstanton`, `SlowRollInstanton` and `GradientCoupledInstanton` (§0.1 item 11, as
+       corrected at 01's review).
      - `GradientCoupledInstanton` has two child tables and a spec has one `values` slot. How the
        second is reported is the prompt's to settle, and record.
      - Which columns are leaves and which are parents the prompt derives from each `build`
@@ -977,10 +982,11 @@ primary, and checks their count against the primary's `shards` table.
   - A table's rows are taken as a multiset of **identities**. A row's identity is its columns, less
     the bookkeeping ones, with each reference replaced by the identity of the row it names,
     recursively.
-  - A reference is a foreign-key column (`PRAGMA foreign_key_list`) or one of **the two
-    polymorphic references**: `potential_serial` by `potential_type`, and `diffusion_serial` by
-    `diffusion_type`. The tool carries their type maps as data, tested against SI's registries
-    (01).
+  - A reference is a foreign-key column (`PRAGMA foreign_key_list`) or one of **the four
+    polymorphic references**: `potential_serial` by `potential_type` on `InflatonTrajectory`, and
+    `diffusion_serial` by `diffusion_type` on `FullInstanton`, `SlowRollInstanton` and
+    `GradientCoupledInstanton` (*four, not two: corrected at 01's review*). The tool carries their
+    type maps as data, tested against SI's registries (01).
   - A float is compared by its stored bits (`float.hex`).
   - **A JSON column** (`fields_json`, `diagnostics_json`, `metadata`) is parsed and compared
     structurally, its floats by their bits. Its **timing keys** (`compute_time` and the Picard
