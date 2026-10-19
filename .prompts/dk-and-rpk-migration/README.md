@@ -1,9 +1,10 @@
 # Campaign — dk-and-rpk-migration
 
 **Written:** 2026-10-11 on `main` at `7bb3efd`, by Claude Opus 5.5. **Status: reviewed; prompts
-01–04 and 01a written (2026-10-12); 01 landed.** All nine decisions of §6.1 are ruled: U3, U8 and
-U9 on their own, and U1, U2 and U4–U7 as recommended, on 2026-10-12. P1–P19 stand as proposed (§6.2). The DatastoreKit
-release U3 asked for is out, as `v0.3.0` (§0.4).
+01–04 and 01a written (2026-10-12); 01 and 01a landed.** All ten decisions of §6.1 are ruled: U3,
+U8 and U9 on their own, and U1, U2 and U4–U7 as recommended, on 2026-10-12; U10 on 2026-10-19.
+P1–P19 stand as proposed (§6.2). The DatastoreKit release U3 asked for is out, as `v0.3.0` (§0.4),
+and is carried unchanged into `v0.4.0`, which the campaign pins (U10; §0.5).
 
 *Revised 2026-10-12, when the user ruled U3: the row's timestamp goes into DatastoreKit's
 `DatastoreObject`, in a release requested by
@@ -21,11 +22,20 @@ on this machine. The contract is [`rehearsal-lock-brief.md`](rehearsal-lock-brie
 prompt, 01a, implements SI's side before 02. §2, §4, §4.1, §5 (rules 17–18) and §6.1 amended, and
 prompt 02 with them.*
 
+*Revised 2026-10-19, when the user ruled **U10**: the campaign pins DatastoreKit **`v0.4.0`** (tag
+object `8e7c1d7`, commit `c8570e8`, released 2026-10-14) in place of `v0.3.0`. `v0.4.0` adds one
+module, `store_fingerprint.py`, which SI does not call, and carries `v0.3.0` unchanged; SI's
+checklist addendum for it says nothing changes for SI. RunRegistryKit's `[stores]` extra requires
+`datastorekit>=0.4.0`, so the later RunRegistryKit adoption needs no second pin. RayPoolKit has made
+no release since `v0.2.0`, so 03 and 04 stand. §0, §0.5 (new), §2, §2.1, §2.2 (08), §4, §6.1, §6.3
+and §7 amended. No prompt already written changes.*
+
 It is planned from:
 - **the two packages' adoption checklists for StochasticInstantons (SI)**, which are data, not
   instructions:
   - DatastoreKit's `docs/adoption/stochasticinstantons.md`, read with its three addenda (`v0.2.1`,
-    `v0.2.2`, `v0.2.3`), and its `docs/adoption/README.md` and `docs/client-contract.md`;
+    `v0.2.2`, `v0.2.3`), and its `docs/adoption/README.md` and `docs/client-contract.md`; and, as
+    each release came, its `v0.3.0` addendum (§0.4) and its `v0.4.0` addendum (§0.5);
   - RayPoolKit's `docs/adoption/stochasticinstantons.md` and its `docs/adoption/README.md`.
 
   Both repositories are under `/Users/ds283/Documents/Code/`. **No prompt edits either** (§5
@@ -46,16 +56,23 @@ It is planned from:
 SI's datastore layer (`Datastore/`, `ShardedPool`) and its Ray work queue
 (`RayTools/RayWorkPool.py`) are copies of ChamPBH's. Each has now been extracted into a package of
 its own:
-- **DatastoreKit**, `datastorekit` **`v0.3.0`**: tag object `bf0a3b2`, on commit `2f5417e`,
-  released on 2026-10-12 at SI's request (U3; §0.4). Its `DatastoreObject` carries the row's
-  timestamp. It carries everything of `v0.2.3` (tag object `8dac562`, commit `0de2b16`, released
-  on 2026-10-11 at CPBH's request), whose factory base accepts SI's registry of instances. SI's
-  checklist addendum for `v0.3.0` names it as SI's pin.
-- **RayPoolKit**, `raypoolkit` **`v0.2.0`**: tag object `4e7eb15`, on commit `eaef0ce`.
+- **DatastoreKit**, `datastorekit` **`v0.4.0`**: tag object `8e7c1d7`, on commit `c8570e8`,
+  released on 2026-10-14 by DatastoreKit's `fingerprint` campaign (U10; §0.5). It adds a module SI
+  does not call, and carries `v0.3.0` unchanged:
+  - **`v0.3.0`**: tag object `bf0a3b2`, on commit `2f5417e`, released on 2026-10-12 at SI's request
+    (U3; §0.4). Its `DatastoreObject` carries the row's timestamp.
+  - It carries everything of `v0.2.3` (tag object `8dac562`, commit `0de2b16`, released on
+    2026-10-11 at CPBH's request), whose factory base accepts SI's registry of instances.
+
+  SI's checklist addendum for `v0.4.0` gives SI's pin as `v0.3.0` or `v0.4.0`, as SI chooses; U10
+  chooses `v0.4.0`.
+- **RayPoolKit**, `raypoolkit` **`v0.2.0`**: tag object `4e7eb15`, on commit `eaef0ce`. Still its
+  latest release on 2026-10-19 (§0.5).
 
 SGK, ChamPBH and SI will all depend on them. Each package names SI's adoption as its gate **G4**:
-- **DatastoreKit's G4** (checklist item 9, as its `v0.3.0` addendum amends it):
-  - SI's 9 layer files are deleted, and SI imports `datastorekit` at `v0.3.0`;
+- **DatastoreKit's G4** (checklist item 9, as its `v0.3.0` and `v0.4.0` addenda amend it):
+  - SI's 9 layer files are deleted, and SI imports `datastorekit` at `v0.3.0` or later (SI:
+    `v0.4.0`, U10);
   - SI's non-integration and integration suites pass;
   - **a small grid is rebuilt through the package**. What it is compared against is SI's choice.
 - **RayPoolKit's G4** (checklist item 8):
@@ -293,7 +310,8 @@ is to be recomputed by P2 anyway, and the July `phase_a` stores stay readable at
 Released by DatastoreKit's `object-timestamp` campaign (closed at `5f972be`), from
 [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md).
 - **The tag.** `git ls-remote` gives `refs/tags/v0.3.0` → `bf0a3b25afa5…`, `^{}` →
-  `2f5417ea76cd…`. The pin is `datastorekit @ git+https://github.com/ds283/DatastoreKit@v0.3.0`.
+  `2f5417ea76cd…`. The pin was `datastorekit @ git+https://github.com/ds283/DatastoreKit@v0.3.0`,
+  until U10 moved it to `v0.4.0` (§0.5).
 - **What changed in the package since `v0.2.3`**, by `git diff --stat v0.2.3 v0.3.0 --
   datastorekit pyproject.toml`: `datastorekit/object.py` (19 lines), the version, and tests. No
   other layer file changed. Read through `git show`, `DatastoreObject.__init__(self, store_id, *,
@@ -322,6 +340,51 @@ Released by DatastoreKit's `object-timestamp` campaign (closed at `5f972be`), fr
 - **Nothing else rides in it.** DatastoreKit's `inherited-issues` board (opened 2026-10-12, no
   prompts) now holds `[00-a-drop-action-drops-a-replicated-table-outside-the-in-flight-record]`,
   cited in §0.1 item 5. Its state is unchanged by `v0.3.0`.
+
+### 0.5 DatastoreKit `v0.4.0`, and RayPoolKit, as of 2026-10-19
+
+Checked on 2026-10-19, read-only, in both repositories (each at its remote `main`: DatastoreKit
+`38ebb9f`, RayPoolKit `17029d9`).
+- **The tag.** `git ls-remote` gives `refs/tags/v0.4.0` → `8e7c1d77b379…`, `^{}` →
+  `c8570e849334…`. Released on 2026-10-14 by DatastoreKit's `fingerprint` campaign (closed at
+  `b01737f`). The pin is `datastorekit @ git+https://github.com/ds283/DatastoreKit@v0.4.0`.
+- **What changed in the package since `v0.3.0`**, by `git diff --stat v0.3.0 v0.4.0 -- datastorekit
+  pyproject.toml`:
+  - one new module, `datastorekit/store_fingerprint.py` (351 lines): `fingerprint_of`,
+    `compare_fingerprints`, `listing_lines` and `ENCODING_FORMAT = 1`, pure functions over what
+    `read_inventory` returns (contract §9.7);
+  - its tests, `datastorekit/tests/test_store_fingerprint.py`, and one golden data file under
+    `datastorekit/tests/data/`;
+  - the version line of `pyproject.toml`. `requires-python` and the dependencies are unchanged.
+
+  `datastorekit/object.py` (U3, §0.4) and `datastorekit/store_inventory.py` (which 10 builds on)
+  are unchanged. The layer never calls the new module, so nothing it writes, reads, refuses or
+  raises changes.
+- **What SI's checklist addendum says** (`docs/adoption/stochasticinstantons.md`, "Addendum:
+  v0.4.0", read through `git` at SI's `5fb4a1d`): **"Nothing changes for SI."**
+  - SI defines and calls none of the three functions, and no file names
+    `datastorekit.store_fingerprint`;
+  - the `v0.3.0` addendum's account of `DatastoreObject.timestamp` holds at `v0.4.0`, so SI's 24
+    timestamp sites still change only an import (09);
+  - SI's pin is `v0.3.0` or `v0.4.0`, as SI chooses, and **G4 reads "SI has adopted `v0.3.0` or
+    later"** (`fingerprint` decision U6).
+- **Why `v0.4.0` (U10).** RunRegistryKit's `[stores]` extra requires `datastorekit>=0.4.0`
+  (RunRegistryKit `pyproject.toml`). RunRegistryKit now has an SI checklist
+  (`docs/adoption/stochasticinstantons.md`, and `docs/adoption/v0.2.0/stochasticinstantons.md`):
+  SI adopts its store layer only after this campaign, with a `datastorekit` of `v0.4.0` or later
+  and 10's specs (§7). Pinning `v0.3.0` would leave a second pin commit for that campaign, for no
+  gain: the layer SI runs is the same in both.
+- **The other clients.** SGK adopted `v0.4.0` by its `runregistry-extraction` campaign, whose R1
+  took the fingerprint both ways on four stores with no difference (DatastoreKit `38ebb9f`). CPBH
+  stays on `v0.3.0`.
+- **RayPoolKit has made no release since `v0.2.0`.** Its remote has the tags `v0.1.0` and `v0.2.0`
+  only. `git diff --stat v0.2.0 17029d9` touches no file under `raypoolkit/` and not
+  `pyproject.toml`: only documents and records (the adoption checklists, the verification, the
+  G2 and G3 records). Its SI checklist was last changed on 2026-10-10 (`67f3f7e`), before this plan
+  was written. So 03 and 04 stand as written.
+- **Nothing else rides in it.** DatastoreKit's fingerprint plan defers "a second value table per
+  spec" until SI's 10 settles it and the user asks (its README §1, out of scope); this plan's §6.3
+  already leaves that to the user at 10.
 
 ## 1. Scope
 
@@ -375,7 +438,7 @@ Released by DatastoreKit's `object-timestamp` campaign (closed at `5f972be`), fr
 | 05 | `05-move-si-data-out-of-the-layer.md` | `config/datastore.py` holds the registry, the drop groups and the serial batch sizes, and the old layer reads them from there. The 15 vectorized gets take `{"delta_Nstar": key}` (P8), and the four named test stubs follow. On the old layer; the schema does not change | Sonnet |
 | 06 | `06-prepare-the-inflaton-trajectory-factories.md` | U4: `InflatonTrajectory`'s cascade (the orphan fix), the `prune` keyword (all 12 hooks), `owner_column`, `validated_column` and `revalidate`. On the old layer; the schema does not change | Opus |
 | 07 | `07-rehearse-before-the-datastore-swap.md` | **RH1.** §4.1 at 06's tree: `raypoolkit`, the data move and the preparation, on SI's layer. Equal to RH0. **Tags the last commit on the old layer** (U7) | Opus |
-| 08 | `08-pin-datastorekit-v0.3.0.md` | The `v0.3.0` pin (U3; §0.4) in a commit of its own, installed as 03. On the installed package, SI's factory classes instantiate on its base, and its `DatastoreObject` carries a timestamp | Sonnet |
+| 08 | `08-pin-datastorekit-v0.4.0.md` | The `v0.4.0` pin (U10; §0.5), which carries `v0.3.0`'s timestamp (U3; §0.4), in a commit of its own, installed as 03. On the installed package, SI's factory classes instantiate on its base, and its `DatastoreObject` carries a timestamp | Sonnet |
 | 09 | `09-adopt-datastorekit.md` | **The DatastoreKit swap.** The 7 layer modules go and the 2 `__init__.py` are emptied (P6). Every layer import outside `.prompts/` is rewritten. The pools take `factories=`, `serial_batch_sizes=` and `drop_tables=`. U5's drop refusal. `live_pool` is rebuilt. `--inventory` refuses until 10 (P11) | Opus |
 | 10 | `10-port-the-inventory.md` | `inventory_spec()` on the factories. `tools/inventory_report.py` over `read_inventory`. `main.py --inventory` on the closed store, before Ray. The 17 `inventory()` hooks and `inventory_config` deleted | Opus |
 | 11 | `11-rehearse-through-both-packages.md` | **RH2.** §4.1 through both packages. Equal to RH1 by §4.2. **DatastoreKit's G4 holds** | Opus |
@@ -391,7 +454,8 @@ that each carries the previous review's findings:
 - **01a** follows 01's review and the ruling U9. *Written 2026-10-12.* 02 waits on it.
 - **05–07** follow 02's review. RH0's reproducibility (§4.3) fixes 07's criterion.
 - **08–11** follow 07's review. 07's results note fixes the counts and names they cite. The
-  release U3 asked for is tagged (`v0.3.0`, §0.4), so 08 waits on nothing else.
+  release U3 asked for is tagged (`v0.3.0`, §0.4), and so is the release 08 pins (`v0.4.0`, §0.5;
+  U10), so 08 waits on nothing else.
 - **12** follows 11's review.
 
 Orchestrator notes are written one prompt at a time, in [`orchestrator/`](orchestrator/), just
@@ -634,26 +698,28 @@ class of SI's own; that half is now the DatastoreKit release's, §6.1.)
 - **If RH1 misses,** the change is in 03–06, all on SI's layer. The prompt stops and records the
   diff.
 
-**08 — Pin `datastorekit` `v0.3.0`** (Sonnet). As 03, for
-`datastorekit @ git+https://github.com/ds283/DatastoreKit@v0.3.0` (§0.4). It reads the release's SI
-checklist addendum, and re-checks the tag on the remote before installing.
+**08 — Pin `datastorekit` `v0.4.0`** (Sonnet; *retargeted from `v0.3.0` on 2026-10-19, U10*). As
+03, for `datastorekit @ git+https://github.com/ds283/DatastoreKit@v0.4.0` (§0.5). It reads SI's
+checklist addenda for `v0.3.0` and `v0.4.0`, and re-checks the tag on the remote before installing.
 - **Acceptance.**
   1. `pip freeze` differs from 03's by exactly one line, `datastorekit` at
-     `2f5417ea76cd…`; `pip check` is clean.
-  2. Provenance gives `0.3.0`, commit `2f5417ea76cd…`, requested revision `v0.3.0`,
+     `c8570e849334…`; `pip check` is clean.
+  2. Provenance gives `0.4.0`, commit `c8570e849334…`, requested revision `v0.4.0`,
      `editable: false`.
-  3. The installed `datastorekit/` equals `git archive v0.3.0 datastorekit`, less
-     `datastorekit/tests` (adoption README §3).
+  3. The installed `datastorekit/` equals `git archive v0.4.0 datastorekit`, less
+     `datastorekit/tests` (adoption README §3), which at `v0.4.0` also holds the fingerprint's
+     golden data file. It includes `datastorekit/store_fingerprint.py`, which nothing in SI's tree
+     imports (§0.5).
   4. **What SI needs of the release, checked on the installed package** without touching SI's
      tree. A throwaway script, outside the repository:
-     - **U3:**
+     - **U3** (`v0.3.0`'s change, carried unchanged into `v0.4.0`, §0.5):
        - constructs `datastorekit.DatastoreObject(1, timestamp=t)` and reads `t` back;
        - without the argument, `timestamp` is `None`;
        - assigning to it raises `AttributeError`;
        - passing it positionally raises `TypeError` (it is keyword-only, §0.4);
-     - **the factory base (`v0.2.3`'s change, carried into `v0.3.0`):** defines a subclass of the
-       installed `SQLAFactoryBase` with only `register` and `build` and instantiates it, and shows
-       that one without `build` still raises `TypeError`.
+     - **the factory base (`v0.2.3`'s change, carried into `v0.3.0` and `v0.4.0`):** defines a
+       subclass of the installed `SQLAFactoryBase` with only `register` and `build` and
+       instantiates it, and shows that one without `build` still raises `TypeError`.
   5. The default and integration runs give 06's counts.
 
 **09 — Adopt `datastorekit`** (Opus). One commit, because the tree cannot pass between its parts.
@@ -895,8 +961,9 @@ and it is why §4.2 reads files directly. Neither 09 nor 10 opens one through th
   the second into tables.
 - **06 ships** the `InflatonTrajectory` factories in their package form. 09 changes only their
   base's import.
-- **DatastoreKit shipped `v0.3.0`** (§0.4), outside this campaign, from the brief (U3). 08 pins
-  it and reads its SI checklist addendum.
+- **DatastoreKit shipped `v0.3.0`** (§0.4), outside this campaign, from the brief (U3), and then
+  `v0.4.0` (§0.5), which carries it unchanged. 08 pins `v0.4.0` (U10) and reads both SI checklist
+  addenda.
 - **07 ships** the tag `pre-datastorekit` (U7), which 12's handover cites.
 - **09 ships** the rebuilt `live_pool`; 10's tests build their stores through it.
 
@@ -1140,21 +1207,22 @@ convention), plus:
 
 ### 6.1 Ruled by the user
 
-Each row gives the planner's recommendation first. **All nine are ruled.** U3, U8 and U9 were
-ruled on 2026-10-12, as their rows say. **U1, U2 and U4–U7 were ruled on 2026-10-12 as recommended**:
+Each row gives the planner's recommendation first. **All ten are ruled.** U3, U8 and U9 were
+ruled on 2026-10-12, and U10 on 2026-10-19, as their rows say. **U1, U2 and U4–U7 were ruled on 2026-10-12 as recommended**:
 the recommendation in each row is the decision, and the alternative beside it is rejected.
 
 | | Recommended | The alternative, and why not |
 |---|---|---|
 | **U1** — the order | **RayPoolKit first**, as in CPBH. Its swap deletes `RayTools/`, rewrites 3 imports, drops a private name and changes no call site. It also removes `RayTools/RayWorkPool.py:23`'s layer import, so the DatastoreKit swap never touches `RayTools/` | DatastoreKit first, as in SGK. SGK's reason (a test edited only to be deleted) has no counterpart here, and RayPoolKit's U12 exception would be needed |
 | **U2** — the rehearsals | **The agent runs them** (§4.1): a reference, a killed-and-resumed build, a scalars-only build and the readers, at RH0, RH1 and RH2, on the grid of P1 | The user runs every build. Straight-through builds only, which would leave the prune at open unexercised under real Ray |
-| **U3** — `DatastoreObject.timestamp` (**ruled 2026-10-12**) | **Fix the package, not the client.** DatastoreKit's `DatastoreObject` gains an optional `timestamp` argument and a read-only property, in a release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) and **delivered as `v0.3.0`** (§0.4), which 08 pins. The package already owns the column (it prepends it, stamps it and reports it), and every client writes it; only the object's slot was missing. SI's 24 sites then change only an import (09), and the provenance footers keep their timestamps. *The planner first recommended a class of SI's own; the user asked whether it belonged in DatastoreKit, and ruled that it does* | A `TimestampedDatastoreObject` of SI's own, the 14 classes moved onto it before the swap: a layer-shaped class kept in the client after the layer has gone. It was the fallback had the release been late; it was not. Dropping the timestamp: the footers lose the row's creation time, which `metadata-annotations` added on purpose |
+| **U3** — `DatastoreObject.timestamp` (**ruled 2026-10-12**) | **Fix the package, not the client.** DatastoreKit's `DatastoreObject` gains an optional `timestamp` argument and a read-only property, in a release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) and **delivered as `v0.3.0`** (§0.4), carried unchanged into `v0.4.0` (§0.5), which 08 pins (U10). The package already owns the column (it prepends it, stamps it and reports it), and every client writes it; only the object's slot was missing. SI's 24 sites then change only an import (09), and the provenance footers keep their timestamps. *The planner first recommended a class of SI's own; the user asked whether it belonged in DatastoreKit, and ruled that it does* | A `TimestampedDatastoreObject` of SI's own, the 14 classes moved onto it before the swap: a layer-shaped class kept in the client after the layer has gone. It was the fallback had the release been late; it was not. Dropping the timestamp: the footers lose the row's creation time, which `metadata-annotations` added on purpose |
 | **U4** — `InflatonTrajectory` under the replicated protocol | **Do all four, before the swap** (06): the cascade that fixes the orphan bug; `owner_column` on the value table, without which the package refuses that cascade; `validated_column` with `revalidate`, so that an interrupted validate is repaired at open rather than refused; and the `prune` keyword | The keyword only, the checklist's minimum. It leaves the orphan bug, and a store that an unlucky Ctrl-C makes unopenable |
 | **U5** — a drop that leaves references | **Refuse before Ray starts, naming the groups to add** (09), as CPBH's U4 | Expand the request silently, with a notice; or leave the refusal to `ShardedPool` at open, which is later and names tables, not groups |
 | **U6** — the inventory | **Port it** (10): `inventory_spec` on the factories, `read_inventory` on a closed store, an SI report. It also brings the problem checks (orphans, unresolved parents) that the old inventory never had | Keep a reader of SI's own over the closed store: a second implementation of what the package now provides |
 | **U7** — when, relative to P2 | **Before P2.** 07 tags its commit `pre-datastorekit`, the last commit on SI's own layer, rehearsed. P2's audit of the June and July stores runs from a worktree at that tag | After P2's audit, at the start of P2 proper, as the checklist advises. That interleaves two campaigns, and P2's first builds would be on the old layer |
 | **U8** — spec coverage, for the fingerprint (**ruled 2026-10-12**) | **10 proves that every registered class is covered** (10's acceptance item 5): a spec of its own, read through an owner's, or excluded by name with a reason, enforced by a test. SGK is extracting its `RunRegistry` into RunRegistryKit, which SI is expected to adopt after this campaign; its store fingerprint is taken through `read_inventory`, which reads only the classes that declare a spec and passes over the rest **silently**, and the user ruled that its store layer will not run without a fingerprinter. Item 1's "each factory whose class the report covers" is the right test for a report, not for a fingerprint. Measured at `7bb3efd`, item 1's list misses `redshift` and `IntegrationSolver`, and `GradientCoupledInstanton`'s second child table cannot be reached by a spec. The reasoning is SGK's `docs/runregistry-extraction-audit.md` §0 (D4, D5) and §7. Adopting RunRegistryKit stays out of this campaign's scope | Leaving item 1 as written: a store fingerprint would omit two registered classes and one table of results without saying so |
 | **U9** — other projects' Ray clusters (**ruled 2026-10-12**) | **Isolate, and take a shared lock.** SI's cluster runs on its own temp dir and ports and is stopped by a targeted stop, never `ray stop`; one lock, `~/ScienceData/.rehearsal-lock`, shared with ChamPBH and SGK, lets one rehearsal run at a time. ChamPBH adopts the same targeted stop, and SGK takes the lock (its in-process clusters are already isolated). The contract is [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md); 01a implements SI's side. Raised at 01's review: SGK's rehearsal ran beside this campaign's suites, ChamPBH's protocol runs a bare `ray stop`, and ChamPBH's BBN wall-clock limit makes its results sensitive to load | Moving SI's campaign to another machine: a rebuilt venv, two unpushed branches, and sibling repositories at the same paths, for nothing isolation does not give. Interleaving by hand, with no lock: a `ray stop` from either side still kills the other's build |
+| **U10** — which DatastoreKit release (**ruled 2026-10-19**) | **Pin `v0.4.0`** (§0.5). It is `v0.3.0` plus one module, `store_fingerprint.py`, which the layer never calls and SI does not import; `object.py` and `store_inventory.py` are unchanged, so nothing in 08–11 changes but 08's pin and the commit it checks. SI's checklist addendum offers `v0.3.0` or `v0.4.0`, and G4 reads "`v0.3.0` or later". RunRegistryKit's `[stores]` extra requires `datastorekit>=0.4.0`, so the RunRegistryKit adoption that follows this campaign (U8, §7) starts from SI's pin. *The user asked to adopt `v0.4.0` once it was released* | Stay on `v0.3.0`: the same layer, and a second pin commit owed to the RunRegistryKit campaign |
 
 ### 6.2 Proposed by the planner
 
@@ -1222,7 +1290,10 @@ U4–U7 on 2026-10-12 and gave no ruling on any of P1–P19, so all nineteen sta
 
 - ~~Before 01: the rulings above~~ (ruled 2026-10-12).
 - **At 10:** whether to ask DatastoreKit for more than one value table per spec, so that a
-  fingerprint can see both of `GradientCoupledInstanton`'s child tables (U8).
+  fingerprint can see both of `GradientCoupledInstanton`'s child tables (U8). DatastoreKit's
+  `fingerprint` plan left this out of `v0.4.0` explicitly, "until SI's prompt 10 settles it and
+  the user asks" (its README §1, out of scope), so a request would be a new DatastoreKit release
+  and a new pin prompt here (§5 rule 11).
 - **At 07:** pushing the tag.
 - **At the close:**
   - removing the rehearsal stores (§3);
@@ -1243,3 +1314,11 @@ U4–U7 on 2026-10-12 and gave no ruling on any of P1–P19, so all nineteen sta
 - **`[inflaton-trajectory-prune-orphans-value-rows]` is closed** by 06. Any June store that was
   pruned after an interrupted run may hold orphans. P2 reads those stores and does not resume
   them, so this matters only if a June store is reopened read-write at the tag.
+- **RunRegistryKit comes next, in a campaign of its own** (U8, U10; *added 2026-10-19*). Its SI
+  checklist (RunRegistryKit `docs/adoption/stochasticinstantons.md`, with
+  `docs/adoption/v0.2.0/stochasticinstantons.md`) says SI adopts `v0.2.0` directly, the core at
+  any time and the store layer only after this campaign. This campaign leaves what the store layer
+  needs: `datastorekit` `v0.4.0` pinned (08), `config/datastore.py`'s registry (05), and specs that
+  cover it (10). The checklist also offers replacing `utilities.installed_package_provenance` (01)
+  by `runregistrykit.package_provenance`, and advises building its format-bump guard with the
+  fingerprinter, right after 10. Both are that campaign's, not this one's.

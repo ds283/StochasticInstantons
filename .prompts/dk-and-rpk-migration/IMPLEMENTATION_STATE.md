@@ -1,13 +1,15 @@
 # dk-and-rpk-migration campaign — implementation state
 
-**Last updated:** 2026-10-12 · **Status: LIVE — 5 of 13 prompts written (01–04, 01a), 01 landed and reviewed.
-U1–U9 ruled (2026-10-12); P1–P19 stand as proposed. The DatastoreKit release requested by
-[`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is out, as `v0.3.0` (README §0.4).**
+**Last updated:** 2026-10-19 · **Status: LIVE — 5 of 13 prompts written (01–04, 01a), 01 and 01a
+landed and reviewed. U1–U9 ruled (2026-10-12), U10 (2026-10-19); P1–P19 stand as proposed. The
+DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
+out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
+(U10; README §0.5).**
 The plan is [`README.md`](README.md), written on 2026-10-11 at `7bb3efd` and reviewed on
 2026-10-12. Prompts 01–04 were written once the user had ruled (README §2.1).
 
-The campaign adopts `raypoolkit` `v0.2.0` and then `datastorekit` `v0.3.0`, released for it
-(U3). A rehearsal by value
+The campaign adopts `raypoolkit` `v0.2.0` and then `datastorekit` `v0.4.0` (U10), which carries
+`v0.3.0`, released for it (U3). A rehearsal by value
 comes before any change (RH0), before the DatastoreKit swap (RH1) and after it (RH2). Each
 package's gate G4 is recorded here when it holds.
 
@@ -28,20 +30,21 @@ edited) ·
 
 ### Decisions
 
-**Ruled by the user (README §6.1), all on 2026-10-12.** U1, U2 and U4–U7 were ruled as the
-planner recommended:
+**Ruled by the user (README §6.1), U1–U9 on 2026-10-12 and U10 on 2026-10-19.** U1, U2 and U4–U7
+were ruled as the planner recommended:
 
 | Decision | Decided |
 |---|---|
 | **U1** — the order | RayPoolKit first, then DatastoreKit |
 | **U2** — the rehearsals | the agent runs them (README §4.1) at RH0, RH1 and RH2: reference, killed-and-resumed, scalars-only, readers |
-| **U3** — `DatastoreObject.timestamp` | **ruled 2026-10-12: fix the package.** DatastoreKit's `DatastoreObject` takes and exposes the row's timestamp, released as `v0.3.0` (README §0.4), which 08 pins |
+| **U3** — `DatastoreObject.timestamp` | **ruled 2026-10-12: fix the package.** DatastoreKit's `DatastoreObject` takes and exposes the row's timestamp, released as `v0.3.0` (README §0.4) and carried unchanged into `v0.4.0`, which 08 pins (U10) |
 | **U4** — `InflatonTrajectory` under the replicated protocol | the cascade (orphan fix), `owner_column`, `validated_column` with `revalidate`, and the `prune` keyword, all before the swap (06) |
 | **U5** — a drop that leaves references | refused before Ray starts, naming the groups to add (09) |
 | **U6** — the inventory | ported to `inventory_spec` and `read_inventory` (10) |
 | **U7** — relative to P2 | before P2; the tag `pre-datastorekit` on 07's commit; P2's audit reads the June and July stores at the tag |
 | **U8** — spec coverage, for the fingerprint | **ruled 2026-10-12:** 10 proves every registered class is covered by a spec, read through one, or excluded with a reason (10's acceptance item 5); it settles `redshift`, `IntegrationSolver` and `GradientCoupledInstanton`'s second child table (README §6.1) |
 | **U9** — other projects' Ray clusters | **ruled 2026-10-12, after 01's review:** isolate and lock. SI's cluster runs on `/tmp/ray-si` and its own ports and stops only itself, never by `ray stop`; one lock, `~/ScienceData/.rehearsal-lock`, shared with ChamPBH and SGK, lets one rehearsal run at a time. ChamPBH adopts the targeted stop; SGK takes the lock. Contract: [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md); SI's side is 01a (README §6.1) |
+| **U10** — which DatastoreKit release | **ruled 2026-10-19:** pin **`v0.4.0`** (tag object `8e7c1d7`, commit `c8570e8`) in place of `v0.3.0`. It adds `store_fingerprint.py`, which SI does not call, and carries `v0.3.0` unchanged; RunRegistryKit's `[stores]` extra requires `datastorekit>=0.4.0`. Only 08's pin and commit change (README §0.5, §6.1) |
 
 **Proposed by the planner (README §6.2):** P1–P19, accepted as proposed: the user gave no ruling
 on any of them.
@@ -60,7 +63,7 @@ on any of them.
 | 05 | Move SI's data out of the layer | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ⬜ | ⬜ | — | — |
 | 06 | Prepare the `InflatonTrajectory` factories | **U4**, P17 | Opus | ⬜ | ⬜ | — | — |
 | 07 | Rehearse before the DatastoreKit swap (RH1) | **RH1**; the tag (**U7**) | Opus | ⬜ | ⬜ | — | — |
-| 08 | Pin `datastorekit` `v0.3.0` | the DatastoreKit pin (**U3**; `2f5417e`) | Sonnet | ⬜ | ⬜ | — | — |
+| 08 | Pin `datastorekit` `v0.4.0` | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ⬜ | ⬜ | — | — |
 | 09 | Adopt `datastorekit` | the DatastoreKit swap; **U5** | Opus | ⬜ | ⬜ | — | — |
 | 10 | Port the inventory | **U6**; `inventory_spec`, `tools/inventory_report.py` | Opus | ⬜ | ⬜ | — | — |
 | 11 | Rehearse through both packages (RH2) | **RH2**; **DatastoreKit G4** | Opus | ⬜ | ⬜ | — | — |
@@ -72,7 +75,7 @@ on any of them.
 - **01–04** are written after the user's review of the plan. *Written 2026-10-12.*
 - **01a** is written after 01's review, for U9. *Written 2026-10-12.* 02 waits on it.
 - **05–07** are written after 02's review: RH0's reproducibility sets RH1's criterion.
-- **08–11** are written after 07's review (`v0.3.0` is released).
+- **08–11** are written after 07's review (`v0.4.0`, which 08 pins, is released).
 - **12** is written after 11's review.
 
 Orchestrator notes are written one prompt at a time, in [`orchestrator/`](orchestrator/), just
@@ -118,8 +121,9 @@ The measurement the plan was written against is [`measure/out/`](measure/out/). 
 | RayPoolKit G4 | `RayTools/` is gone; 0 imports of it and of `_default_store_handler`; the pin is installed; the suites pass; all 16 sites construct (RayPoolKit checklist item 8) | 04 (RH1, 07, adds the run under real Ray) | ⬜ |
 | RH1 | 06's tree equals RH0 by value; `pre-datastorekit` tagged | 07 | ⬜ |
 | DatastoreKit `v0.2.3` | tagged on DatastoreKit's remote, with `store`, `validate` and `validate_on_startup` defaulted | — (carried into `v0.3.0`) | ✅ **released** 2026-10-11 for CPBH: tag object `8dac562`, commit `0de2b16`. Checked on the remote at planning |
-| DatastoreKit `v0.3.0` | tagged on DatastoreKit's remote, its `DatastoreObject` taking and exposing `timestamp` (U3; made in DatastoreKit from the brief, not here) | — (08 pins it) | ✅ **released** 2026-10-12 by DatastoreKit's `object-timestamp` campaign: tag object `bf0a3b2`, commit `2f5417e`; checked on the remote and by `git show` of `object.py` (README §0.4) |
-| DatastoreKit G4 | the 9 layer files are gone (two emptied, P6), the pin is installed, the default and integration suites pass, and a small grid rebuilt through the package (RH2) equals RH1 by value | 09, 10, 11 | ⬜ |
+| DatastoreKit `v0.3.0` | tagged on DatastoreKit's remote, its `DatastoreObject` taking and exposing `timestamp` (U3; made in DatastoreKit from the brief, not here) | — (carried into `v0.4.0`) | ✅ **released** 2026-10-12 by DatastoreKit's `object-timestamp` campaign: tag object `bf0a3b2`, commit `2f5417e`; checked on the remote and by `git show` of `object.py` (README §0.4) |
+| DatastoreKit `v0.4.0` | tagged on DatastoreKit's remote, carrying `v0.3.0` unchanged (U10) | — (08 pins it) | ✅ **released** 2026-10-14 by DatastoreKit's `fingerprint` campaign: tag object `8e7c1d7`, commit `c8570e8`; checked on the remote 2026-10-19, and by `git diff --stat v0.3.0 v0.4.0`: `store_fingerprint.py`, its tests and golden data, the version, nothing else (README §0.5) |
+| DatastoreKit G4 | the 9 layer files are gone (two emptied, P6), the pin (`v0.3.0` or later; SI `v0.4.0`) is installed, the default and integration suites pass, and a small grid rebuilt through the package (RH2) equals RH1 by value | 09, 10, 11 | ⬜ |
 
 Recording each gate on its package's own extraction board is a commit in that repository, not
 here (README P14).
@@ -465,3 +469,27 @@ At the user's request, not by a prompt.
   default suite gives 679 passed, 1 skipped (680, as at `84a5cfc`).
 - `[ray-address-auto-attaches-to-foreign-cluster]` is closed (§4). ChamPBH and SGK receive the
   amended brief from the user; their defaults are theirs.
+
+### 5.11 DatastoreKit `v0.4.0`; U10 ruled (2026-10-19)
+
+At the user's request, not by a prompt. Read-only in DatastoreKit, RayPoolKit and RunRegistryKit.
+- **DatastoreKit `v0.4.0`**, released 2026-10-14 by its `fingerprint` campaign: tag object
+  `8e7c1d7`, commit `c8570e8`, checked by `git ls-remote`. `git diff --stat v0.3.0 v0.4.0 --
+  datastorekit pyproject.toml` gives `store_fingerprint.py` (new, 351 lines), its tests and one
+  golden data file under `datastorekit/tests/data/`, and the version line; `requires-python` and
+  the dependencies are unchanged, and so are `object.py` and `store_inventory.py`. SI's checklist
+  addendum for `v0.4.0` says "Nothing changes for SI": SI's pin is `v0.3.0` or `v0.4.0`, as SI
+  chooses, and G4 reads "SI has adopted `v0.3.0` or later". SGK has adopted `v0.4.0`; CPBH stays
+  on `v0.3.0`.
+- **RayPoolKit has made no release since `v0.2.0`**: its remote has `v0.1.0` and `v0.2.0` only,
+  and nothing under `raypoolkit/`, nor `pyproject.toml`, has changed since the tag (`main` at
+  `17029d9`; documents and records only). Its SI checklist was last changed on 2026-10-10. 03 and
+  04 stand.
+- **RunRegistryKit**'s `[stores]` extra requires `datastorekit>=0.4.0`, and its SI checklist (with a
+  `v0.2.0` note) has SI adopt the store layer after this campaign.
+- **The user ruled U10: pin `v0.4.0`.** The plan was revised (README revision note of 2026-10-19,
+  §0, new §0.5, §2, §2.1, §2.2's 08, §4, §6.1, §6.3, §7): 08 becomes "Pin `datastorekit`
+  `v0.4.0`", checking commit `c8570e849334…` and `git archive v0.4.0`; its U3 and factory-base
+  checks are unchanged. No prompt already written (01–04, 01a) cites the pin, so none changes; the
+  `0.3.0` stand-in values in `tests/test_package_provenance.py` are fictitious and stay. No issue
+  is opened or closed, so `.documents/OPEN-ISSUES.md` is unchanged.
