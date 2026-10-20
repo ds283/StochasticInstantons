@@ -4,7 +4,7 @@
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
-the pool is the package's, RayPoolKit G4 holds; 05 landed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping. U1–U9 ruled (2026-10-12),
+the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -65,7 +65,7 @@ on any of them.
 | 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12; amended 2026-10-20 (U11, and after the second attempt) | ✅ 2026-10-20, third attempt (§5.12, §5.13) | `5868231` | [`02-rehearse-the-start-tree.md`](../../.documents/dk-and-rpk-migration/02-rehearse-the-start-tree.md) |
 | 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-20 | `5396a3d` | [`03-pin-raypoolkit-v0.2.0.md`](../../.documents/dk-and-rpk-migration/03-pin-raypoolkit-v0.2.0.md) |
 | 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-20 | `ef13445` | [`04-adopt-raypoolkit.md`](../../.documents/dk-and-rpk-migration/04-adopt-raypoolkit.md) |
-| 05 | [Move SI's data out of the layer](05-move-si-data-out-of-the-layer.md) | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ✍️ 2026-10-20 | ✅ 2026-10-20 | this commit | [`05-move-si-data-out-of-the-layer.md`](../../.documents/dk-and-rpk-migration/05-move-si-data-out-of-the-layer.md) |
+| 05 | [Move SI's data out of the layer](05-move-si-data-out-of-the-layer.md) | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ✍️ 2026-10-20 | ✅ 2026-10-20 | `875cf41` | [`05-move-si-data-out-of-the-layer.md`](../../.documents/dk-and-rpk-migration/05-move-si-data-out-of-the-layer.md) |
 | 06 | [Prepare the `InflatonTrajectory` factories](06-prepare-the-inflaton-trajectory-factories.md) | **U4**, P17; closes `[inflaton-trajectory-prune-orphans-value-rows]` | Opus | ✍️ 2026-10-20 | ⬜ | — | — |
 | 07 | [Rehearse before the DatastoreKit swap (RH1)](07-rehearse-before-the-datastore-swap.md) | **RH1**, bitwise against RH0; the tag (**U7**) | Opus | ✍️ 2026-10-20 | ⬜ | — | — |
 | 08 | Pin `datastorekit` `v0.4.0` | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ⬜ | ⬜ | — | — |
@@ -91,6 +91,7 @@ before each dispatch:
 - [`prompt-02.md`](orchestrator/prompt-02.md) — used for 02 (`0ff3609`; revised for U11 in `9caeea3` and for the reader fix in `b218760`, §5.12).
 - [`prompt-03.md`](orchestrator/prompt-03.md) — used for 03 (`b1ab501`).
 - [`prompt-04.md`](orchestrator/prompt-04.md) — used for 04 (`9a7cb50`).
+- [`prompt-05.md`](orchestrator/prompt-05.md) — used for 05 (`818f8fa`; one claim corrected by the agent, §5.17).
 
 ### 1.1 Items
 
@@ -947,7 +948,7 @@ in this follow-up; nothing more is opened.
 
 ### 5.17 After prompt 05 (2026-10-20)
 
-- **Landed:** this commit, results note
+- **Landed:** `875cf41`, results note
   [`05-move-si-data-out-of-the-layer.md`](../../.documents/dk-and-rpk-migration/05-move-si-data-out-of-the-layer.md).
   **COMPLETE:** M1–M6 hold; no stop condition of the prompt's §4 was met. (The prompt does not name this section; it is
   the next free number after §5.16.)
@@ -978,6 +979,57 @@ in this follow-up; nothing more is opened.
 - **Suites:** 690 (689 passed, 1 skipped) and 61 (60 passed, 1 skipped): 04's 680 plus the 10 new tests, and 04's 61. The `slow`
   block is not run (the diff touches none of its paths). No driver ran; the only Ray was the schema build's private instance and
   the integration suite's.
-- **Rollback:** `git revert` of this commit. The venv is untouched.
+- **Rollback:** `git revert` of `875cf41`. The venv is untouched.
 - **Deviations:** the import cycle (structurally required, not a stop), the filesystem walk and subprocess forms the brief allowed,
   the unformatted new module, three extra tests, the long lines; see the results note. None is drift.
+
+**Orchestrator review of prompt 05 (2026-10-20)**, by orchestrator note
+[`prompt-05.md`](orchestrator/prompt-05.md), at `875cf41`. All twelve checks pass. Residue is fixed in `5dbcd22` (a test
+docstring) and in this follow-up (records); nothing more is opened.
+- **(1) Scope.** 16 files, exactly the prompt's §5 list and `OPEN-ISSUES.md`. One commit of the agent's on `818f8fa`, made
+  once (the reflog shows no amend); `git status` clean; no untracked file; no leftover branch.
+- **(2) The layer.** By `ast` against `818f8fa`: every non-import statement of `Datastore.py` and `ClientPool.py` dumps
+  identically once the three definitions are removed. `Datastore.py` loses 25 import statements and gains the one
+  `from config.datastore import …`; it keeps `ClientPool`, `CosmologicalParams`, `base`, `ProfileAgent` and `utilities`.
+  `ClientPool.py` gains its one import, in the import block, and loses the dict with the blank line that separated it. The lint
+  over the two files and `config/datastore.py` is the one baseline `F401` (`CosmologicalParams`, `Datastore.py:29`).
+- **(3) Verbatim.** The three literals of `config/datastore.py` dump by `ast` identically to `_factories`, `_drop_actions` and
+  `_default_serial_batch_size` at `818f8fa`. Its 25 imports are exactly those removed from `Datastore.py`, in order; it binds
+  nothing but the three names. The docstring names each object, the layer as reader until 09, and the import-order hazard.
+- **(4) The call sites.** With each `vectorized_shard_key(x)` unwrapped and the name dropped from its import, the `ast` of
+  `main.py` (10 wrapped), `plot_InstantonSolutions.py` (3) and `plotting/fetch.py` (2) equals `818f8fa`'s. `config/sharding.py`
+  differs by the function alone. `git grep` lists the same 22 entries as before dispatch, the calls at +1.
+- **(5) The captured data.** The test's `_REGISTRY`, `_DROP_GROUPS` and `_BATCH_SIZES`, read by `ast.literal_eval`, equal a fresh
+  capture from a `git archive` of `818f8fa` (30, 5, 29), entry by entry and in order, with the four quantity classes.
+- **(6) The tests and the breakages.** Both new modules carry the licence header; `test_config_datastore.py` imports the layer
+  first by `importlib`, with the reason. The five diffs, extracted from the note, pass `git apply --check`, and `-R --check` once
+  applied; replayed in `bash`, each fails what the prompt names: 1, the `ast` test (`plotting/fetch.py:167`) and the four plot tests
+  that reach `fetch_over_grid`; 2, the two batch-size tests; 3, the registry test (index 10, `phi_value` for `inflaton_mass`); 4, the
+  identity test alone; 5, `_MultiClassStubPool`'s three tests (`TypeError: unhashable type: 'dict'`). The tree was clean after each.
+- **(7) The schema.** The note's `schema_build.py`, extracted and re-run at `875cf41` (two shards, private Ray, in the scratchpad):
+  `RESULT: the schemas agree` against `02-reference-schema.json` and against the orchestrator's pre-dispatch snapshot. The committed
+  `out/05-temp-schema.json` differs from the reference only in `source`. No Ray process after.
+- **(8) The cycle and the issue.** In fresh `python -I` processes: `import config.datastore` fails with the partially-initialised
+  `ImportError`; after `Datastore.SQL.Datastore` or a factory module it works; `tests/test_compare_stores.py` alone passes 24. **The
+  agent corrected the orchestrator's brief**, rightly: `import Datastore` and `import plotting.fetch` do not load the layer, so
+  `config.datastore` imported after either still fails (measured; the brief's correction 1 and its facts claimed both served). The
+  module's docstring and the §3 entry say so. The §3 entry gives what, impact (`_registry()`'s fallback, and that it would hide a real
+  `ImportError`) and next step (09, P6, a fresh `import config.datastore` in its acceptance); the index row is under §6a, 62 open.
+- **(9) The venv.** `pip freeze` equals the pre-dispatch copy; `pip check` clean.
+- **(10) Hygiene.** The 17 store files and all 607 entries under `~/ScienceData/` have their pre-dispatch mtimes and sizes.
+  DatastoreKit at `38ebb9f`, clean. No Ray process; the lock free.
+- **(11) The suites**, re-run by the orchestrator at `875cf41`: default 690 (689 passed, 1 skipped), 29.5 s, load 7–22;
+  integration 61 (60 passed, 1 skipped), 14.0 s. `py_compile` of the three drivers and `plotting/fetch.py` succeeds.
+- **(12) The records.** The results note has README §5.1's sections, every check's command and output, the capture, the import
+  orders and the breakages as diffs; the board has the §1 row, M1–M6, the §3 issue and this section with the rollback.
+  `FILE_MAP.md` changes `:17` (naming `vectorized_shard_key`), adds the `config/datastore.py` row and changes `:41`.
+  - *Residue, fixed:* "this commit" → `875cf41` (board ×3, results note ×5); the header's "landed" reads "landed and reviewed";
+    this note added to the list of orchestrator notes; the campaign's line in `.prompts/INDEX.md` (open rows 8 → 9). In `5dbcd22`:
+    `tests/test_config_datastore.py`'s docstring opened with `config/datastore.py:`, the module under test, not the test.
+- **The deviations are accepted.** None is drift; the agent's correction of the brief is recorded above.
+- **Handed on to 06.**
+  - SI's data is `config.datastore`; the layer reads it by alias, and `import config.datastore` must follow a `Datastore.SQL.*`
+    import until 09.
+  - The vectorized gets are at `main.py:227` … `:1042`, `plot_InstantonSolutions.py:699`, `:702`, `:735`, `plotting/fetch.py:128`,
+    `:167`. 06 touches none of them.
+  - The suites start from 690 and 61.

@@ -1,7 +1,7 @@
 # 05 — move SI's data out of the layer
 
 **Subject:** Move SI's factory registry, drop groups and serial batch sizes into `config/datastore.py`; pass the shard key of the 15 vectorized gets as a mapping
-**Commit:** this commit, on branch `dk-and-rpk-migration`, on top of `818f8fa`
+**Commit:** `875cf41`, on branch `dk-and-rpk-migration`, on top of `818f8fa`
 **Date:** 2026-10-20, by Claude Sonnet 5.5
 **Result:** **COMPLETE.** M1–M6 hold. `config/datastore.py` holds `factories` (30), `drop_groups` (5) and
 `serial_batch_sizes` (29), `ast`-equal to the definitions removed from the layer; the layer reads them
@@ -498,7 +498,7 @@ Reading it:
 
 ### §2.3.1 — the schema does not change
 
-Built with SI's own `ShardedPool`, at the staged tree (the uncommitted tree that became this commit), under a private
+Built with SI's own `ShardedPool`, at the staged tree (the uncommitted tree that became `875cf41`), under a private
 Ray, in a temporary directory under the scratch directory (outside the repository), then closed; nothing stored.
 `schema_build.py`:
 
@@ -586,7 +586,7 @@ stubs' two files give 74 passed (before the full run). Verdicts were grepped fro
 ## The deliberate-breakage record
 
 Each was applied to the working tree, run, reverted, and recorded as `diff -u` of the file before and after, labelled
-`a/` and `b/` so that `git apply` replays it from a clean tree at this commit. (The agent's `git apply --check` and `-R --check` of
+`a/` and `b/` so that `git apply` replays it from a clean tree at `875cf41`. (The agent's `git apply --check` and `-R --check` of
 each, in `bash`, ran after the commit and are reported in the hand-off, since a commit cannot record its own check.)
 
 ### Breakage 1 — one vectorized get reverted to the bare key (`plotting/fetch.py:167`)
@@ -742,7 +742,7 @@ each restored file against its saved copy reports them identical.
 
 ## State handed to the next prompt
 
-- **Branch** `dk-and-rpk-migration`, this commit on `818f8fa`. New: `config/datastore.py`, `tests/test_config_datastore.py`,
+- **Branch** `dk-and-rpk-migration`, `875cf41` on `818f8fa`. New: `config/datastore.py`, `tests/test_config_datastore.py`,
   `tests/test_vectorized_shard_key.py`, `.documents/dk-and-rpk-migration/out/05-temp-schema.json`, this note. Changed:
   `Datastore/SQL/Datastore.py`, `Datastore/SQL/ClientPool.py` (imports only), `config/sharding.py` (one function), `main.py`,
   `plot_InstantonSolutions.py`, `plotting/fetch.py` (15 arguments, one import each), the two golden-test files (five lines),
@@ -769,4 +769,4 @@ each restored file against its saved copy reports them identical.
   store opened was the temporary one, deleted. DatastoreKit, RayPoolKit, ChamPBH and SGK are untouched.
 - **The issue** `[config-datastore-cannot-be-imported-before-the-layer]` is open, owner 09 (`.documents/OPEN-ISSUES.md` §6a; 62 open).
   `.prompts/INDEX.md` is the orchestrator's.
-- **Rollback:** `git revert` of this commit. The venv needs nothing; reverting restores the layer's definitions and the bare shard keys.
+- **Rollback:** `git revert` of `875cf41`. The venv needs nothing; reverting restores the layer's definitions and the bare shard keys.
