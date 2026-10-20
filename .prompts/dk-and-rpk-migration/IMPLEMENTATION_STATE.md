@@ -1,7 +1,7 @@
 # dk-and-rpk-migration campaign — implementation state
 
 **Last updated:** 2026-10-20 · **Status: LIVE — 8 of 13 prompts written (01–07, 01a), 01 and 01a
-landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
+landed and reviewed, 03 landed (§5.15, awaiting review); 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14). U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
@@ -61,7 +61,7 @@ on any of them.
 | 01 | [Rehearsal tooling and run provenance](01-rehearsal-tooling-and-run-provenance.md) | P3, P5; README §4.1–§4.2 | Opus | ✍️ 2026-10-12 | ✅ 2026-10-12 | `84a5cfc` | [`01-rehearsal-tooling-and-run-provenance.md`](../../.documents/dk-and-rpk-migration/01-rehearsal-tooling-and-run-provenance.md) |
 | 01a | [Isolate the rehearsal cluster](01a-isolate-the-rehearsal-cluster.md) | **U9**; `ray_cluster.sh`, the shared rehearsal lock | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-12 | `3556148` | [`01a-isolate-the-rehearsal-cluster.md`](../../.documents/dk-and-rpk-migration/01a-isolate-the-rehearsal-cluster.md) |
 | 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12; amended 2026-10-20 (U11, and after the second attempt) | ✅ 2026-10-20, third attempt (§5.12, §5.13) | `5868231` | [`02-rehearse-the-start-tree.md`](../../.documents/dk-and-rpk-migration/02-rehearse-the-start-tree.md) |
-| 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
+| 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-20 | this commit | [`03-pin-raypoolkit-v0.2.0.md`](../../.documents/dk-and-rpk-migration/03-pin-raypoolkit-v0.2.0.md) |
 | 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
 | 05 | [Move SI's data out of the layer](05-move-si-data-out-of-the-layer.md) | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ✍️ 2026-10-20 | ⬜ | — | — |
 | 06 | [Prepare the `InflatonTrajectory` factories](06-prepare-the-inflaton-trajectory-factories.md) | **U4**, P17; closes `[inflaton-trajectory-prune-orphans-value-rows]` | Opus | ✍️ 2026-10-20 | ⬜ | — | — |
@@ -101,9 +101,9 @@ before each dispatch:
 | **L1**–**L4** (RH0) | 02 | README §4.1 at 01's tree; §4.3's reproducibility measured for the dense and the scalars-only mode; L4 recorded as the baseline | ✅ L1–L3 hold; `resumed-a` left 6 validated and 2 unvalidated `FullInstanton`, `resumed-b` pruned the 2 and computed 4; **§4.3: bitwise reproducible in both modes** (only the readers' `version` row differs; against the readers' `before/` copies `RESULT: equal`); L4's counts in `out/02-stage-counts.txt` |
 | **V1** | 02 | `.documents/dk-and-rpk-migration/verification.md` created, with §1 RH0; the two schema snapshots | ✅ [`verification.md`](../../.documents/dk-and-rpk-migration/verification.md) §1; `out/02-reference-schema.json`, `out/02-scalars-schema.json` (30 tables; they agree) |
 | **S1** | 02 | the `slow` block's result at the start tree, the baseline for 09 | ✅ 69 passed of 69 (no failure, error or skip), 390 s; 11 `RuntimeWarning`s from `Numerics/OnionCoordinate.py:77`. 09's criterion: the same |
-| **K1** | 03 | the `raypoolkit` pin in `requirements.txt` | ⬜ |
-| **K2** | 03 | the venv installed from it | ⬜ |
-| **K3** | 03 | the proof: one distribution added, at `eaef0ce6…`, the tag's files, not editable | ⬜ |
+| **K1** | 03 | the `raypoolkit` pin in `requirements.txt` | ✅ one line at `:58`, between `ray==2.55.1` and `referencing==0.37.0` |
+| **K2** | 03 | the venv installed from it | ✅ dry run and install each added `raypoolkit-0.2.0` alone |
+| **K3** | 03 | the proof: one distribution added, at `eaef0ce6…`, the tag's files, not editable | ✅ freeze differs by one line; `pip check` clean; `direct_url.json` VCS at `eaef0ce6…`, `v0.2.0`, no `dir_info`; 4 of 4 modules byte-equal, no `tests/`; import starts no Ray |
 | **W1** | 04 | `RayTools/` deleted | ⬜ |
 | **W2** | 04 | the 3 imports rewritten to `from raypoolkit import RayWorkPool` | ⬜ |
 | **W3** | 04 | `_default_store_handler` dropped: 7 lines of `main.py` | ⬜ |
@@ -764,3 +764,28 @@ dispatch). Nothing opened or closed, so `.documents/OPEN-ISSUES.md` is unchanged
 - **For 03's and 04's orchestrator notes:** their prompts name their board sections
   `### 5.7 After prompt 03` and `### 5.8 After prompt 04`. Both numbers are taken (§5.7 is 01a's,
   §5.8 ChamPBH's port fixes), so each takes the next free number, as 05–07 say.
+
+### 5.15 After prompt 03 (2026-10-20)
+
+- **Landed:** this commit, results note
+  [`03-pin-raypoolkit-v0.2.0.md`](../../.documents/dk-and-rpk-migration/03-pin-raypoolkit-v0.2.0.md).
+  **COMPLETE:** K1–K3 hold; no code or test changed; no issue opened, so
+  `.documents/OPEN-ISSUES.md` is unchanged. (The prompt names this section §5.7; that number is
+  taken.)
+- **K1.** `requirements.txt` gains `raypoolkit @ git+https://github.com/ds283/RayPoolKit@v0.2.0` at
+  `:58`, nothing else.
+- **K2.** The dry run reported `raypoolkit-0.2.0` alone; the install, run once, installed it alone.
+  pip's `Resolved … to commit 4e7eb153…` names the tag object; the commit is `eaef0ce6…`. pip itself
+  was not upgraded.
+- **K3.** `pip freeze` differs from `measure/out/7bb3efd-pip-freeze.txt` by the one line
+  `raypoolkit @ git+https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976`;
+  `pip check` is clean; `direct_url.json` is a VCS record at that commit, requested `v0.2.0`, no
+  `dir_info`; the four modules equal `git archive v0.2.0`'s byte for byte and `tests/` is not
+  installed; `import ray, raypoolkit` leaves `ray.is_initialized()` `False`. The provenance line is
+  `>> packages: datastorekit not installed; raypoolkit 0.2.0 (https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976, requested v0.2.0)`.
+- **Suites:** 680 (679 passed, 1 skipped) and 61 (60 passed, 1 skipped), unchanged.
+- **Rollback:** `git revert` of this commit **plus** `./venv/bin/pip uninstall -y raypoolkit`
+  (README §4.4). The venv is outside git, so the revert alone leaves the package installed (inert
+  until 04 imports it).
+- **Deviations:** the board section number, and the suites' commands, both as the orchestrator's brief
+  corrected; none unintended.
