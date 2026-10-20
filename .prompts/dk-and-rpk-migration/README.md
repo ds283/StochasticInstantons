@@ -1,7 +1,8 @@
 # Campaign — dk-and-rpk-migration
 
 **Written:** 2026-10-11 on `main` at `7bb3efd`, by Claude Opus 5.5. **Status: reviewed; prompts
-01–04 and 01a written (2026-10-12); 01 and 01a landed; 02's first attempt stopped (2026-10-20).**
+01–04 and 01a written (2026-10-12); 01 and 01a landed; 02 landed at its third attempt (2026-10-20),
+RH0 bitwise reproducible; 05–07 written (2026-10-20).**
 All eleven decisions of §6.1 are ruled: U3, U8 and U9 on their own, and U1, U2 and U4–U7 as
 recommended, on 2026-10-12; U10 on 2026-10-19; U11 on 2026-10-20.
 P1–P19 stand as proposed (§6.2). The DatastoreKit release U3 asked for is out, as `v0.3.0` (§0.4),
@@ -467,7 +468,8 @@ that each carries the previous review's findings:
 - **01–04** are written first, once the user has reviewed this plan and ruled on U1–U7 and
   P1–P19. *Written 2026-10-12.*
 - **01a** follows 01's review and the ruling U9. *Written 2026-10-12.* 02 waits on it.
-- **05–07** follow 02's review. RH0's reproducibility (§4.3) fixes 07's criterion.
+- **05–07** follow 02's review. RH0's reproducibility (§4.3) fixes 07's criterion. *Written
+  2026-10-20: RH0 is bitwise reproducible in both modes, so RH1 is held to bitwise equality.*
 - **08–11** follow 07's review. 07's results note fixes the counts and names they cite. The
   release U3 asked for is tagged (`v0.3.0`, §0.4), and so is the release 08 pins (`v0.4.0`, §0.5;
   U10), so 08 waits on nothing else.
