@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""config/datastore.py: the data SI hands to its datastore layer.
+"""config.datastore's three objects, against the layer's at prompt 05's gate.
 
 The literals below were captured from the layer (``Datastore.SQL.Datastore`` and
 ``Datastore.SQL.ClientPool``) at the gate of prompt 05 of the ``dk-and-rpk-migration``
