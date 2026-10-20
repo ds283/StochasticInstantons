@@ -1,7 +1,7 @@
 # 06 — prepare the `InflatonTrajectory` factories for the package
 
 **Subject:** `InflatonTrajectory`'s startup prune cascades to its value rows; the 12 `validate_on_startup` hooks name their fourth parameter `prune`; the two `InflatonTrajectory` factories declare `owner_column` and `validated_column`; `revalidate` recomputes the stored flag by `validate`'s rule
-**Commit:** this commit, on branch `dk-and-rpk-migration`, on top of `a8cb166`
+**Commit:** `5e41ce8`, on branch `dk-and-rpk-migration`, on top of `a8cb166`
 **Date:** 2026-10-20, by Claude Opus 5.5
 **Result:** **COMPLETE.** I1–I6 hold. The prune deletes the unvalidated trajectories' `InflatonTrajectoryValue`
 rows before the trajectories, in the actor's one transaction; the 12 hooks take `(conn, table, tables, prune)`;
@@ -279,7 +279,7 @@ The actor still passes the flag positionally (`Datastore.py:344-346`), so the re
 
 ### I4's check — the rule is `validate`'s
 
-Read at this commit (`InflatonTrajectory.py` lines are two below `HEAD`'s, for the two lines I3 adds in `register`):
+Read at `5e41ce8` (`InflatonTrajectory.py` lines are two below `HEAD`'s, for the two lines I3 adds in `register`):
 
 - **One transaction per store call.** `Datastore.object_store` (`Datastore/SQL/Datastore.py:462`) opens one
   `with self._engine.begin() as conn:` (`:478`), calls the factory's `store(obj, conn=conn, …)` for every object of
@@ -304,7 +304,7 @@ Read at this commit (`InflatonTrajectory.py` lines are two below `HEAD`'s, for t
 ### §2.3.1 — the schema does not change
 
 05's `schema_build.py` (05's results note §2.3.1) with its label changed, run from the repository root as
-`./venv/bin/python <scratch>/schema_build.py <scratch>/tmp-store`, at the working tree that became this commit:
+`./venv/bin/python <scratch>/schema_build.py <scratch>/tmp-store`, at the working tree that became `5e41ce8`:
 
 ```python
 """Build a temporary store with SI's own ShardedPool (two shards, nothing stored), then close it."""
@@ -588,7 +588,7 @@ Mutations were never staged or committed.
 
 ## State handed to the next prompt
 
-- **Branch** `dk-and-rpk-migration`, this commit on `a8cb166`. New: `tests/test_inflaton_trajectory_prune.py`, this
+- **Branch** `dk-and-rpk-migration`, `5e41ce8` on `a8cb166`. New: `tests/test_inflaton_trajectory_prune.py`, this
   note. Changed: the six factory modules (`InflatonTrajectory.py`: I1, I3, I4 and its two renames; the other five: the
   rename only), `.claude/rules/validate-on-startup.md` (three lines renamed, the cascade-map row and one sentence),
   `.claude/rules/datastore-factories.md` (two lines renamed), `.documents/OPEN-ISSUES.md`, the board.
@@ -607,4 +607,4 @@ Mutations were never staged or committed.
   ChamPBH and SGK are untouched.
 - **Closed:** `[inflaton-trajectory-prune-orphans-value-rows]` (board §4; `.documents/OPEN-ISSUES.md` §7; 61 open,
   26 closed). Nothing opened. `.prompts/INDEX.md` is the orchestrator's.
-- **Rollback:** `git revert` of this commit alone. The venv needs nothing.
+- **Rollback:** `git revert` of `5e41ce8` alone. The venv needs nothing.

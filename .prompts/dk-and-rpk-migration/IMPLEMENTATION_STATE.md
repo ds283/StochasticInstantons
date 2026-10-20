@@ -4,7 +4,7 @@
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
-the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`. U1–U9 ruled (2026-10-12),
+the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -66,7 +66,7 @@ on any of them.
 | 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-20 | `5396a3d` | [`03-pin-raypoolkit-v0.2.0.md`](../../.documents/dk-and-rpk-migration/03-pin-raypoolkit-v0.2.0.md) |
 | 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-20 | `ef13445` | [`04-adopt-raypoolkit.md`](../../.documents/dk-and-rpk-migration/04-adopt-raypoolkit.md) |
 | 05 | [Move SI's data out of the layer](05-move-si-data-out-of-the-layer.md) | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ✍️ 2026-10-20 | ✅ 2026-10-20 | `875cf41` | [`05-move-si-data-out-of-the-layer.md`](../../.documents/dk-and-rpk-migration/05-move-si-data-out-of-the-layer.md) |
-| 06 | [Prepare the `InflatonTrajectory` factories](06-prepare-the-inflaton-trajectory-factories.md) | **U4**, P17; closes `[inflaton-trajectory-prune-orphans-value-rows]` | Opus | ✍️ 2026-10-20 | ✅ 2026-10-20 | this commit | [`06-prepare-the-inflaton-trajectory-factories.md`](../../.documents/dk-and-rpk-migration/06-prepare-the-inflaton-trajectory-factories.md) |
+| 06 | [Prepare the `InflatonTrajectory` factories](06-prepare-the-inflaton-trajectory-factories.md) | **U4**, P17; closes `[inflaton-trajectory-prune-orphans-value-rows]` | Opus | ✍️ 2026-10-20 | ✅ 2026-10-20 | `5e41ce8` | [`06-prepare-the-inflaton-trajectory-factories.md`](../../.documents/dk-and-rpk-migration/06-prepare-the-inflaton-trajectory-factories.md) |
 | 07 | [Rehearse before the DatastoreKit swap (RH1)](07-rehearse-before-the-datastore-swap.md) | **RH1**, bitwise against RH0; the tag (**U7**) | Opus | ✍️ 2026-10-20 | ⬜ | — | — |
 | 08 | Pin `datastorekit` `v0.4.0` | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ⬜ | ⬜ | — | — |
 | 09 | Adopt `datastorekit` | the DatastoreKit swap; **U5** | Opus | ⬜ | ⬜ | — | — |
@@ -92,6 +92,7 @@ before each dispatch:
 - [`prompt-03.md`](orchestrator/prompt-03.md) — used for 03 (`b1ab501`).
 - [`prompt-04.md`](orchestrator/prompt-04.md) — used for 04 (`9a7cb50`).
 - [`prompt-05.md`](orchestrator/prompt-05.md) — used for 05 (`818f8fa`; one claim corrected by the agent, §5.17).
+- [`prompt-06.md`](orchestrator/prompt-06.md) — used for 06 (`a8cb166`).
 
 ### 1.1 Items
 
@@ -1036,7 +1037,7 @@ docstring) and in this follow-up (records); nothing more is opened.
 
 ### 5.18 After prompt 06 (2026-10-20)
 
-- **Landed:** this commit, results note
+- **Landed:** `5e41ce8`, results note
   [`06-prepare-the-inflaton-trajectory-factories.md`](../../.documents/dk-and-rpk-migration/06-prepare-the-inflaton-trajectory-factories.md).
   **COMPLETE:** I1–I6 hold; no stop condition of the prompt's §4 was met. Dispatched with the orchestrator's brief (fourteen
   corrections), applied as stated.
@@ -1071,7 +1072,58 @@ docstring) and in this follow-up (records); nothing more is opened.
   all private.
 - **Closed:** `[inflaton-trajectory-prune-orphans-value-rows]` (§3 → §4; `OPEN-ISSUES.md` §6a → §7, 62 → 61 open, 25 → 26
   closed). Nothing opened.
-- **Rollback:** `git revert` of this commit alone. The venv is untouched.
+- **Rollback:** `git revert` of `5e41ce8` alone. The venv is untouched.
 - **Deviations:** the subprocesses (structurally required), two processes, no count line, parent rows minted, the inserter, extra
   `revalidate` cases, `tables[...]` in `revalidate`, breakage 5's form, the formatted new module, and a throwaway copy written to
   `/tmp` and deleted (drift, no effect); see the results note.
+
+**Orchestrator review of prompt 06 (2026-10-20)**, by orchestrator note
+[`prompt-06.md`](orchestrator/prompt-06.md), at `5e41ce8`. All twelve checks pass. The residue is fixed in this follow-up
+(records only); nothing is opened.
+- **(1) Scope.** 12 files, exactly the prompt's §5 list. One commit of the agent's on `a8cb166`, made once (the reflog shows
+  no amend); `git status` clean; no leftover branch; no scratch file in the repository. The `/tmp` copy the agent recorded as
+  drift is gone.
+- **(2) The name.** By `ast`, with `prune` renamed back in each `validate_on_startup`: `CompactionFunction.py`,
+  `CosmologicalParams.py`, `FullInstanton.py`, `GradientCoupledInstanton.py` and `SlowRollInstanton.py` dump identically to
+  `a8cb166`'s; `InflatonTrajectory.py` differs only in the two `register`s, the new `revalidate` and the trajectory's hook. The
+  five rule lines change the name alone. `git grep prune_unvalidated` gives the 11 pool, actor, driver and fixture lines, plus
+  one new one, the integration test's own `ShardedPool(prune_unvalidated=…)` (`tests/test_inflaton_trajectory_prune.py:471`),
+  which is that argument, not a hook's. The hook grep gives the 12 and `base.py:29`.
+- **(3) The cascade, by reading.** `tables.get("InflatonTrajectoryValue")`, the delete by `trajectory_serial.in_(serials)` before
+  the parent's, on the one `conn`; both messages as they were, no count line. The rule's map has the row and one sentence.
+- **(4) The keys.** `register()` called at `a8cb166` (a `git archive` copy) and at `5e41ce8`: the same columns with the same
+  foreign keys; the only difference is `validated_column = 'validated'` and `owner_column = 'trajectory_serial'`.
+- **(5) `revalidate`.** The orchestrator's own Ray-free check, from the scratchpad, on a store of all 30 tables written by the
+  factory's `store`: complete row `True` (written), failed row `True`, value rows removed `False` (written), each of type `bool`;
+  serial 999 raises `RuntimeError` naming it. The prune there: `prune=True` deleted 2 trajectories and 3 value rows and nothing
+  else, the second call reported nothing, no orphan. The note's I4 check cites the lines of the brief's correction 8.
+- **(6) The tests and the breakages.** The module has the licence header and imports the layer first; the signature test asserts
+  the 12 by the class's own `__dict__`; the integration test runs two subprocesses and reads both shards before and after. The
+  five diffs, extracted from the committed note, pass `git apply --check` and, once applied, `-R --check`; replayed in `bash`,
+  each fails what the prompt names: 1, the cascade test (`{1: 3, 2: 3} == {1: 3}`) and, run alone under `RAY_ADDRESS=local`,
+  the integration test (`prune-shard0000.sqlite: 3 orphaned value rows`); 2, the failed-row case; 3, the signature test naming
+  `CosmologicalParams (sqla_cosmological_params_factory)`; 4, the keys test (`KeyError: 'owner_column'`); 5, the complete-row
+  case. The tree was clean after each.
+- **(7) The schema.** The note's `schema_build.py`, re-run at `5e41ce8`: `RESULT: the schemas agree` against
+  `05-temp-schema.json` and against `02-reference-schema.json`. Ray not initialised before; no Ray process after.
+- **(8) The orchestrator's scenario** (`orch06/probe_pools.py`'s third part, its own process): each shard holds trajectory 1 and
+  its 3 value rows, **no orphan**, where at `436fc8d` each held 3. Only one of the two actors' "Pruned 1 unvalidated
+  InflatonTrajectory records" lines reached stdout this time, which is why the test reads the database rather than the logs.
+- **(9) The venv.** `pip freeze` equals the pre-dispatch copy; `pip check` clean.
+- **(10) Hygiene.** The 17 store files and all 607 entries under `~/ScienceData/` have their pre-dispatch mtimes and sizes.
+  DatastoreKit at `38ebb9f`, clean. No Ray process; the lock free.
+- **(11) The suites**, re-run by the orchestrator at `5e41ce8`: default 696 (695 passed, 1 skipped), 30.4 s; integration 62
+  (61 passed, 1 skipped), 34.5 s; load 17–18 (another session's work). `ruff check --select F401,F811,F821` over the factory
+  modules gives the same findings at `a8cb166` and `5e41ce8`, and none in the new test module.
+- **(12) The records.** The results note has README §5.1's sections, §2.1.1's lists, I4's check, the schema checks, the
+  package's properties set against the tests, the breakages as diffs and the suites beside 05's counts. The board has the §1
+  row, I1–I6, the issue moved from §3 to §4 with how, and this section with the rollback; `OPEN-ISSUES.md` moves the row from
+  §6a to §7, 61 open, 26 closed.
+  - *Residue, fixed:* "this commit" → `5e41ce8` (board ×3, results note ×5); the header's "06 landed" reads "landed and
+    reviewed"; this note added to the list of orchestrator notes; the campaign's line in `.prompts/INDEX.md` (open rows 9 → 8).
+- **The deviations are accepted.** Minting the parent rows is stronger than the brief's recommendation, and the drift (a lint
+  copy in `/tmp`, deleted) had no effect.
+- **Handed on to 07.**
+  - The only behaviour of the old layer that changed is which rows a pruning open deletes; the messages are as they were, so
+    07 reads them from the logs as before. A rehearsal that prunes no trajectory is unaffected.
+  - The suites start from 696 and 62.
