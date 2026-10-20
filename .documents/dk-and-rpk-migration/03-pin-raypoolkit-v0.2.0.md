@@ -1,7 +1,7 @@
 # 03 — pin `raypoolkit` `v0.2.0`
 
 **Subject:** Pin `raypoolkit` `v0.2.0` in `requirements.txt` and install the venv from it
-**Commit:** this commit, on branch `dk-and-rpk-migration`, on top of `b1ab501`
+**Commit:** `5396a3d`, on branch `dk-and-rpk-migration`, on top of `b1ab501`
 **Date:** 2026-10-20, by Claude Sonnet 5.5
 **Result:** **COMPLETE.** K1–K3 hold. The venv gained one distribution, `raypoolkit` 0.2.0, built
 from the tag's commit `eaef0ce60e2fc354bb32f0ad576010e6a83c1976`; its four modules are the tag's, byte
@@ -154,7 +154,7 @@ commit check and the byte comparison.
 
 ## State handed to the next prompt
 
-- **Branch** `dk-and-rpk-migration`, this commit on `b1ab501`. Tracked change: `requirements.txt`
+- **Branch** `dk-and-rpk-migration`, `5396a3d` on `b1ab501`. Tracked change: `requirements.txt`
   (one line), this note and the board.
 - **The venv** (outside git) holds `raypoolkit` 0.2.0 at `eaef0ce60e2fc354bb32f0ad576010e6a83c1976`,
   not editable; `pip freeze` is `measure/out/7bb3efd-pip-freeze.txt` plus the one
@@ -167,7 +167,7 @@ commit check and the byte comparison.
   without starting Ray.
 - **Suites:** 680 (679 passed, 1 skipped) and 61 (60 passed, 1 skipped); `slow` baseline 69 of 69
   (02's S1).
-- **Rollback:** `git revert` of this commit plus `./venv/bin/pip uninstall -y raypoolkit` (README
+- **Rollback:** `git revert` of `5396a3d` plus `./venv/bin/pip uninstall -y raypoolkit` (README
   §4.4); the revert alone does not touch the venv.
 - No Ray cluster is up; the rehearsal lock is untouched; no store was opened. No issue is opened, so
   `.documents/OPEN-ISSUES.md` is unchanged. `.prompts/INDEX.md` is the orchestrator's.
