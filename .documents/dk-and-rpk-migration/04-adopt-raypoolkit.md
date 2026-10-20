@@ -1,7 +1,7 @@
 # 04 — adopt `raypoolkit`
 
 **Subject:** Replace SI's copy of `RayWorkPool` with the packaged `raypoolkit.RayWorkPool`
-**Commit:** this commit, on branch `dk-and-rpk-migration`, on top of `9a7cb50`
+**Commit:** `ef13445`, on branch `dk-and-rpk-migration`, on top of `9a7cb50`
 **Date:** 2026-10-20, by Claude Sonnet 5.5
 **Result:** **COMPLETE.** W1–W5 hold, and **RayPoolKit G4 holds** (checklist item 8, items 1–5).
 `RayTools/` is gone; the three drivers import `RayWorkPool` from `raypoolkit`; `_default_store_handler`
@@ -463,8 +463,8 @@ first through the package: it constructs no `RayWorkPool` and imports nothing fr
 
 ## The deliberate-breakage record
 
-Each applied to the working tree of the tree at this commit, shown to be caught, and reverted by
-`git apply -R`. The recorded diffs replay with `git apply` from a clean tree at this commit
+Each applied to the working tree of the tree at `ef13445`, shown to be caught, and reverted by
+`git apply -R`. The recorded diffs replay with `git apply` from a clean tree at `ef13445`
 (checked with `git apply --check` and `git apply -R --check` after committing). None is committed.
 
 ### Breakage 1 — `main.py`'s import reverted to the deleted module
@@ -592,7 +592,7 @@ drivers against the index is empty.
 ## The text of the RayPoolKit G4 record, for 12 to carry into its draft
 
 > **G4 — StochasticInstantons adopts `raypoolkit` `v0.2.0`. Holds, 2026-10-20.** StochasticInstantons
-> (SI), campaign `dk-and-rpk-migration`, prompt 04, commit *this commit* on branch
+> (SI), campaign `dk-and-rpk-migration`, prompt 04, commit `ef13445` on branch
 > `dk-and-rpk-migration` (on `9a7cb50`; the pin is `5396a3d`). By checklist item 8, items 1–5:
 > 1. **`RayTools/` is gone.** `git ls-tree <commit> RayTools` is empty, and no `RayTools` directory is
 >    left in the working tree.
@@ -623,7 +623,7 @@ drivers against the index is empty.
 
 ## State handed to the next prompt
 
-- **Branch** `dk-and-rpk-migration`, this commit on `9a7cb50`. Tracked changes: `RayTools/` deleted
+- **Branch** `dk-and-rpk-migration`, `ef13445` on `9a7cb50`. Tracked changes: `RayTools/` deleted
   (2 files); `main.py`, `plot_GradientCoupledSolutions.py`, `plot_InstantonSolutions.py`; `CLAUDE.md`,
   `.claude/rules/ray-dispatch.md`, `.documents/FILE_MAP.md`, `.documents/INFRASTRUCTURE.md`,
   `.documents/architecture-summary.md`; `.documents/OPEN-ISSUES.md`; the board; this note.
@@ -646,4 +646,4 @@ drivers against the index is empty.
 - **The venv** is as 03 left it (`pip freeze` is `measure/out/7bb3efd-pip-freeze.txt` plus the one
   `raypoolkit` line); `pip check` was not needed, nothing installed. No Ray cluster is up, the
   rehearsal lock is untouched, no store was opened.
-- **Rollback:** `git revert` of this commit. The venv needs nothing.
+- **Rollback:** `git revert` of `ef13445`. The venv needs nothing.

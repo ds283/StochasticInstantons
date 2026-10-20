@@ -3,8 +3,8 @@
 **Last updated:** 2026-10-20 · **Status: LIVE — 8 of 13 prompts written (01–07, 01a), 01 and 01a
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
-(§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed (§5.16): `RayTools/` deleted, the
-pool is the package's, RayPoolKit G4 holds. U1–U9 ruled (2026-10-12),
+(§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
+the pool is the package's, RayPoolKit G4 holds. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -64,7 +64,7 @@ on any of them.
 | 01a | [Isolate the rehearsal cluster](01a-isolate-the-rehearsal-cluster.md) | **U9**; `ray_cluster.sh`, the shared rehearsal lock | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-12 | `3556148` | [`01a-isolate-the-rehearsal-cluster.md`](../../.documents/dk-and-rpk-migration/01a-isolate-the-rehearsal-cluster.md) |
 | 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12; amended 2026-10-20 (U11, and after the second attempt) | ✅ 2026-10-20, third attempt (§5.12, §5.13) | `5868231` | [`02-rehearse-the-start-tree.md`](../../.documents/dk-and-rpk-migration/02-rehearse-the-start-tree.md) |
 | 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-20 | `5396a3d` | [`03-pin-raypoolkit-v0.2.0.md`](../../.documents/dk-and-rpk-migration/03-pin-raypoolkit-v0.2.0.md) |
-| 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-20 | this commit | [`04-adopt-raypoolkit.md`](../../.documents/dk-and-rpk-migration/04-adopt-raypoolkit.md) |
+| 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-20 | `ef13445` | [`04-adopt-raypoolkit.md`](../../.documents/dk-and-rpk-migration/04-adopt-raypoolkit.md) |
 | 05 | [Move SI's data out of the layer](05-move-si-data-out-of-the-layer.md) | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ✍️ 2026-10-20 | ⬜ | — | — |
 | 06 | [Prepare the `InflatonTrajectory` factories](06-prepare-the-inflaton-trajectory-factories.md) | **U4**, P17; closes `[inflaton-trajectory-prune-orphans-value-rows]` | Opus | ✍️ 2026-10-20 | ⬜ | — | — |
 | 07 | [Rehearse before the DatastoreKit swap (RH1)](07-rehearse-before-the-datastore-swap.md) | **RH1**, bitwise against RH0; the tag (**U7**) | Opus | ✍️ 2026-10-20 | ⬜ | — | — |
@@ -90,6 +90,7 @@ before each dispatch:
 - [`prompt-01a.md`](orchestrator/prompt-01a.md) — used for 01a (`37126a2`).
 - [`prompt-02.md`](orchestrator/prompt-02.md) — used for 02 (`0ff3609`; revised for U11 in `9caeea3` and for the reader fix in `b218760`, §5.12).
 - [`prompt-03.md`](orchestrator/prompt-03.md) — used for 03 (`b1ab501`).
+- [`prompt-04.md`](orchestrator/prompt-04.md) — used for 04 (`9a7cb50`).
 
 ### 1.1 Items
 
@@ -142,7 +143,7 @@ The measurement the plan was written against is [`measure/out/`](measure/out/). 
 | Gate | Holds when | Prompt | State |
 |---|---|---|---|
 | RH0 | the start tree builds the grid, resumes it, builds it scalars-only, and its readers run (README §4.1); its reproducibility is measured (§4.3) | 02 | ✅ 2026-10-20 (§5.13): bitwise reproducible, dense and scalars-only |
-| RayPoolKit G4 | `RayTools/` is gone; 0 imports of it and of `_default_store_handler`; the pin is installed; the suites pass; all 16 sites construct (RayPoolKit checklist item 8) | 04 (RH1, 07, adds the run under real Ray) | ✅ 2026-10-20 (§5.16), items 1–5: `git ls-tree` empty; 0 imports, 0 `import_module`; the pin installed (03); 680 and 61; 16 calls, all `constructs`. Item 6 (the record on RayPoolKit's board) is 12's draft (P14); RH1 (07) adds the run under real Ray |
+| RayPoolKit G4 | `RayTools/` is gone; 0 imports of it and of `_default_store_handler`; the pin is installed; the suites pass; all 16 sites construct (RayPoolKit checklist item 8) | 04 (RH1, 07, adds the run under real Ray) | ✅ 2026-10-20 (§5.16), items 1–5: `git ls-tree` empty; 0 imports, 0 private names, 0 `import_module` (2 string literals, both dated module docstrings, unedited); the pin installed (03); 680 and 61; 16 calls, all `constructs`. Item 6 (the record on RayPoolKit's board) is 12's draft (P14); RH1 (07) adds the run under real Ray |
 | RH1 | 06's tree equals RH0 bit for bit, timings and timestamps aside (§5.13), dense and scalars-only; `pre-datastorekit` tagged | 07 | ⬜ |
 | DatastoreKit `v0.2.3` | tagged on DatastoreKit's remote, with `store`, `validate` and `validate_on_startup` defaulted | — (carried into `v0.3.0`) | ✅ **released** 2026-10-11 for CPBH: tag object `8dac562`, commit `0de2b16`. Checked on the remote at planning |
 | DatastoreKit `v0.3.0` | tagged on DatastoreKit's remote, its `DatastoreObject` taking and exposing `timestamp` (U3; made in DatastoreKit from the brief, not here) | — (carried into `v0.4.0`) | ✅ **released** 2026-10-12 by DatastoreKit's `object-timestamp` campaign: tag object `bf0a3b2`, commit `2f5417e`; checked on the remote and by `git show` of `object.py` (README §0.4) |
@@ -843,7 +844,7 @@ itself. Residue is fixed in this follow-up; nothing is opened.
 
 ### 5.16 After prompt 04 (2026-10-20)
 
-- **Landed:** this commit, results note
+- **Landed:** `ef13445`, results note
   [`04-adopt-raypoolkit.md`](../../.documents/dk-and-rpk-migration/04-adopt-raypoolkit.md).
   **COMPLETE:** W1–W5 hold; **RayPoolKit G4 holds** by its checklist item 8, items 1–5. (The prompt
   names this section §5.8; that number is taken, and the board ran to §5.15.)
@@ -867,7 +868,78 @@ itself. Residue is fixed in this follow-up; nothing is opened.
   61).
 - **Suites:** 680 (679 passed, 1 skipped) and 61 (60 passed, 1 skipped), as at 03. No Ray was
   started by the agent; no driver ran; no store was opened. The run under real Ray is 07's (RH1).
-- **Rollback:** `git revert` of this commit. The venv is untouched (`raypoolkit` stays installed,
+- **Rollback:** `git revert` of `ef13445`. The venv is untouched (`raypoolkit` stays installed,
   inert once nothing imports it).
 - **Deviations:** the board section number, the suites' commands, the 2 docstring literals and the
   `picard.py` comment (not stops), as the orchestrator's brief corrected; see the results note.
+
+**Orchestrator review of prompt 04 (2026-10-20)**, by orchestrator note
+[`prompt-04.md`](orchestrator/prompt-04.md), at `ef13445`. All eleven checks pass. Residue is fixed
+in this follow-up; nothing more is opened.
+- **(1) Scope.** 13 files: the two deletions, the three drivers, `CLAUDE.md`, `ray-dispatch.md`,
+  `FILE_MAP.md`, `INFRASTRUCTURE.md`, `architecture-summary.md`, `OPEN-ISSUES.md`, the results note
+  and the board. One commit of the agent's on `9a7cb50`; `git status` clean; `ls RayTools` fails; no
+  leftover branch. The stray `main.py-e` the agent's D-list names is gone, and no file of either
+  repository outside the commit is newer than the note.
+- **(2) The diff.** `git ls-tree ef13445 RayTools` is empty. The plot scripts change one line each
+  (`:100`, `:72`); `main.py` the import at `:45` and six deletions at `:412`, `:499`, `:666`, `:826`,
+  `:850`, `:1099` (`0c3d4b6`'s numbers), nothing else. No other line of a `RayWorkPool(` call moved.
+- **(3) The script at the real commit**, run by the orchestrator at `--commit ef13445`: 0 imports,
+  0 private names, 2 string literals (the two docstrings), 0 `import_module` calls, 16 calls,
+  `constructs` 16, 5 flags on 4 calls. Against the orchestrator's pre-dispatch throwaway `bc04d68`
+  only the header, `Files:` (418 → 420: the results note and this note) and the non-`.py` lines
+  (256 → 387, the documents and records) differ; every call row is equal. The verdicts equal the
+  agent's throwaway measure.
+- **(4) Imports.** The results note's `import_check.py`, extracted from the note (byte-equal to the
+  agent's scratch copy) and re-run with `python -I`: 159 imports in 3 drivers, 0 unresolved, 0
+  private `raypoolkit` names, `raypoolkit` from the venv's `site-packages`, `ray.is_initialized()`
+  `False`. `py_compile` of the three drivers succeeds. `w3_check.py` reads its base as `HEAD`, so
+  after the commit it must be pointed at `9a7cb50`; so pointed, it passes: 12 `None` sites, SI's own
+  handlers at `:385` and `:717`, absent at `:493` and `:1089`, and `_run_instanton_queue`'s
+  parameters those of `9a7cb50` less `store_handler`.
+- **(5) Breakages**, replayed in `bash` from the note's diffs; each passes `git apply --check` and
+  then `-R --check`, and the tree was clean after each.
+  - 1 fails the import check on `main.py:45` (`No module named 'RayTools'`). At an orchestrator
+    throwaway commit (`b760ea6`, from a copy of the index) the script reports 1 import.
+  - 2 fails it on `plot_InstantonSolutions.py:72` (`'RayWorkPoool' is not an attribute`).
+  - 3 resolves, and is caught by the private-name count (1, `main.py:46`) and by `git grep`; the
+    script's verdict is the note's (`dd64b29`: 0 imports, 0 private names).
+  - 4, `--block raypoolkit`: three failures, exit 1.
+- **(6) The venv.** `pip freeze` equals the pre-dispatch copy; `pip check` clean.
+- **(7) W5, line by line.** `CLAUDE.md` changes `:101` alone, to `Datastore/SQL/ShardedPool.py`.
+  `ray-dispatch.md` changes only within the section (`:101-112` now): it names
+  `raypoolkit.RayWorkPool` and its pin, and cites `:385` (`if obj.available:`), `:424-426` (the
+  compute handler, default `obj.compute(**kwargs)` at `:75-76`) and `:471` (the store handler,
+  default `obj.store()` at `:79-80`; persist at `:481`), each as the tag reads; the argument is
+  unchanged. `FILE_MAP.md:31` names the package; `:287` is deleted (D-list, accepted).
+  `INFRASTRUCTURE.md:353` and `architecture-summary.md:321` name the package and its pin;
+  `architecture-summary.md:27-28` are a parenthetical layout line (accepted, as ChamPBH's). Nothing
+  claims a feature the package lacks.
+- **(8) The note's measurements.** The re-measure's account matches §0 of the note (+2 / +1; the
+  docstrings), its `Files:` 421 and non-`.py` 292 being the note's own commit's. The agent's
+  throwaway `db29b7f` has parent `9a7cb50`, and `git diff --name-only db29b7f ef13445` lists only
+  `OPEN-ISSUES.md`, the results note and the board, so its code is the commit's.
+- **(9) Hygiene.** RayPoolKit clean, `HEAD` `17029d9`. The 17 store files and all 607 entries under
+  `~/ScienceData/` have their pre-dispatch mtimes and sizes. No Ray process; the lock free. No
+  scratch file in either repository.
+- **(10) The suites**, re-run by the orchestrator at `ef13445`: default 680 (679 passed, 1
+  skipped), 61.3 s, load 7–14; integration 61 (60 passed, 1 skipped), 27.5 s. The agent's agree.
+  This is the first tree at which the plot-driver tests import `raypoolkit`.
+- **(11) The records.** The results note has README §5.1's sections, every check's command and
+  output, and the G4 text for 12; the board has the §1 row, W1–W5, the G4 row and §5.16 with the
+  rollback; the §3 issue has its index row, count and date.
+  - *Residue, fixed here:* "this commit" → `ef13445` (board ×3, results note ×6); the G4 row now
+    gives the 2 docstring literals and 0 private names; the header's "landed" reads "landed and
+    reviewed"; this note added to the list of orchestrator notes; the campaign's line in
+    `.prompts/INDEX.md`, whose count of open rows is corrected from 6 to 8 (it missed
+    `[gci-picard-inner-fails-on-rehearsal-grid]`, opened at 02, as well as 04's).
+- **The twelve deviations are accepted** (the results note's item 13 says none is drift). Six are
+  the note's corrections; five are choices it allowed (the suites' flags, the `FILE_MAP.md:287`
+  deletion, the layout line, imports in place, the import check's namespace rule). Item 11, the
+  stray `main.py-e` from BSD `sed`, is a slip rather than a choice, but it was deleted before staging
+  and nothing of it is in the commit.
+- **Handed on to 05.**
+  - The pool is the package's; the 16 call sites are at the throwaway's lines (`main.py:223` …
+    `:1089`; compute sites `:385`, `:493`, `:717`, `:1089`), and 04 moved none but by deletion.
+  - RH1 (07) is the first run of `raypoolkit` under real Ray, held to bitwise equality with RH0.
+  - The suites start from 680 and 61.
