@@ -21,6 +21,11 @@
 # Amended 2026-10-20 for U11 (README section 6.1): no rehearsal builds the gradient branch, so
 # step 3 (plot_GradientCoupledSolutions.py) is no longer run on any store.
 #
+# Amended 2026-10-20 again, after RH0's second attempt: step 2 passes the build's
+# --n-collocation-points 5 --alpha-regularization 0.01. Without them the plot script's parser
+# defaults (n = 33) reach config/pipeline_setup.py, which gets-or-inserts them as replicated rows
+# whatever the targets, so the reader added an n_collocation_points row to the store it read.
+#
 # It starts and stops no Ray cluster: the caller starts one and passes its address. Every flag
 # below was checked against config/argument_parser.py and each plot script's create_plot_parser
 # (plot_InstantonSolutions.py, plot_GradientCoupledSolutions.py), which extend it with
@@ -41,7 +46,9 @@ Run from the repository root, on a closed store. Into $REHEARSAL_ROOT/NN-readers
   1. main.py --config quadratic-minimal.yaml --database STORE --inventory
                                                     -> 1-inventory.log
   2. plot_InstantonSolutions.py --config quadratic-minimal.yaml --database STORE
-       --output-dir plot_InstantonSolutions [--no-store-values when STORE begins "scalars"]
+       --output-dir plot_InstantonSolutions
+       --n-collocation-points 5 --alpha-regularization 0.01 (the build's, so that no
+       replicated row is added) [--no-store-values when STORE begins "scalars"]
                                                     -> 2-plot_InstantonSolutions.log
   3. (not run: no rehearsal store holds the gradient branch, U11)
   4. tools/compare_stores.py before/NN-STORE.sqlite NN-STORE.sqlite
@@ -127,18 +134,21 @@ PYTHONPATH=. ./venv/bin/python -u main.py --config quadratic-minimal.yaml --data
 record 1 inventory $?
 
 # 2. plot_InstantonSolutions.py; on a scalars-only store with --no-store-values, so that it
-#    writes scalar_data.csv from the scalar columns
+#    writes scalar_data.csv from the scalar columns. The grid flags are build.sh's: the parser's
+#    defaults would be inserted into the store as replicated rows.
 PLOT_ARGS=()
 case "$STORE" in
     scalars*) PLOT_ARGS=(--no-store-values) ;;
 esac
 if [[ ${#PLOT_ARGS[@]} -gt 0 ]]; then
     PYTHONPATH=. ./venv/bin/python -u plot_InstantonSolutions.py --config quadratic-minimal.yaml \
-        --database "$DB" --output-dir "$OUT/plot_InstantonSolutions" --ray-address "$ADDRESS" \
+        --database "$DB" --output-dir "$OUT/plot_InstantonSolutions" \
+        --n-collocation-points 5 --alpha-regularization 0.01 --ray-address "$ADDRESS" \
         "${PLOT_ARGS[@]}" > "$OUT/2-plot_InstantonSolutions.log" 2>&1
 else
     PYTHONPATH=. ./venv/bin/python -u plot_InstantonSolutions.py --config quadratic-minimal.yaml \
-        --database "$DB" --output-dir "$OUT/plot_InstantonSolutions" --ray-address "$ADDRESS" \
+        --database "$DB" --output-dir "$OUT/plot_InstantonSolutions" \
+        --n-collocation-points 5 --alpha-regularization 0.01 --ray-address "$ADDRESS" \
         > "$OUT/2-plot_InstantonSolutions.log" 2>&1
 fi
 record 2 plot_InstantonSolutions $?

@@ -30,8 +30,9 @@ It reports what it sent, not what the driver did: a SIGTERMed driver has been se
 not 143, because Ray's failure-signal handler aborts (ChamPBH's board, section 5.3). build.sh
 appends the driver's own exit status to the log.
 
-For RH0's resumed-a the banner is `STAGE G: GRADIENT-COUPLED (ONION MODEL) INSTANTONS`
-(main.py's gradient-branch pool title), and the delay is set from reference's log.
+For resumed-a the banner is `STAGE 2: FULL MSR INSTANTONS` (main.py's FullInstanton pool
+title), and the delay is set from reference's stored timestamps. It was the gradient branch's
+`STAGE G` banner until U11 (2026-10-20), when the rehearsals dropped that branch.
 """
 
 import argparse

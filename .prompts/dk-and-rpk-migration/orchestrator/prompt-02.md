@@ -14,6 +14,11 @@ gradient solves of the first wave finished, every inner Picard step failing
 gradient branch. The prompt, the README, `build.sh` and `run_readers.sh` are amended; this note is
 rewritten to match, and the agent is dispatched afresh.*
 
+*Revised again 2026-10-20, after the second dispatch (`9caeea3`) stopped at a reader:
+`run_readers.sh` step 2 lacked the build's `--n-collocation-points 5`, so the plot script inserted
+an `n_collocation_points=33` row. The user ruled to fix the script and re-run all; the same agent
+re-runs. The second attempt's files are under `$REHEARSAL_ROOT/02-attempt-2-reader-defect/`.*
+
 **You do not write code.** You may:
 - run the suites, `compare_stores.py`, `stage_counts.py` and `--snapshot` on the agent's stores;
 - read the agent's stores with `sqlite3` in `mode=ro`, never through the layer;
@@ -86,8 +91,12 @@ The amendment itself carries what were corrections 2–4 of the first dispatch: 
 - **`run_readers.sh` exits 1 by design** when step 4 finds the expected `2026.3.0` `version` row.
   L3 reads `status.txt` (steps 0–2 exit 0; step 3 is now printed as not run) and
   `4-compare_stores.log` (only `version` differs, `B only 1`, plus bookkeeping).
-- **A `SIGTERM`ed driver exits 134**, Ray's absl failure-signal handler aborting. Seen again at the
-  first attempt: `** driver exit status 134`, its native stack dumped to the log.
+- **A `SIGTERM`ed driver exits 134 or 15.** The first attempt's exited 134, the second's 15; both
+  logs show Ray's absl handler (`SIGTERM received`, the native stack). Either is "by the signal".
+- **The second attempt's timing, for `S`.** In its `reference`, the `STAGE 2` banner was at about
+  07:40:37.25 (from the profile database's lookup queries), the `FullInstanton` rows at +9.26 to
+  +12.04 s (the delay is the driver minting each instanton's `efold_value` grid, about 0.75 s
+  each), the last `CompactionFunction` at +23.4 s. `S` = 10.5 s left 3 of 10 stored.
 - **The cluster.** `ray_cluster.sh start` takes about 6–22 s and `stop` about 19–35 s (`gcs_server`
   ignores `SIGTERM`, so the 15 s grace runs; at the first attempt, 19 s). Nothing else may name
   `/tmp/ray-si` on its command line during a stop. `ray_current_cluster` is written into
@@ -173,7 +182,7 @@ The amendment itself carries what were corrections 2–4 of the first dispatch: 
 **What the review exists to establish.**
 - **(E1) The builds.** Each log has the provenance line once, its banners and summaries, and
   `** driver exit status`, as prompt §2 L1 says. `resumed-a` died by the signal inside its
-  window, 134, and its actors were gone before `resumed-b`.
+  window (134 or 15), and its actors were gone before `resumed-b`.
 - **(E2) The resume.** By the stage counts and by the stores' rows and timestamps: `resumed-b`
   computed exactly the rows `resumed-a` had not kept validated, and nothing was pruned but
   unvalidated rows.
@@ -211,9 +220,8 @@ rules on stores and Ray:
 - **A §4.3 difference** is a stop *after* the readers and the records: the agent finishes §1.4 and
   §1.5, writes the results note and the verification document, stops the cluster, and **does not
   commit**. It reports and waits.
-- **The results note records the first attempt** in a short section of its own, from board §5.12
-  (it was not the agent's run to measure), and the verification document's §1 says that RH0 was
-  run twice and why.
+- **The results note records both earlier attempts** in a short section of its own, from board
+  §5.12, and the verification document's §1 says that RH0 was run three times and why.
 
 ## 1. Before you dispatch
 
@@ -281,7 +289,7 @@ Tell it plainly:
 3. **E1, the logs**, read in `$REHEARSAL_ROOT/logs/`, all five (and any retry).
    - The provenance line once each, both packages not installed.
    - `reference`, `resumed-b`, `scalars`, `scalars-2` end `** driver exit status 0`, every pool
-     complete; `resumed-a` ends 134 after the `STAGE 2` banner, and before the last
+     complete; `resumed-a` ends 134 or 15 after the `STAGE 2` banner, and before the last
      `CompactionFunction` was stored.
    - No `STAGE G` banner in any log.
    - `grep -n 'Traceback\|Error\|WARNING'` gives only §0's known lines (and `resumed-a`'s abort).
@@ -315,9 +323,9 @@ Tell it plainly:
    byte-identical to the committed file. The profile database, read `mode=ro`: its tables and row
    counts as recorded, and not empty.
 10. **E7, hygiene.** The 17 store files, every entry under `~/ScienceData/` outside the SI
-    rehearsal root, and the first attempt's files all have their §1 mtimes and sizes.
+    rehearsal root, and both earlier attempts' files all have their §1 mtimes and sizes.
     `$REHEARSAL_ROOT` holds the four stores (11 files each, `reference` one more),
-    `02-attempt-1-aborted/`, `logs/` (five logs, five pidfiles, and any retry's) and `02-readers/`.
+    `02-attempt-1-aborted/`, `02-attempt-2-reader-defect/`, `logs/` (five logs, five pidfiles, and any retry's) and `02-readers/`.
     `pip freeze` equals `measure/out/7bb3efd-pip-freeze.txt`. No scratch file in the repository.
 11. **E6 and E8, S1 and the records.**
     - S1: the count is 69; each failure the note records re-run alone by the orchestrator.

@@ -546,3 +546,30 @@ At the user's request, not by a prompt. Read-only in DatastoreKit, RayPoolKit an
   so `compare_stores` meets them only in its imitation tests, and RH1 and RH2 check them only
   through the suites.
 - **Next:** 02 is dispatched afresh on the amended protocol.
+
+**The second attempt (2026-10-20, 07:37–07:46 BST), stopped at a reader.** Dispatched at
+`9caeea3`. The suites before the cluster gave 680 and 61. All five builds ended as expected, in
+24–35 s each: `resumed-a` (`S` = 10.5 s after the `STAGE 2` banner) left 3 validated
+`FullInstanton` rows and nothing unvalidated; `resumed-b` computed the other 7 and every later
+stage; no build pruned anything. `resumed-a` exited **15**, not 134 (its log shows Ray's
+`SIGTERM received` and the absl stack dump). Then `run_readers.sh 02 resumed` added **two** rows
+to `02-resumed.sqlite`, not one: the expected `version` `2026.3.0`, and
+`n_collocation_points=33`. Step 2 ran `plot_InstantonSolutions.py` without the build's
+`--n-collocation-points 5`, so the parser's default (`config/argument_parser.py:331-341`) reached
+`config/pipeline_setup.py:95-106`, which gets-or-inserts it whatever the targets. A defect of 01's
+script, older than U11 (only the removed step 3 passed the flag); the orchestrator's U11 commit
+noted the same minting for `build.sh` and missed it here. The agent stopped (prompt §4), stopped
+the cluster (lock released) and did not patch. Its preliminary comparisons: `scalars` against
+`scalars-2` `RESULT: equal`; `reference` against the readers' `before/` copy of `resumed`
+`RESULT: equal`.
+- **The user ruled: fix and re-run all.** `run_readers.sh` step 2 now passes
+  `--n-collocation-points 5 --alpha-regularization 0.01` on both branches (checked: the plot
+  parser takes them, `[5] [0.01]`). `interrupt_when.py`'s docstring names the `STAGE 2` banner
+  (agent's finding 4).
+- **The second attempt's files are kept**, moved intact to
+  `$REHEARSAL_ROOT/02-attempt-2-reader-defect/`: the four stores and the profile database, the
+  ten logs and pidfiles, `02-readers/`, and the agent's four untracked `out/02-*` files
+  (`repo-out-untracked/`). Nothing was deleted.
+- **Next:** the same agent re-runs RH0 from the start on the standard names. Its other findings
+  (the raylet's worker-count warning in `scalars`, the `PIPELINE LOOKUP` wording) go to its
+  results note.

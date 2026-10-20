@@ -13,6 +13,11 @@ with no gradient solve finished (every inner Picard step failing;
 and `run_readers.sh` no longer runs `plot_GradientCoupledSolutions.py`. The first attempt's store
 and log are kept, moved aside to `$REHEARSAL_ROOT/02-attempt-1-aborted/`, and are not this
 attempt's (README §6.1, U11).*
+*Amended again 2026-10-20, after the second attempt stopped at a reader: `run_readers.sh` step 2
+now passes the build's `--n-collocation-points 5 --alpha-regularization 0.01` (the parser's
+default had added an `n_collocation_points` row). That attempt's files are under
+`$REHEARSAL_ROOT/02-attempt-2-reader-defect/`. A `SIGTERM`ed driver may exit 15 or 134
+(board §5.12).*
 **Gate:**
 - 01 and 01a landed and reviewed (board §1), and their scripts and tool are as their results notes
   describe;
@@ -133,7 +138,9 @@ Wait for each to end before starting the next. **Do not poll.**
    `interrupt_when.py $REHEARSAL_ROOT/logs/02-resumed-a.log $REHEARSAL_ROOT/logs/02-resumed-a.pid
    --banner "STAGE 2: FULL MSR INSTANTONS" --after <S> --poll 0.2`. The banner first matches
    the `** STAGE 2: FULL MSR INSTANTONS LOOKUP:` line, printed just before the pool's own.
-   - A `SIGTERM`ed driver exits **134** (Ray's failure-signal handler aborts; ChamPBH board §5.3).
+   - A `SIGTERM`ed driver exits **134** or **15** (Ray's failure-signal handler; ChamPBH board
+     §5.3 saw 134, this prompt's second attempt 15). Either is "by the signal" if the log shows
+     `SIGTERM received`.
    - **If the signal lands outside the window** (no `FullInstanton` row stored, or every
      `CompactionFunction` row stored), you may delete `02-resumed.sqlite`, its ten shards and any
      `-journal` beside them, retune `S`, and run `resumed-a` again, twice at most. These are the
