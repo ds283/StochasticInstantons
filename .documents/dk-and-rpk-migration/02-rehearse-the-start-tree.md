@@ -1,7 +1,7 @@
 # 02 — rehearse the start tree (RH0)
 
 **Subject:** Rehearse the start tree (RH0) and record its baseline
-**Commit:** this commit, on branch `dk-and-rpk-migration`, on top of `b218760`
+**Commit:** `5868231`, on branch `dk-and-rpk-migration`, on top of `b218760`
 **Date:** 2026-10-20, by Claude Opus 5.5
 **Result:** **COMPLETE, at the third attempt.** L1–L4 hold. §4.3 is measured for both modes:
 **RH0 is bitwise reproducible.** The two dense stores agree in every science value, and so do the

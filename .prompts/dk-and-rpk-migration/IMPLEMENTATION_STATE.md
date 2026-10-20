@@ -60,7 +60,7 @@ on any of them.
 |---|---|---|---|---|---|---|---|
 | 01 | [Rehearsal tooling and run provenance](01-rehearsal-tooling-and-run-provenance.md) | P3, P5; README §4.1–§4.2 | Opus | ✍️ 2026-10-12 | ✅ 2026-10-12 | `84a5cfc` | [`01-rehearsal-tooling-and-run-provenance.md`](../../.documents/dk-and-rpk-migration/01-rehearsal-tooling-and-run-provenance.md) |
 | 01a | [Isolate the rehearsal cluster](01a-isolate-the-rehearsal-cluster.md) | **U9**; `ray_cluster.sh`, the shared rehearsal lock | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-12 | `3556148` | [`01a-isolate-the-rehearsal-cluster.md`](../../.documents/dk-and-rpk-migration/01a-isolate-the-rehearsal-cluster.md) |
-| 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12; amended 2026-10-20 (U11, and after the second attempt) | ✅ 2026-10-20, third attempt (§5.12, §5.13) | this commit | [`02-rehearse-the-start-tree.md`](../../.documents/dk-and-rpk-migration/02-rehearse-the-start-tree.md) |
+| 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12; amended 2026-10-20 (U11, and after the second attempt) | ✅ 2026-10-20, third attempt (§5.12, §5.13) | `5868231` | [`02-rehearse-the-start-tree.md`](../../.documents/dk-and-rpk-migration/02-rehearse-the-start-tree.md) |
 | 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
 | 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
 | 05 | Move SI's data out of the layer | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ⬜ | ⬜ | — | — |
@@ -85,7 +85,7 @@ Orchestrator notes are written one prompt at a time, in [`orchestrator/`](orches
 before each dispatch:
 - [`prompt-01.md`](orchestrator/prompt-01.md) — used for 01 (`b4088d1`).
 - [`prompt-01a.md`](orchestrator/prompt-01a.md) — used for 01a (`37126a2`).
-- [`prompt-02.md`](orchestrator/prompt-02.md) — written for 02 (`0ff3609`); revised for U11 (§5.12).
+- [`prompt-02.md`](orchestrator/prompt-02.md) — used for 02 (`0ff3609`; revised for U11 in `9caeea3` and for the reader fix in `b218760`, §5.12).
 
 ### 1.1 Items
 
@@ -577,7 +577,7 @@ the cluster (lock released) and did not patch. Its preliminary comparisons: `sca
 
 ### 5.13 After prompt 02 (2026-10-20)
 
-- **Landed:** this commit, results note
+- **Landed:** `5868231`, results note
   [`02-rehearse-the-start-tree.md`](../../.documents/dk-and-rpk-migration/02-rehearse-the-start-tree.md),
   record [`verification.md`](../../.documents/dk-and-rpk-migration/verification.md) §1. **COMPLETE
   at the third attempt** (§5.12 records the first two): L1–L4 (RH0), V1 and S1; gate RH0 holds; no
@@ -624,3 +624,79 @@ the cluster (lock released) and did not patch. Its preliminary comparisons: `sca
   instanton is compensated" warnings in the plot logs; the raylet's worker-count warning in
   `scalars`; the `PIPELINE LOOKUP` wording; the 10 s `efold_value` minting before the first
   `FullInstanton` row.
+
+**Orchestrator review of prompt 02 (2026-10-20)**, by orchestrator note
+[`prompt-02.md`](orchestrator/prompt-02.md), at `5868231`. All eleven checks pass. Residue is fixed
+in this follow-up; nothing is opened.
+- **(1) Scope.** 24 files: the results note, `verification.md`, the board and 21 `out/02-*` files,
+  all text, the largest 40 KB (the schema snapshots). No code. `git status` clean.
+- **(2) Ray and the lock.** `ray_cluster.sh status`: lock free, no `/tmp/ray-si` process, the four
+  ports free; no Ray process on the machine.
+- **(3) The logs**, all five read. The provenance line once each, both packages not installed; no
+  `STAGE G` banner and no `Traceback` anywhere. `reference`, `resumed-b`, `scalars`, `scalars-2`
+  end `** driver exit status 0` with 4, 4, 2, 2 `ALL WORK ITEMS COMPLETE`. `resumed-a` shows
+  `SIGTERM received` at 08:12:46.364 inside the `STAGE 2` pool and ends with status 1. The only
+  `WARNING`/`Error` lines are the two prune headers, the raylet's disk warning and, in `scalars`,
+  its worker-count warning.
+- **(4) The counts.** `stage_counts.py` re-run on the five logs gives the committed text and JSON
+  exactly. The orchestrator's own `mode=ro` read: every row of all four stores validated; 10
+  `FullInstanton`, `SlowRollInstanton`, `CompactionFunction` and 1 trajectory (10 replicas) each;
+  no `GradientCoupledInstanton`. In `02-resumed`, 6 `FullInstanton` rows predate the signal and 4
+  follow it, and every `SlowRollInstanton` and `CompactionFunction` follows it: `resumed-b`'s "6
+  already computed, 4 to compute", then 10 and 10. No `FullInstantonValue` orphan.
+- **(5) The prune.** Two reports, both in `resumed-b`'s log, `shard0005-store` and
+  `shard0007-store`, each `Pruned 1 unvalidated FullInstanton records`: the 2 unvalidated rows the
+  agent read between builds. No other build pruned.
+- **(6) §4.3, re-run.** All four comparisons re-run into the scratchpad give the committed
+  `RESULT:` lines, exit codes, text and JSON exactly. The prescribed pairs differ only by the
+  readers' `version{label='2026.3.0'}` row; the pairs against the readers' `before/` copies are
+  `RESULT: equal`. All 30 tables listed, with the counts of §0; the bookkeeping that differs is
+  only timestamps and the `compute_time` / `mean_time_per_picard_iteration` keys.
+- **(7) Independently of the tool.** A scratchpad script hashed each trajectory, `FullInstanton`,
+  `SlowRollInstanton` and `CompactionFunction` with its child rows by stored bits (references
+  resolved recursively, the polymorphic pairs by type, JSON timing keys dropped, the two
+  NULL-able labels skipped). `02-reference` against itself: 0 differing. `02-reference` against
+  `02-resumed`: 0 differing, over 57,130 / 16,564 / 16,564 / 33,128 child rows each. `02-scalars`
+  against `02-scalars-2`: 0 differing. Control `02-reference` against `02-scalars`: all 30
+  instanton digests differ, as they must. On a scratch copy of `02-resumed` with one
+  `FullInstantonValue` `P1_invPlanckMass` moved one ulp, it reported one `FullInstanton` differing,
+  and `compare_stores` paired it as a near miss (relative difference 1.3e-16); the copy was
+  deleted. **RH0 is bitwise reproducible in both modes, confirmed.**
+- **(8) The readers.** `status.txt` on both stores: steps 0–2 exit 0, step 4 exit 1; each
+  `4-compare_stores.log` finds only the `version` row; both plot logs read
+  `n_collocation_points: 1 value = [ 5 ]`. Both `scalar_data.csv` hash to `b0564eec…58a2`, on disk
+  and as committed blobs. The committed inventory logs are the readers' own with Ray's raylet disk
+  warning removed (abridged, as the prompt allows).
+- **(9) The baseline.** `--snapshot` of `02-reference` and `02-scalars` is byte-identical to the
+  committed snapshots. The profile database holds `jobs` (1 row) and `profile_data` (807).
+- **(10) Hygiene.** The 17 store files in the tree unchanged; everything under `~/ScienceData/`
+  outside the SI root unchanged (only the directory's own mtime moved, with the lock); no file in
+  either earlier attempt's directory touched. The root holds the four stores (45 files with the
+  profile database), the two attempt directories, `logs/` (10 files) and `02-readers/`.
+  `pip freeze` equals `measure/out/7bb3efd-pip-freeze.txt`. No scratch file in the repository.
+- **(11) S1 and the records.** S1: 69 passed of 69, 390 s, nothing to re-run. The results note
+  has README §5.1's sections, the three attempts and the prompt's §6 additions; `verification.md`
+  has its introduction and §1 (§§1.0–1.7, the commands verbatim). The board has the §1 row, L1–L4,
+  V1, S1, gate RH0 and §5.13. The orchestrator re-ran both suites at `5868231`: default 680 (679
+  passed, 1 skipped), integration 61 (60 passed, 1 skipped).
+  - *Residue, fixed here:* "this commit" → `5868231` (board ×2, results note); this note marked
+    "used for 02"; the campaign's line in `.prompts/INDEX.md`.
+- **Deviations D1–D6 are accepted.** D3 is right: the prompt runs the readers before the
+  comparisons, and SI's plot scripts write a `version` row (`[plot-scripts-stale-version-label]`),
+  so the prescribed comparisons cannot be empty; the `before/` comparisons measure what §4.3
+  asks. D4 (exit 1) joins 134 and 15: Ray's handler varies, the log's `SIGTERM received` is the
+  evidence.
+- **Observations** are recorded and not opened: none affects a stored value or a later prompt's
+  criterion.
+- **Handed on.**
+  - *To 05–07's writing:* **RH1 and RH2 are held to bitwise equality** with `02-reference.sqlite`
+    (untouched by the readers) and, for the scalars-only mode, `02-scalars-2.sqlite` or
+    `02-readers/scalars/before/02-scalars.sqlite` (`02-scalars.sqlite` carries the readers'
+    `version` row). 07 and 11 should run their comparisons **before** their readers, which removes
+    D3's detour.
+  - *To 07's and 11's notes:* `S` from `reference`'s stored timestamps and its profile database's
+    `object_get FullInstanton` call; the `FullInstanton` rows fall at banner +9.8 to +12.8 s; the
+    signal's exit status may be 134, 15 or 1; `scalar_data.csv` `b0564eec…58a2` on both stores.
+  - *To 09:* S1's baseline is 69 of 69 passed.
+  - *U11's gap stands:* no rehearsal writes the gradient tables.
+
