@@ -202,11 +202,11 @@ means giving it a `type_id`, a `type_id` column on its own factory, a
 Factories that set `"validate_on_startup": True` in `register()` must implement:
 
 ```python
-def validate_on_startup(self, conn, table, tables, prune_unvalidated):
+def validate_on_startup(self, conn, table, tables, prune):
     rows = conn.execute(
         sqla.select(table.c.serial).filter(table.c.validated == False)
     ).fetchall()
-    if prune_unvalidated and rows:
+    if prune and rows:
         conn.execute(sqla.delete(table).where(
             table.c.serial.in_([r.serial for r in rows])
         ))

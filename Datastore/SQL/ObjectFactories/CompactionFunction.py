@@ -488,11 +488,11 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
         )
         return validated
 
-    def validate_on_startup(self, conn, table, tables, prune_unvalidated):
+    def validate_on_startup(self, conn, table, tables, prune):
         query = sqla.select(table.c.serial).filter(table.c.validated == False)
         rows = conn.execute(query).fetchall()
 
-        if prune_unvalidated and len(rows) > 0:
+        if prune and len(rows) > 0:
             serials = [r.serial for r in rows]
             # Delete child sample rows first; there is no ON DELETE CASCADE on the FK.
             samples_table = tables.get("CompactionFunctionSamples")
@@ -598,5 +598,5 @@ class sqla_CompactionFunctionSamplesFactory(SQLAFactoryBase):
             "sqla_CompactionFunctionSamplesFactory.validate() is not used directly."
         )
 
-    def validate_on_startup(self, conn, table, tables, prune_unvalidated):
+    def validate_on_startup(self, conn, table, tables, prune):
         return []

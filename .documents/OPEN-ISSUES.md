@@ -1,6 +1,6 @@
 # Open issues — project-wide index
 
-**Last updated:** 2026-10-20 · **62 open**, 25 closed. Seeded from
+**Last updated:** 2026-10-20 · **61 open**, 26 closed. Seeded from
 [`RECONSTRUCTION.md`](handoff-notes/2026-10-08/RECONSTRUCTION.md) Parts A0–D
 and D0, the open-issue `todo`s of
 [`onion_model.tex`](../notes/onion-model/onion_model.tex) as rewritten in
@@ -154,7 +154,6 @@ Opened at the campaign's planning, 2026-10-11, or at a review where the row says
 
 | Issue | Source | Owner | Hook |
 |---|---|---|---|
-| `[inflaton-trajectory-prune-orphans-value-rows]` | board §3 | dk-06 | `InflatonTrajectory`'s startup prune leaves its value rows behind; the cascade map of `validate-on-startup.md` omits the class. |
 | `[plot-scripts-stale-version-label]` | board §3 | unowned; P2 | The plot scripts open read-write under `"2026.3.0"`, adding a `version` row to every store they read. |
 | `[redshift-registered-in-neither-table-list]` | board §3 | unowned | `redshift` is registered but in neither table list and unused; `IntegrationSolver` is registered and unwritten. |
 | `[test-counts-stale-in-claude-md]` | board §3 | dk-12 | `CLAUDE.md` and `test-selection.md` say 464 of 571; the default run selects 631 of 761. |
@@ -188,3 +187,4 @@ Opened at the campaign's planning, 2026-10-11, or at a review where the row says
 | `[doc-chat-only-documents]`: `session_summary.md`, `analysis_protocol.md` (24–25 June) | 2026-10-08 | Recovered verbatim from the claude.ai export into `grid-sampling/2026-06-24-session-summary.md` and `2026-06-25-analysis-protocol.md`, with provenance and status headers. |
 | `[inner-edge-coarse-graining-radius-or-fixed]` (board `notes/OPEN-ISSUES.md`) | 2026-10-09 | David's decision: inner edge at the current coarse-graining scale `R_σ(N)`; a change of definition. Fixed-edge alternative not taken up. |
 | `[ray-address-auto-attaches-to-foreign-cluster]` (dk-and-rpk-migration board §4) | 2026-10-12 | The lock brief's §3 and §5 amended; SI's `--ray-address` made required by the user's ruling. |
+| `[inflaton-trajectory-prune-orphans-value-rows]` (dk-and-rpk-migration board §4) | 2026-10-20 | dk-06: `InflatonTrajectory`'s prune deletes the unvalidated trajectories' `InflatonTrajectoryValue` rows before them, in the same transaction; the cascade map of `validate-on-startup.md` has the row, and the value table declares `owner_column` for DatastoreKit's prune. Shown on two shards through SI's pool. |

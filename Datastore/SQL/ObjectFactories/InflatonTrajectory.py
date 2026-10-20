@@ -30,6 +30,8 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             "version": True,
             "timestamp": True,
             "validate_on_startup": True,
+            # Ignored by SI's own layer; DatastoreKit reads it to repair an interrupted validate (U4).
+            "validated_column": "validated",
             "columns": [
                 sqla.Column(
                     "phi0_serial",
@@ -253,12 +255,60 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         )
         return validated
 
-    def validate_on_startup(self, conn, table, tables, prune_unvalidated):
+    def revalidate(self, serial, conn, table, tables):
+        """Recompute, write and return the stored row's validated flag, by validate()'s rule.
+
+        DatastoreKit calls this (client contract §3) after an interrupted validate of this
+        replicated class, on each shard that holds the row, inside a savepoint it opens; it
+        keeps a True on a shard that held False, and refuses a False on a shard that held True.
+        SI's own layer never calls it.
+
+        The rule, as stored: a row whose N_end is NULL is a failure (store() writes N_end NULL
+        exactly on failure) and is validated; otherwise the row is validated when it has at
+        least one InflatonTrajectoryValue row. validate() asks for all of len(obj._values),
+        which is not stored; "at least one" stands for it because store() inserts the row and
+        all its value rows in one transaction, so a shard holding the row holds all of them.
+        """
+        row = conn.execute(
+            sqla.select(table.c.serial, table.c.N_end).filter(table.c.serial == serial)
+        ).one_or_none()
+        if row is None:
+            raise RuntimeError(
+                f"InflatonTrajectory.revalidate(): no row with serial {serial}"
+            )
+
+        if row.N_end is None:
+            validated = True
+        else:
+            value_table = tables["InflatonTrajectoryValue"]
+            count = conn.execute(
+                sqla.select(sqla.func.count()).select_from(value_table).filter(
+                    value_table.c.trajectory_serial == serial
+                )
+            ).scalar()
+            validated = bool(count > 0)
+
+        conn.execute(
+            sqla.update(table)
+            .where(table.c.serial == serial)
+            .values(validated=validated)
+        )
+        return validated
+
+    def validate_on_startup(self, conn, table, tables, prune):
         query = sqla.select(table.c.serial).filter(table.c.validated == False)
         rows = conn.execute(query).fetchall()
 
-        if prune_unvalidated and len(rows) > 0:
+        if prune and len(rows) > 0:
             serials = [r.serial for r in rows]
+            # Delete child value rows first; there is no ON DELETE CASCADE on the FK.
+            value_table = tables.get("InflatonTrajectoryValue")
+            if value_table is not None:
+                conn.execute(
+                    sqla.delete(value_table).where(
+                        value_table.c.trajectory_serial.in_(serials)
+                    )
+                )
             conn.execute(sqla.delete(table).filter(table.c.serial.in_(serials)))
             return [f"Pruned {len(serials)} unvalidated InflatonTrajectory records"]
         elif len(rows) > 0:
@@ -390,6 +440,8 @@ class sqla_InflatonTrajectoryValue_factory(SQLAFactoryBase):
             "serial": False,
             "version": False,
             "timestamp": False,
+            # Ignored by SI's own layer; DatastoreKit reads it to put this table in its owner's unit (U4).
+            "owner_column": "trajectory_serial",
             "columns": [
                 sqla.Column(
                     "trajectory_serial",
@@ -428,5 +480,5 @@ class sqla_InflatonTrajectoryValue_factory(SQLAFactoryBase):
             "sqla_InflatonTrajectoryValue_factory.validate() is not used directly."
         )
 
-    def validate_on_startup(self, conn, table, tables, prune_unvalidated):
+    def validate_on_startup(self, conn, table, tables, prune):
         return []

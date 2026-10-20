@@ -358,11 +358,11 @@ class sqla_FullInstantonFactory(SQLAFactoryBase):
         )
         return validated
 
-    def validate_on_startup(self, conn, table, tables, prune_unvalidated):
+    def validate_on_startup(self, conn, table, tables, prune):
         query = sqla.select(table.c.serial).filter(table.c.validated == False)
         rows = conn.execute(query).fetchall()
 
-        if prune_unvalidated and len(rows) > 0:
+        if prune and len(rows) > 0:
             serials = [r.serial for r in rows]
             # Delete child value rows first; there is no ON DELETE CASCADE on the FK.
             value_table = tables.get("FullInstantonValue")
@@ -586,5 +586,5 @@ class sqla_FullInstantonValue_factory(SQLAFactoryBase):
             "sqla_FullInstantonValue_factory.validate() is not yet implemented."
         )
 
-    def validate_on_startup(self, conn, table, tables, prune_unvalidated):
+    def validate_on_startup(self, conn, table, tables, prune):
         return []

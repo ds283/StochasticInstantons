@@ -35,12 +35,12 @@ unvalidated `SlowRollInstanton` rows but left their value rows behind.
 **Always delete child rows before deleting parent rows in `validate_on_startup`.**
 
 ```python
-def validate_on_startup(self, conn, table, tables, prune_unvalidated):
+def validate_on_startup(self, conn, table, tables, prune):
     rows = conn.execute(
         sqla.select(table.c.serial).filter(table.c.validated == False)
     ).fetchall()
 
-    if prune_unvalidated and rows:
+    if prune and rows:
         serials = [r.serial for r in rows]
         # Delete child rows first — no ON DELETE CASCADE on the FK.
         value_table = tables.get("FooValue")   # replace with actual name
@@ -71,6 +71,11 @@ the schema hasn't been migrated yet.
 | `sqla_CompactionFunctionFactory` | `CompactionFunction` | `CompactionFunctionSamples` | `parent_serial`     |
 | `sqla_GradientCoupledInstantonFactory` | `GradientCoupledInstanton` | `GradientCoupledInstantonValue` | `instanton_serial` |
 | `sqla_GradientCoupledInstantonFactory` | `GradientCoupledInstanton` | `GradientCoupledInstantonProfile` | `parent_serial`  |
+| `sqla_InflatonTrajectory_factory` | `InflatonTrajectory` | `InflatonTrajectoryValue` | `trajectory_serial` |
+
+`InflatonTrajectory` is replicated, so its value table also declares
+`"owner_column": "trajectory_serial"` in `register()`, which DatastoreKit's
+prune requires before it lets the cascade delete those rows.
 
 When adding a new factory that has both a parent table and a child value/sample
 table, add a row to this table and implement the cascade delete pattern above.
@@ -80,7 +85,7 @@ table, add a row to this table and implement the cascade delete pattern above.
 ```python
 # NEVER — leaves orphaned value rows behind, causing UNIQUE constraint
 # violations on the next run when SQLite reuses the deleted serial
-def validate_on_startup(self, conn, table, tables, prune_unvalidated):
+def validate_on_startup(self, conn, table, tables, prune):
     ...
     conn.execute(sqla.delete(table).filter(table.c.serial.in_(serials)))
 ```

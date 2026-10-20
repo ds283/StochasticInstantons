@@ -79,7 +79,7 @@ class sqla_cosmological_params_factory(SQLAFactoryBase):
             "CosmologicalParams does not use the validate/store pipeline."
         )
 
-    def validate_on_startup(self, conn, table, tables, prune_unvalidated):
+    def validate_on_startup(self, conn, table, tables, prune):
         return []
 
     def read_table(self, conn, table, tables, units=None):

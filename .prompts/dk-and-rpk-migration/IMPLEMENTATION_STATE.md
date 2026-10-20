@@ -4,7 +4,7 @@
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
-the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping. U1–U9 ruled (2026-10-12),
+the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -66,7 +66,7 @@ on any of them.
 | 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-20 | `5396a3d` | [`03-pin-raypoolkit-v0.2.0.md`](../../.documents/dk-and-rpk-migration/03-pin-raypoolkit-v0.2.0.md) |
 | 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-20 | `ef13445` | [`04-adopt-raypoolkit.md`](../../.documents/dk-and-rpk-migration/04-adopt-raypoolkit.md) |
 | 05 | [Move SI's data out of the layer](05-move-si-data-out-of-the-layer.md) | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ✍️ 2026-10-20 | ✅ 2026-10-20 | `875cf41` | [`05-move-si-data-out-of-the-layer.md`](../../.documents/dk-and-rpk-migration/05-move-si-data-out-of-the-layer.md) |
-| 06 | [Prepare the `InflatonTrajectory` factories](06-prepare-the-inflaton-trajectory-factories.md) | **U4**, P17; closes `[inflaton-trajectory-prune-orphans-value-rows]` | Opus | ✍️ 2026-10-20 | ⬜ | — | — |
+| 06 | [Prepare the `InflatonTrajectory` factories](06-prepare-the-inflaton-trajectory-factories.md) | **U4**, P17; closes `[inflaton-trajectory-prune-orphans-value-rows]` | Opus | ✍️ 2026-10-20 | ✅ 2026-10-20 | this commit | [`06-prepare-the-inflaton-trajectory-factories.md`](../../.documents/dk-and-rpk-migration/06-prepare-the-inflaton-trajectory-factories.md) |
 | 07 | [Rehearse before the DatastoreKit swap (RH1)](07-rehearse-before-the-datastore-swap.md) | **RH1**, bitwise against RH0; the tag (**U7**) | Opus | ✍️ 2026-10-20 | ⬜ | — | — |
 | 08 | Pin `datastorekit` `v0.4.0` | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ⬜ | ⬜ | — | — |
 | 09 | Adopt `datastorekit` | the DatastoreKit swap; **U5** | Opus | ⬜ | ⬜ | — | — |
@@ -121,12 +121,12 @@ before each dispatch:
 | **M4** | 05 | the four test stubs take the mapping (`test_plot_adapters_golden.py:1010`; `test_plot_extraction_golden.py:381`, `:450`, `:477`) | ✅ five lines, not four stubs (`test_plot_adapters_golden.py:1012`, `:1047`, `:1103`; `test_plot_extraction_golden.py:414`, `:467`); the stubs at `:381`, `:450`, `:477` unchanged |
 | **M5** | 05 | `tests/test_config_datastore.py` (the data, captured literally; the layer reads it) and `tests/test_vectorized_shard_key.py` (the helper; the `ast` count of 15) | ✅ `tests/test_config_datastore.py` 7 tests, `tests/test_vectorized_shard_key.py` 3; the data is written from the capture, the layer's identity is asserted; breakages 1–5 caught |
 | **M6** | 05 | `.documents/FILE_MAP.md`: the `Datastore.py` row, and a row for `config/datastore.py` (P13) | ✅ `FILE_MAP.md`: the `Datastore.py` row, a `config/datastore.py` row, and `config/sharding.py`'s row naming `vectorized_shard_key` |
-| **I1** | 06 | `InflatonTrajectory`'s prune deletes its value rows first; the cascade map of `validate-on-startup.md` gains the row | ⬜ |
-| **I2** | 06 | the hook parameter `prune` in all 12 hooks (P17), and in the examples of `validate-on-startup.md` and `datastore-factories.md` | ⬜ |
-| **I3** | 06 | `register()`: `owner_column: "trajectory_serial"` on the value table, `validated_column: "validated"` on the trajectory | ⬜ |
-| **I4** | 06 | `revalidate(serial, conn, table, tables)`, by `validate`'s rule as stored; its two premises checked against `store` and `object_store` | ⬜ |
-| **I5** | 06 | `tests/test_inflaton_trajectory_prune.py`, without Ray: the cascade, `revalidate`, `prune` by signature, the keys | ⬜ |
-| **I6** | 06 | an integration test: an unvalidated trajectory pruned at reopen on two shards, no orphan | ⬜ |
+| **I1** | 06 | `InflatonTrajectory`'s prune deletes its value rows first; the cascade map of `validate-on-startup.md` gains the row | ✅ `tables.get("InflatonTrajectoryValue")`, delete by `trajectory_serial` before the parent's, in the actor's one transaction; messages unchanged, no count line added; the map's row and one sentence on `owner_column` |
+| **I2** | 06 | the hook parameter `prune` in all 12 hooks (P17), and in the examples of `validate-on-startup.md` and `datastore-factories.md` | ✅ 12 definitions and the 5 uses in bodies; the 5 rule lines (`validate-on-startup.md:38`, `:43`, `:83`; `datastore-factories.md:205`, `:209`); the 11 other `prune_unvalidated`s untouched (33 lines before, 11 after) |
+| **I3** | 06 | `register()`: `owner_column: "trajectory_serial"` on the value table, `validated_column: "validated"` on the trajectory | ✅ one key and one comment line each; the schema of a two-shard store agrees with `05-temp-schema.json` and `02-reference-schema.json` |
+| **I4** | 06 | `revalidate(serial, conn, table, tables)`, by `validate`'s rule as stored; its two premises checked against `store` and `object_store` | ✅ `N_end` NULL → `True`, else `True` iff ≥ 1 value row; writes the flag with `conn`, returns a Python `bool`, raises for a missing serial. Premises hold: `Datastore.py:478`, `:495-504`, `:509` (one transaction per store call); `InflatonTrajectory.py:208-211` (`N_end` NULL only on failure), `:215`, `:220-228` |
+| **I5** | 06 | `tests/test_inflaton_trajectory_prune.py`, without Ray: the cascade, `revalidate`, `prune` by signature, the keys | ✅ 6 tests on a `tempfile` store of all 30 tables, rows written by the factories' own `build`/`store`/`validate`; the signature test counts 12 by each class's own `__dict__` |
+| **I6** | 06 | an integration test: an unvalidated trajectory pruned at reopen on two shards, no orphan | ✅ SI's `ShardedPool` in two subprocesses (store, reopen with the prune), each its own `ray.init(address="local")`; both shards read with `sqlite3` `mode=ro` before and after; 3 orphans per shard with the cascade removed, none with it |
 | **L1**–**L4** (RH1) | 07 | README §4.1 at 06's tree; bitwise equality with `02-reference.sqlite` and with `02-scalars-2.sqlite` / the readers' `before/` copy of `02-scalars.sqlite`, compared before the readers; `scalar_data.csv` `b0564eec…58a2`; L4 against RH0's pattern | ⬜ |
 | **V2** | 07 | `verification.md` §2 RH1; `out/07-*` | ⬜ |
 | **Z1** | 07 | the annotated tag `pre-datastorekit` on 07's commit (U7), not pushed | ⬜ |
@@ -160,7 +160,6 @@ Opened at planning, 2026-10-11, unless the row says otherwise.
 
 | Issue | What | Owner |
 |---|---|---|
-| `[inflaton-trajectory-prune-orphans-value-rows]` | `InflatonTrajectory.validate_on_startup` (`Datastore/SQL/ObjectFactories/InflatonTrajectory.py:256-266`) deletes unvalidated trajectories and leaves their `InflatonTrajectoryValue` rows. This is the orphaning `.claude/rules/validate-on-startup.md` forbids, but its cascade map omits the class. A reused serial then meets its own orphans (a UNIQUE violation, as in the rule's recorded `SlowRollInstantonValue` incident). Under the package the fix also needs `owner_column` on the value table (README §0.1 item 9) | 06 (U4) |
 | `[plot-scripts-stale-version-label]` | Both plot scripts open **read-write** under `plotting/provenance.py:18`'s `"2026.3.0"`, while `main.py:49` writes `"2026.6.1"`. So each plot run adds a `version` row to the store it reads, and the figure footers say `v2026.3.0`. Read-only plot pools are the goal (README P9, P10) | unowned; P2 when it bumps the label |
 | `[redshift-registered-in-neither-table-list]` | `redshift` is registered (`Datastore/SQL/Datastore.py:99`) and has a batch size, but is in neither `replicated_tables` nor `sharded_tables`, and no SI code uses it: a ChamPBH leftover. `IntegrationSolver` is registered and replicated, but likewise unwritten by any driver (README P12) | unowned |
 | `[test-counts-stale-in-claude-md]` | `CLAUDE.md:21` and `.claude/rules/test-selection.md:10`, `:26` say "464 of 571"; at `7bb3efd` the default run selects 631 of 761 | 12 |
@@ -175,6 +174,7 @@ Opened at planning, 2026-10-11, unless the row says otherwise.
 | Issue | Resolved | How |
 |---|---|---|
 | `[ray-address-auto-attaches-to-foreign-cluster]` | 2026-10-12 (opened and closed the same day, §5.9, §5.10) | Every project's drivers defaulted to `--ray-address auto`, which attaches to any running cluster once the clusters are isolated (`ray_current_cluster` is no longer in `/tmp/ray`). The brief's §3 "Address it explicitly" now covers every run that takes the lock and forbids leaving a driver at `auto`; §5 asks SGK to pass `local` to its long builds. The user ruled SI's default: `--ray-address` is now required (`config/argument_parser.py`), for `main.py` and both plot scripts; `CLAUDE.md`'s run instructions say so. ChamPBH's and SGK's defaults are theirs to change |
+| `[inflaton-trajectory-prune-orphans-value-rows]` | 2026-10-20 (06, §5.18; opened at planning) | `sqla_InflatonTrajectory_factory.validate_on_startup` now deletes the unvalidated trajectories' `InflatonTrajectoryValue` rows, by `trajectory_serial`, before the trajectories, in the same transaction (`tables.get`, the pattern of `FullInstanton`'s hook); `.claude/rules/validate-on-startup.md`'s cascade map has the row. For DatastoreKit's prune, the value table declares `owner_column: "trajectory_serial"`. Shown by `tests/test_inflaton_trajectory_prune.py`: on a store the factory wrote, the prune deletes the trajectory and its 3 value rows and no other table loses a row; through SI's `ShardedPool` on two shards, a pruning reopen leaves no orphan, where without the cascade it left 3 on each shard |
 
 ## 5. Dispatch record
 
@@ -1033,3 +1033,45 @@ docstring) and in this follow-up (records); nothing more is opened.
   - The vectorized gets are at `main.py:227` … `:1042`, `plot_InstantonSolutions.py:699`, `:702`, `:735`, `plotting/fetch.py:128`,
     `:167`. 06 touches none of them.
   - The suites start from 690 and 61.
+
+### 5.18 After prompt 06 (2026-10-20)
+
+- **Landed:** this commit, results note
+  [`06-prepare-the-inflaton-trajectory-factories.md`](../../.documents/dk-and-rpk-migration/06-prepare-the-inflaton-trajectory-factories.md).
+  **COMPLETE:** I1–I6 hold; no stop condition of the prompt's §4 was met. Dispatched with the orchestrator's brief (fourteen
+  corrections), applied as stated.
+- **I1.** `sqla_InflatonTrajectory_factory.validate_on_startup` deletes the unvalidated trajectories' `InflatonTrajectoryValue`
+  rows by `trajectory_serial` (`tables.get`, the pattern of `FullInstanton`'s hook) before the trajectories, on the actor's one
+  `conn`. The messages are unchanged; no count line was added. `validate-on-startup.md`'s cascade map has the row, with one
+  sentence on `owner_column`.
+- **I2.** The 12 hooks take `prune`, with their 5 uses in bodies; the 5 rule lines follow. `git grep prune_unvalidated` (outside
+  `.prompts/`, `.documents/`): 33 lines before, the 11 pool, actor, driver and fixture lines after. `base.py:29` already said
+  `prune` and is untouched.
+- **I3.** `validated_column: "validated"` and `owner_column: "trajectory_serial"`, one key and one comment each. The schema of a
+  two-shard store built with SI's pool agrees with `05-temp-schema.json` and `02-reference-schema.json` (`RESULT: the schemas
+  agree`, exit 0, both).
+- **I4.** `revalidate(serial, conn, table, tables)`: `N_end` NULL → `True`, else `True` iff at least one value row; writes the
+  flag with `conn`, returns a Python `bool`, raises for a missing serial. Its premises, checked and recorded with their lines:
+  `object_store` runs the factory's `store` and every value insert in one `engine.begin()` (`Datastore.py:478`, `:495-504`,
+  `:509`), and `store` writes `N_end` NULL exactly on failure (`InflatonTrajectory.py:208-211`; otherwise `obj._N_end`, a float
+  from the solve).
+- **I5.** `tests/test_inflaton_trajectory_prune.py`, 6 tests without Ray on a `tempfile` store of all 30 tables whose parent rows
+  are minted by their factories and whose trajectories are written by the factory's own `store`/`validate`: the cascade (only
+  the two tables lose rows, 1 and 3), without `prune`, `revalidate` against `validate` (complete, failed, stripped, empty rows),
+  the missing serial, `prune` by signature (12 by own `__dict__`), the keys.
+- **I6.** One `integration` test: SI's `ShardedPool` in two subprocesses (store with one trajectory validated and one withheld;
+  reopen with the prune), each under its own `ray.init(address="local")`; both shards read with `sqlite3` `mode=ro` before and
+  after. It cannot share `live_pool`'s Ray (fixed actor names; brief 6). With the cascade removed it finds 3 orphans on a shard.
+- **Breakages** (README §5 rule 8), all caught and recorded as diffs: the cascade removed (the cascade test; the integration test,
+  `3 orphaned value rows`); the failure branch inverted (the failed-row case); `CosmologicalParams.py:82` renamed back (the
+  signature test, naming the factory); `owner_column` removed (the keys test); `revalidate` measured against every `efold_value`
+  (the complete-row case).
+- **Suites:** 696 (695 passed, 1 skipped) and 62 (61 passed, 1 skipped): 05's 690 and 61 plus the 6 and 1 new tests. The `slow`
+  block is not run. No driver ran; the only Ray was the schema build's, the test's subprocesses' and the integration suite's,
+  all private.
+- **Closed:** `[inflaton-trajectory-prune-orphans-value-rows]` (§3 → §4; `OPEN-ISSUES.md` §6a → §7, 62 → 61 open, 25 → 26
+  closed). Nothing opened.
+- **Rollback:** `git revert` of this commit alone. The venv is untouched.
+- **Deviations:** the subprocesses (structurally required), two processes, no count line, parent rows minted, the inserter, extra
+  `revalidate` cases, `tables[...]` in `revalidate`, breakage 5's form, the formatted new module, and a throwaway copy written to
+  `/tmp` and deleted (drift, no effect); see the results note.
