@@ -1,0 +1,51 @@
+LOG /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/02-reference.log
+  >> packages: datastorekit not installed; raypoolkit not installed
+  STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES: complete; lookup 1, compute 1, store 1, validation 1
+  STAGE 2: FULL MSR INSTANTONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 2: FULL MSR INSTANTONS: complete; lookup 10, compute 10, store 10, validation 10
+  STAGE 3: SLOW-ROLL INSTANTONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 3: SLOW-ROLL INSTANTONS: complete; lookup 10, compute 10, store 10, validation 10
+  STAGE 4: COMPACTION FUNCTIONS (section)
+  COMPACTION FUNCTIONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 4: COMPACTION FUNCTIONS AND MASSES: complete; lookup 10, compute 10, store 10, validation 10
+  Skipping gradient branch (--targets excludes 'gradient')
+  ALL WORK ITEMS COMPLETE lines: 4
+  driver exit status: 0
+LOG /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/02-resumed-a.log
+  >> packages: datastorekit not installed; raypoolkit not installed
+  STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES: complete; lookup 1, compute 1, store 1, validation 1
+  STAGE 2: FULL MSR INSTANTONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 2: FULL MSR INSTANTONS: INCOMPLETE; no queue summary
+  ALL WORK ITEMS COMPLETE lines: 1
+  driver exit status: 1
+LOG /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/02-resumed-b.log
+  >> packages: datastorekit not installed; raypoolkit not installed
+  integrity: Pruned 1 unvalidated FullInstanton records
+  integrity: Pruned 1 unvalidated FullInstanton records
+  STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES: complete; lookup 1, compute 0, store 0, validation 0; no compute items evaluated
+  STAGE 2: FULL MSR INSTANTONS LOOKUP: 6 already computed, 4 to compute, 0 skipped
+  STAGE 2: FULL MSR INSTANTONS: complete; lookup 4, compute 4, store 4, validation 4
+  STAGE 3: SLOW-ROLL INSTANTONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 3: SLOW-ROLL INSTANTONS: complete; lookup 10, compute 10, store 10, validation 10
+  STAGE 4: COMPACTION FUNCTIONS (section)
+  COMPACTION FUNCTIONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 4: COMPACTION FUNCTIONS AND MASSES: complete; lookup 10, compute 10, store 10, validation 10
+  Skipping gradient branch (--targets excludes 'gradient')
+  ALL WORK ITEMS COMPLETE lines: 4
+  driver exit status: 0
+LOG /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/02-scalars.log
+  >> packages: datastorekit not installed; raypoolkit not installed
+  STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES: complete; lookup 1, compute 1, store 1, validation 1
+  PIPELINE LOOKUP: 0 already computed, 10 to compute, 10 skipped
+  STAGES 2+3+4: UNIFIED PIPELINE: complete; lookup 10, compute 10, store 10, validation 10
+  Skipping gradient branch (--targets excludes 'gradient')
+  ALL WORK ITEMS COMPLETE lines: 2
+  driver exit status: 0
+LOG /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/02-scalars-2.log
+  >> packages: datastorekit not installed; raypoolkit not installed
+  STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES: complete; lookup 1, compute 1, store 1, validation 1
+  PIPELINE LOOKUP: 0 already computed, 10 to compute, 10 skipped
+  STAGES 2+3+4: UNIFIED PIPELINE: complete; lookup 10, compute 10, store 10, validation 10
+  Skipping gradient branch (--targets excludes 'gradient')
+  ALL WORK ITEMS COMPLETE lines: 2
+  driver exit status: 0

@@ -1,7 +1,8 @@
 # dk-and-rpk-migration campaign — implementation state
 
 **Last updated:** 2026-10-20 · **Status: LIVE — 5 of 13 prompts written (01–04, 01a), 01 and 01a
-landed and reviewed; 02's first attempt stopped and 02 amended (§5.12). U1–U9 ruled (2026-10-12),
+landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
+reproducible in both modes. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -59,7 +60,7 @@ on any of them.
 |---|---|---|---|---|---|---|---|
 | 01 | [Rehearsal tooling and run provenance](01-rehearsal-tooling-and-run-provenance.md) | P3, P5; README §4.1–§4.2 | Opus | ✍️ 2026-10-12 | ✅ 2026-10-12 | `84a5cfc` | [`01-rehearsal-tooling-and-run-provenance.md`](../../.documents/dk-and-rpk-migration/01-rehearsal-tooling-and-run-provenance.md) |
 | 01a | [Isolate the rehearsal cluster](01a-isolate-the-rehearsal-cluster.md) | **U9**; `ray_cluster.sh`, the shared rehearsal lock | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-12 | `3556148` | [`01a-isolate-the-rehearsal-cluster.md`](../../.documents/dk-and-rpk-migration/01a-isolate-the-rehearsal-cluster.md) |
-| 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12; amended 2026-10-20 (U11) | ⬜ (first attempt stopped, §5.12) | — | — |
+| 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12; amended 2026-10-20 (U11, and after the second attempt) | ✅ 2026-10-20, third attempt (§5.12, §5.13) | this commit | [`02-rehearse-the-start-tree.md`](../../.documents/dk-and-rpk-migration/02-rehearse-the-start-tree.md) |
 | 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
 | 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
 | 05 | Move SI's data out of the layer | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ⬜ | ⬜ | — | — |
@@ -96,9 +97,9 @@ before each dispatch:
 | **C1** | 01a | `ray_cluster.sh start\|stop\|status` in `.documents/dk-and-rpk-migration/rehearsal/`: SI's cluster on `/tmp/ray-si`, ports 6390/6391/8266/52366; the targeted stop | ✅ `bash` 3.2 and 5.3; the stop also matches the Ray client server by its `--address` (D1) |
 | **C2** | 01a | the shared rehearsal lock, by [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md) §2: acquire, refuse when held, owner file, checked release | ✅ refusal exit 3, owner printed; stop refuses another's lock (exit 1) |
 | **C3** | 01a | the proof on a real cluster, no build: second acquire refused, a decoy on Ray's defaults survives SI's stop, SI's actors listed alone, another project's lock left alone | ✅ nine steps; decoy 19 processes before and after SI's stop; the actor line `ray list actors --address 127.0.0.1:6390` lists SI's actor alone; three breakages caught |
-| **L1**–**L4** (RH0) | 02 | README §4.1 at 01's tree; §4.3's reproducibility measured for the dense and the scalars-only mode; L4 recorded as the baseline | ⬜ |
-| **V1** | 02 | `.documents/dk-and-rpk-migration/verification.md` created, with §1 RH0; the two schema snapshots | ⬜ |
-| **S1** | 02 | the `slow` block's result at the start tree, the baseline for 09 | ⬜ |
+| **L1**–**L4** (RH0) | 02 | README §4.1 at 01's tree; §4.3's reproducibility measured for the dense and the scalars-only mode; L4 recorded as the baseline | ✅ L1–L3 hold; `resumed-a` left 6 validated and 2 unvalidated `FullInstanton`, `resumed-b` pruned the 2 and computed 4; **§4.3: bitwise reproducible in both modes** (only the readers' `version` row differs; against the readers' `before/` copies `RESULT: equal`); L4's counts in `out/02-stage-counts.txt` |
+| **V1** | 02 | `.documents/dk-and-rpk-migration/verification.md` created, with §1 RH0; the two schema snapshots | ✅ [`verification.md`](../../.documents/dk-and-rpk-migration/verification.md) §1; `out/02-reference-schema.json`, `out/02-scalars-schema.json` (30 tables; they agree) |
+| **S1** | 02 | the `slow` block's result at the start tree, the baseline for 09 | ✅ 69 passed of 69 (no failure, error or skip), 390 s; 11 `RuntimeWarning`s from `Numerics/OnionCoordinate.py:77`. 09's criterion: the same |
 | **K1** | 03 | the `raypoolkit` pin in `requirements.txt` | ⬜ |
 | **K2** | 03 | the venv installed from it | ⬜ |
 | **K3** | 03 | the proof: one distribution added, at `eaef0ce6…`, the tag's files, not editable | ⬜ |
@@ -120,7 +121,7 @@ The measurement the plan was written against is [`measure/out/`](measure/out/). 
 
 | Gate | Holds when | Prompt | State |
 |---|---|---|---|
-| RH0 | the start tree builds the grid, resumes it, builds it scalars-only, and its readers run (README §4.1); its reproducibility is measured (§4.3) | 02 | ⬜ |
+| RH0 | the start tree builds the grid, resumes it, builds it scalars-only, and its readers run (README §4.1); its reproducibility is measured (§4.3) | 02 | ✅ 2026-10-20 (§5.13): bitwise reproducible, dense and scalars-only |
 | RayPoolKit G4 | `RayTools/` is gone; 0 imports of it and of `_default_store_handler`; the pin is installed; the suites pass; all 16 sites construct (RayPoolKit checklist item 8) | 04 (RH1, 07, adds the run under real Ray) | ⬜ |
 | RH1 | 06's tree equals RH0 by value; `pre-datastorekit` tagged | 07 | ⬜ |
 | DatastoreKit `v0.2.3` | tagged on DatastoreKit's remote, with `store`, `validate` and `validate_on_startup` defaulted | — (carried into `v0.3.0`) | ✅ **released** 2026-10-11 for CPBH: tag object `8dac562`, commit `0de2b16`. Checked on the remote at planning |
@@ -573,3 +574,53 @@ the cluster (lock released) and did not patch. Its preliminary comparisons: `sca
 - **Next:** the same agent re-runs RH0 from the start on the standard names. Its other findings
   (the raylet's worker-count warning in `scalars`, the `PIPELINE LOOKUP` wording) go to its
   results note.
+
+### 5.13 After prompt 02 (2026-10-20)
+
+- **Landed:** this commit, results note
+  [`02-rehearse-the-start-tree.md`](../../.documents/dk-and-rpk-migration/02-rehearse-the-start-tree.md),
+  record [`verification.md`](../../.documents/dk-and-rpk-migration/verification.md) §1. **COMPLETE
+  at the third attempt** (§5.12 records the first two): L1–L4 (RH0), V1 and S1; gate RH0 holds; no
+  code changed; no issue opened, so `.documents/OPEN-ISSUES.md` is unchanged.
+- **Cluster and load.** `ray_cluster.sh start` at 08:11 BST took 7 s, at a load of 4.5 on 10 CPUs
+  with nothing foreign running; the address was `127.0.0.1:6390`. `stop` took 18 s, freed the
+  four ports and released the lock.
+- **Builds**, each 23–37 s:
+  - `reference` 37 s, exit 0;
+  - `resumed-a`, `S` = 11.0 s after the `STAGE 2` banner: exit 1, by `SIGTERM` (the log shows Ray's
+    `SIGTERM received` and the absl stack; 134 and 15 at the earlier attempts). It left 6
+    validated and 2 unvalidated `FullInstanton` rows, with 3,474 value rows. All 11 of its actors
+    were dead 12 s after the signal;
+  - `resumed-b` exit 0. Its open printed `Pruned 1 unvalidated FullInstanton records` on
+    `shard0005` and on `shard0007` (2 = 2), and no orphan is left. It computed STAGE 2 "6
+    already computed, 4 to compute", then 10 / 10;
+  - `scalars` and `scalars-2`, exit 0.
+- **Readers** (with `b218760`'s fix): steps 0–2 exit 0 on both stores, and each before/after
+  comparison finds only `version{label='2026.3.0'}`. `scalar_data.csv` SHA-256 is
+  `b0564eec…58a2` on both stores, byte-identical.
+- **§4.3: RH0 is bitwise reproducible, dense and scalars-only.**
+  - The prescribed comparisons exit 1 on the readers' `version` row alone, since prompt §1.4 runs
+    the readers first.
+  - `reference` against the readers' `before/` copy of `resumed`, and `before/` `scalars` against
+    `scalars-2`, give `RESULT: equal`, exit 0. Every row of all 30 tables matched, and only
+    timestamps and the JSON timing keys differ.
+  - An independent per-δN★ hash of the value and sample tables agrees, and its control fails as
+    it should.
+  - **RH1 and RH2 are held to bitwise equality** with `02-reference.sqlite` and
+    `02-scalars.sqlite`. The latter now carries the readers' `version` row; use its `before/` copy,
+    or `02-scalars-2.sqlite`.
+- **S1:** 69 passed of 69, 390 s, 11 `RuntimeWarning`s (`Numerics/OnionCoordinate.py:77`).
+- **Suites:** cited from 07:39 BST, before the second attempt's cluster: 680 (679 passed, 1
+  skipped) and 61 (60 passed, 1 skipped). Python has changed since only in `interrupt_when.py`'s
+  docstring.
+- **Deviations D1–D6:**
+  - D1: the suites cited;
+  - D2: `S` re-chosen;
+  - D3: the comparisons' readers' row, and the `before/` comparisons added;
+  - D4: exit 1;
+  - D5: the independent check;
+  - D6: the two CSVs staged byte-exact.
+- **Observations, not opened:** the varying exit status; the population code's "slow-roll
+  instanton is compensated" warnings in the plot logs; the raylet's worker-count warning in
+  `scalars`; the `PIPELINE LOOKUP` wording; the 10 s `efold_value` minting before the first
+  `FullInstanton` row.

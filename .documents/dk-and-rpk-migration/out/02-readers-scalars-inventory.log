@@ -1,0 +1,83 @@
+>> packages: datastorekit not installed; raypoolkit not installed
+2026-10-20 08:15:56,531	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+2026-10-20 08:15:56,650	INFO worker.py:2003 -- Connected to Ray cluster. View the dashboard at [1m[32mhttp://127.0.0.1:8266 [39m[22m
+/Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+>> Opened existing sharded datastore "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/02-scalars.sqlite" with 10 shards
+
+@@ DATASTORE INVENTORY
+
+   -- Delta N★ values
+      10 value(s): [ 0.1, 0.422222, 0.744444, 1.06667, 1.38889, 1.71111, 2.03333, 2.35556, 2.67778, 3 ]
+
+   -- N_init values
+      1 value(s): [ 20 ]
+
+   -- N_final values
+      1 value(s): [ 5 ]
+
+   -- phi_0 values
+      1 value(s): [ 15 PlanckMass ]
+
+   -- pi_0 values
+      1 value(s): [ 0 PlanckMass ]
+
+   -- Inflaton mass values
+      1 value(s): [ 1e-05 PlanckMass ]
+
+   -- Quartic coupling values
+      no values committed
+
+   -- E-fold sample values
+      7521 values: [ 0, 0.01, 0.0100003, 0.02, 0.0200007, 0.03, 0.030001, 0.04, 0.0400014, 0.05, ..., 57.032, 57.042, 57.052, 57.062, 57.072, 57.082, 57.092, 57.102, 57.112, 57.122 ]
+
+   -- Inflaton trajectories
+      @@ validated: 1 record(s) | 2026-10-20 08:13 – 08:13
+         :: InflatonTrajectory(phi0_serial=1, N_end=57.12197818285134)
+      @@ unvalidated: 0 record(s)
+
+   -- Full MSR instantons
+      @@ validated: 10 record(s) | 2026-10-20 08:14 – 08:14
+         :: FullInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=1)
+         :: FullInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=10)
+         :: FullInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=2)
+         :: FullInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=3)
+         :: FullInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=4)
+         :: FullInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=5)
+         :: FullInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=6)
+         :: FullInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=7)
+         :: FullInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=8)
+         :: FullInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=9)
+      @@ unvalidated: 0 record(s)
+
+   -- Slow-roll instantons
+      @@ validated: 10 record(s) | 2026-10-20 08:14 – 08:14
+         :: SlowRollInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=1)
+         :: SlowRollInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=10)
+         :: SlowRollInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=2)
+         :: SlowRollInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=3)
+         :: SlowRollInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=4)
+         :: SlowRollInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=5)
+         :: SlowRollInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=6)
+         :: SlowRollInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=7)
+         :: SlowRollInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=8)
+         :: SlowRollInstanton(N_init_serial=1, N_final_serial=1, delta_Nstar_serial=9)
+      @@ unvalidated: 0 record(s)
+
+   -- Compaction functions
+      @@ validated: 10 record(s) | 2026-10-20 08:14 – 08:14
+         :: CompactionFunction(delta_Nstar_serial=1)
+         :: CompactionFunction(delta_Nstar_serial=10)
+         :: CompactionFunction(delta_Nstar_serial=2)
+         :: CompactionFunction(delta_Nstar_serial=3)
+         :: CompactionFunction(delta_Nstar_serial=4)
+         :: CompactionFunction(delta_Nstar_serial=5)
+         :: CompactionFunction(delta_Nstar_serial=6)
+         :: CompactionFunction(delta_Nstar_serial=7)
+         :: CompactionFunction(delta_Nstar_serial=8)
+         :: CompactionFunction(delta_Nstar_serial=9)
+      @@ unvalidated: 0 record(s)
+
+   -- Gradient-coupled (onion model) instantons
+      @@ validated: 0 record(s)
+      @@ unvalidated: 0 record(s)
