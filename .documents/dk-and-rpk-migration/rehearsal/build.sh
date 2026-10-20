@@ -18,6 +18,11 @@
 # README.md section 4.1): README 4.1's main.py command, verbatim but for its parameters.
 # Written for dk-and-rpk-migration prompt 01; prompts 02, 07 and 11 run it unchanged.
 #
+# Amended 2026-10-20 for U11 (README section 6.1): the dense mode builds the homogeneous branch
+# only. RH0's first attempt found that no gradient solve of the rehearsal grid converges at this
+# tree (each ran over five hours with every inner Picard step failing), so no rehearsal builds
+# the gradient branch. The two modes now differ only by --no-store-values.
+#
 # It starts and stops no Ray cluster: the caller starts one and passes its address. It runs in
 # the foreground (the driver is waited on); the caller backgrounds it.
 
@@ -33,7 +38,7 @@ usage: build.sh NN STORE BUILD ADDRESS MODE [--profile-db]
   BUILD     the build's slug: reference | resumed-a | resumed-b | scalars | scalars-2
             (any slug of letters, digits and hyphens)
   ADDRESS   the Ray cluster's address, passed to main.py as --ray-address
-  MODE      dense:   --targets homogeneous gradient
+  MODE      dense:   --targets homogeneous (the gradient branch is not built: U11)
             scalars: --targets homogeneous --no-store-values
   --profile-db  also pass --profile-db $REHEARSAL_ROOT/NN-STORE-profile.sqlite
 
@@ -85,7 +90,7 @@ if [[ -z "$ADDRESS" ]]; then
     exit 2
 fi
 case "$MODE" in
-    dense)   TARGETS=(homogeneous gradient); EXTRA=() ;;
+    dense)   TARGETS=(homogeneous); EXTRA=() ;;
     scalars) TARGETS=(homogeneous); EXTRA=(--no-store-values) ;;
     *) echo "!! build.sh: MODE must be dense or scalars, not '$MODE'" >&2; exit 2 ;;
 esac

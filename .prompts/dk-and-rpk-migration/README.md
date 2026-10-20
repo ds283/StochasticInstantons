@@ -1,8 +1,9 @@
 # Campaign — dk-and-rpk-migration
 
 **Written:** 2026-10-11 on `main` at `7bb3efd`, by Claude Opus 5.5. **Status: reviewed; prompts
-01–04 and 01a written (2026-10-12); 01 and 01a landed.** All ten decisions of §6.1 are ruled: U3,
-U8 and U9 on their own, and U1, U2 and U4–U7 as recommended, on 2026-10-12; U10 on 2026-10-19.
+01–04 and 01a written (2026-10-12); 01 and 01a landed; 02's first attempt stopped (2026-10-20).**
+All eleven decisions of §6.1 are ruled: U3, U8 and U9 on their own, and U1, U2 and U4–U7 as
+recommended, on 2026-10-12; U10 on 2026-10-19; U11 on 2026-10-20.
 P1–P19 stand as proposed (§6.2). The DatastoreKit release U3 asked for is out, as `v0.3.0` (§0.4),
 and is carried unchanged into `v0.4.0`, which the campaign pins (U10; §0.5).
 
@@ -29,6 +30,16 @@ checklist addendum for it says nothing changes for SI. RunRegistryKit's `[stores
 `datastorekit>=0.4.0`, so the later RunRegistryKit adoption needs no second pin. RayPoolKit has made
 no release since `v0.2.0`, so 03 and 04 stand. §0, §0.5 (new), §2, §2.1, §2.2 (08), §4, §6.1, §6.3
 and §7 amended. No prompt already written changes.*
+
+*Revised 2026-10-20, when the user ruled **U11**: **no rehearsal builds the gradient branch.** 02's
+first `reference` build ran 5 h 36 min and was stopped: its homogeneous branch was stored in about
+35 s, but none of the four gradient solves of the first wave finished, each running over five
+hours with every inner Picard step failing and the shooting halving λ again and again
+(`[gci-picard-inner-fails-on-rehearsal-grid]`). July's 315 s a solve (§0.2) was measured at an
+older tree. The dense builds become `--targets homogeneous`, the interrupt moves to
+`STAGE 2: FULL MSR INSTANTONS`, and the readers no longer run `plot_GradientCoupledSolutions.py`.
+The gradient tables are left to the suites (§1). §0.2, §1, §4.1, §4.3, §6.1 (U11) and §6.2 (P1)
+amended, with prompt 02, `build.sh` and `run_readers.sh`.*
 
 It is planned from:
 - **the two packages' adoption checklists for StochasticInstantons (SI)**, which are data, not
@@ -273,6 +284,9 @@ formatting (§5 rule 15).
   `FullInstanton` fetched from the store, and the homogeneous branch finishes before the gradient
   branch starts (`main.py:1114`, `:1127`). So the seed is the same in a straight-through build and
   in a resumed one. §4.3 measures whether the builds agree rather than assuming it.
+  *Corrected 2026-10-20 (U11): at 02's tree no solve of the rehearsal grid finished in over five
+  hours, every inner Picard step failing. July's figure does not hold, and no rehearsal builds
+  the gradient branch.*
 - **One combination of flags crashes at the start tree:** `--no-store-values` with
   `--targets homogeneous gradient` (`[gci-main-no-store-values-crash]`, `.documents/OPEN-ISSUES.md`
   §3; seen in Phase A, `24-phase-a-deep-dive.md:27-33`). The rehearsal avoids it (§4.1), and this
@@ -424,7 +438,8 @@ Checked on 2026-10-19, read-only, in both repositories (each at its remote `main
 - **`.prompts/`** (its layer and `RayTools` lines are history), **`.documents/` records that are
   dated**, and the July/June results.
 - **The gradient-coupled code's science.** It is halted, and P3 replaces it. Its tables are
-  exercised here only as tables.
+  exercised here only as tables, and only by the suites: its solves do not converge on the
+  rehearsal grid, so no rehearsal builds them (U11).
 
 ## 2. Prompts
 
@@ -979,8 +994,8 @@ Run by the agent in the session (U2), for prompts 02, 07 and 11 only. NN is the 
   and prints its owner; the agent stops and asks** (another project's rehearsal is running, or a
   stale lock needs the user). It never waits on the lock and never breaks it.
 - It passes `127.0.0.1:6390` to every driver with `--ray-address`, and addresses every `ray` CLI
-  call explicitly, as `start` prints. Four CPUs make the ten gradient solves run in three waves,
-  so that an interrupt can fall between waves (build 2 below). The CPU count changes no result:
+  call explicitly, as `start` prints. Four CPUs make the ten `FullInstanton` solves run in waves,
+  so that an interrupt can fall inside the stage (build 2 below). The CPU count changes no result:
   each solve is one task.
 - At the end, and after any stop, it runs `ray_cluster.sh stop`, which stops SI's processes alone
   and releases the lock. **No prompt runs `ray stop`** (§5 rule 17): it stops every Ray process on
@@ -994,7 +1009,8 @@ Run by the agent in the session (U2), for prompts 02, 07 and 11 only. NN is the 
   100 samples per e-fold;
 - the default instanton grid: `N_init = 20`, `N_final = 5`, and 10 values of `δN★` on
   `[0.1, 3.0]`;
-- with both branches, the gradient branch at the cheapest resolution:
+- the homogeneous branch only (U11). The two gradient flags are still passed, since the driver
+  mints their replicated rows whatever the targets (`config/pipeline_setup.py:95`):
 
 ```bash
 PYTHONPATH=. ./venv/bin/python -u main.py --config quadratic-minimal.yaml \
@@ -1004,18 +1020,22 @@ PYTHONPATH=. ./venv/bin/python -u main.py --config quadratic-minimal.yaml \
     [--no-store-values] [--profile-db <path>]
 ```
 
-where `<targets>` is `homogeneous gradient` for the dense builds and `homogeneous` for the
-scalars-only one (build 4 below).
+where `<targets>` is `homogeneous` for every build, dense and scalars-only alike; the two modes
+differ by `--no-store-values` alone (build 4 below). *It was `homogeneous gradient` for the
+dense builds until U11.*
 
-That is one trajectory, and ten each of `FullInstanton`, `SlowRollInstanton`,
-`CompactionFunction` and `GradientCoupledInstanton`. It writes every table SI registers but four:
+That is one trajectory, and ten each of `FullInstanton`, `SlowRollInstanton` and
+`CompactionFunction`. It writes every table SI registers but seven:
+- `GradientCoupledInstanton`, `GradientCoupledInstantonValue` and
+  `GradientCoupledInstantonProfile`, since no rehearsal builds the gradient branch (U11). Their
+  factories are covered by the integration suite;
 - `redshift` and `IntegrationSolver`, which no driver writes;
 - `QuarticPotential` and `quartic_coupling`, since the grid is quadratic. Their factories are
   covered by the integration suite and by 10's tests, which build both potential types.
 
-No wall-clock budget is set, so no solve depends on load. At July's 315 s a solve, the gradient
-stage should take about 15 minutes on four CPUs. 02 records each build's wall time. If `reference`
-takes more than 45 minutes, 02 stops, and the user rules on a smaller grid.
+No wall-clock budget is set, so no solve depends on load. The homogeneous branch was stored in
+about 35 s at 02's first attempt. 02 records each build's wall time. If `reference` takes more
+than 45 minutes, 02 stops, and the user rules on a smaller grid.
 
 **The builds.** Each runs detached. Its output goes to
 `~/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/`, with the driver's exit
@@ -1023,15 +1043,18 @@ status appended.
 1. **`reference`**, on the `reference` store, straight through, with `--profile-db`. This exercises
    `ProfileAgent` through whichever layer is in use.
 2. **`resumed-a`**, on the `resumed` store. `interrupt_when.py` sends `SIGTERM` once the log shows
-   `STAGE G: GRADIENT-COUPLED (ONION MODEL) INSTANTONS` and the stated delay has passed. The delay
-   is set from `reference`'s log, to fall after the first wave of gradient solves is stored and
-   before the second is. If the signal lands outside that window, the prompt may retune the delay
-   and rerun `resumed-a` on a fresh store, twice at most, and records what it got.
+   `STAGE 2: FULL MSR INSTANTONS` and the stated delay has passed. The delay is set from
+   `reference`'s stored timestamps, to fall while some `FullInstanton` rows are stored and others
+   are not; the window is wider, from the first `FullInstanton` stored to the last
+   `CompactionFunction` stored, so that the store is left partial. If the signal lands outside
+   it, the prompt may retune the delay and rerun `resumed-a` on a fresh store, twice at most, and
+   records what it got. *It was `STAGE G` until U11.*
 3. **`resumed-b`**, on the same store, straight through. SI always prunes unvalidated rows at open
    (`--prune-unvalidated` is `store_true` with `default=True`).
 4. **`scalars`**, on the `scalars` store, with `--no-store-values` and **`--targets homogeneous`
    only**, straight through. This exercises the unified pipeline and the scalars-only storage
-   path. The gradient branch is left out because of `[gci-main-no-store-values-crash]` (§0.2).
+   path. (The gradient branch was left out of this build because of
+   `[gci-main-no-store-values-crash]` (§0.2) before U11 left it out of every build.)
 5. **`scalars-2`**, at RH0 only: build 4 again, into `02-scalars-2.sqlite` (§4.3).
 
 The agent waits on each build's exit (a background task), not by polling.
@@ -1051,9 +1074,8 @@ The agent waits on each build's exit (a background task), not by polling.
     `read_inventory`.
   - `plot_InstantonSolutions.py` on both. On `scalars`, with `--no-store-values`, its
     `scalar_data.csv` is compared byte for byte, at 07 and 11, with 02's.
-  - `plot_GradientCoupledSolutions.py` on `resumed`, exit 0. Its `scalar_data.csv` is compared
-    byte for byte. Its `diagnostics_data.csv` is compared with its timing columns excluded; 01
-    lists them.
+  - *`plot_GradientCoupledSolutions.py` is not run (U11): no rehearsal store holds the gradient
+    branch.*
   - Each exits 0. The plot scripts open read-write pools under `"2026.3.0"` (P9, P10), so the
     check that the readers changed nothing is `compare_stores` of each store before and after
     them. It must be empty but for **one `version` row, labelled `2026.3.0`**, and bookkeeping.
@@ -1117,7 +1139,7 @@ ones, where the expected answer is a difference.
 
 Nothing in a build should depend on the layer:
 - each trajectory and each instanton is integrated in one Ray task;
-- the gradient solves are unbudgeted, and seed from a `FullInstanton` read back from the store;
+- no solve is budgeted by the clock (and no rehearsal builds the gradient branch, U11);
 - what is stored is what the integrators return.
 
 So the expectation is that two builds of one grid agree **bit for bit**, once timings are set
@@ -1207,8 +1229,8 @@ convention), plus:
 
 ### 6.1 Ruled by the user
 
-Each row gives the planner's recommendation first. **All ten are ruled.** U3, U8 and U9 were
-ruled on 2026-10-12, and U10 on 2026-10-19, as their rows say. **U1, U2 and U4–U7 were ruled on 2026-10-12 as recommended**:
+Each row gives the planner's recommendation first. **All eleven are ruled.** U3, U8 and U9 were
+ruled on 2026-10-12, U10 on 2026-10-19 and U11 on 2026-10-20, as their rows say. **U1, U2 and U4–U7 were ruled on 2026-10-12 as recommended**:
 the recommendation in each row is the decision, and the alternative beside it is rejected.
 
 | | Recommended | The alternative, and why not |
@@ -1223,6 +1245,7 @@ the recommendation in each row is the decision, and the alternative beside it is
 | **U8** — spec coverage, for the fingerprint (**ruled 2026-10-12**) | **10 proves that every registered class is covered** (10's acceptance item 5): a spec of its own, read through an owner's, or excluded by name with a reason, enforced by a test. SGK is extracting its `RunRegistry` into RunRegistryKit, which SI is expected to adopt after this campaign; its store fingerprint is taken through `read_inventory`, which reads only the classes that declare a spec and passes over the rest **silently**, and the user ruled that its store layer will not run without a fingerprinter. Item 1's "each factory whose class the report covers" is the right test for a report, not for a fingerprint. Measured at `7bb3efd`, item 1's list misses `redshift` and `IntegrationSolver`, and `GradientCoupledInstanton`'s second child table cannot be reached by a spec. The reasoning is SGK's `docs/runregistry-extraction-audit.md` §0 (D4, D5) and §7. Adopting RunRegistryKit stays out of this campaign's scope | Leaving item 1 as written: a store fingerprint would omit two registered classes and one table of results without saying so |
 | **U9** — other projects' Ray clusters (**ruled 2026-10-12**) | **Isolate, and take a shared lock.** SI's cluster runs on its own temp dir and ports and is stopped by a targeted stop, never `ray stop`; one lock, `~/ScienceData/.rehearsal-lock`, shared with ChamPBH and SGK, lets one rehearsal run at a time. ChamPBH adopts the same targeted stop, and SGK takes the lock (its in-process clusters are already isolated). The contract is [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md); 01a implements SI's side. Raised at 01's review: SGK's rehearsal ran beside this campaign's suites, ChamPBH's protocol runs a bare `ray stop`, and ChamPBH's BBN wall-clock limit makes its results sensitive to load | Moving SI's campaign to another machine: a rebuilt venv, two unpushed branches, and sibling repositories at the same paths, for nothing isolation does not give. Interleaving by hand, with no lock: a `ray stop` from either side still kills the other's build |
 | **U10** — which DatastoreKit release (**ruled 2026-10-19**) | **Pin `v0.4.0`** (§0.5). It is `v0.3.0` plus one module, `store_fingerprint.py`, which the layer never calls and SI does not import; `object.py` and `store_inventory.py` are unchanged, so nothing in 08–11 changes but 08's pin and the commit it checks. SI's checklist addendum offers `v0.3.0` or `v0.4.0`, and G4 reads "`v0.3.0` or later". RunRegistryKit's `[stores]` extra requires `datastorekit>=0.4.0`, so the RunRegistryKit adoption that follows this campaign (U8, §7) starts from SI's pin. *The user asked to adopt `v0.4.0` once it was released* | Stay on `v0.3.0`: the same layer, and a second pin commit owed to the RunRegistryKit campaign |
+| **U11** — the gradient branch in the rehearsals (**ruled 2026-10-20**) | **Drop it from every build.** 02's first `reference` ran 5 h 36 min and was stopped: none of the first four gradient solves finished, each over five hours at full CPU with every inner Picard step failing and λ halved again and again (`[gci-picard-inner-fails-on-rehearsal-grid]`). Solves that do not converge will not start to; the campaign is about the storage layer, not the solver. The dense builds become `--targets homogeneous`, the interrupt moves to `STAGE 2`, and `plot_GradientCoupledSolutions.py` leaves the readers. The gradient tables are covered by the suites only. *Ruled by the user, who chose it as the only viable option* | A wall-clock budget: bounded, but where a solve stops would depend on load, so two builds could differ and §4.3's bitwise criterion would mean nothing. A converging configuration, or a cap by iteration count: physics work outside this campaign (P3's) |
 
 ### 6.2 Proposed by the planner
 
@@ -1234,7 +1257,8 @@ U4–U7 on 2026-10-12 and gave no ruling on any of P1–P19, so all nineteen sta
   cheapest configuration in the tree that writes every table a quadratic run can write. Its mass,
   `10⁻⁵ M_P`, is the one at which Phase A's gradient solves stopped at an iteration cap in about
   5 minutes, not at a wall-clock budget. If 02's `reference` exceeds 45 minutes, 02 stops for a
-  ruling.
+  ruling. *Overtaken 2026-10-20 by U11: the gradient branch is dropped from every build, since
+  its solves did not finish in over five hours at 02's tree.*
 - **P2 — the rehearsal stores** live under
   `~/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/`, with the `.sqlite`
   suffix (§3), beside CPBH's `~/ScienceData/ChamPBH-rehearsals/`.

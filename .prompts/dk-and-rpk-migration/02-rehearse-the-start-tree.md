@@ -6,6 +6,13 @@
 *Amended 2026-10-12 for **U9**, after 01's review: the cluster is started and stopped by 01a's
 `ray_cluster.sh`, under the rehearsal lock shared with ChamPBH and SGK, and never by `ray stop`
 (README §4.1, §5 rules 17–18).*
+*Amended 2026-10-20 for **U11**, after the first attempt was stopped: its `reference` ran 5 h 36 min
+with no gradient solve finished (every inner Picard step failing;
+`[gci-picard-inner-fails-on-rehearsal-grid]`). **No build runs the gradient branch:** `build.sh`'s
+`dense` mode is now `--targets homogeneous`, the interrupt falls in `STAGE 2: FULL MSR INSTANTONS`,
+and `run_readers.sh` no longer runs `plot_GradientCoupledSolutions.py`. The first attempt's store
+and log are kept, moved aside to `$REHEARSAL_ROOT/02-attempt-1-aborted/`, and are not this
+attempt's (README §6.1, U11).*
 **Gate:**
 - 01 and 01a landed and reviewed (board §1), and their scripts and tool are as their results notes
   describe;
@@ -29,7 +36,7 @@ agent's work for prompts 02, 07 and 11, within README §4.1 and no further.
 **Read first:**
 
 1. `CLAUDE.md`, in full, and `.claude/rules/test-selection.md` (the `slow` block, §3 below).
-2. [`README.md`](README.md): §0.2 (the gradient solves; `[gci-main-no-store-values-crash]`), §2.2
+2. [`README.md`](README.md): §0.2 (the gradient solves, as corrected by U11; `[gci-main-no-store-values-crash]`), §2.2
    (02's charter), §3, **§4.1** (the protocol), **§4.2**, **§4.3**, §5 and §6.
 3. Prompt 01's results note
    (`.documents/dk-and-rpk-migration/01-rehearsal-tooling-and-run-provenance.md`): the provenance
@@ -45,13 +52,14 @@ agent's work for prompts 02, 07 and 11, within README §4.1 and no further.
 5. `quadratic-minimal.yaml`, and `config/argument_parser.py`'s defaults for the instanton grid
    (`N_init` 20, `N_final` 5, ten `δN★` on `[0.1, 3.0]`).
 6. `main.py`:
-   - its branch order: the homogeneous branch, then the gradient branch (`:1114`, `:1127`);
-   - `_run_gradient_branch`, and the `STAGE G` queue it builds (`:665`);
+   - `_run_homogeneous_branch` (`:749`): the `STAGE 1`–`STAGE 4` pools and lookups
+     (`:729`, `:827`, `:851`, `:862`, `:1105`), and `_run_instanton_queue` (`:403`), which prints
+     each lookup and returns before building a pool when nothing is missing (`:474-481`);
    - and the actors' prune at open, `Datastore/SQL/Datastore.py:434-460` (`_validate_on_startup`),
      which every build runs, since `--prune-unvalidated` is always on
      (`config/argument_parser.py`, `store_true` with `default=True`).
-7. `.documents/gradient-coupled-instanton/24-phase-a-deep-dive.md:35-45`: at `m = 10⁻⁵ M_P`,
-   `n = 5`, one gradient solve took 315 s and stopped at its cap of 50 outer iterations.
+7. *(Withdrawn by U11: July's gradient timing does not hold at this tree, and no build runs the
+   gradient branch.)*
 
 ---
 
@@ -92,7 +100,7 @@ answers three questions before anything changes:
 1. Record `uptime` and the number of CPUs.
 2. Run `.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start "dk-and-rpk-migration 02
    (RH0)"` from the repository root. It takes the rehearsal lock and starts SI's cluster with four
-   CPUs, which make the ten gradient solves run in three waves (README §4.1).
+   CPUs, which make the ten `FullInstanton` solves run in waves (README §4.1).
    - If it exits 3, the lock is held: stop and ask. Do not wait, retry or remove the lock.
    - Record the address it prints (`127.0.0.1:6390`) and its actor line. Pass the address to every
      driver as `--ray-address`, and use the actor line for every actor check.
@@ -109,24 +117,34 @@ Wait for each to end before starting the next. **Do not poll.**
    - Record its wall time, and each stage's from the log.
    - **If it takes more than 45 minutes, stop** after it ends: the user rules on a smaller grid
      (README P1).
-2. **Choose `S`** for build 3, from `reference`. The aim is that the `SIGTERM` falls after the
-   first wave of four gradient solves is stored, and before the second wave is.
-   - Use the `STAGE G` banner's position in the log.
-   - Also read the closed `02-reference.sqlite` read-only through `sqlite3`: the `timestamp`
-     column of `GradientCoupledInstanton` against that of the last `CompactionFunction` row,
-     which is stored just before `STAGE G` starts.
+2. **Choose `S`** for build 3, from `reference`. The aim is that the `SIGTERM` falls while some
+   `FullInstanton` rows are stored and others are not. The window is wider: from the first
+   `FullInstanton` row stored to the last `CompactionFunction` row stored, so that `resumed-a`
+   leaves a partial store.
+   - Read the closed `02-reference.sqlite` read-only through `sqlite3`: the `timestamp` column of
+     the `InflatonTrajectory` rows (stored just before the `STAGE 2` banner) against those of
+     `FullInstanton`, `SlowRollInstanton` and `CompactionFunction`. At the first attempt the
+     `FullInstanton` rows were stored 10.0–12.9 s after the last trajectory row, and the whole
+     branch within 25 s of it.
+   - A fresh driver on a warm cluster may run a few seconds ahead of `reference` (ChamPBH board
+     §5.10), so aim early in the `FullInstanton` spread.
    - Record `S` and how you chose it.
 3. **`resumed-a`:** `build.sh 02 resumed resumed-a <address> dense`. Start beside it
    `interrupt_when.py $REHEARSAL_ROOT/logs/02-resumed-a.log $REHEARSAL_ROOT/logs/02-resumed-a.pid
-   --banner "STAGE G: GRADIENT-COUPLED (ONION MODEL) INSTANTONS" --after <S>`.
+   --banner "STAGE 2: FULL MSR INSTANTONS" --after <S> --poll 0.2`. The banner first matches
+   the `** STAGE 2: FULL MSR INSTANTONS LOOKUP:` line, printed just before the pool's own.
    - A `SIGTERM`ed driver exits **134** (Ray's failure-signal handler aborts; ChamPBH board §5.3).
-   - **If the signal lands outside the window** (no gradient row stored, or all ten), you may
-     delete `02-resumed.sqlite` and its shards, retune `S`, and run `resumed-a` again, twice at
-     most. These are the only store files this prompt deletes, and only its own. Record every
-     attempt.
+   - **If the signal lands outside the window** (no `FullInstanton` row stored, or every
+     `CompactionFunction` row stored), you may delete `02-resumed.sqlite`, its ten shards and any
+     `-journal` beside them, retune `S`, and run `resumed-a` again, twice at most. These are the
+     only store files this prompt deletes, and only its own. A retry needs a new build name, since
+     `build.sh` refuses an existing log: `build.sh 02 resumed resumed-a2 …`, then `resumed-a3`,
+     with `interrupt_when.py` on that build's log and pidfile. Earlier attempts' logs stay. Record
+     every attempt.
 4. **Between `resumed-a` and `resumed-b`:**
-   - Read the closed `02-resumed.sqlite` read-only, and record how many `GradientCoupledInstanton`
-     rows it holds, validated and not.
+   - Read the closed `02-resumed.sqlite` read-only, and record how many `InflatonTrajectory`,
+     `FullInstanton`, `SlowRollInstanton` and `CompactionFunction` rows it holds, validated and
+     not, and any `-journal` file beside a shard.
    - Confirm that the killed driver's actors are gone, with the actor line `ray_cluster.sh start`
      printed (filtered to `state=ALIVE`), and record what you saw. If an actor of the killed job is still alive after
      a minute, stop and ask.
@@ -170,12 +188,12 @@ A failure here is the start tree's, not this campaign's: record it, and open it 
 - **L1 — every build ends as it should.**
   - `reference`, `resumed-b`, `scalars` and `scalars-2` end with `** driver exit status 0`, and
     every stage's `ALL WORK ITEMS COMPLETE`.
-  - `resumed-a` ends by the signal, inside `STAGE G`.
+  - `resumed-a` ends by the signal, inside the window of §1.3.2.
   - No traceback in any log.
   - Each log carries the provenance line once, both packages not installed.
 - **L2 — the resume.** From the logs and `stage_counts.py`:
   - what each open pruned, by `_validate_on_startup`'s printed report, and that it was only
-    unvalidated rows. `resumed-a`'s kill may leave a gradient row stored and not validated;
+    unvalidated rows. `resumed-a`'s kill may leave a row stored and not validated;
   - that `resumed-b` computed only what `resumed-a` had not kept: its compute counts per stage
     against `reference`'s;
   - and the comparison of `reference` with `resumed` (§1.4.2), which is also §4.3's measurement.
@@ -187,9 +205,10 @@ A failure here is the start tree's, not this campaign's: record it, and open it 
 
   Anything else is a stop. Also record:
   - what `--inventory` printed;
-  - the SHA-256 of each `scalar_data.csv`: the one `plot_InstantonSolutions.py --no-store-values`
-    writes on `scalars`, and the one `plot_GradientCoupledSolutions.py` writes on `resumed`;
-  - the `diagnostics_data.csv` columns that 01 lists as timings.
+  - the SHA-256 of each `scalar_data.csv` that `plot_InstantonSolutions.py` writes: on
+    `scalars` (with `--no-store-values`) and on `resumed`.
+
+  (`plot_GradientCoupledSolutions.py` is no longer run: U11.)
 
   07 and 11 compare them with these.
 - **L4 — the baseline.** Record each stage's counts in all five builds, and what the resume pruned
@@ -204,8 +223,9 @@ do `scalars` and `scalars-2`.
   so plainly in the results note and the verification document.
 - **If either reports differences,** record every one, with the near-miss pairs, and look for the
   cause without changing anything.
-  - A first candidate is the gradient solve. It seeds from a `FullInstanton` read back from the
-    store (README §0.2); compare the seeds as stored.
+  - Name the first table whose rows differ, in the order the branch builds them (trajectory,
+    `FullInstanton`, `SlowRollInstanton`, `CompactionFunction`): a later table built from an
+    earlier one inherits its difference.
   - **Then stop.** The user rules on RH1's criterion before 05–07 are written (README §2.1, §4.3).
     No tolerance is chosen by an agent.
 
@@ -234,7 +254,7 @@ do `scalars` and `scalars-2`.
      - the commands, verbatim.
    - `.documents/dk-and-rpk-migration/out/02-*`;
    - this board: the §1 row for 02; items L1–L4 (RH0), V1 and S1; gate RH0 in §2; and
-     `### 5.8 After prompt 02 (<date>)`;
+     `### 5.13 After prompt 02 (<date>)` (*§5.12 records the first attempt and U11*);
    - a §3 entry for anything opened, with `.documents/OPEN-ISSUES.md` in the same commit.
 
 ---
@@ -272,7 +292,7 @@ do `scalars` and `scalars-2`.
 - the cluster's address and the load;
 - each command verbatim, and each build's start, end and exit status;
 - `S` and why, with every attempt;
-- the gradient rows `resumed-a` left, and the actor check;
+- the rows `resumed-a` left, by table, validated and not, and the actor check;
 - L1–L4, and §4.3's result in full for both modes;
 - S1;
 - the two suites at dispatch.

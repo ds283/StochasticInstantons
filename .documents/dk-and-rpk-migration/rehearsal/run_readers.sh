@@ -18,6 +18,9 @@
 # (.prompts/dk-and-rpk-migration/README.md section 4.1). Written for dk-and-rpk-migration
 # prompt 01; prompts 02, 07 and 11 run it unchanged.
 #
+# Amended 2026-10-20 for U11 (README section 6.1): no rehearsal builds the gradient branch, so
+# step 3 (plot_GradientCoupledSolutions.py) is no longer run on any store.
+#
 # It starts and stops no Ray cluster: the caller starts one and passes its address. Every flag
 # below was checked against config/argument_parser.py and each plot script's create_plot_parser
 # (plot_InstantonSolutions.py, plot_GradientCoupledSolutions.py), which extend it with
@@ -40,11 +43,7 @@ Run from the repository root, on a closed store. Into $REHEARSAL_ROOT/NN-readers
   2. plot_InstantonSolutions.py --config quadratic-minimal.yaml --database STORE
        --output-dir plot_InstantonSolutions [--no-store-values when STORE begins "scalars"]
                                                     -> 2-plot_InstantonSolutions.log
-  3. when STORE does not begin "scalars":
-     plot_GradientCoupledSolutions.py --config quadratic-minimal.yaml --database STORE
-       --output-dir plot_GradientCoupledSolutions
-       --n-collocation-points 5 --alpha-regularization 0.01
-                                                    -> 3-plot_GradientCoupledSolutions.log
+  3. (not run: no rehearsal store holds the gradient branch, U11)
   4. tools/compare_stores.py before/NN-STORE.sqlite NN-STORE.sqlite
                                                     -> 4-compare_stores.log, .json
 Each driver is also given --ray-address ADDRESS. Each step's exit status is appended to
@@ -144,20 +143,9 @@ else
 fi
 record 2 plot_InstantonSolutions $?
 
-# 3. plot_GradientCoupledSolutions.py, on a store that holds the gradient branch
-case "$STORE" in
-    scalars*)
-        echo ">> run_readers.sh: step 3 plot_GradientCoupledSolutions: not run on a scalars-only store"
-        ;;
-    *)
-        PYTHONPATH=. ./venv/bin/python -u plot_GradientCoupledSolutions.py \
-            --config quadratic-minimal.yaml --database "$DB" \
-            --output-dir "$OUT/plot_GradientCoupledSolutions" \
-            --n-collocation-points 5 --alpha-regularization 0.01 --ray-address "$ADDRESS" \
-            > "$OUT/3-plot_GradientCoupledSolutions.log" 2>&1
-        record 3 plot_GradientCoupledSolutions $?
-        ;;
-esac
+# 3. plot_GradientCoupledSolutions.py is not run (U11): no rehearsal store holds the gradient
+# branch, since its solves do not converge on the rehearsal grid at this tree.
+echo ">> run_readers.sh: step 3 plot_GradientCoupledSolutions: not run (no rehearsal builds the gradient branch, U11)"
 
 # 4. the store after the readers against the copy made before them
 PYTHONPATH=. ./venv/bin/python -u tools/compare_stores.py "$OUT/before/$NN-$STORE.sqlite" "$DB" \

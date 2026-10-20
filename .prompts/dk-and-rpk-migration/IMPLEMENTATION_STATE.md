@@ -1,7 +1,8 @@
 # dk-and-rpk-migration campaign — implementation state
 
-**Last updated:** 2026-10-19 · **Status: LIVE — 5 of 13 prompts written (01–04, 01a), 01 and 01a
-landed and reviewed. U1–U9 ruled (2026-10-12), U10 (2026-10-19); P1–P19 stand as proposed. The
+**Last updated:** 2026-10-20 · **Status: LIVE — 5 of 13 prompts written (01–04, 01a), 01 and 01a
+landed and reviewed; 02's first attempt stopped and 02 amended (§5.12). U1–U9 ruled (2026-10-12),
+U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
 (U10; README §0.5).**
@@ -30,7 +31,7 @@ edited) ·
 
 ### Decisions
 
-**Ruled by the user (README §6.1), U1–U9 on 2026-10-12 and U10 on 2026-10-19.** U1, U2 and U4–U7
+**Ruled by the user (README §6.1), U1–U9 on 2026-10-12, U10 on 2026-10-19 and U11 on 2026-10-20.** U1, U2 and U4–U7
 were ruled as the planner recommended:
 
 | Decision | Decided |
@@ -45,6 +46,7 @@ were ruled as the planner recommended:
 | **U8** — spec coverage, for the fingerprint | **ruled 2026-10-12:** 10 proves every registered class is covered by a spec, read through one, or excluded with a reason (10's acceptance item 5); it settles `redshift`, `IntegrationSolver` and `GradientCoupledInstanton`'s second child table (README §6.1) |
 | **U9** — other projects' Ray clusters | **ruled 2026-10-12, after 01's review:** isolate and lock. SI's cluster runs on `/tmp/ray-si` and its own ports and stops only itself, never by `ray stop`; one lock, `~/ScienceData/.rehearsal-lock`, shared with ChamPBH and SGK, lets one rehearsal run at a time. ChamPBH adopts the targeted stop; SGK takes the lock. Contract: [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md); SI's side is 01a (README §6.1) |
 | **U10** — which DatastoreKit release | **ruled 2026-10-19:** pin **`v0.4.0`** (tag object `8e7c1d7`, commit `c8570e8`) in place of `v0.3.0`. It adds `store_fingerprint.py`, which SI does not call, and carries `v0.3.0` unchanged; RunRegistryKit's `[stores]` extra requires `datastorekit>=0.4.0`. Only 08's pin and commit change (README §0.5, §6.1) |
+| **U11** — the gradient branch in the rehearsals | **ruled 2026-10-20, after 02's first attempt:** drop it from every build. Its gradient solves did not finish in over five hours (`[gci-picard-inner-fails-on-rehearsal-grid]`). `build.sh`'s `dense` mode is `--targets homogeneous`, the interrupt moves to `STAGE 2`, and `run_readers.sh` no longer runs `plot_GradientCoupledSolutions.py`; the gradient tables are left to the suites (README §6.1, §5.12) |
 
 **Proposed by the planner (README §6.2):** P1–P19, accepted as proposed: the user gave no ruling
 on any of them.
@@ -57,7 +59,7 @@ on any of them.
 |---|---|---|---|---|---|---|---|
 | 01 | [Rehearsal tooling and run provenance](01-rehearsal-tooling-and-run-provenance.md) | P3, P5; README §4.1–§4.2 | Opus | ✍️ 2026-10-12 | ✅ 2026-10-12 | `84a5cfc` | [`01-rehearsal-tooling-and-run-provenance.md`](../../.documents/dk-and-rpk-migration/01-rehearsal-tooling-and-run-provenance.md) |
 | 01a | [Isolate the rehearsal cluster](01a-isolate-the-rehearsal-cluster.md) | **U9**; `ray_cluster.sh`, the shared rehearsal lock | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-12 | `3556148` | [`01a-isolate-the-rehearsal-cluster.md`](../../.documents/dk-and-rpk-migration/01a-isolate-the-rehearsal-cluster.md) |
-| 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12 | ⬜ | — | — |
+| 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12; amended 2026-10-20 (U11) | ⬜ (first attempt stopped, §5.12) | — | — |
 | 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
 | 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ⬜ | — | — |
 | 05 | Move SI's data out of the layer | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ⬜ | ⬜ | — | — |
@@ -82,6 +84,7 @@ Orchestrator notes are written one prompt at a time, in [`orchestrator/`](orches
 before each dispatch:
 - [`prompt-01.md`](orchestrator/prompt-01.md) — used for 01 (`b4088d1`).
 - [`prompt-01a.md`](orchestrator/prompt-01a.md) — used for 01a (`37126a2`).
+- [`prompt-02.md`](orchestrator/prompt-02.md) — written for 02 (`0ff3609`); revised for U11 (§5.12).
 
 ### 1.1 Items
 
@@ -140,6 +143,7 @@ Opened at planning, 2026-10-11, unless the row says otherwise.
 | `[test-counts-stale-in-claude-md]` | `CLAUDE.md:21` and `.claude/rules/test-selection.md:10`, `:26` say "464 of 571"; at `7bb3efd` the default run selects 631 of 761 | 12 |
 | `[show-all-flag-unused]` | `--show-all` is parsed (`config/argument_parser.py`) but read by nothing: `main.py`'s inventory truncates at 20 values regardless | 10 (`verbose`) |
 | `[unified-pipeline-stores-null-instanton-labels]` | *Opened 2026-10-12 at 01's review, from its Observation 2.* The unified pipeline (`--no-store-values`) constructs `FullInstanton` and `SlowRollInstanton` with no label (`ComputeTargets/pipeline.py:288-298`, `:304-314`), so they are stored with `label` NULL, where the per-stage queues store the factory's default (`Datastore/SQL/ObjectFactories/FullInstanton.py:149-155`, `SlowRollInstanton.py:148-154`). No science value differs and no reader fails, but the provenance footers read `label` (`plotting/provenance.py:46`), so a scalars-only store's figures lack it. `tools/compare_stores.py` treats the two columns as bookkeeping for this reason | unowned |
+| `[gci-picard-inner-fails-on-rehearsal-grid]` | *Opened 2026-10-20 at 02's first attempt (§5.12).* At the rehearsal grid (`quadratic-minimal.yaml`, `m = 10⁻⁵ M_P`, `n = 5`, `α = 0.01`, no wall-clock budget) none of the four `GradientCoupledInstanton` solves of the first wave (`δN★` = 0.1, 0.4222, 0.7444, 1.711) finished in 5 h 24 min at full CPU. Each worker's log shows only `Picard inner failed at lambda=…`, 85–105 times, with λ halved after each failure and the sign alternating between outer attempts. July's 315 s a solve at `δN★ = 1.0` (`.documents/gradient-coupled-instanton/24-phase-a-deep-dive.md:43`) was measured at an older tree. Not investigated here: the gradient code is P3's, and the rehearsals no longer build it (U11). The workers' logs are kept in the orchestrator's scratchpad of 2026-10-20 only; the first attempt's store and log are under `$REHEARSAL_ROOT/02-attempt-1-aborted/` | P3 |
 
 ## 4. Resolved issues
 
@@ -493,3 +497,52 @@ At the user's request, not by a prompt. Read-only in DatastoreKit, RayPoolKit an
   checks are unchanged. No prompt already written (01–04, 01a) cites the pin, so none changes; the
   `0.3.0` stand-in values in `tests/test_package_provenance.py` are fictitious and stay. No issue
   is opened or closed, so `.documents/OPEN-ISSUES.md` is unchanged.
+
+### 5.12 02's first attempt stopped; U11 ruled (2026-10-20)
+
+- **Dispatched** at 01:28 BST by orchestrator note [`prompt-02.md`](orchestrator/prompt-02.md)
+  (`0ff3609`), on Opus. Before its cluster the agent ran both suites: 680 (679 passed, 1 skipped)
+  and 61 (60 passed, 1 skipped). `ray_cluster.sh start` at 01:31:54 took the lock.
+- **`reference`** (`build.sh 02 reference reference 127.0.0.1:6390 dense --profile-db`, then
+  `--targets homogeneous gradient`) started at 01:32:04. The homogeneous branch was stored by
+  01:32:37: the trajectory, then 10 `FullInstanton` (12.5 s), 10 `SlowRollInstanton` (8.7 s) and 10
+  `CompactionFunction` (1.8 s), every pool complete and every row validated; the provenance line
+  read `>> packages: datastorekit not installed; raypoolkit not installed`. `STAGE G` found 10
+  `FullInstanton` seeds and started four solves. **None finished.** At 07:06, after 5 h 24 min at
+  ~95–100% CPU each, every worker's own log showed only `Picard inner failed at lambda=…`
+  (`δN★` 0.1 and 0.7444 and 1.711: 105 lines each; 0.4222: 85), λ halved after each failure; the
+  driver's log had only Ray's raylet warning that `/tmp/ray-si` was "over 95% full" (40 GB free).
+  No `GradientCoupledInstanton` row was stored.
+- **The agent was cut off** by the usage limit while it waited on the build, so the stop
+  condition (README P1, 45 minutes) was taken to the user by the orchestrator. The user ruled to
+  stop the build. The orchestrator saved the four workers' logs to its scratchpad, sent `SIGTERM`
+  to the driver (pid 93103) at 07:08:15 BST (exit 134, as expected; no actor left alive, no
+  journal file), and ran `ray_cluster.sh stop` (19 s; `gcs_server` `SIGKILL`ed after the grace;
+  the four ports free; the lock released). The 17 store files in the tree are unchanged.
+- **The first attempt's files are kept**, moved intact to
+  `$REHEARSAL_ROOT/02-attempt-1-aborted/` (the primary, ten shards, the profile database, and
+  `logs/02-reference.log` and `.pid`), so that 02 can start afresh on its own names. Its
+  primary's `shards` table records the old paths. Nothing was deleted.
+- **The user ruled U11:** no rehearsal builds the gradient branch ("if the gradient solves don't
+  converge, then they don't"). The alternatives were a wall-clock budget, which would make where a
+  solve stops depend on load and so void §4.3's bitwise criterion, and finding a converging
+  configuration, which is P3's physics work.
+- **Made, at the user's ruling:**
+  - `build.sh`: `dense` → `--targets homogeneous`; the usage and header say why. The gradient
+    flags stay, since the driver mints their replicated rows whatever the targets
+    (`config/pipeline_setup.py:95`), so the two modes differ by `--no-store-values` alone.
+  - `run_readers.sh`: step 3 (`plot_GradientCoupledSolutions.py`) is no longer run on any store;
+    it prints that it is not run.
+  - README: a revision note; §0.2, §1, §4.1 (the grid, the interrupt in `STAGE 2`, L3), §4.3,
+    §6.1 (U11) and §6.2 (P1) amended.
+  - Prompt 02: an amendment note; the read-first list, §1.2, §1.3 (choosing `S` from the
+    homogeneous timestamps, the `STAGE 2` banner with `--poll 0.2`, a wider window, the retry's
+    build name, the rows to count), §2 and §6 amended; its board section is `### 5.13`.
+  - Orchestrator note `prompt-02.md`, rewritten for the amended protocol.
+  - `[gci-picard-inner-fails-on-rehearsal-grid]` opened (§3), with `.documents/OPEN-ISSUES.md`.
+- **Checked:** `bash -n` under 3.2 and 5.3 for both scripts; both `--help` texts. No Python
+  changed, so the suites stand at 680 and 61.
+- **Known gap (U11):** no rehearsal writes `GradientCoupledInstanton` or its two child tables,
+  so `compare_stores` meets them only in its imitation tests, and RH1 and RH2 check them only
+  through the suites.
+- **Next:** 02 is dispatched afresh on the amended protocol.
