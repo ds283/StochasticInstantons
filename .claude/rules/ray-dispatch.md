@@ -98,12 +98,18 @@ consumed — pass the proxy itself, never expose or reach past it for the raw
 
 ## Why `RayWorkPool` requires plain classes
 
-`RayTools/RayWorkPool.py` accesses compute targets as plain Python objects:
+`raypoolkit.RayWorkPool` (the `raypoolkit` package, pinned in
+`requirements.txt`; not a file of this repository) accesses compute targets as
+plain Python objects. Lines are those of `raypoolkit/RayWorkPool.py` at `v0.2.0`:
 
-- **Line 354:** `if obj.available:` — direct attribute read, no `.remote()`
-- **Line 436:** `obj.store()` — direct method call on the driver
-- **Line 393:** `compute_task = compute_handler(obj)` — `compute()` must
-  return an `ObjectRef`; `RayWorkPool` never calls `.remote()` on it
+- **Line 385:** `if obj.available:` — direct attribute read, no `.remote()`
+- **Lines 424-426:** `compute_task = self._compute_handler(obj, **compute_args)`
+  — `compute()` must return an `ObjectRef`; `RayWorkPool` never calls
+  `.remote()` on it. The default compute handler is `obj.compute(**kwargs)`
+  (lines 75-76).
+- **Line 471:** `self._store_handler(obj, self._pool)` — a direct call on the
+  driver. The default store handler is `obj.store()` (lines 79-80); the persist
+  handler follows at line 481.
 
 If `Foo` is decorated `@ray.remote`, it becomes a `ray.actor.ActorClass`, not a
 `type`. Direct attribute access fails. `obj.store()` fails. The factory cannot

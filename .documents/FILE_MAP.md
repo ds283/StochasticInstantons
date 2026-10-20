@@ -28,7 +28,7 @@ Files are grouped by architectural layer to make it easy to find related pieces.
 
 | Flat filename             | Original path             | Purpose                                                                                                                                                                                                                                                                        |
 |---------------------------|---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `RayTools_RayWorkPool.py` | `RayTools/RayWorkPool.py` | `RayWorkPool` class: the core distributed work-queue abstraction; manages the **lookup → compute → store → persist → validate** state machine over a list of compute targets using `ray.wait()`; provides `create_batch_size`, `process_batch_size`, `max_task_queue` controls |
+| — (not a file of this repository) | `raypoolkit.RayWorkPool` | `RayWorkPool` class, from the `raypoolkit` package pinned in `requirements.txt`: the core distributed work-queue abstraction; manages the **lookup → compute → store → persist → validate** state machine over a list of compute targets using `ray.wait()`; provides `create_batch_size`, `process_batch_size`, `max_task_queue` controls |
 
 ---
 
@@ -284,7 +284,6 @@ text rather than by including the source directly.
 | `InflationConcepts/inflaton_mass.py`, `quartic_coupling.py` | Thin `Dimension{ful,less}Quantity` subclasses; no new pattern           |
 | `MetadataConcepts/tolerance.py`                         | Already represented by `Datastore_SQL_ObjectFactories_tolerance.py`         |
 | `Quadrature/supervisors/base.py`                        | Protected infrastructure; supervisor base class, not exercised directly by the modules included here |
-| `RayTools/` (other files)                               | Only `RayWorkPool.py` is directly relevant                                  |
 | `config/defaults.py`                                    | Small constants file; values visible in `argument_parser.py`                |
 | `ComputeTargets/exceptions.py`                          | Small; exception class definitions only                                     |
 | `ComputeTargets/GradientCoupledInstanton/__init__.py`   | Trivial re-export module                                                    |

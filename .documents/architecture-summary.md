@@ -24,8 +24,8 @@ ComputeTargets/
   InflatonTrajectory.py        — background ODE integration
   FullInstanton.py             — full MSR instanton BVP
   SlowRollInstanton.py         — slow-roll-approximated instanton BVP
-RayTools/
-  RayWorkPool.py               — distributed work-queue abstraction
+(raypoolkit package, pinned in requirements.txt)
+  RayWorkPool                  — distributed work-queue abstraction
 Datastore/
   object.py                    — DatastoreObject base class
   SQL/
@@ -318,7 +318,7 @@ proxy to touch `proxy._ref` directly.
 
 ## RayWorkPool
 
-`RayTools/RayWorkPool.py` provides the main distributed work-queue abstraction.
+`RayWorkPool`, from the `raypoolkit` package (pinned in `requirements.txt`), provides the main distributed work-queue abstraction.
 It manages the full lifecycle of a set of compute targets through the stages:
 **lookup → compute → store → persist → validate**.
 

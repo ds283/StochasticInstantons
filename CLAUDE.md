@@ -98,7 +98,7 @@ Never modify these files unless a prompt explicitly names them and describes
 exactly what to change:
 
 ```
-RayTools/                          Datastore/SQL/ShardedPool.py
+Datastore/SQL/ShardedPool.py
 Datastore/object.py                Datastore/SQL/SerialPoolBroker.py
 Datastore/SQL/ClientPool.py        Datastore/SQL/ProfileAgent.py
 Datastore/SQL/ObjectFactories/base.py

@@ -97,7 +97,7 @@ from plotting.figures.sweeps import plot_compaction_summary, plot_msr_action_swe
 from plotting.figures.time_history import plot_instanton_fields
 from plotting.provenance import VERSION_LABEL
 from plotting.sampling import _evenly_sample, _safe_name, _safe_num
-from RayTools.RayWorkPool import RayWorkPool
+from raypoolkit import RayWorkPool
 from Units import Planck_units
 from utilities import format_package_provenance, installed_package_provenance
 

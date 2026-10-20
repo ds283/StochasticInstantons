@@ -42,7 +42,7 @@ from InflationConcepts import (
     efold_array,
 )
 from MetadataConcepts import store_tag, tolerance
-from RayTools.RayWorkPool import RayWorkPool, _default_store_handler
+from raypoolkit import RayWorkPool
 from Units import Planck_units
 from Units.base import UnitsLike
 from utilities import format_package_provenance, installed_package_provenance
@@ -409,7 +409,6 @@ def _run_instanton_queue(
     shard_key_of,
     label_builder,
     title: str,
-    store_handler,
     no_store_values: bool = False,
 ):
     """
@@ -496,7 +495,6 @@ def _run_instanton_queue(
         missing,
         task_builder=build_work_ref,
         compute_handler=lambda obj, **kwargs: obj.compute(**kwargs),
-        store_handler=store_handler,
         persist_handler=persist_handler,
         validation_handler=lambda obj: pool.object_validate(obj),
         label_builder=label_builder,
@@ -663,7 +661,6 @@ def _run_gradient_branch(
             f"n_colloc={int(obj.n_collocation_points_value)}, "
             f"alpha={float(obj.alpha_regularization_value):.4g})"
         ),
-        store_handler=_default_store_handler,
         title="STAGE G: GRADIENT-COUPLED (ONION MODEL) INSTANTONS",
         no_store_values=no_store_values,
     )
@@ -823,7 +820,6 @@ def run_all_pipelines(
                 f"Ninit={float(obj.N_init_value):.4g}, "
                 f"Nfinal={float(obj.N_final_value):.4g})"
             ),
-            store_handler=_default_store_handler,
             title="STAGE 2: FULL MSR INSTANTONS",
         )
 
@@ -847,7 +843,6 @@ def run_all_pipelines(
                 f"Ninit={float(obj.N_init_value):.4g}, "
                 f"Nfinal={float(obj.N_final_value):.4g})"
             ),
-            store_handler=_default_store_handler,
             title="STAGE 3: SLOW-ROLL INSTANTONS",
         )
 
@@ -1096,7 +1091,6 @@ def run_all_pipelines(
                 cf_missing,
                 task_builder=build_cf_work_ref,
                 compute_handler=lambda obj, **kwargs: obj.compute(**kwargs),
-                store_handler=_default_store_handler,
                 persist_handler=lambda obj, pool: pool.object_store(obj),
                 validation_handler=lambda obj: pool.object_validate(obj),
                 label_builder=lambda obj: (

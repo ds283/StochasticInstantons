@@ -350,7 +350,7 @@ sample grid endpoint is known before dispatch:
 
 ## 9. `RayWorkPool` — the distributed work-queue
 
-`RayTools/RayWorkPool.py` drives every compute stage through five states:
+`RayWorkPool`, from the `raypoolkit` package (pinned in `requirements.txt`), drives every compute stage through five states:
 **lookup → compute → store → persist → validate**.
 
 ```python
