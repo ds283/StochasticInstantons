@@ -25,65 +25,9 @@ from ray.actor import ActorHandle
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from Datastore.SQL.ClientPool import SerialPoolManager, SerialLeaseManager
-from CosmologyConcepts.FieldValues import phi_value, pi_value
-from Datastore.SQL.ObjectFactories.DimensionfulQuantity import (
-    sqla_dimensionful_quantity_factory,
-)
-from Datastore.SQL.ObjectFactories.DimensionlessQuantity import (
-    sqla_dimensionless_quantity_factory,
-)
+from config.datastore import factories as _factories, drop_groups as _drop_actions
 from CosmologyModels.cosmo_params import CosmologicalParams
-from Datastore.SQL.ObjectFactories.CosmologicalParams import sqla_cosmological_params_factory
-from Datastore.SQL.ObjectFactories.CompactionFunction import (
-    sqla_CompactionFunctionFactory,
-    sqla_CompactionFunctionSamplesFactory,
-)
-from Datastore.SQL.ObjectFactories.FullInstanton import (
-    sqla_FullInstantonFactory,
-    sqla_FullInstantonValue_factory,
-)
-from Datastore.SQL.ObjectFactories.GradientCoupledInstanton import (
-    sqla_GradientCoupledInstantonFactory,
-    sqla_GradientCoupledInstantonValue_factory,
-    sqla_GradientCoupledInstantonProfileFactory,
-)
-from Datastore.SQL.ObjectFactories.InflatonTrajectory import (
-    sqla_InflatonTrajectory_factory,
-    sqla_InflatonTrajectoryValue_factory,
-)
-from Datastore.SQL.ObjectFactories.SlowRollInstanton import (
-    sqla_SlowRollInstantonFactory,
-    sqla_SlowRollInstantonValue_factory,
-)
-from Datastore.SQL.ObjectFactories.QuadraticPotential import (
-    sqla_QuadraticPotential_factory,
-)
-from Datastore.SQL.ObjectFactories.MasslessDecoupledDiffusion import (
-    sqla_MasslessDecoupledDiffusion_factory,
-)
-from Datastore.SQL.ObjectFactories.QuarticPotential import (
-    sqla_QuarticPotential_factory,
-)
 from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
-from Datastore.SQL.ObjectFactories.delta_Nstar import sqla_delta_Nstar_factory
-from Datastore.SQL.ObjectFactories.N_init import sqla_N_init_factory
-from Datastore.SQL.ObjectFactories.N_final import sqla_N_final_factory
-from Datastore.SQL.ObjectFactories.n_collocation_points import (
-    sqla_n_collocation_points_factory,
-)
-from Datastore.SQL.ObjectFactories.alpha_regularization import (
-    sqla_alpha_regularization_factory,
-)
-from Datastore.SQL.ObjectFactories.efold import sqla_efold_factory
-from Datastore.SQL.ObjectFactories.integration_metadata import (
-    sqla_IntegrationSolver_factory,
-)
-from Datastore.SQL.ObjectFactories.redshift import sqla_redshift_factory
-from Datastore.SQL.ObjectFactories.store_tag import sqla_store_tag_factory
-from Datastore.SQL.ObjectFactories.tolerance import sqla_tolerance_factory
-from Datastore.SQL.ObjectFactories.version import sqla_version_factory
-from InflationConcepts.inflaton_mass import inflaton_mass
-from InflationConcepts.quartic_coupling import quartic_coupling
 from Datastore.SQL.ProfileAgent import ProfileBatcher, ProfileBatchManager
 from utilities import WallclockTimer
 
@@ -93,54 +37,10 @@ VERSION_ID_LENGTH = 64
 PathType = Union[str, PathLike]
 
 
-_factories = {
-    "version": sqla_version_factory(),
-    "store_tag": sqla_store_tag_factory(),
-    "redshift": sqla_redshift_factory(),
-    "tolerance": sqla_tolerance_factory(),
-    "efold_value": sqla_efold_factory(),
-    "delta_Nstar": sqla_delta_Nstar_factory(),
-    "N_init": sqla_N_init_factory(),
-    "N_final": sqla_N_final_factory(),
-    "n_collocation_points": sqla_n_collocation_points_factory(),
-    "alpha_regularization": sqla_alpha_regularization_factory(),
-    "inflaton_mass": sqla_dimensionful_quantity_factory(inflaton_mass),
-    "quartic_coupling": sqla_dimensionless_quantity_factory(quartic_coupling),
-    "phi_value": sqla_dimensionful_quantity_factory(phi_value),
-    "pi_value": sqla_dimensionful_quantity_factory(pi_value),
-    "QuadraticPotential": sqla_QuadraticPotential_factory(),
-    "QuarticPotential": sqla_QuarticPotential_factory(),
-    "MasslessDecoupledDiffusion": sqla_MasslessDecoupledDiffusion_factory(),
-    "IntegrationSolver": sqla_IntegrationSolver_factory(),
-    "InflatonTrajectory": sqla_InflatonTrajectory_factory(),
-    "InflatonTrajectoryValue": sqla_InflatonTrajectoryValue_factory(),
-    "CosmologicalParams": sqla_cosmological_params_factory(),
-    "FullInstanton": sqla_FullInstantonFactory(),
-    "FullInstantonValue": sqla_FullInstantonValue_factory(),
-    "GradientCoupledInstanton": sqla_GradientCoupledInstantonFactory(),
-    "GradientCoupledInstantonValue": sqla_GradientCoupledInstantonValue_factory(),
-    "GradientCoupledInstantonProfile": sqla_GradientCoupledInstantonProfileFactory(),
-    "SlowRollInstanton": sqla_SlowRollInstantonFactory(),
-    "SlowRollInstantonValue": sqla_SlowRollInstantonValue_factory(),
-    "CompactionFunction": sqla_CompactionFunctionFactory(),
-    "CompactionFunctionSamples": sqla_CompactionFunctionSamplesFactory(),
-}
-
 _FactoryMappingType = Mapping[str, SQLAFactoryBase]
 _TableMappingType = Mapping[str, sqla.Table]
 _InserterMappingType = Mapping[str, Callable]
 
-_drop_actions = {
-    "inflaton-trajectory":   ["InflatonTrajectoryValue", "InflatonTrajectory"],
-    "full-instanton":        ["FullInstantonValue", "FullInstanton"],
-    "slow-roll-instanton":   ["SlowRollInstantonValue", "SlowRollInstanton"],
-    "compaction-function":   ["CompactionFunctionSamples", "CompactionFunction"],
-    "gradient-coupled-instanton": [
-        "GradientCoupledInstantonValue",
-        "GradientCoupledInstantonProfile",
-        "GradientCoupledInstanton",
-    ],
-}
 _drop_order = [
     "compaction-function", "slow-roll-instanton", "full-instanton",
     "gradient-coupled-instanton", "inflaton-trajectory",

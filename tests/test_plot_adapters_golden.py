@@ -1009,7 +1009,7 @@ class _MultiClassStubPool:
 
     def object_get_vectorized(self, class_name, shard_key, payload_data):
         self.calls.append((class_name, shard_key, payload_data))
-        response = self._responses.get((class_name, shard_key))
+        response = self._responses.get((class_name, shard_key["delta_Nstar"]))
         if response is None:
             response = [None] * len(payload_data)
         return ray.put(response)
@@ -1044,7 +1044,7 @@ class TestFetchAdaptersOverGrid:
 
         assert len(rows) == 3
         assert len(pool.calls) == 4  # 2 classes x 2 distinct shards
-        called_pairs = {(c, s) for c, s, _ in pool.calls}
+        called_pairs = {(c, s["delta_Nstar"]) for c, s, _ in pool.calls}
         assert called_pairs == {
             ("FullInstanton", 5.0),
             ("SlowRollInstanton", 5.0),
@@ -1100,7 +1100,7 @@ class TestFetchAdaptersOverGrid:
 
         cf_calls = [c for c in pool.calls if c[0] == "CompactionFunction"]
         assert len(cf_calls) == 1
-        assert cf_calls[0][1] == 5.0  # only the shard with an available instanton
+        assert cf_calls[0][1]["delta_Nstar"] == 5.0  # only the shard with an available instanton
 
         full0, _ = rows[0]
         assert full0.radial_profile() is not None

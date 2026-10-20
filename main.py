@@ -29,6 +29,7 @@ from config.sharding import (
     read_table_config,
     replicated_tables,
     sharded_tables,
+    vectorized_shard_key,
 )
 from CosmologyConcepts import phi_value, pi_value
 from CosmologyModels.cosmo_params import CosmologicalParams
@@ -225,7 +226,7 @@ def _run_pipeline_queue(
         shard_keys,
         task_builder=lambda key: pool.object_get_vectorized(
             "FullInstanton",
-            key,
+            vectorized_shard_key(key),
             payload_data=[
                 {**key_fields(item), "_do_not_populate": True} for item in binned[key]
             ],
@@ -253,7 +254,7 @@ def _run_pipeline_queue(
         shard_keys,
         task_builder=lambda key: pool.object_get_vectorized(
             "SlowRollInstanton",
-            key,
+            vectorized_shard_key(key),
             payload_data=[
                 {**key_fields(item), "_do_not_populate": True} for item in binned[key]
             ],
@@ -320,7 +321,7 @@ def _run_pipeline_queue(
         cf_shard_keys,
         task_builder=lambda key: pool.object_get_vectorized(
             "CompactionFunction",
-            key,
+            vectorized_shard_key(key),
             payload_data=[
                 {**cf_key_fields(item), "_do_not_populate": True}
                 for item in cf_binned[key]
@@ -448,7 +449,7 @@ def _run_instanton_queue(
         shard_keys,
         task_builder=lambda key: pool.object_get_vectorized(
             cls_name,
-            key,
+            vectorized_shard_key(key),
             payload_data=[
                 {**key_fields(item), "_do_not_populate": True} for item in binned[key]
             ],
@@ -591,7 +592,7 @@ def _run_gradient_branch(
         fi_seed_shard_keys,
         task_builder=lambda key: pool.object_get_vectorized(
             "FullInstanton",
-            key,
+            vectorized_shard_key(key),
             payload_data=[_base_key_fields(item) for item in fi_seed_binned[key]],
         ),
         compute_handler=None,
@@ -870,7 +871,7 @@ def run_all_pipelines(
             fi_shard_keys_all,
             task_builder=lambda key: pool.object_get_vectorized(
                 "FullInstanton",
-                key,
+                vectorized_shard_key(key),
                 payload_data=[
                     {**key_fields(item), "_do_not_populate": True}
                     for item in fi_binned_all[key]
@@ -899,7 +900,7 @@ def run_all_pipelines(
             fi_shard_keys_all,
             task_builder=lambda key: pool.object_get_vectorized(
                 "SlowRollInstanton",
-                key,
+                vectorized_shard_key(key),
                 payload_data=[
                     {**key_fields(item), "_do_not_populate": True}
                     for item in fi_binned_all[key]
@@ -963,7 +964,7 @@ def run_all_pipelines(
             cf_shard_keys,
             task_builder=lambda key: pool.object_get_vectorized(
                 "CompactionFunction",
-                key,
+                vectorized_shard_key(key),
                 payload_data=[
                     {**cf_key_fields(item), "_do_not_populate": True}
                     for item in cf_binned[key]
@@ -1014,7 +1015,7 @@ def run_all_pipelines(
                 fi_shard_keys_missing,
                 task_builder=lambda key: pool.object_get_vectorized(
                     "FullInstanton",
-                    key,
+                    vectorized_shard_key(key),
                     payload_data=[key_fields(item) for item in fi_binned_missing[key]],
                 ),
                 compute_handler=None,
@@ -1040,7 +1041,7 @@ def run_all_pipelines(
                 fi_shard_keys_missing,
                 task_builder=lambda key: pool.object_get_vectorized(
                     "SlowRollInstanton",
-                    key,
+                    vectorized_shard_key(key),
                     payload_data=[key_fields(item) for item in fi_binned_missing[key]],
                 ),
                 compute_handler=None,

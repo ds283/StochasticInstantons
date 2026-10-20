@@ -20,6 +20,7 @@ import ray
 
 from ComputeTargets.FullInstanton import FullInstantonProxy
 from ComputeTargets.SlowRollInstanton import SlowRollInstantonProxy
+from config.sharding import vectorized_shard_key
 from plotting.adapters.base import InstantonAdapter
 from plotting.adapters.full import FullInstantonAdapter
 from plotting.adapters.slow_roll import SlowRollInstantonAdapter
@@ -125,7 +126,7 @@ def _cf_vectorized_fetch(
     if payload_data:
         fetched = ray.get(
             pool.object_get_vectorized(
-                "CompactionFunction", dns_val, payload_data=payload_data
+                "CompactionFunction", vectorized_shard_key(dns_val), payload_data=payload_data
             )
         )
         for i, cf in zip(valid_indices, fetched):
@@ -164,7 +165,7 @@ def fetch_over_grid(
             for i in indices
         ]
         refs[shard_key] = pool.object_get_vectorized(
-            class_name, shard_key, payload_data=payload_data
+            class_name, vectorized_shard_key(shard_key), payload_data=payload_data
         )
 
     shard_keys = list(refs.keys())

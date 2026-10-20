@@ -36,6 +36,7 @@ from config.sharding import (
     read_table_config,
     replicated_tables,
     sharded_tables,
+    vectorized_shard_key,
 )
 from CosmologyModels.cosmo_params import CosmologicalParams
 from CosmologyModels.params import Planck2018
@@ -696,10 +697,10 @@ def _generate_instanton_samples(
             for N_init_v, N_final_v in combos
         ]
         fi_refs[dns_val] = pool.object_get_vectorized(
-            "FullInstanton", dns_val, payload_data=payload_data
+            "FullInstanton", vectorized_shard_key(dns_val), payload_data=payload_data
         )
         sri_refs[dns_val] = pool.object_get_vectorized(
-            "SlowRollInstanton", dns_val, payload_data=payload_data
+            "SlowRollInstanton", vectorized_shard_key(dns_val), payload_data=payload_data
         )
 
     all_dns = list(fi_refs.keys())
@@ -732,7 +733,7 @@ def _generate_instanton_samples(
         cf_index_by_dns[dns_val] = valid_indices
         if cf_payload_data:
             cf_refs[dns_val] = pool.object_get_vectorized(
-                "CompactionFunction", dns_val, payload_data=cf_payload_data
+                "CompactionFunction", vectorized_shard_key(dns_val), payload_data=cf_payload_data
             )
 
     dns_with_cf = list(cf_refs.keys())

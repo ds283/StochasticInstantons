@@ -411,7 +411,7 @@ class TestCfVectorizedFetch:
         assert len(pool.calls) == 1
         class_name, shard_key, payload_data = pool.calls[0]
         assert class_name == "CompactionFunction"
-        assert shard_key == 5.0
+        assert shard_key["delta_Nstar"] == 5.0
         assert len(payload_data) == 2
         assert all(p["_do_not_populate"] is True for p in payload_data)
 
@@ -464,7 +464,7 @@ class TestFetchOverGridGeneric:
         assert result == ["result-for-1", "result-for-2", "result-for-3"]
         # One vectorized call per distinct shard key, not per item.
         assert len(pool.calls) == 2
-        shard_keys_called = {call[1] for call in pool.calls}
+        shard_keys_called = {call[1]["delta_Nstar"] for call in pool.calls}
         assert shard_keys_called == {"a", "b"}
         for _, _, payload_data in pool.calls:
             assert all(p["_do_not_populate"] is True for p in payload_data)

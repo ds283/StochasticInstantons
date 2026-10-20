@@ -4,7 +4,7 @@
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
-the pool is the package's, RayPoolKit G4 holds. U1–U9 ruled (2026-10-12),
+the pool is the package's, RayPoolKit G4 holds; 05 landed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -65,7 +65,7 @@ on any of them.
 | 02 | [Rehearse the start tree (RH0)](02-rehearse-the-start-tree.md) | **RH0**; §4.3's measurement for both modes; the `slow` baseline | Opus | ✍️ 2026-10-12; amended 2026-10-20 (U11, and after the second attempt) | ✅ 2026-10-20, third attempt (§5.12, §5.13) | `5868231` | [`02-rehearse-the-start-tree.md`](../../.documents/dk-and-rpk-migration/02-rehearse-the-start-tree.md) |
 | 03 | [Pin `raypoolkit` `v0.2.0`](03-pin-raypoolkit-v0.2.0.md) | the RayPoolKit pin | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-20 | `5396a3d` | [`03-pin-raypoolkit-v0.2.0.md`](../../.documents/dk-and-rpk-migration/03-pin-raypoolkit-v0.2.0.md) |
 | 04 | [Adopt `raypoolkit`](04-adopt-raypoolkit.md) | the RayPoolKit swap; `_default_store_handler`; **RayPoolKit G4** | Sonnet | ✍️ 2026-10-12 | ✅ 2026-10-20 | `ef13445` | [`04-adopt-raypoolkit.md`](../../.documents/dk-and-rpk-migration/04-adopt-raypoolkit.md) |
-| 05 | [Move SI's data out of the layer](05-move-si-data-out-of-the-layer.md) | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ✍️ 2026-10-20 | ⬜ | — | — |
+| 05 | [Move SI's data out of the layer](05-move-si-data-out-of-the-layer.md) | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ✍️ 2026-10-20 | ✅ 2026-10-20 | this commit | [`05-move-si-data-out-of-the-layer.md`](../../.documents/dk-and-rpk-migration/05-move-si-data-out-of-the-layer.md) |
 | 06 | [Prepare the `InflatonTrajectory` factories](06-prepare-the-inflaton-trajectory-factories.md) | **U4**, P17; closes `[inflaton-trajectory-prune-orphans-value-rows]` | Opus | ✍️ 2026-10-20 | ⬜ | — | — |
 | 07 | [Rehearse before the DatastoreKit swap (RH1)](07-rehearse-before-the-datastore-swap.md) | **RH1**, bitwise against RH0; the tag (**U7**) | Opus | ✍️ 2026-10-20 | ⬜ | — | — |
 | 08 | Pin `datastorekit` `v0.4.0` | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ⬜ | ⬜ | — | — |
@@ -114,12 +114,12 @@ before each dispatch:
 | **W4** | 04 | no other pool site changed (P7) | ✅ the plot scripts' diff is one import line each; the script gives 16 calls, all `constructs` |
 | **W5** | 04 | the prose naming the copy made true: `CLAUDE.md:95`, `ray-dispatch.md:99-106`, `FILE_MAP.md`, `INFRASTRUCTURE.md`, `architecture-summary.md` (P13) | ✅ `CLAUDE.md:101`, `ray-dispatch.md:101-105` (now `:101-112`), `FILE_MAP.md:31` and `:287`, `INFRASTRUCTURE.md:353`, `architecture-summary.md:27-28` and `:321`; the package's lines read at `v0.2.0`. Residue opened: `[pool-prose-stale-after-raypoolkit-adoption]` |
 
-| **M1** | 05 | `config/datastore.py`: `factories` (30), `drop_groups` (5), `serial_batch_sizes` (29), moved verbatim with their imports | ⬜ |
-| **M2** | 05 | the old layer imports them under its old names (`Datastore.py`, `ClientPool.py`); `_drop_order` and SI's fallback of 5 stay | ⬜ |
-| **M3** | 05 | `config.sharding.vectorized_shard_key`; the 15 vectorized gets pass its mapping (P8) | ⬜ |
-| **M4** | 05 | the four test stubs take the mapping (`test_plot_adapters_golden.py:1010`; `test_plot_extraction_golden.py:381`, `:450`, `:477`) | ⬜ |
-| **M5** | 05 | `tests/test_config_datastore.py` (the data, captured literally; the layer reads it) and `tests/test_vectorized_shard_key.py` (the helper; the `ast` count of 15) | ⬜ |
-| **M6** | 05 | `.documents/FILE_MAP.md`: the `Datastore.py` row, and a row for `config/datastore.py` (P13) | ⬜ |
+| **M1** | 05 | `config/datastore.py`: `factories` (30), `drop_groups` (5), `serial_batch_sizes` (29), moved verbatim with their imports | ✅ `config/datastore.py`: `factories` 30, `drop_groups` 5, `serial_batch_sizes` 29, `ast`-equal to the removed definitions; not formatted, so the blocks move verbatim |
+| **M2** | 05 | the old layer imports them under its old names (`Datastore.py`, `ClientPool.py`); `_drop_order` and SI's fallback of 5 stay | ✅ both layer files import them under the old names; each diff is the removed definitions and imports plus one added line; lint: the one baseline `F401` (`CosmologicalParams`), no new finding; `_drop_order` and the fallback of 5 stay |
+| **M3** | 05 | `config.sharding.vectorized_shard_key`; the 15 vectorized gets pass its mapping (P8) | ✅ `config.sharding.vectorized_shard_key`; 15 calls (`main.py` 10, plot script 3, `fetch.py` 2), one import line each; the `ast` test pins the 15 |
+| **M4** | 05 | the four test stubs take the mapping (`test_plot_adapters_golden.py:1010`; `test_plot_extraction_golden.py:381`, `:450`, `:477`) | ✅ five lines, not four stubs (`test_plot_adapters_golden.py:1012`, `:1047`, `:1103`; `test_plot_extraction_golden.py:414`, `:467`); the stubs at `:381`, `:450`, `:477` unchanged |
+| **M5** | 05 | `tests/test_config_datastore.py` (the data, captured literally; the layer reads it) and `tests/test_vectorized_shard_key.py` (the helper; the `ast` count of 15) | ✅ `tests/test_config_datastore.py` 7 tests, `tests/test_vectorized_shard_key.py` 3; the data is written from the capture, the layer's identity is asserted; breakages 1–5 caught |
+| **M6** | 05 | `.documents/FILE_MAP.md`: the `Datastore.py` row, and a row for `config/datastore.py` (P13) | ✅ `FILE_MAP.md`: the `Datastore.py` row, a `config/datastore.py` row, and `config/sharding.py`'s row naming `vectorized_shard_key` |
 | **I1** | 06 | `InflatonTrajectory`'s prune deletes its value rows first; the cascade map of `validate-on-startup.md` gains the row | ⬜ |
 | **I2** | 06 | the hook parameter `prune` in all 12 hooks (P17), and in the examples of `validate-on-startup.md` and `datastore-factories.md` | ⬜ |
 | **I3** | 06 | `register()`: `owner_column: "trajectory_serial"` on the value table, `validated_column: "validated"` on the trajectory | ⬜ |
@@ -167,6 +167,7 @@ Opened at planning, 2026-10-11, unless the row says otherwise.
 | `[unified-pipeline-stores-null-instanton-labels]` | *Opened 2026-10-12 at 01's review, from its Observation 2.* The unified pipeline (`--no-store-values`) constructs `FullInstanton` and `SlowRollInstanton` with no label (`ComputeTargets/pipeline.py:288-298`, `:304-314`), so they are stored with `label` NULL, where the per-stage queues store the factory's default (`Datastore/SQL/ObjectFactories/FullInstanton.py:149-155`, `SlowRollInstanton.py:148-154`). No science value differs and no reader fails, but the provenance footers read `label` (`plotting/provenance.py:46`), so a scalars-only store's figures lack it. `tools/compare_stores.py` treats the two columns as bookkeeping for this reason | unowned |
 | `[gci-picard-inner-fails-on-rehearsal-grid]` | *Opened 2026-10-20 at 02's first attempt (§5.12).* At the rehearsal grid (`quadratic-minimal.yaml`, `m = 10⁻⁵ M_P`, `n = 5`, `α = 0.01`, no wall-clock budget) none of the four `GradientCoupledInstanton` solves of the first wave (`δN★` = 0.1, 0.4222, 0.7444, 1.711) finished in 5 h 24 min at full CPU. Each worker's log shows only `Picard inner failed at lambda=…`, 85–105 times, with λ halved after each failure and the sign alternating between outer attempts. July's 315 s a solve at `δN★ = 1.0` (`.documents/gradient-coupled-instanton/24-phase-a-deep-dive.md:43`) was measured at an older tree. Not investigated here: the gradient code is P3's, and the rehearsals no longer build it (U11). The workers' logs are kept in the orchestrator's scratchpad of 2026-10-20 only; the first attempt's store and log are under `$REHEARSAL_ROOT/02-attempt-1-aborted/` | P3 |
 | `[pool-prose-stale-after-raypoolkit-adoption]` | *Opened 2026-10-20 at 04 (§5.16).* Two statements 04 leaves, both outside its §5 list: (1) `ComputeTargets/GradientCoupledInstanton/picard.py:450-456`, a July comment (`b5a3a9f`), says `RayTools/RayWorkPool.py` is protected infrastructure (`CLAUDE.md`) and has no per-task timeout hook; the path is gone and the pool is no longer SI's to protect, though the substance holds (no `timeout` or `cancel` in `raypoolkit/RayWorkPool.py` at `v0.2.0`); a `ComputeTargets/` edit would also widen the suites to the `slow` block. (2) The constructor sketches at `.documents/INFRASTRUCTURE.md:357-373` and `.documents/architecture-summary.md:328-344` give `create_batch_size=10`, `process_batch_size=10`, `max_task_queue=50` as defaults; the defaults of the copy and of the package are both 5, 1 and 200 (`DEFAULT_*`, `:26-29`). Wrong before 04, not made false by it | 12 |
+| `[config-datastore-cannot-be-imported-before-the-layer]` | *Opened 2026-10-20 at 05 (§5.17).* A fresh `import config.datastore` fails with `ImportError: cannot import name 'serial_batch_sizes' from partially initialized module 'config.datastore'`. `Datastore/SQL/__init__.py` is `from .Datastore import Datastore`, so importing any `Datastore.SQL.*` module runs the layer, which imports `Datastore/SQL/ClientPool.py`, which imports `config.datastore`, which imports the factories inside that package. No order of the three definitions or the imports avoids it, and breaking it means emptying `Datastore/SQL/__init__.py`, which is 09's (P6). **Impact: none today.** Every driver, actor and test imports the layer first. One test meets it silently: `tests/test_compare_stores.py:938-945`'s `_registry()` tries `from config.datastore import factories` and falls back, on `ImportError`, to `from Datastore.SQL.Datastore import _factories`, which returns the same object; the fallback would also hide a genuine `ImportError` in the module. Bare `import Datastore` and `import plotting.fetch` do not load the layer, so they do not serve either. **Next step:** 09 deletes the layer and empties the two `__init__.py` files (P6); its acceptance should include a fresh `./venv/bin/python -I -c "import config.datastore"`, and the test's fallback can go with it. ChamPBH met the same cycle at its 05 | 09 |
 
 ## 4. Resolved issues
 
@@ -943,3 +944,40 @@ in this follow-up; nothing more is opened.
     `:1089`; compute sites `:385`, `:493`, `:717`, `:1089`), and 04 moved none but by deletion.
   - RH1 (07) is the first run of `raypoolkit` under real Ray, held to bitwise equality with RH0.
   - The suites start from 680 and 61.
+
+### 5.17 After prompt 05 (2026-10-20)
+
+- **Landed:** this commit, results note
+  [`05-move-si-data-out-of-the-layer.md`](../../.documents/dk-and-rpk-migration/05-move-si-data-out-of-the-layer.md).
+  **COMPLETE:** M1–M6 hold; no stop condition of the prompt's §4 was met. (The prompt does not name this section; it is
+  the next free number after §5.16.)
+- **M1, M2.** `config/datastore.py` holds `factories` (30, in order), `drop_groups` (5) and `serial_batch_sizes` (29, `redshift`
+  and `temperature` included). The three literals are `ast`-equal to the definitions removed from the layer, and every removed
+  line but the three binding lines is verbatim in the new file. `Datastore/SQL/Datastore.py` loses 101 lines and gains one
+  (`from config.datastore import factories as _factories, drop_groups as _drop_actions`); `ClientPool.py` loses 32 and gains one.
+  `_drop_order`, SI's fallback of 5, `register_factories(_factories)` and the method `_drop_actions` are unchanged. The lint
+  (`F401,F811,F821`) is the one baseline finding before and after, `CosmologicalParams` unused (`Datastore.py:35`, now `:29`), which
+  stays.
+- **The data, captured** (the gate's `HEAD`, from the layer): 30 registry entries with the four quantity entries' held classes,
+  five drop groups, `_drop_order`, 29 sizes. `tests/test_config_datastore.py` is written from that output literally.
+- **M3, M4.** `config.sharding.vectorized_shard_key`; the 15 calls pass `vectorized_shard_key(<key>)`; an `ast` test finds 15.
+  M4 was five test lines (one stub's lookup, four assertions), as the orchestrator's brief measured.
+- **§2.1.3 (for 09).** Registered with no size: `version`, `InflatonTrajectoryValue`; a size and no table: `temperature`. No table
+  leases a serial under SI's fallback of 5 (not even `version`, which the lease guard excludes). Three tables carry a size of 500
+  and register `"serial": False` (`FullInstantonValue`, `SlowRollInstantonValue`, `GradientCoupledInstantonValue`), so their sizes
+  are never read. All move verbatim.
+- **The schema** of a store built at the staged tree with SI's `ShardedPool` (two shards, nothing stored) agrees with RH0's
+  `reference`: `RESULT: the schemas agree`, exit 0. The snapshot is `out/05-temp-schema.json`.
+- **The import cycle.** A fresh `import config.datastore` fails; imported after any `Datastore.SQL.*` module it works. Measured
+  in `python -I` processes; bare `import Datastore` and `import plotting.fetch` do not load the layer and do not serve (a refinement of
+  the brief). Opened: `[config-datastore-cannot-be-imported-before-the-layer]` (§3, owner 09; `OPEN-ISSUES.md` 61 to 62).
+- **Breakages** (README §5 rule 8), all caught and recorded as diffs: a vectorized get on the bare key (the `ast` test, naming
+  `plotting/fetch.py:167`); a batch size 500 to 400 (two tests, one naming `FullInstantonValue`); `inflaton_mass` given `phi_value`
+  (the registry test); the layer given a copy of the registry (the identity test alone, the data tests passing); a stub's lookup on
+  the bare key (`TypeError: unhashable type: 'dict'`, three tests).
+- **Suites:** 690 (689 passed, 1 skipped) and 61 (60 passed, 1 skipped): 04's 680 plus the 10 new tests, and 04's 61. The `slow`
+  block is not run (the diff touches none of its paths). No driver ran; the only Ray was the schema build's private instance and
+  the integration suite's.
+- **Rollback:** `git revert` of this commit. The venv is untouched.
+- **Deviations:** the import cycle (structurally required, not a stop), the filesystem walk and subprocess forms the brief allowed,
+  the unformatted new module, three extra tests, the long lines; see the results note. None is drift.

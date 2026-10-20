@@ -9,6 +9,14 @@ def get_shard_key_store_id(obj) -> int:
     return obj.shard_key.store_id
 
 
+def vectorized_shard_key(key) -> dict:
+    """The shard key of a vectorized get, in the mapping form both layers take."""
+    # The field name is the value of ``sharded_tables`` for every sharded class
+    # (it is ``"delta_Nstar"`` throughout). DatastoreKit's ``object_get_vectorized``
+    # accepts only this mapping form, never the bare key, so every caller goes through here.
+    return {"delta_Nstar": key}
+
+
 # Tables replicated identically across all shards.
 # delta_Nstar must be in this list: ShardedPool._get_impl_replicated_table()
 # triggers _assign_shard_keys() when it sees ShardKeyType.__name__ here.
