@@ -4,7 +4,7 @@
 pools built by the `datastorekit` package with SI's registry and batch sizes; `--drop` groups turned into
 tables and refused before Ray when not closed (U5); `--inventory` refused before Ray until 10 (P11); the
 harness and the named tests rebuilt on the package; the prose this commit makes false corrected
-**Commit:** this commit, on branch `dk-and-rpk-migration`, on top of `597730f`
+**Commit:** `f4da58f`, on branch `dk-and-rpk-migration`, on top of `597730f`
 **Date:** 2026-10-21, by Claude Opus 5.5
 **Result:** **COMPLETE.** A1–A9 hold. The 7 layer modules (2,546 lines) are deleted and the two
 `__init__.py` are empty; by DatastoreKit's own script at a dangling commit of the staged tree, 0 import
@@ -526,7 +526,7 @@ files: `ruff format`, then `ruff check --select F401,F811,F821,F541`: clean.
 Each was applied with `git apply` to the clean change (the working tree that this commit records), the named
 test run, then reverted with `git apply -R`; after each, `git diff --quiet` of the file against the staged change
 held, and after all six the staged and unstaged diffs were byte-identical to those saved before the first. Each is
-recorded as `diff -u` labelled `a/` and `b/`, so that `git apply` replays it from a clean tree at this commit.
+recorded as `diff -u` labelled `a/` and `b/`, so that `git apply` replays it from a clean tree at `f4da58f`.
 (`git apply --check` and `-R --check` after the commit are in the hand-off, since a commit cannot record its own
 check.)
 
@@ -774,7 +774,7 @@ to connect to `127.0.0.1:9` first and wait out the timeout, as breakage 4 shows.
 
 ## State handed to the next prompt
 
-- **Branch** `dk-and-rpk-migration`, this commit on `597730f`. Deleted: the 7 layer modules. Emptied:
+- **Branch** `dk-and-rpk-migration`, `f4da58f` on `597730f`. Deleted: the 7 layer modules. Emptied:
   `Datastore/__init__.py`, `Datastore/SQL/__init__.py`. One import line each: the 22 factory modules, the two
   registries, the 12 concept modules, the 5 compute targets and `CosmologyModels/cosmo_params.py`. Changed:
   `main.py`, both plot scripts, `config/datastore.py`, `tests/conftest.py`, `tests/test_config_datastore.py`,
@@ -787,7 +787,7 @@ to connect to `127.0.0.1:9` first and wait out the timeout, as breakage 4 shows.
 - **SI imports no layer of its own.** Every pool is `datastorekit.SQL.ShardedPool`, given
   `factories=config.datastore.factories` and `serial_batch_sizes=config.datastore.serial_batch_sizes`;
   `main.py`'s also `drop_tables=config.datastore.tables_to_drop(args.drop)`. `config.datastore` imports alone.
-  Every SI store written before this commit is unreadable by the tree (README §7).
+  Every SI store written before `f4da58f` is unreadable by the tree (README §7).
 - **Suites:** default **707** (706 passed, 1 skipped), integration **63** (62 passed, 1 skipped), `slow` **69
   passed**. By module: 08's, with `test_config_datastore.py` 7 → 6 and the new `test_tables_to_drop.py` 9,
   `test_main_refusals.py` 3 (default) and `test_datastorekit_timestamp.py` 1 (integration).
@@ -825,5 +825,5 @@ to connect to `127.0.0.1:9` first and wait out the timeout, as breakage 4 shows.
   under the scratch directory, deleted). DatastoreKit (`38ebb9f`), RayPoolKit, ChamPBH and SGK are untouched.
 - **Closed:** `[config-datastore-cannot-be-imported-before-the-layer]` (board §4; `.documents/OPEN-ISSUES.md`
   §7; 60 open, 27 closed). Nothing opened. The README and `.prompts/INDEX.md` are the orchestrator's.
-- **Rollback:** `git revert` of this commit alone; the venv needs nothing (README §4.4). The revert makes any
+- **Rollback:** `git revert` of `f4da58f` alone; the venv needs nothing (README §4.4). The revert makes any
   store written through the package unreadable by the tree again (none exists but temporary ones).

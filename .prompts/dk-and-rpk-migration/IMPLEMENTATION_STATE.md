@@ -4,7 +4,7 @@
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
-the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package; 09 landed (§5.22): SI's layer deleted, every pool the package's, U5's drop policy before Ray, `--inventory` refused until 10, `[config-datastore-cannot-be-imported-before-the-layer]` closed. U1–U9 ruled (2026-10-12),
+the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package; 09 landed and reviewed (§5.22): SI's layer deleted, every pool the package's, U5's drop policy before Ray, `--inventory` refused until 10, `[config-datastore-cannot-be-imported-before-the-layer]` closed. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -69,7 +69,7 @@ on any of them.
 | 06 | [Prepare the `InflatonTrajectory` factories](06-prepare-the-inflaton-trajectory-factories.md) | **U4**, P17; closes `[inflaton-trajectory-prune-orphans-value-rows]` | Opus | ✍️ 2026-10-20 | ✅ 2026-10-20 | `5e41ce8` | [`06-prepare-the-inflaton-trajectory-factories.md`](../../.documents/dk-and-rpk-migration/06-prepare-the-inflaton-trajectory-factories.md) |
 | 07 | [Rehearse before the DatastoreKit swap (RH1)](07-rehearse-before-the-datastore-swap.md) | **RH1**, bitwise against RH0; the tag (**U7**) | Opus | ✍️ 2026-10-20 | ✅ 2026-10-21 (§5.19) | `0527480`, tagged `pre-datastorekit` | [`07-rehearse-before-the-datastore-swap.md`](../../.documents/dk-and-rpk-migration/07-rehearse-before-the-datastore-swap.md) |
 | 08 | [Pin `datastorekit` `v0.4.0`](08-pin-datastorekit-v0.4.0.md) | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.21) | `1b1ca6d` | [`08-pin-datastorekit-v0.4.0.md`](../../.documents/dk-and-rpk-migration/08-pin-datastorekit-v0.4.0.md) |
-| 09 | [Adopt `datastorekit`](09-adopt-datastorekit.md) | the DatastoreKit swap; **U5**; closes `[config-datastore-cannot-be-imported-before-the-layer]` | Opus | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.22) | this commit | [`09-adopt-datastorekit.md`](../../.documents/dk-and-rpk-migration/09-adopt-datastorekit.md) |
+| 09 | [Adopt `datastorekit`](09-adopt-datastorekit.md) | the DatastoreKit swap; **U5**; closes `[config-datastore-cannot-be-imported-before-the-layer]` | Opus | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.22) | `f4da58f` | [`09-adopt-datastorekit.md`](../../.documents/dk-and-rpk-migration/09-adopt-datastorekit.md) |
 | 10 | [Port the inventory](10-port-the-inventory.md) | **U6**, **U8**; `inventory_spec`, `tools/inventory_report.py`; closes `[show-all-flag-unused]` | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
 | 11 | [Rehearse through both packages (RH2)](11-rehearse-through-both-packages.md) | **RH2**, bitwise against RH1; **DatastoreKit G4** | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
 | 12 | Close the migration | `CLAUDE.md`, rules, documents, handover to P2, close | Sonnet | ⬜ | ⬜ | — | — |
@@ -96,6 +96,7 @@ before each dispatch:
 - [`prompt-06.md`](orchestrator/prompt-06.md) — used for 06 (`a8cb166`).
 - [`prompt-07.md`](orchestrator/prompt-07.md) — used for 07 (`9214c9b`).
 - [`prompt-08.md`](orchestrator/prompt-08.md) — used for 08 (`7ef06ad`).
+- [`prompt-09.md`](orchestrator/prompt-09.md) — used for 09 (`597730f`).
 
 ### 1.1 Items
 
@@ -1431,7 +1432,7 @@ Nothing opened or closed, so `.documents/OPEN-ISSUES.md` is unchanged.
 
 ### 5.22 After prompt 09 (2026-10-21)
 
-- **Landed:** this commit, results note
+- **Landed:** `f4da58f`, results note
   [`09-adopt-datastorekit.md`](../../.documents/dk-and-rpk-migration/09-adopt-datastorekit.md).
   **COMPLETE:** A1–A9 hold; no stop condition met; `[config-datastore-cannot-be-imported-before-the-layer]`
   closed (§4); nothing opened.
@@ -1467,8 +1468,97 @@ Nothing opened or closed, so `.documents/OPEN-ISSUES.md` is unchanged.
   closure check, `factories=` in `live_pool`, the refusal's order).
 - **Inherited hazard, recorded:** the only closed set with `inflaton-trajectory` (all five) drops a replicated
   table: DatastoreKit's `[00-a-drop-action-drops-a-replicated-table-outside-the-in-flight-record]`.
-- **Rollback:** `git revert` of this commit alone; nothing in the venv (README §4.4).
+- **Rollback:** `git revert` of `f4da58f` alone; nothing in the venv (README §4.4).
 - **Deviations:** the board section and greps as the brief corrected; the grid-builder test by `sqlite3`
   (correction 3); §1.8's `-I` command cannot see the root, so the import was run with `PYTHONPATH` and with `-I`
   plus an explicit `sys.path` entry; the pools import the two objects by name; U3's test is one test of both
   objects; one new test fixed before the suites were recorded. None unintended.
+
+**Orchestrator review of prompt 09 (2026-10-21)**, by orchestrator note
+[`prompt-09.md`](orchestrator/prompt-09.md), at `f4da58f`. All twelve checks pass. The residue is fixed in this
+follow-up (records only); nothing is opened.
+- **(1) Scope.** 73 files: the 7 layer modules deleted and the two `__init__.py` emptied, the 42 one-line import
+  rewrites, the drivers, `config/datastore.py`, `conftest.py` and the four named test modules, three new test
+  modules, the prose of §1.7, `out/09-temp-schema.json`, the results note, the board and `OPEN-ISSUES.md`;
+  nothing else. One commit of the agent's on `597730f`, no amend in the reflog, no leftover branch; `git status`
+  clean; no ignored `.pyc` of a deleted module; no file in the tree newer than the note but the commit's own and
+  `ruff`'s cache. (The agent's session hit an API limit before its suites and was resumed by message; its tree
+  was intact, and it ran the suites, the breakages and the commit after.)
+- **(2) DatastoreKit's script at `f4da58f`**, from its root: the 7 layer files absent, **0** imports, **0**
+  literals, **0** `import_module`, 25 factory-module imports, 197 files read (194 + the 3 new tests); both
+  `__init__.py` 0 bytes. `git grep` for the dotted layer names outside `.prompts/` and `.documents/`: no hit at
+  all.
+- **(3) By `ast`**, every `ImportFrom` mapped by the module map: the 42 files of §1.2 other than the drivers,
+  `conftest.py` and `test_compare_stores.py` are identical to `597730f`'s, docstrings included. The factory
+  package's diff is the 22 import lines and `base.py`'s deletion, nothing else. (The note's "42 of the 48 files"
+  counts the 47 files of §1.2's statements and `test_inflaton_trajectory_prune.py`, whose layer use was an
+  `import_module`.)
+- **(4) The drivers.** `main.py`'s top level, by `ast` with the seven inventory functions set aside: one import
+  added, two changed (the package's `ProfileAgent` and `ShardedPool`), the `--inventory` `If` and the `--drop`
+  `Try` inserted after the provenance print and before `ray.init`, and the `With` changed (`drop_tables=`,
+  `factories=`, `serial_batch_sizes=`; `drop_actions=`, `inventory_config=` and the `if args.inventory` branch
+  gone); nothing else. Each plot script: the `config.datastore` import, `inventory_config` out, the package's
+  `ShardedPool`, and its pool's arguments.
+- **(5) U5, replayed.** `tables_to_drop` over all 31 subsets: its decisions equal the pre-dispatch measurement
+  with `dependent_tables` on 31 of 31 (10 closed); for every refusal, the groups it names are not among those
+  requested, and adding them closes the set. `main.py` with `--inventory`, `--drop full-instanton` and `--drop
+  inflaton-trajectory`, address `127.0.0.1:9`: the provenance line, the refusal on stderr, exit 2, no file. With
+  `--drop compaction-function` it passes the check and waits on Ray until the timeout, creating nothing. No Ray
+  process after.
+- **(6) The changed tests**, by `ast` with docstrings stripped, against `597730f`: `conftest.py` the imports and
+  `live_pool`'s arguments; `test_config_datastore.py` the two `import_module` lines and two layer tests gone,
+  the `ast` pool test and its helpers added, the no-Ray test's code string; `test_inflaton_trajectory_prune.py`
+  the `:53` import and I6's script alone (I6's body unchanged); `test_compare_stores.py` `_registry` alone;
+  `test_grid_builder_integration.py` `test_no_duplicate_rows_created` alone, plus a shard-reading helper. No
+  other existing test module changed.
+- **(7) The new tests**, read. Licence headers. `test_tables_to_drop.py` decides all 31 sets and pins the three
+  messages, its no-Ray check in a fresh process; `test_main_refusals.py` runs `main.py` with a dead address and
+  `RAY_ADDRESS` set to it, a 120 s timeout, and checks the order by `ast`; `test_datastorekit_timestamp.py` is
+  `integration`-marked, says why, and compares each fetched `timestamp` with the `timestamp` column of the row
+  whose `serial` is the object's `store_id`, read `mode=ro` from the shard files (every shard for the
+  `delta_Nstar`, the one holding it for the `FullInstanton`). The `ast` pool test accepts a bare imported name
+  or `config.datastore.<name>`, and refuses `**kwargs`.
+- **(8) The breakages**, extracted from the results note and replayed in `bash`: each `--check`s, applies,
+  `-R --check`s and reverts. 1: `ModuleNotFoundError: … 'Datastore.SQL.ObjectFactories.base'` loading the
+  conftest; 2: the U3 test, `timestamp` `None` on the `FullInstanton`; 3: I6's reopen fails with the package's
+  "the prune of "InflatonTrajectory" on shard 0 … did not take"; 4: the three singleton tests and the 31-set test;
+  5: `TypeError … missing … 'factories'` at `live_pool`'s setup, and the `ast` test names `tests/conftest.py:60: no
+  factories=`; 6: "the --inventory refusal (line 113) must precede ray.init (line 109)". Tree clean after.
+- **(9) Without Ray and the schema.** `config.datastore` imported alone from outside the root (`PYTHONPATH`):
+  30 entries, 28 classes, every one an instance of the package's `SQLAFactoryBase`, no layer module loaded, no
+  Ray. `sharded_store --help` exits 0; the three drivers byte-compile. A two-shard store rebuilt through the
+  package's pool at `f4da58f`: "the schemas agree" against `out/09-temp-schema.json`, `07-reference-schema.json`
+  and the pre-dispatch prototype's store.
+- **(10) The suites.** The agent's 707, 63 and `slow` 69, at loads 6–20. The orchestrator re-ran at `f4da58f`
+  (18:56 BST, load 18–23): default **707 (706 passed, 1 skipped)**, 31.1 s; integration **63 (62 passed, 1
+  skipped)**, 31.5 s. `slow` was not re-run: the agent's 69 and the pre-dispatch prototype's 69 agree, and S1's
+  bar is met. `ruff check --select F401,F811,F821` on the 56 Python files the commit adds or modifies: 33 at the
+  gate, 31 now, none new; the two gone are the emptied `__init__.py`.
+- **(11) Hygiene.** `pip freeze` equals the dispatch copy; `pip check` clean. DatastoreKit `38ebb9f` and
+  RayPoolKit `17029d9`, clean. The 17 store files and the 835 `~/ScienceData/` entries keep their mtimes and
+  sizes. No Ray process; the lock free.
+- **(12) The records.** `CLAUDE.md`'s protected list loses its six layer files and the `Datastore.py` sentence
+  becomes the package's; `pool-read-apis.md` says there is no `pool.inventory()` and names `read_inventory` from
+  10; `datastore-factories.md` describes the package's recorded replicated write and its check at open, the rule
+  kept; both shard-key notes carry a status line (`_assign_shard_keys` at `ShardedPool.py:3618`, `:3626`,
+  `:3674` at `v0.4.0`, checked); `FILE_MAP.md`'s rows; `config/datastore.py`'s docstring. The results note
+  follows README §5.1 with the prompt's §6 additions and the stale list for 12. The board and `OPEN-ISSUES.md`
+  (60 open, 27 closed, 2026-10-21) as the prompt asks.
+  - *Residue, fixed here:* "this commit" → `f4da58f` (board ×3, results note ×5); the header's "09 landed" reads
+    "landed and reviewed"; this note added to the list of orchestrator notes; the campaign's line in
+    `.prompts/INDEX.md` (09 landed and reviewed; the issue closed; 8 → 7 open).
+- **The deviations are accepted.** The agent's account of §1.8 is right: `python -I` ignores `PYTHONPATH`, so the
+  prompt's literal command cannot see the root; the import was shown both with `PYTHONPATH` and with `-I` and the
+  root inserted in code.
+- **Handed on.**
+  - **To 10:** the suites start from 707 and 63. U5's table is pinned by `tests/test_tables_to_drop.py` and may move
+    when `inventory_spec`s add parents (`dependent_tables` reads them); re-measure and change the test with a
+    named reason. `--inventory`'s refusal and its two tests in `tests/test_main_refusals.py` are 10's to replace.
+    `config/sharding.py:78` and `:97` and the 17 `inventory()` hooks are still there.
+  - **To 11:** a pruning reopen now prints the package's `!! INTEGRITY WARNING … pruned by the pool under a
+    "prune" record` and `>> Pruned the unvalidated rows of …` lines beside the factories' own; a new primary holds
+    `replication_in_flight`; the provenance line is 08's.
+  - **To 12:** the stale list of the results note (`INFRASTRUCTURE.md`, `architecture-summary.md`,
+    `tools/compare_stores.py:39`, `:94`, `:115`, `:116`, `tests/test_rehearsal_stage_counts.py:26`, three comments in
+    `ObjectFactories/InflatonTrajectory.py`), and `pool-read-apis.md`'s claim that `config/sharding.py` is on
+    `CLAUDE.md`'s protected list, which it never was.
