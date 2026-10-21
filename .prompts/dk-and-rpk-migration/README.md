@@ -1332,7 +1332,8 @@ U4–U7 on 2026-10-12 and gave no ruling on any of P1–P19, so all nineteen sta
   fingerprint can see both of `GradientCoupledInstanton`'s child tables (U8). DatastoreKit's
   `fingerprint` plan left this out of `v0.4.0` explicitly, "until SI's prompt 10 settles it and
   the user asks" (its README §1, out of scope), so a request would be a new DatastoreKit release
-  and a new pin prompt here (§5 rule 11).
+  and a new pin prompt here (§5 rule 11). *Asked 2026-10-21, after 10's review: the request is
+  [`datastorekit-second-value-table-brief.md`](datastorekit-second-value-table-brief.md) (board §5.24).*
 - **At 07:** pushing the tag.
 - **At the close:**
   - removing the rehearsal stores (§3);
