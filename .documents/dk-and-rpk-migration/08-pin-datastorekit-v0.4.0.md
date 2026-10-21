@@ -1,7 +1,7 @@
 # 08 — pin `datastorekit` `v0.4.0`
 
 **Subject:** Pin `datastorekit` `v0.4.0` in `requirements.txt`, install the venv from it, and check on the installed package what SI needs of the release
-**Commit:** the commit that adds this note, on branch `dk-and-rpk-migration`, on top of `7ef06ad`
+**Commit:** `1b1ca6d`, on branch `dk-and-rpk-migration`, on top of `7ef06ad`
 **Date:** 2026-10-21, by Claude Sonnet 5.5
 **Result:** **COMPLETE.** K4–K7 hold. The venv gained one distribution, `datastorekit` 0.4.0, built
 from the tag's commit `c8570e849334d09085bbd84876095fc9e22bd005`; its 21 modules are the tag's, byte
@@ -281,7 +281,7 @@ the 30-entry instantiation.
   `validate_on_startup`, 16 none) instantiate on the installed base.
 - **Suites:** 696 (695 passed, 1 skipped) and 62 (61 passed, 1 skipped); `slow` baseline 69 of 69 (02's
   S1), not run.
-- **Rollback:** `git revert` of this commit plus `./venv/bin/pip uninstall -y datastorekit` (README
+- **Rollback:** `git revert` of `1b1ca6d` plus `./venv/bin/pip uninstall -y datastorekit` (README
   §4.4); the revert alone does not touch the venv.
 - No Ray cluster is up; the rehearsal lock is untouched; no store was opened. No issue is opened, so
   `.documents/OPEN-ISSUES.md` is unchanged. `.prompts/INDEX.md` is the orchestrator's.

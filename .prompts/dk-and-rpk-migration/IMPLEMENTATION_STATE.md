@@ -1,10 +1,10 @@
 # dk-and-rpk-migration campaign — implementation state
 
-**Last updated:** 2026-10-21 (after 08) · **Status: LIVE — 12 of 13 prompts written (01–11, 01a), 01 and 01a
+**Last updated:** 2026-10-21 · **Status: LIVE — 12 of 13 prompts written (01–11, 01a), 01 and 01a
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
-the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package. U1–U9 ruled (2026-10-12),
+the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -68,7 +68,7 @@ on any of them.
 | 05 | [Move SI's data out of the layer](05-move-si-data-out-of-the-layer.md) | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ✍️ 2026-10-20 | ✅ 2026-10-20 | `875cf41` | [`05-move-si-data-out-of-the-layer.md`](../../.documents/dk-and-rpk-migration/05-move-si-data-out-of-the-layer.md) |
 | 06 | [Prepare the `InflatonTrajectory` factories](06-prepare-the-inflaton-trajectory-factories.md) | **U4**, P17; closes `[inflaton-trajectory-prune-orphans-value-rows]` | Opus | ✍️ 2026-10-20 | ✅ 2026-10-20 | `5e41ce8` | [`06-prepare-the-inflaton-trajectory-factories.md`](../../.documents/dk-and-rpk-migration/06-prepare-the-inflaton-trajectory-factories.md) |
 | 07 | [Rehearse before the DatastoreKit swap (RH1)](07-rehearse-before-the-datastore-swap.md) | **RH1**, bitwise against RH0; the tag (**U7**) | Opus | ✍️ 2026-10-20 | ✅ 2026-10-21 (§5.19) | `0527480`, tagged `pre-datastorekit` | [`07-rehearse-before-the-datastore-swap.md`](../../.documents/dk-and-rpk-migration/07-rehearse-before-the-datastore-swap.md) |
-| 08 | [Pin `datastorekit` `v0.4.0`](08-pin-datastorekit-v0.4.0.md) | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.21) | the commit that adds the note | [`08-pin-datastorekit-v0.4.0.md`](../../.documents/dk-and-rpk-migration/08-pin-datastorekit-v0.4.0.md) |
+| 08 | [Pin `datastorekit` `v0.4.0`](08-pin-datastorekit-v0.4.0.md) | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.21) | `1b1ca6d` | [`08-pin-datastorekit-v0.4.0.md`](../../.documents/dk-and-rpk-migration/08-pin-datastorekit-v0.4.0.md) |
 | 09 | [Adopt `datastorekit`](09-adopt-datastorekit.md) | the DatastoreKit swap; **U5**; closes `[config-datastore-cannot-be-imported-before-the-layer]` | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
 | 10 | [Port the inventory](10-port-the-inventory.md) | **U6**, **U8**; `inventory_spec`, `tools/inventory_report.py`; closes `[show-all-flag-unused]` | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
 | 11 | [Rehearse through both packages (RH2)](11-rehearse-through-both-packages.md) | **RH2**, bitwise against RH1; **DatastoreKit G4** | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
@@ -95,6 +95,7 @@ before each dispatch:
 - [`prompt-05.md`](orchestrator/prompt-05.md) — used for 05 (`818f8fa`; one claim corrected by the agent, §5.17).
 - [`prompt-06.md`](orchestrator/prompt-06.md) — used for 06 (`a8cb166`).
 - [`prompt-07.md`](orchestrator/prompt-07.md) — used for 07 (`9214c9b`).
+- [`prompt-08.md`](orchestrator/prompt-08.md) — used for 08 (`7ef06ad`).
 
 ### 1.1 Items
 
@@ -1357,7 +1358,7 @@ Nothing opened or closed, so `.documents/OPEN-ISSUES.md` is unchanged.
 
 ### 5.21 After prompt 08 (2026-10-21)
 
-- **Landed:** the commit that adds the results note
+- **Landed:** `1b1ca6d`, results note
   [`08-pin-datastorekit-v0.4.0.md`](../../.documents/dk-and-rpk-migration/08-pin-datastorekit-v0.4.0.md).
   **COMPLETE:** K4–K7 hold; no code or test changed; no issue opened, so
   `.documents/OPEN-ISSUES.md` is unchanged.
@@ -1378,8 +1379,52 @@ Nothing opened or closed, so `.documents/OPEN-ISSUES.md` is unchanged.
   instantiate on it; 12 classes define all of `store`, `validate`, `validate_on_startup`, 16 none, 0
   some.
 - **Suites:** 696 (695 passed, 1 skipped) and 62 (61 passed, 1 skipped), unchanged from 07.
-- **Rollback:** `git revert` of the commit **plus** `./venv/bin/pip uninstall -y datastorekit`
+- **Rollback:** `git revert` of `1b1ca6d` **plus** `./venv/bin/pip uninstall -y datastorekit`
   (README §4.4). The venv is outside git, so the revert alone leaves the package installed (inert
   until 09 imports it).
 - **Deviations:** the board section number, the pin's line number and the suites' commands, as the
   orchestrator's brief corrected; none unintended.
+
+**Orchestrator review of prompt 08 (2026-10-21)**, by orchestrator note
+[`prompt-08.md`](orchestrator/prompt-08.md), at `1b1ca6d`. All ten checks pass. The residue is fixed in this follow-up
+(records only); nothing is opened.
+- **(1) Scope.** 3 files: `requirements.txt`, the results note and the board. One commit of the agent's on `7ef06ad`, no amend
+  in the reflog; `git status` clean; no untracked file.
+- **(2) K4.** One added line at `:16`, between `cycler==0.12.1` and `distlib==0.4.3`; 73 lines.
+- **(3) The freeze, read from the venv.** Against the committed `measure/out/7bb3efd-pip-freeze.txt`: exactly two added lines,
+  03's `raypoolkit` and `datastorekit @ git+https://github.com/ds283/DatastoreKit@c8570e849334d09085bbd84876095fc9e22bd005`;
+  against the pre-dispatch copy, the `datastorekit` line alone. `pip check` clean. `raypoolkit`'s 16 files keep their
+  pre-dispatch mtimes and sizes (re-resolved, not reinstalled). site-packages differs from the pre-dispatch listing by
+  `datastorekit/` and `datastorekit-0.4.0.dist-info/` only. pip is still 26.0.1.
+- **(4) The origin.** `direct_url.json`, read in site-packages: `url` `https://github.com/ds283/DatastoreKit`, `commit_id`
+  `c8570e849334…`, `requested_revision` `v0.4.0`, `vcs` `git`, no `dir_info`. `INSTALLER` is `pip`; the only `.pth` is
+  `_virtualenv.pth`; no `__editable__` or `.egg-link`.
+- **(5) The files.** The tag's archive against the installed package, `__pycache__` aside: the same 21 `.py` files, none
+  different byte for byte; no `tests/`, no data file, nothing else. `RECORD` has 42 `datastorekit/` entries (the 21 modules
+  and their `.pyc`), none under `tests`, every hash matching.
+- **(6) Import and helper.** The import one-liner prints `False`; `sharded_store --help` exits 0. The helper gives
+  `datastorekit` `0.4.0`, the URL, `c8570e849334…`, `v0.4.0`, `editable: False`, and `raypoolkit` unchanged;
+  `format_package_provenance` prints the prompt's line. `pip show datastorekit`: `Requires: ray, sqlalchemy`.
+- **(7) K7 replayed.** The orchestrator's prototype, run with the archive off `sys.path`, imported `datastorekit` from the
+  venv's `site-packages` and printed the pre-dispatch figures exactly: U3's four behaviours, the base refusing a class
+  without `build`, **30 of 30 entries, 28 classes, 12 / 16 / 0**, no Ray. The agent's `k7_installed.py` asserts its import
+  is from `site-packages` and gives the same output.
+- **(8) The pip account.** The note quotes `Would install datastorekit-0.4.0` and `Successfully installed
+  datastorekit-0.4.0`, both `Resolved …` lines (DatastoreKit `8e7c1d77…`, RayPoolKit `4e7eb153…`), and says each is a tag
+  object and that `raypoolkit` was re-resolved.
+- **(9) Hygiene.** DatastoreKit `38ebb9f` and RayPoolKit `17029d9`, clean. The 17 store files and all 834 entries under
+  `~/ScienceData/` keep their pre-dispatch mtimes and sizes. No Ray process; the lock free.
+- **(10) The suites and the records.** The agent's 696 and 62, at loads of 25–60. The orchestrator re-ran both at `1b1ca6d`
+  (17:16 BST, load 18–23): default 696 (695 passed, 1 skipped), 27.6 s; integration 62 (61 passed, 1 skipped), 31.2 s. The
+  results note follows README §5.1, with every §2 check's command and output and K7's script whole; the board has the §1 row,
+  K4–K7, the header and this section with the rollback.
+  - *Residue, fixed here:* "the commit that adds the note" → `1b1ca6d` (board ×3, results note ×2); the header's "08 landed"
+    reads "landed and reviewed"; this note added to the list of orchestrator notes; the campaign's line in `.prompts/INDEX.md`.
+- **The deviations are accepted.** D7 (mtimes by a Python `os.stat` walk, since the agent's `stat` on `PATH` was GNU's) is
+  sound: the orchestrator's `/usr/bin/stat` comparison agrees.
+- **Handed on to 09.**
+  - Every driver now prints `>> packages: datastorekit 0.4.0 (…@c8570e849334…, requested v0.4.0); raypoolkit 0.2.0
+    (…@eaef0ce6…, requested v0.2.0)`.
+  - SI's 30 registry entries instantiate on the installed base as they stand, so 09's factories change only their import.
+  - `requirements.txt`'s lines after `:15` moved down by one.
+  - 09's suites start from 696 and 62; `slow` from S1's 69.
