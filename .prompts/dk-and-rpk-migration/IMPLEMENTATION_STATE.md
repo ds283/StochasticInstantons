@@ -1,10 +1,10 @@
 # dk-and-rpk-migration campaign — implementation state
 
-**Last updated:** 2026-10-21 · **Status: LIVE — 8 of 13 prompts written (01–07, 01a), 01 and 01a
+**Last updated:** 2026-10-21 · **Status: LIVE — 12 of 13 prompts written (01–11, 01a), 01 and 01a
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
-the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated, not pushed). U1–U9 ruled (2026-10-12),
+the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20). U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -68,10 +68,10 @@ on any of them.
 | 05 | [Move SI's data out of the layer](05-move-si-data-out-of-the-layer.md) | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ✍️ 2026-10-20 | ✅ 2026-10-20 | `875cf41` | [`05-move-si-data-out-of-the-layer.md`](../../.documents/dk-and-rpk-migration/05-move-si-data-out-of-the-layer.md) |
 | 06 | [Prepare the `InflatonTrajectory` factories](06-prepare-the-inflaton-trajectory-factories.md) | **U4**, P17; closes `[inflaton-trajectory-prune-orphans-value-rows]` | Opus | ✍️ 2026-10-20 | ✅ 2026-10-20 | `5e41ce8` | [`06-prepare-the-inflaton-trajectory-factories.md`](../../.documents/dk-and-rpk-migration/06-prepare-the-inflaton-trajectory-factories.md) |
 | 07 | [Rehearse before the DatastoreKit swap (RH1)](07-rehearse-before-the-datastore-swap.md) | **RH1**, bitwise against RH0; the tag (**U7**) | Opus | ✍️ 2026-10-20 | ✅ 2026-10-21 (§5.19) | `0527480`, tagged `pre-datastorekit` | [`07-rehearse-before-the-datastore-swap.md`](../../.documents/dk-and-rpk-migration/07-rehearse-before-the-datastore-swap.md) |
-| 08 | Pin `datastorekit` `v0.4.0` | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ⬜ | ⬜ | — | — |
-| 09 | Adopt `datastorekit` | the DatastoreKit swap; **U5** | Opus | ⬜ | ⬜ | — | — |
-| 10 | Port the inventory | **U6**; `inventory_spec`, `tools/inventory_report.py` | Opus | ⬜ | ⬜ | — | — |
-| 11 | Rehearse through both packages (RH2) | **RH2**; **DatastoreKit G4** | Opus | ⬜ | ⬜ | — | — |
+| 08 | [Pin `datastorekit` `v0.4.0`](08-pin-datastorekit-v0.4.0.md) | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ✍️ 2026-10-21 | ⬜ | — | — |
+| 09 | [Adopt `datastorekit`](09-adopt-datastorekit.md) | the DatastoreKit swap; **U5**; closes `[config-datastore-cannot-be-imported-before-the-layer]` | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
+| 10 | [Port the inventory](10-port-the-inventory.md) | **U6**, **U8**; `inventory_spec`, `tools/inventory_report.py`; closes `[show-all-flag-unused]` | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
+| 11 | [Rehearse through both packages (RH2)](11-rehearse-through-both-packages.md) | **RH2**, bitwise against RH1; **DatastoreKit G4** | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
 | 12 | Close the migration | `CLAUDE.md`, rules, documents, handover to P2, close | Sonnet | ⬜ | ⬜ | — | — |
 
 **Legend.** ✍️ written · ⏸ held, with what it waits on · ⬜ not yet · ✅ landed.
@@ -81,7 +81,8 @@ on any of them.
 - **01a** is written after 01's review, for U9. *Written 2026-10-12.* 02 waits on it.
 - **05–07** are written after 02's review: RH0's reproducibility sets RH1's criterion. *Written
   2026-10-20 (§5.14):* RH0 is bitwise reproducible, so RH1 is held to bitwise equality.
-- **08–11** are written after 07's review (`v0.4.0`, which 08 pins, is released).
+- **08–11** are written after 07's review (`v0.4.0`, which 08 pins, is released). *Written
+  2026-10-21 (§5.20).*
 - **12** is written after 11's review.
 
 Orchestrator notes are written one prompt at a time, in [`orchestrator/`](orchestrator/), just
@@ -131,9 +132,31 @@ before each dispatch:
 | **I6** | 06 | an integration test: an unvalidated trajectory pruned at reopen on two shards, no orphan | ✅ SI's `ShardedPool` in two subprocesses (store, reopen with the prune), each its own `ray.init(address="local")`; both shards read with `sqlite3` `mode=ro` before and after; 3 orphans per shard with the cascade removed, none with it |
 | **L1**–**L4** (RH1) | 07 | README §4.1 at 06's tree; bitwise equality with `02-reference.sqlite` and with `02-scalars-2.sqlite` / the readers' `before/` copy of `02-scalars.sqlite`, compared before the readers; `scalar_data.csv` `b0564eec…58a2`; L4 against RH0's pattern | ✅ L1–L3 hold; `resumed-a2` (second attempt, `S` = 12.0 s) left 8 validated and 1 unvalidated `FullInstanton`, `resumed-b` pruned the 1 and computed 2; **§4.3: all five comparisons `RESULT: equal`, exit 0, against RH0 and within RH1, dense and scalars-only**; both `scalar_data.csv` `b0564eec…58a2`; L4: `reference`'s and `scalars`' parsed records equal RH0's but for the provenance line |
 | **V2** | 07 | `verification.md` §2 RH1; `out/07-*` | ✅ [`verification.md`](../../.documents/dk-and-rpk-migration/verification.md) §2; `out/07-*` (5 comparisons, schema snapshot, stage counts, readers' outputs) |
-| **Z1** | 07 | the annotated tag `pre-datastorekit` on 07's commit (U7), not pushed | ✅ annotated, on 07's commit `0527480`, local only |
+| **Z1** | 07 | the annotated tag `pre-datastorekit` on 07's commit (U7), not pushed | ✅ annotated, on 07's commit `0527480`; pushed by the user 2026-10-21 |
+| **K4** | 08 | the `datastorekit` pin in `requirements.txt` | ⬜ |
+| **K5** | 08 | the venv installed from it; one distribution added | ⬜ |
+| **K6** | 08 | the proof: `c8570e849334…`, the tag's 21 modules, no `tests/`, not editable | ⬜ |
+| **K7** | 08 | on the installed package: U3's `timestamp`; the factory base; SI's 30 entries instantiate | ⬜ |
+| **A1** | 09 | the 7 layer modules deleted; the two `__init__.py` emptied (P6) | ⬜ |
+| **A2** | 09 | the 48 layer imports rewritten by the module map | ⬜ |
+| **A3** | 09 | each factory's diff its import line alone | ⬜ |
+| **A4** | 09 | the four pools take `factories=` and `serial_batch_sizes=`; no `drop_actions=`, no `inventory_config=` | ⬜ |
+| **A5** | 09 | **U5**: unclosed `--drop` groups refused before Ray, naming the groups to add | ⬜ |
+| **A6** | 09 | the harness rebuilt; the named tests changed (charter, and §5.20's additions) | ⬜ |
+| **A7** | 09 | `--inventory` refuses before Ray (P11); the prose this commit makes false (P13) | ⬜ |
+| **A8** | 09 | `[config-datastore-cannot-be-imported-before-the-layer]` closed | ⬜ |
+| **A9** | 09 | the verification: the script, the schema, the suites with `slow`, acceptance 4 (the package's replicated prune) and 5 (U3 through the package) | ⬜ |
+| **N1** | 10 | `inventory_spec()` on every covered factory and every class a spec depends on | ⬜ |
+| **N2** | 10 | `tools/inventory_report.py`, at least what today's report shows (P18), every problem in full | ⬜ |
+| **N3** | 10 | `main.py --inventory` by `read_inventory`, before Ray; `--show-all` is `verbose` | ⬜ |
+| **N4** | 10 | the 17 `inventory()` hooks and `inventory_config` deleted; U5 re-checked against the specs | ⬜ |
+| **N5** | 10 | **U8**: every registered class covered, read through, or excluded with a reason; the GCI table left out opened as an issue | ⬜ |
+| **N6** | 10 | the prose this commit makes false | ⬜ |
+| **L1**–**L4** (RH2) | 11 | README §4.1 at 10's tree, through both packages; bitwise equality with RH1's stores, compared before the readers; `scalar_data.csv` `b0564eec…58a2`; `--inventory` with no problem; L4 against RH1 | ⬜ |
+| **V3** | 11 | `verification.md` §3 RH2; `out/11-*` | ⬜ |
+| **H1** | 11 | `shard_key_audit` on each store; a `sharded_store copy` read and compared, then `delete_store` | ⬜ |
 
-Items of 08–12 are added when they are written.
+Items of 12 are added when it is written.
 
 The measurement the plan was written against is [`measure/out/`](measure/out/). It holds:
 - both packages' scripts at `7bb3efd`, each equal to its checklist's appendix byte for byte;
@@ -1274,3 +1297,60 @@ docstring) and in this follow-up (records); nothing more is opened.
 - **The tag pushed** (2026-10-21), by the user: `git push origin pre-datastorekit`. `git ls-remote` gives tag object
   `9234839` on `origin`, peeling to `0527480`. The branch `dk-and-rpk-migration` itself is not pushed; the tag carried its
   commits up to `0527480` to the remote as objects only.
+
+### 5.20 Prompts 08–11 written (2026-10-21)
+
+Written at `91e6f31`, after 07's review, from README §2.2's charters and §5.19's "Handed on".
+Measured read-only at `91e6f31`: SI's layer imports with DatastoreKit's own script
+(`docs/extraction/measure_client_imports.py si --commit 91e6f31`, from its root and venv); the
+package at `v0.4.0` (`ShardedPool.__init__`, `schema.dependent_tables`, `store_inventory`, the two
+tools); and ChamPBH's 07–10 as done (its board §5.12–§5.15), which ran the same three steps first.
+Nothing dispatched; no orchestrator note written (each is written just before its dispatch).
+Nothing opened or closed, so `.documents/OPEN-ISSUES.md` is unchanged.
+- **[08](08-pin-datastorekit-v0.4.0.md)** (Sonnet), items K4–K7. As 03, for
+  `datastorekit @ …@v0.4.0` between `cycler==0.12.1` and `distlib==0.4.3`. Beyond the charter:
+  the freeze before is 03's (82 lines); `raypoolkit` must not be reinstalled; the tag's archive
+  holds **21** non-test modules; K7 also rebuilds SI's 30 registry entries (28 classes) on the
+  installed base, as ChamPBH's K7 did.
+- **[09](09-adopt-datastorekit.md)** (Opus), items A1–A9; closes
+  `[config-datastore-cannot-be-imported-before-the-layer]` (its owner). Beyond the charter,
+  **measured**:
+  - **48 layer import statements in 47 files**, 2 nested, not the charter's 47: 04 removed
+    `RayTools/RayWorkPool.py:23`, and 05 added the fallback at `tests/test_compare_stores.py:944`;
+  - **3 `import_module` calls** of the layer (`tests/test_config_datastore.py:38`, `:39`;
+    `tests/test_inflaton_trajectory_prune.py:53`), and **one import inside a subprocess script**
+    the script cannot see (`tests/test_inflaton_trajectory_prune.py:459`, whose pool passes
+    `drop_actions=` and `inventory_config=`);
+  - so **README §5 rule 7's named exceptions for 09 grow** from `live_pool` and
+    `test_grid_builder_integration.py` to also `test_config_datastore.py` (the layer's identity
+    tests replaced by an `ast` test of the four pool constructions; the no-Ray test imports
+    `config.datastore` alone, which is the closed issue's test), `test_inflaton_trajectory_prune.py`
+    (06's I6 rebuilt on the package's pool, which is the charter's acceptance 4), and
+    `test_compare_stores.py`'s fallback (which the issue said could go). README §2.2 and §5 rule 7
+    are amended in this commit;
+  - `main.py`'s inventory helpers are seven, not five: the two printers only they call go too;
+  - U5's function sits in `config/datastore.py`, as ChamPBH's `tables_to_drop`; refusals exit 2
+    before `ray.init`, as do `--inventory`'s;
+  - the prose of P13 adds `.documents/FILE_MAP.md` and `config/datastore.py`'s docstring;
+  - the inherited DatastoreKit hazard of dropping a replicated table (`inflaton-trajectory`'s
+    closed set) is recorded, not fixed;
+  - `slow` runs once (69 passed, S1).
+- **[10](10-port-the-inventory.md)** (Opus), items N1–N6; closes `[show-all-flag-unused]`; opens
+  the issue for `GradientCoupledInstanton`'s child table that no spec reaches (U8). Beyond the
+  charter: the recommendation that `GradientCoupledInstantonProfile` (written for every row) takes
+  the `values` slot and `GradientCoupledInstantonValue` is excluded; the polymorphic maps taken
+  from SI's registries and checked against `tools/compare_stores.py`; the expected coverage, 24
+  specs, 5 read through, 1 excluded; U5 re-run with and without the specs (ChamPBH's 08 review:
+  `dependent_tables` reads spec parents); exit codes 0 / 1 / 2 as ChamPBH's; a field-by-field table
+  against RH1's inventory log (P18); the store tests built through the package in a subprocess,
+  `integration`-marked.
+- **[11](11-rehearse-through-both-packages.md)** (Opus), items L1–L4 (RH2), V3, H1; gate RH2 and
+  DatastoreKit G4. As 07, held to **RH1**: dense `07-reference.sqlite`, scalars-only
+  `07-readers/scalars/before/07-scalars.sqlite` and `02-scalars-2.sqlite`, plus one dense
+  comparison straight to RH0. Beyond the charter:
+  - the agent asks the user to have other sessions hold their suites before it starts (§5.19);
+  - `S` measured afresh, aiming later on a loaded machine;
+  - L4 compared less the provenance line;
+  - `--inventory` compared with RH1's field by field, since its layout is 10's;
+  - H1 runs before the readers;
+  - a miss marks no gate and commits nothing; an L4 difference alone holds back G4 for the user.

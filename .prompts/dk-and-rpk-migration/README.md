@@ -472,7 +472,7 @@ that each carries the previous review's findings:
   2026-10-20: RH0 is bitwise reproducible in both modes, so RH1 is held to bitwise equality.*
 - **08–11** follow 07's review. 07's results note fixes the counts and names they cite. The
   release U3 asked for is tagged (`v0.3.0`, §0.4), and so is the release 08 pins (`v0.4.0`, §0.5;
-  U10), so 08 waits on nothing else.
+  U10), so 08 waits on nothing else. *Written 2026-10-21, after 07's review (board §5.20).*
 - **12** follows 11's review.
 
 Orchestrator notes are written one prompt at a time, in [`orchestrator/`](orchestrator/), just
@@ -760,6 +760,11 @@ deletes, and the seven protected factories, the files of `MetadataConcepts/` and
      - `ShardedPool` 4 (`main.py`, both plot scripts, `tests/conftest.py`);
      - `ProfileAgent` 1.
 
+     *Measured 2026-10-21 at `91e6f31`, when 09 was written (board §5.20): **48** statements in
+     47 files, 2 nested. 04 removed the `RayTools/` one, and 05 added a fallback at
+     `tests/test_compare_stores.py:944`. 05's and 06's tests also reach the layer by three
+     `import_module` calls and one subprocess script; 09 names each (below, item 6).*
+
      **U3:** the 14 `DatastoreObject.__init__(…, timestamp=…)` calls and the 10 subclasses that
      pass `timestamp=` change nothing but their module's import. The package's `DatastoreObject`
      now takes the argument, keyword-only, and every SI site passes it by keyword (§0.4).
@@ -781,6 +786,12 @@ deletes, and the seven protected factories, the files of `MetadataConcepts/` and
      - `tests/test_grid_builder_integration.py:133-135` counts rows by value without
        `pool.inventory`: through `pool.read_table`, or a `mode=ro` read of the temporary shard.
        This is a named exception to §5 rule 7, and the prompt records which it chose.
+     - *Added 2026-10-21 (board §5.20):* three more named exceptions, each because the layer it
+       reaches is deleted: `tests/test_config_datastore.py` (its layer imports and the two tests
+       of the layer's identity, replaced by an `ast` test of the pool constructions),
+       `tests/test_inflaton_trajectory_prune.py` (its layer import, and 06's integration test
+       rebuilt on the package's pool, which is acceptance 4), and `tests/test_compare_stores.py`'s
+       fallback import.
   7. **`--inventory`** prints that it is unavailable until 10 and exits non-zero, before Ray
      starts (P11). The five helpers and the four `pool.inventory` calls are deleted.
   8. **The prose this commit makes false** (P13):
@@ -1179,7 +1190,9 @@ convention), plus:
    `Co-Authored-By:` line naming the model.
 6. **Verification documents are additive.**
 7. **Existing tests are not modified**, except where a prompt names the test and the reason: 05's
-   four stubs, and 09's `live_pool` and `test_grid_builder_integration.py`.
+   four stubs, and 09's `live_pool` and `test_grid_builder_integration.py`, with
+   `test_config_datastore.py`, `test_inflaton_trajectory_prune.py` and `test_compare_stores.py`'s
+   fallback (*added 2026-10-21*, board §5.20).
 8. **Deliberate breakage.** Each prompt names mutations its tests must catch. The results note
    records each as a diff, exactly as applied, so that the orchestrator can replay it with
    `git apply`. Mutations are never committed.
