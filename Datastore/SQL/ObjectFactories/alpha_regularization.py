@@ -13,13 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from datetime import datetime
 from math import fabs
 
 import sqlalchemy as sqla
 
 from InflationConcepts.alpha_regularization import alpha_regularization
 from datastorekit.SQL.factory_base import SQLAFactoryBase
+from datastorekit.store_inventory import InventorySpec
 from config.defaults import (
     DEFAULT_ALPHA_PRECISION,
     DEFAULT_ALPHA_RELATIVE_PRECISION,
@@ -38,6 +38,10 @@ class sqla_alpha_regularization_factory(SQLAFactoryBase):
                 sqla.Column("alpha", sqla.Float(64), index=True),
             ],
         }
+
+    def inventory_spec(self):
+        # build() matches alpha alone, relatively (absolutely at 0) (dk-and-rpk-migration prompt 10)
+        return InventorySpec(leaves=("alpha",))
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         alpha = payload["alpha"]
@@ -81,27 +85,3 @@ class sqla_alpha_regularization_factory(SQLAFactoryBase):
             alpha_regularization(store_id=row.serial, alpha=row.alpha)
             for row in rows
         ]
-
-    def inventory(self, conn, table, tables):
-        query = sqla.select(
-            table.c.timestamp,
-            table.c.alpha,
-        )
-        rows = conn.execute(query)
-
-        earliest_timestamp: datetime = None
-        latest_timestamp: datetime = None
-        values = []
-
-        for item in rows:
-            if latest_timestamp is None or item.timestamp > latest_timestamp:
-                latest_timestamp = item.timestamp
-            if earliest_timestamp is None or item.timestamp < earliest_timestamp:
-                earliest_timestamp = item.timestamp
-            values.append(item.alpha)
-
-        return {
-            "earliest_timestamp": earliest_timestamp,
-            "latest_timestamp": latest_timestamp,
-            "values": values,
-        }

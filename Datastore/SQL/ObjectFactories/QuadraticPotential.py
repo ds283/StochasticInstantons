@@ -1,11 +1,10 @@
-from datetime import datetime
-
 import sqlalchemy as sqla
 
 from CosmologyConcepts.Potentials.model_ids import QUADRATIC_POTENTIAL
 from InflationConcepts.QuadraticPotential import QuadraticPotential
 from InflationConcepts.inflaton_mass import inflaton_mass
 from datastorekit.SQL.factory_base import SQLAFactoryBase
+from datastorekit.store_inventory import InventorySpec, Parent
 
 
 class sqla_QuadraticPotential_factory(SQLAFactoryBase):
@@ -27,6 +26,11 @@ class sqla_QuadraticPotential_factory(SQLAFactoryBase):
                 sqla.Column("type_id", sqla.Integer, nullable=False),
             ],
         }
+
+    def inventory_spec(self):
+        # build() matches mass_id alone; type_id is stored, not matched (dk-and-rpk-migration
+        # prompt 10)
+        return InventorySpec(parents={"m": Parent("mass_id", of="inflaton_mass")})
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         m: inflaton_mass = payload["m"]
@@ -96,32 +100,3 @@ class sqla_QuadraticPotential_factory(SQLAFactoryBase):
             )
             for row in rows
         ]
-
-    def inventory(self, conn, table, tables):
-        mass_table = tables["inflaton_mass"]
-
-        query = sqla.select(
-            table.c.timestamp,
-            mass_table.c[f"value_PlanckMass"],
-        ).join(
-            mass_table, table.c.mass_id == mass_table.c.serial
-        )
-
-        rows = conn.execute(query)
-
-        earliest_timestamp: datetime = None
-        latest_timestamp: datetime = None
-        values = []
-
-        for item in rows:
-            if latest_timestamp is None or item.timestamp > latest_timestamp:
-                latest_timestamp = item.timestamp
-            if earliest_timestamp is None or item.timestamp < earliest_timestamp:
-                earliest_timestamp = item.timestamp
-            values.append(item.value_PlanckMass)
-
-        return {
-            "earliest_timestamp": earliest_timestamp,
-            "latest_timestamp": latest_timestamp,
-            "values": values,
-        }

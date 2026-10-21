@@ -18,6 +18,7 @@ import json
 import sqlalchemy as sqla
 
 from datastorekit.SQL.factory_base import SQLAFactoryBase
+from datastorekit.store_inventory import InventorySpec, Parent
 
 
 class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
@@ -96,6 +97,32 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
                 ),
             ],
         }
+
+    def inventory_spec(self):
+        # build() matches validated == True and the serials of the trajectory, N_init, N_final,
+        # delta_Nstar, atol, rtol and the diffusion model (with diffusion_type, which names its
+        # table); the version, label and tags are not matched. The diffusion model's map is
+        # DIFFUSION_MODEL_REGISTRY's (dk-and-rpk-migration prompt 10)
+        from InflationConcepts.DiffusionModel.registry import DIFFUSION_MODEL_REGISTRY
+
+        return InventorySpec(
+            leaves=("diffusion_type",),
+            parents={
+                "trajectory": Parent("trajectory_serial", of="InflatonTrajectory"),
+                "N_init": Parent("N_init_serial", of="N_init"),
+                "N_final": Parent("N_final_serial", of="N_final"),
+                "delta_Nstar": Parent("delta_Nstar_serial", of="delta_Nstar"),
+                "atol": Parent("atol_serial", of="tolerance"),
+                "rtol": Parent("rtol_serial", of="tolerance"),
+                "diffusion_model": Parent(
+                    "diffusion_serial",
+                    type_column="diffusion_type",
+                    types={t: info.name for t, info in DIFFUSION_MODEL_REGISTRY.items()},
+                ),
+            },
+            values=("SlowRollInstantonValue", "instanton_serial"),
+            validated="validated",
+        )
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         from ComputeTargets.SlowRollInstanton import SlowRollInstanton
@@ -477,61 +504,6 @@ class sqla_SlowRollInstantonFactory(SQLAFactoryBase):
             results.append(obj)
 
         return results
-
-    def inventory(self, conn, table, tables):
-        query = sqla.select(
-            table.c.serial,
-            table.c.timestamp,
-            table.c.N_init_serial,
-            table.c.N_final_serial,
-            table.c.delta_Nstar_serial,
-            table.c.validated,
-        )
-        rows = conn.execute(query).fetchall()
-
-        earliest_validated = None
-        latest_validated = None
-        earliest_unvalidated = None
-        latest_unvalidated = None
-        validated_labels = []
-        unvalidated_labels = []
-
-        for row in rows:
-            label = (
-                f"SlowRollInstanton("
-                f"N_init_serial={row.N_init_serial}, "
-                f"N_final_serial={row.N_final_serial}, "
-                f"delta_Nstar_serial={row.delta_Nstar_serial})"
-            )
-            ts = row.timestamp
-
-            if row.validated:
-                validated_labels.append(label)
-                if latest_validated is None or ts > latest_validated:
-                    latest_validated = ts
-                if earliest_validated is None or ts < earliest_validated:
-                    earliest_validated = ts
-            else:
-                unvalidated_labels.append(label)
-                if latest_unvalidated is None or ts > latest_unvalidated:
-                    latest_unvalidated = ts
-                if earliest_unvalidated is None or ts < earliest_unvalidated:
-                    earliest_unvalidated = ts
-
-        return {
-            "validated": {
-                "labels": validated_labels,
-                "versions": [],
-                "earliest_timestamp": earliest_validated,
-                "latest_timestamp": latest_validated,
-            },
-            "unvalidated": {
-                "labels": unvalidated_labels,
-                "versions": [],
-                "earliest_timestamp": earliest_unvalidated,
-                "latest_timestamp": latest_unvalidated,
-            },
-        }
 
 
 class sqla_SlowRollInstantonValue_factory(SQLAFactoryBase):

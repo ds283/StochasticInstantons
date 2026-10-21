@@ -16,6 +16,7 @@
 import sqlalchemy as sqla
 
 from datastorekit.SQL.factory_base import SQLAFactoryBase
+from datastorekit.store_inventory import InventorySpec
 from MetadataConcepts import store_tag
 from config.defaults import DEFAULT_STRING_LENGTH
 
@@ -30,6 +31,10 @@ class sqla_store_tag_factory(SQLAFactoryBase):
             "timestamp": True,
             "columns": [sqla.Column("label", sqla.String(DEFAULT_STRING_LENGTH))],
         }
+
+    def inventory_spec(self):
+        # build() matches label alone (dk-and-rpk-migration prompt 10)
+        return InventorySpec(leaves=("label",))
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         label = payload["label"]

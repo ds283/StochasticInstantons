@@ -20,12 +20,13 @@ leaves another table naming dropped rows. ``tables_to_drop`` turns the groups in
 refuses, before Ray starts, a request whose closure under
 ``datastorekit.SQL.schema.dependent_tables`` is not among the requested tables.
 
-The decisions below are written out, not computed from the function under test: at this tree
-(no factory declares an ``inventory_spec`` yet, so foreign keys alone decide), 10 of the 31
+The decisions below are written out, not computed from the function under test: 10 of the 31
 non-empty sets of the five groups are closed and 21 are refused. Every closed set holds
 ``compaction-function`` or is ``gradient-coupled-instanton`` alone, and none holds
-``inflaton-trajectory`` but all five. Prompt 10's ``inventory_spec`` parents may move this table
-(``dependent_tables`` reads them too).
+``inflaton-trajectory`` but all five. ``dependent_tables`` reads the parents each factory's
+``inventory_spec`` declares as well as foreign keys; the specs prompt 10 added left every decision
+and message as foreign keys alone gave them, since their only new edges (a trajectory to its
+potentials, and the three instantons to the diffusion model) point at tables in no drop group.
 
 No Ray is started.
 """

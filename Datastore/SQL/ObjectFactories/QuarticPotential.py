@@ -1,11 +1,10 @@
-from datetime import datetime
-
 import sqlalchemy as sqla
 
 from CosmologyConcepts.Potentials.model_ids import QUARTIC_POTENTIAL
 from InflationConcepts.QuarticPotential import QuarticPotential
 from InflationConcepts.quartic_coupling import quartic_coupling
 from datastorekit.SQL.factory_base import SQLAFactoryBase
+from datastorekit.store_inventory import InventorySpec, Parent
 
 
 class sqla_QuarticPotential_factory(SQLAFactoryBase):
@@ -27,6 +26,11 @@ class sqla_QuarticPotential_factory(SQLAFactoryBase):
                 sqla.Column("type_id", sqla.Integer, nullable=False),
             ],
         }
+
+    def inventory_spec(self):
+        # build() matches coupling_id alone; type_id is stored, not matched (dk-and-rpk-migration
+        # prompt 10)
+        return InventorySpec(parents={"lambda_": Parent("coupling_id", of="quartic_coupling")})
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         lambda_: quartic_coupling = payload["lambda_"]
@@ -99,32 +103,3 @@ class sqla_QuarticPotential_factory(SQLAFactoryBase):
             )
             for row in rows
         ]
-
-    def inventory(self, conn, table, tables):
-        coupling_table = tables["quartic_coupling"]
-
-        query = sqla.select(
-            table.c.timestamp,
-            coupling_table.c.value,
-        ).join(
-            coupling_table, table.c.coupling_id == coupling_table.c.serial
-        )
-
-        rows = conn.execute(query)
-
-        earliest_timestamp: datetime = None
-        latest_timestamp: datetime = None
-        values = []
-
-        for item in rows:
-            if latest_timestamp is None or item.timestamp > latest_timestamp:
-                latest_timestamp = item.timestamp
-            if earliest_timestamp is None or item.timestamp < earliest_timestamp:
-                earliest_timestamp = item.timestamp
-            values.append(item.value)
-
-        return {
-            "earliest_timestamp": earliest_timestamp,
-            "latest_timestamp": latest_timestamp,
-            "values": values,
-        }

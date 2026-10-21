@@ -74,29 +74,3 @@ read_table_config = {
     "phi_value": {"tables_arg": False},
     "pi_value": {"tables_arg": False},
 }
-
-# Merge policies for pool.inventory() calls on sharded tables.
-# Each field in the factory's inventory() return value needs a merge policy:
-#   lists     → "extend"
-#   datetimes → "earliest" or "latest"
-_instanton_merge = {
-    "validated": {
-        "labels": "extend",
-        "versions": "extend",
-        "earliest_timestamp": "earliest",
-        "latest_timestamp": "latest",
-    },
-    "unvalidated": {
-        "labels": "extend",
-        "versions": "extend",
-        "earliest_timestamp": "earliest",
-        "latest_timestamp": "latest",
-    },
-}
-
-inventory_config = {
-    "FullInstanton": _instanton_merge,
-    "SlowRollInstanton": _instanton_merge,
-    "CompactionFunction": _instanton_merge,
-    "GradientCoupledInstanton": _instanton_merge,
-}

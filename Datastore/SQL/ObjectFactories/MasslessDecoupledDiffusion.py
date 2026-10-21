@@ -1,6 +1,7 @@
 import sqlalchemy as sqla
 
 from datastorekit.SQL.factory_base import SQLAFactoryBase
+from datastorekit.store_inventory import InventorySpec
 from InflationConcepts.DiffusionModel.model_ids import MASSLESS_DECOUPLED_DIFFUSION
 from InflationConcepts.DiffusionModel.registry import (
     DIFFUSION_MODEL_REGISTRY,
@@ -19,6 +20,11 @@ class sqla_MasslessDecoupledDiffusion_factory(SQLAFactoryBase):
             "timestamp": True,
             "columns": [],  # No parameters: only serial and timestamp.
         }
+
+    def inventory_spec(self):
+        # build() matches nothing: the table holds at most one row, with no column but serial and
+        # timestamp (dk-and-rpk-migration prompt 10)
+        return InventorySpec()
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         from InflationConcepts.DiffusionModel import MasslessDecoupledDiffusion

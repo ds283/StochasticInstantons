@@ -18,6 +18,7 @@ import json
 import sqlalchemy as sqla
 
 from datastorekit.SQL.factory_base import SQLAFactoryBase
+from datastorekit.store_inventory import InventorySpec, Parent
 from InflationConcepts.efold_value import efold_value
 
 
@@ -89,6 +90,30 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
                 ),
             ],
         }
+
+    def inventory_spec(self):
+        # build() matches validated == True and the serials of phi0, pi0, the potential (with
+        # potential_type, which names its table), atol and rtol; the version and the label are
+        # not matched. The potential's map is POTENTIAL_REGISTRY's (dk-and-rpk-migration
+        # prompt 10)
+        from CosmologyConcepts.Potentials.registry import POTENTIAL_REGISTRY
+
+        return InventorySpec(
+            leaves=("potential_type",),
+            parents={
+                "phi0": Parent("phi0_serial", of="phi_value"),
+                "pi0": Parent("pi0_serial", of="pi_value"),
+                "potential": Parent(
+                    "potential_serial",
+                    type_column="potential_type",
+                    types={t: info.table_name for t, info in POTENTIAL_REGISTRY.items()},
+                ),
+                "atol": Parent("atol_serial", of="tolerance"),
+                "rtol": Parent("rtol_serial", of="tolerance"),
+            },
+            values=("InflatonTrajectoryValue", "trajectory_serial"),
+            validated="validated",
+        )
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         from ComputeTargets.InflatonTrajectory import InflatonTrajectory
@@ -380,55 +405,6 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             results.append(obj)
 
         return results
-
-    def inventory(self, conn, table, tables):
-        query = sqla.select(
-            table.c.serial,
-            table.c.timestamp,
-            table.c.phi0_serial,
-            table.c.validated,
-            table.c.N_end,
-        )
-        rows = conn.execute(query).fetchall()
-
-        earliest_validated = None
-        latest_validated = None
-        earliest_unvalidated = None
-        latest_unvalidated = None
-        validated_labels = []
-        unvalidated_labels = []
-
-        for row in rows:
-            label = f"InflatonTrajectory(phi0_serial={row.phi0_serial}, N_end={row.N_end})"
-            ts = row.timestamp
-
-            if row.validated:
-                validated_labels.append(label)
-                if latest_validated is None or ts > latest_validated:
-                    latest_validated = ts
-                if earliest_validated is None or ts < earliest_validated:
-                    earliest_validated = ts
-            else:
-                unvalidated_labels.append(label)
-                if latest_unvalidated is None or ts > latest_unvalidated:
-                    latest_unvalidated = ts
-                if earliest_unvalidated is None or ts < earliest_unvalidated:
-                    earliest_unvalidated = ts
-
-        return {
-            "validated": {
-                "labels": validated_labels,
-                "versions": [],
-                "earliest_timestamp": earliest_validated,
-                "latest_timestamp": latest_validated,
-            },
-            "unvalidated": {
-                "labels": unvalidated_labels,
-                "versions": [],
-                "earliest_timestamp": earliest_unvalidated,
-                "latest_timestamp": latest_unvalidated,
-            },
-        }
 
 
 class sqla_InflatonTrajectoryValue_factory(SQLAFactoryBase):

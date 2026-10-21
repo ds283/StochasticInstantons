@@ -13,12 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from datetime import datetime
-
 import sqlalchemy as sqla
 
 from InflationConcepts.n_collocation_points import n_collocation_points
 from datastorekit.SQL.factory_base import SQLAFactoryBase
+from datastorekit.store_inventory import InventorySpec
 
 
 class sqla_n_collocation_points_factory(SQLAFactoryBase):
@@ -33,6 +32,10 @@ class sqla_n_collocation_points_factory(SQLAFactoryBase):
                 sqla.Column("n_collocation_points", sqla.Integer, index=True),
             ],
         }
+
+    def inventory_spec(self):
+        # build() matches n_collocation_points alone, exactly (dk-and-rpk-migration prompt 10)
+        return InventorySpec(leaves=("n_collocation_points",))
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         value = payload["n_collocation_points"]
@@ -77,27 +80,3 @@ class sqla_n_collocation_points_factory(SQLAFactoryBase):
             )
             for row in rows
         ]
-
-    def inventory(self, conn, table, tables):
-        query = sqla.select(
-            table.c.timestamp,
-            table.c.n_collocation_points,
-        )
-        rows = conn.execute(query)
-
-        earliest_timestamp: datetime = None
-        latest_timestamp: datetime = None
-        values = []
-
-        for item in rows:
-            if latest_timestamp is None or item.timestamp > latest_timestamp:
-                latest_timestamp = item.timestamp
-            if earliest_timestamp is None or item.timestamp < earliest_timestamp:
-                earliest_timestamp = item.timestamp
-            values.append(item.n_collocation_points)
-
-        return {
-            "earliest_timestamp": earliest_timestamp,
-            "latest_timestamp": latest_timestamp,
-            "values": values,
-        }

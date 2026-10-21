@@ -18,6 +18,7 @@ import json
 import sqlalchemy as sqla
 
 from datastorekit.SQL.factory_base import SQLAFactoryBase
+from datastorekit.store_inventory import InventorySpec, Parent
 
 
 class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
@@ -142,6 +143,43 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
                 ),
             ],
         }
+
+    def inventory_spec(self):
+        # build() matches validated == True and the serials of the trajectory, N_init, N_final,
+        # delta_Nstar, n_collocation_points, alpha_regularization, atol, rtol, the diffusion
+        # model (with diffusion_type, which names its table) and the cosmology; the version,
+        # label, tags and the runtime knobs are not matched. The diffusion model's map is
+        # DIFFUSION_MODEL_REGISTRY's. Of the two child tables, the profile, written for every
+        # row, takes the one values slot; GradientCoupledInstantonValue, written only with full
+        # values, is outside the inventory (dk-and-rpk-migration prompt 10;
+        # [gci-value-table-outside-the-inventory])
+        from InflationConcepts.DiffusionModel.registry import DIFFUSION_MODEL_REGISTRY
+
+        return InventorySpec(
+            leaves=("diffusion_type",),
+            parents={
+                "trajectory": Parent("trajectory_serial", of="InflatonTrajectory"),
+                "N_init": Parent("N_init_serial", of="N_init"),
+                "N_final": Parent("N_final_serial", of="N_final"),
+                "delta_Nstar": Parent("delta_Nstar_serial", of="delta_Nstar"),
+                "n_collocation_points": Parent(
+                    "n_collocation_points_serial", of="n_collocation_points"
+                ),
+                "alpha_regularization": Parent(
+                    "alpha_regularization_serial", of="alpha_regularization"
+                ),
+                "atol": Parent("atol_serial", of="tolerance"),
+                "rtol": Parent("rtol_serial", of="tolerance"),
+                "diffusion_model": Parent(
+                    "diffusion_serial",
+                    type_column="diffusion_type",
+                    types={t: info.name for t, info in DIFFUSION_MODEL_REGISTRY.items()},
+                ),
+                "cosmo": Parent("cosmo_serial", of="CosmologicalParams"),
+            },
+            values=("GradientCoupledInstantonProfile", "parent_serial"),
+            validated="validated",
+        )
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         from ComputeTargets.GradientCoupledInstanton.GradientCoupledInstanton import (
@@ -633,65 +671,6 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
         elif len(rows) > 0:
             return [f"Found {len(rows)} unvalidated GradientCoupledInstanton records (not pruned)"]
         return []
-
-    def inventory(self, conn, table, tables):
-        query = sqla.select(
-            table.c.serial,
-            table.c.timestamp,
-            table.c.N_init_serial,
-            table.c.N_final_serial,
-            table.c.delta_Nstar_serial,
-            table.c.n_collocation_points_serial,
-            table.c.alpha_regularization_serial,
-            table.c.validated,
-        )
-        rows = conn.execute(query).fetchall()
-
-        earliest_validated = None
-        latest_validated = None
-        earliest_unvalidated = None
-        latest_unvalidated = None
-        validated_labels = []
-        unvalidated_labels = []
-
-        for row in rows:
-            label = (
-                f"GradientCoupledInstanton("
-                f"N_init_serial={row.N_init_serial}, "
-                f"N_final_serial={row.N_final_serial}, "
-                f"delta_Nstar_serial={row.delta_Nstar_serial}, "
-                f"n_collocation_points_serial={row.n_collocation_points_serial}, "
-                f"alpha_regularization_serial={row.alpha_regularization_serial})"
-            )
-            ts = row.timestamp
-
-            if row.validated:
-                validated_labels.append(label)
-                if latest_validated is None or ts > latest_validated:
-                    latest_validated = ts
-                if earliest_validated is None or ts < earliest_validated:
-                    earliest_validated = ts
-            else:
-                unvalidated_labels.append(label)
-                if latest_unvalidated is None or ts > latest_unvalidated:
-                    latest_unvalidated = ts
-                if earliest_unvalidated is None or ts < earliest_unvalidated:
-                    earliest_unvalidated = ts
-
-        return {
-            "validated": {
-                "labels": validated_labels,
-                "versions": [],
-                "earliest_timestamp": earliest_validated,
-                "latest_timestamp": latest_validated,
-            },
-            "unvalidated": {
-                "labels": unvalidated_labels,
-                "versions": [],
-                "earliest_timestamp": earliest_unvalidated,
-                "latest_timestamp": latest_unvalidated,
-            },
-        }
 
 
 class sqla_GradientCoupledInstantonValue_factory(SQLAFactoryBase):

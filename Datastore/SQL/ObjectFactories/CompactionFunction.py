@@ -19,6 +19,7 @@ from datetime import datetime
 import sqlalchemy as sqla
 
 from datastorekit.SQL.factory_base import SQLAFactoryBase
+from datastorekit.store_inventory import InventorySpec, Parent
 
 
 class sqla_CompactionFunctionFactory(SQLAFactoryBase):
@@ -118,6 +119,29 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
                 ),
             ],
         }
+
+    def inventory_spec(self):
+        # build() matches validated == True and the serials of the trajectory, delta_Nstar, the
+        # cosmology, atol and rtol, and each instanton's serial, or NULL where the payload has
+        # none; C_threshold, the label and the tags are not matched. Both instantons are sharded
+        # on this row's delta_Nstar, so neither crosses a shard (dk-and-rpk-migration prompt 10)
+        return InventorySpec(
+            parents={
+                "trajectory": Parent("trajectory_serial", of="InflatonTrajectory"),
+                "full_instanton": Parent(
+                    "full_instanton_serial", of="FullInstanton", nullable=True
+                ),
+                "slow_roll_instanton": Parent(
+                    "slow_roll_instanton_serial", of="SlowRollInstanton", nullable=True
+                ),
+                "delta_Nstar": Parent("delta_Nstar_serial", of="delta_Nstar"),
+                "cosmo": Parent("cosmo_serial", of="CosmologicalParams"),
+                "atol": Parent("atol_serial", of="tolerance"),
+                "rtol": Parent("rtol_serial", of="tolerance"),
+            },
+            values=("CompactionFunctionSamples", "parent_serial"),
+            validated="validated",
+        )
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         from ComputeTargets.CompactionFunction import CompactionFunction
@@ -507,54 +531,6 @@ class sqla_CompactionFunctionFactory(SQLAFactoryBase):
         elif len(rows) > 0:
             return [f"Found {len(rows)} unvalidated CompactionFunction records (not pruned)"]
         return []
-
-    def inventory(self, conn, table, tables):
-        query = sqla.select(
-            table.c.serial,
-            table.c.timestamp,
-            table.c.delta_Nstar_serial,
-            table.c.validated,
-        )
-        rows = conn.execute(query).fetchall()
-
-        earliest_validated = None
-        latest_validated = None
-        earliest_unvalidated = None
-        latest_unvalidated = None
-        validated_labels = []
-        unvalidated_labels = []
-
-        for row in rows:
-            label = f"CompactionFunction(delta_Nstar_serial={row.delta_Nstar_serial})"
-            ts = row.timestamp
-
-            if row.validated:
-                validated_labels.append(label)
-                if latest_validated is None or ts > latest_validated:
-                    latest_validated = ts
-                if earliest_validated is None or ts < earliest_validated:
-                    earliest_validated = ts
-            else:
-                unvalidated_labels.append(label)
-                if latest_unvalidated is None or ts > latest_unvalidated:
-                    latest_unvalidated = ts
-                if earliest_unvalidated is None or ts < earliest_unvalidated:
-                    earliest_unvalidated = ts
-
-        return {
-            "validated": {
-                "labels": validated_labels,
-                "versions": [],
-                "earliest_timestamp": earliest_validated,
-                "latest_timestamp": latest_validated,
-            },
-            "unvalidated": {
-                "labels": unvalidated_labels,
-                "versions": [],
-                "earliest_timestamp": earliest_unvalidated,
-                "latest_timestamp": latest_unvalidated,
-            },
-        }
 
 
 class sqla_CompactionFunctionSamplesFactory(SQLAFactoryBase):

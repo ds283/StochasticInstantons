@@ -18,6 +18,7 @@ from math import log10
 import sqlalchemy as sqla
 
 from datastorekit.SQL.factory_base import SQLAFactoryBase
+from datastorekit.store_inventory import InventorySpec
 from MetadataConcepts import tolerance
 from config.defaults import DEFAULT_FLOAT_PRECISION
 
@@ -32,6 +33,10 @@ class sqla_tolerance_factory(SQLAFactoryBase):
             "timestamp": True,
             "columns": [sqla.Column("log10_tol", sqla.Float(64))],
         }
+
+    def inventory_spec(self):
+        # build() matches log10_tol alone, within a precision (dk-and-rpk-migration prompt 10)
+        return InventorySpec(leaves=("log10_tol",))
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         log10_tol = payload.get("log10_tol", None)

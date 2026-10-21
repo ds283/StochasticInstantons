@@ -403,7 +403,9 @@ def create_argument_parser():
         "--show-all",
         action="store_true",
         default=False,
-        help="Show all items in inventory (not just first/last 10)",
+        help="With --inventory, list every value and record (otherwise a list of more than 20 "
+        "values shows its first and last 10, and a group of more than 10 records its first and "
+        "last 5)",
     )
 
     return parser

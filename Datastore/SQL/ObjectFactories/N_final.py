@@ -1,10 +1,10 @@
-from datetime import datetime
 from math import fabs
 
 import sqlalchemy as sqla
 
 from InflationConcepts.N_final import N_final
 from datastorekit.SQL.factory_base import SQLAFactoryBase
+from datastorekit.store_inventory import InventorySpec
 from config.defaults import (
     DEFAULT_EFOLD_PRECISION,
     DEFAULT_EFOLD_RELATIVE_PRECISION,
@@ -23,6 +23,10 @@ class sqla_N_final_factory(SQLAFactoryBase):
                 sqla.Column("value", sqla.Float(64), index=True),
             ],
         }
+
+    def inventory_spec(self):
+        # build() matches value alone, relatively (absolutely at 0) (dk-and-rpk-migration prompt 10)
+        return InventorySpec(leaves=("value",))
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         value = payload["value"]
@@ -64,27 +68,3 @@ class sqla_N_final_factory(SQLAFactoryBase):
         )
         rows = conn.execute(query.order_by(table.c.value))
         return [N_final(store_id=row.serial, value=row.value) for row in rows]
-
-    def inventory(self, conn, table, tables):
-        query = sqla.select(
-            table.c.timestamp,
-            table.c.value,
-        )
-        rows = conn.execute(query)
-
-        earliest_timestamp: datetime = None
-        latest_timestamp: datetime = None
-        values = []
-
-        for item in rows:
-            if latest_timestamp is None or item.timestamp > latest_timestamp:
-                latest_timestamp = item.timestamp
-            if earliest_timestamp is None or item.timestamp < earliest_timestamp:
-                earliest_timestamp = item.timestamp
-            values.append(item.value)
-
-        return {
-            "earliest_timestamp": earliest_timestamp,
-            "latest_timestamp": latest_timestamp,
-            "values": values,
-        }

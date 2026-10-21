@@ -10,12 +10,13 @@ scripts (`main.py`, `plot_*.py`) and anywhere else that consumes a
 
 The package's `ShardedPool` has no `inventory` method; SI's old layer had one,
 a lossy, human-readable summary (labels, counts, earliest/latest timestamps),
-and it went with that layer. Until dk-and-rpk-migration prompt 10 ports it,
-`main.py --inventory` refuses before Ray starts. From 10 the inventory is
-`datastorekit.store_inventory.read_inventory(primary, factories)`: read-only,
-on a closed store, over each factory's `inventory_spec()`. An inventory is a
-report, not a data API: do not use one to fetch objects for use in a pipeline
-(e.g. to obtain `delta_Nstar` instances to pass into `object_get()` payloads).
+and it went with that layer. Since dk-and-rpk-migration prompt 10 the inventory
+is `datastorekit.store_inventory.read_inventory(primary, factories)`: read-only,
+on a closed store, with no Ray, over each factory's `inventory_spec()`.
+`main.py --inventory` runs it before Ray starts and prints
+`tools/inventory_report.py`'s report. An inventory is a report, not a data API:
+do not use one to fetch objects for use in a pipeline (e.g. to obtain
+`delta_Nstar` instances to pass into `object_get()` payloads).
 
 ## If `pool.read_table()` raises for a replicated table, fix the config
 

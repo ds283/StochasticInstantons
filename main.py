@@ -36,6 +36,7 @@ from CosmologyModels.cosmo_params import CosmologicalParams
 from CosmologyModels.params import Planck2018
 from datastorekit.SQL.ProfileAgent import ProfileAgent
 from datastorekit.SQL.ShardedPool import ShardedPool
+from datastorekit.store_inventory import read_inventory
 from InflationConcepts import (
     N_final,
     N_init,
@@ -44,6 +45,7 @@ from InflationConcepts import (
 )
 from MetadataConcepts import store_tag, tolerance
 from raypoolkit import RayWorkPool
+from tools.inventory_report import format_inventory_report
 from Units import Planck_units
 from Units.base import UnitsLike
 from utilities import format_package_provenance, installed_package_provenance
@@ -98,15 +100,25 @@ if args.database is None:
 
 print(format_package_provenance(installed_package_provenance()), flush=True)
 
-# --inventory refuses until the inventory is ported to the datastorekit package, whose pool has no
-# inventory(); before Ray starts, so that nothing is created (dk-and-rpk-migration prompt 09; P11)
+# --inventory reads the closed store read-only (datastorekit.store_inventory.read_inventory), before
+# Ray starts and before any pool opens: a pool's open would apply --drop, prune unvalidated rows and
+# create a store that is not there. It changes nothing; a store that is absent, or that the package
+# refuses, is refused by the reader with a RuntimeError (dk-and-rpk-migration prompt 10)
 if args.inventory:
-    print(
-        "!! --inventory: the datastore inventory is unavailable until it is ported to the "
-        "datastorekit package (dk-and-rpk-migration prompt 10). Nothing was opened",
-        file=sys.stderr,
-    )
-    sys.exit(2)
+    if len(args.drop) > 0:
+        print(
+            f"!! --inventory: the inventory is read-only and drops nothing; it refuses --drop "
+            f"({', '.join(args.drop)}). Nothing was opened",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    try:
+        inventory = read_inventory(args.database, factories)
+    except RuntimeError as e:
+        print(f"!! --inventory: {e}", file=sys.stderr)
+        sys.exit(1)
+    print(format_inventory_report(inventory, args.database, verbose=args.show_all))
+    sys.exit(0)
 
 # the --drop groups become the tables the pool drops; a drop that would leave rows naming dropped
 # rows is refused here, before Ray starts (dk-and-rpk-migration prompt 09; U5)

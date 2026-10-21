@@ -16,6 +16,7 @@
 import sqlalchemy as sqla
 
 from datastorekit.SQL.factory_base import SQLAFactoryBase
+from datastorekit.store_inventory import InventorySpec
 
 
 class sqla_cosmological_params_factory(SQLAFactoryBase):
@@ -36,6 +37,11 @@ class sqla_cosmological_params_factory(SQLAFactoryBase):
                 sqla.Column("Neff", sqla.Float(64), nullable=False),
             ],
         }
+
+    def inventory_spec(self):
+        # build() matches name alone, not the six parameters it stores (dk-and-rpk-migration
+        # prompt 10)
+        return InventorySpec(leaves=("name",))
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         from CosmologyModels.cosmo_params import CosmologicalParams
@@ -102,20 +108,3 @@ class sqla_cosmological_params_factory(SQLAFactoryBase):
             obj._deserialized = True
             results.append(obj)
         return results
-
-    def inventory(self, conn, table, tables):
-        rows = conn.execute(sqla.select(table.c.serial, table.c.name)).fetchall()
-        return {
-            "validated": {
-                "labels": [r.name for r in rows],
-                "versions": [],
-                "earliest_timestamp": None,
-                "latest_timestamp": None,
-            },
-            "unvalidated": {
-                "labels": [],
-                "versions": [],
-                "earliest_timestamp": None,
-                "latest_timestamp": None,
-            },
-        }

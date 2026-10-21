@@ -1,6 +1,6 @@
 # Open issues — project-wide index
 
-**Last updated:** 2026-10-21 · **60 open**, 27 closed. Seeded from
+**Last updated:** 2026-10-21 · **60 open**, 28 closed. Seeded from
 [`RECONSTRUCTION.md`](handoff-notes/2026-10-08/RECONSTRUCTION.md) Parts A0–D
 and D0, the open-issue `todo`s of
 [`onion_model.tex`](../notes/onion-model/onion_model.tex) as rewritten in
@@ -155,12 +155,12 @@ Opened at the campaign's planning, 2026-10-11, or at a review where the row says
 | Issue | Source | Owner | Hook |
 |---|---|---|---|
 | `[plot-scripts-stale-version-label]` | board §3 | unowned; P2 | The plot scripts open read-write under `"2026.3.0"`, adding a `version` row to every store they read. |
-| `[redshift-registered-in-neither-table-list]` | board §3 | unowned | `redshift` is registered but in neither table list and unused; `IntegrationSolver` is registered and unwritten. |
+| `[redshift-registered-in-neither-table-list]` | board §3 | unowned | `redshift` is registered but in neither table list and unused; `IntegrationSolver` is registered and unwritten. Its `build`'s `z = 0` query has the comparison inside the `abs` (found at dk-10, not acted on). |
 | `[test-counts-stale-in-claude-md]` | board §3 | dk-12 | `CLAUDE.md` and `test-selection.md` say 464 of 571; the default run selects 631 of 761. |
-| `[show-all-flag-unused]` | board §3 | dk-10 | `--show-all` is parsed and read by nothing. |
 | `[unified-pipeline-stores-null-instanton-labels]` | board §3 (01's review) | unowned | The unified pipeline stores `FullInstanton` and `SlowRollInstanton` with `label` NULL, so a scalars-only store's figure footers lack it. |
 | `[gci-picard-inner-fails-on-rehearsal-grid]` | board §3 (02's first attempt, 2026-10-20) | P3 | At the rehearsal grid (`quadratic-minimal.yaml`, `n = 5`, `α = 0.01`, no budget) no `GradientCoupledInstanton` solve finished in over five hours: every inner Picard step failed and the shooting halved λ again and again. July's 315 s does not hold at today's tree. The rehearsals build no gradient branch (U11). See also `[gci-n5-n7-solutions-provisional]`. |
 | `[pool-prose-stale-after-raypoolkit-adoption]` | board §3 (04, 2026-10-20) | dk-12 | `picard.py:450-456` still calls `RayTools/RayWorkPool.py` protected infrastructure; the constructor sketches in `INFRASTRUCTURE.md` and `architecture-summary.md` give defaults of 10, 10 and 50 where the pool's are 5, 1 and 200. |
+| `[gci-value-table-outside-the-inventory]` | board §3 (10, 2026-10-21) | the user (README §6.3) | A spec has one `values` slot; `GradientCoupledInstantonProfile` takes it, so `GradientCoupledInstantonValue` (written only with full values) is outside the inventory and any fingerprint taken through it. Whether to ask DatastoreKit for a second value table per spec is the user's. |
 
 ## 7. Closed
 
@@ -188,3 +188,4 @@ Opened at the campaign's planning, 2026-10-11, or at a review where the row says
 | `[ray-address-auto-attaches-to-foreign-cluster]` (dk-and-rpk-migration board §4) | 2026-10-12 | The lock brief's §3 and §5 amended; SI's `--ray-address` made required by the user's ruling. |
 | `[inflaton-trajectory-prune-orphans-value-rows]` (dk-and-rpk-migration board §4) | 2026-10-20 | dk-06: `InflatonTrajectory`'s prune deletes the unvalidated trajectories' `InflatonTrajectoryValue` rows before them, in the same transaction; the cascade map of `validate-on-startup.md` has the row, and the value table declares `owner_column` for DatastoreKit's prune. Shown on two shards through SI's pool. |
 | `[config-datastore-cannot-be-imported-before-the-layer]` (dk-and-rpk-migration board §4) | 2026-10-21 | dk-09: the layer is deleted and `Datastore/__init__.py` and `Datastore/SQL/__init__.py` are empty, so nothing imports it; `import config.datastore` alone, in a fresh process, succeeds and starts no Ray (`tests/test_config_datastore.py`; its 30 entries are instances of the package's `SQLAFactoryBase`), and `test_compare_stores.py`'s fallback import is gone. |
+| `[show-all-flag-unused]` (dk-and-rpk-migration board §4) | 2026-10-21 | dk-10: `main.py --inventory` passes `verbose=args.show_all` to `tools/inventory_report.py`'s report, which otherwise truncates a list of more than 20 values to its first and last 10 and a group of more than 10 records to its first and last 5; the flag's help says so (`tests/test_inventory_report.py`, `tests/test_inventory_store.py`). |

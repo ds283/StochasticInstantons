@@ -4,7 +4,7 @@
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
-the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package; 09 landed and reviewed (§5.22): SI's layer deleted, every pool the package's, U5's drop policy before Ray, `--inventory` refused until 10, `[config-datastore-cannot-be-imported-before-the-layer]` closed. U1–U9 ruled (2026-10-12),
+the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package; 09 landed and reviewed (§5.22): SI's layer deleted, every pool the package's, U5's drop policy before Ray, `--inventory` refused until 10, `[config-datastore-cannot-be-imported-before-the-layer]` closed; 10 landed (§5.23): the inventory is `read_inventory` over 24 `inventory_spec`s (22 definitions), `tools/inventory_report.py` prints it before Ray, every registered class is covered (U8), `[show-all-flag-unused]` closed and `[gci-value-table-outside-the-inventory]` opened. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -70,7 +70,7 @@ on any of them.
 | 07 | [Rehearse before the DatastoreKit swap (RH1)](07-rehearse-before-the-datastore-swap.md) | **RH1**, bitwise against RH0; the tag (**U7**) | Opus | ✍️ 2026-10-20 | ✅ 2026-10-21 (§5.19) | `0527480`, tagged `pre-datastorekit` | [`07-rehearse-before-the-datastore-swap.md`](../../.documents/dk-and-rpk-migration/07-rehearse-before-the-datastore-swap.md) |
 | 08 | [Pin `datastorekit` `v0.4.0`](08-pin-datastorekit-v0.4.0.md) | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.21) | `1b1ca6d` | [`08-pin-datastorekit-v0.4.0.md`](../../.documents/dk-and-rpk-migration/08-pin-datastorekit-v0.4.0.md) |
 | 09 | [Adopt `datastorekit`](09-adopt-datastorekit.md) | the DatastoreKit swap; **U5**; closes `[config-datastore-cannot-be-imported-before-the-layer]` | Opus | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.22) | `f4da58f` | [`09-adopt-datastorekit.md`](../../.documents/dk-and-rpk-migration/09-adopt-datastorekit.md) |
-| 10 | [Port the inventory](10-port-the-inventory.md) | **U6**, **U8**; `inventory_spec`, `tools/inventory_report.py`; closes `[show-all-flag-unused]` | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
+| 10 | [Port the inventory](10-port-the-inventory.md) | **U6**, **U8**; `inventory_spec`, `tools/inventory_report.py`; closes `[show-all-flag-unused]` | Opus | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.23) | this commit | [`10-port-the-inventory.md`](../../.documents/dk-and-rpk-migration/10-port-the-inventory.md) |
 | 11 | [Rehearse through both packages (RH2)](11-rehearse-through-both-packages.md) | **RH2**, bitwise against RH1; **DatastoreKit G4** | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
 | 12 | Close the migration | `CLAUDE.md`, rules, documents, handover to P2, close | Sonnet | ⬜ | ⬜ | — | — |
 
@@ -148,12 +148,12 @@ before each dispatch:
 | **A7** | 09 | `--inventory` refuses before Ray (P11); the prose this commit makes false (P13) | ✅ exit 2 before `ray.init`, nothing created; the 5 helpers, 2 printers and 4 `pool.inventory` calls deleted; `CLAUDE.md`, `pool-read-apis.md`, `datastore-factories.md`, the two shard-key notes, `FILE_MAP.md`, `config/datastore.py` corrected; what stays stale listed for 12 |
 | **A8** | 09 | `[config-datastore-cannot-be-imported-before-the-layer]` closed | ✅ §4; `import config.datastore` alone exits 0 in a fresh process (30 entries on the package's base, no Ray) |
 | **A9** | 09 | the verification: the script, the schema, the suites with `slow`, acceptance 4 (the package's replicated prune) and 5 (U3 through the package) | ✅ schema: "the schemas agree" with the gate's and `07-reference-schema.json` (`out/09-temp-schema.json`); default 707 (706 passed, 1 skipped), integration 63 (62 passed, 1 skipped), `slow` 69 passed (S1's); I6 passes on the package's prune; U3's test passes; six breakages caught |
-| **N1** | 10 | `inventory_spec()` on every covered factory and every class a spec depends on | ⬜ |
-| **N2** | 10 | `tools/inventory_report.py`, at least what today's report shows (P18), every problem in full | ⬜ |
-| **N3** | 10 | `main.py --inventory` by `read_inventory`, before Ray; `--show-all` is `verbose` | ⬜ |
-| **N4** | 10 | the 17 `inventory()` hooks and `inventory_config` deleted; U5 re-checked against the specs | ⬜ |
-| **N5** | 10 | **U8**: every registered class covered, read through, or excluded with a reason; the GCI table left out opened as an issue | ⬜ |
-| **N6** | 10 | the prose this commit makes false | ⬜ |
+| **N1** | 10 | `inventory_spec()` on every covered factory and every class a spec depends on | ✅ 22 definitions in 22 modules serve 24 entries; each the identity its `build` matches (the results note's table, pinned by `tests/test_inventory_specs.py`); four polymorphic parents by SI's registries, two nullable (`CompactionFunction`'s instantons), none `cross_shard`, `version` no parent |
+| **N2** | 10 | `tools/inventory_report.py`, at least what today's report shows (P18), every problem in full | ✅ `format_inventory_report(inventory, db_name, verbose=False) -> str`; reads nothing but the registry's column types; today's fields kept but the per-group timestamps (one range per class) and the serial labels (physical labels now); `tests/test_inventory_report.py` 10 |
+| **N3** | 10 | `main.py --inventory` by `read_inventory`, before Ray; `--show-all` is `verbose` | ✅ before `ray.init`; exit 0 with the report, 1 on the reader's `RuntimeError` (an absent store, or one the package refuses), 2 with `--drop`; creates and changes nothing; `--show-all`'s help made true |
+| **N4** | 10 | the 17 `inventory()` hooks and `inventory_config` deleted; U5 re-checked against the specs | ✅ 17 hooks and the 11 `datetime` imports only they used; `inventory_config`, `_instanton_merge` and their comment; U5: 31 of 31 sets unmoved, decisions, messages and `dependent_tables` alike (10 closed) |
+| **N5** | 10 | **U8**: every registered class covered, read through, or excluded with a reason; the GCI table left out opened as an issue | ✅ 30 entries: 24 specs, 5 read through (`values`), 1 excluded (`GradientCoupledInstantonValue`); `[gci-value-table-outside-the-inventory]` opened (§3) |
+| **N6** | 10 | the prose this commit makes false | ✅ `pool-read-apis.md` §1; `FILE_MAP.md` (`config/sharding.py`'s row, the `ShardedPool` row, a row for `tools/inventory_report.py`); `tests/test_tables_to_drop.py`'s docstring; a spec rule for every new factory, and the `INFRASTRUCTURE.md` and `architecture-summary.md` lines, left for 12 |
 | **L1**–**L4** (RH2) | 11 | README §4.1 at 10's tree, through both packages; bitwise equality with RH1's stores, compared before the readers; `scalar_data.csv` `b0564eec…58a2`; `--inventory` with no problem; L4 against RH1 | ⬜ |
 | **V3** | 11 | `verification.md` §3 RH2; `out/11-*` | ⬜ |
 | **H1** | 11 | `shard_key_audit` on each store; a `sharded_store copy` read and compared, then `delete_store` | ⬜ |
@@ -188,12 +188,12 @@ Opened at planning, 2026-10-11, unless the row says otherwise.
 | Issue | What | Owner |
 |---|---|---|
 | `[plot-scripts-stale-version-label]` | Both plot scripts open **read-write** under `plotting/provenance.py:18`'s `"2026.3.0"`, while `main.py:49` writes `"2026.6.1"`. So each plot run adds a `version` row to the store it reads, and the figure footers say `v2026.3.0`. Read-only plot pools are the goal (README P9, P10) | unowned; P2 when it bumps the label |
-| `[redshift-registered-in-neither-table-list]` | `redshift` is registered (`Datastore/SQL/Datastore.py:99`) and has a batch size, but is in neither `replicated_tables` nor `sharded_tables`, and no SI code uses it: a ChamPBH leftover. `IntegrationSolver` is registered and replicated, but likewise unwritten by any driver (README P12) | unowned |
+| `[redshift-registered-in-neither-table-list]` | `redshift` is registered (`Datastore/SQL/Datastore.py:99`) and has a batch size, but is in neither `replicated_tables` nor `sharded_tables`, and no SI code uses it: a ChamPBH leftover. `IntegrationSolver` is registered and replicated, but likewise unwritten by any driver (README P12). *Found at 10 (§5.23), not acted on:* `sqla_redshift_factory.build`'s query for `z = 0` reads `sqla.func.abs((table.c.z - z) < DEFAULT_REDSHIFT_PRECISION)`, the comparison inside the `abs`, so it matches every row with `z` below the precision (negative ones too), and `one_or_none()` raises when two do; ChamPBH's inherited factory has the same line. Unreachable while nothing writes `redshift`; the spec (`leaves=("z",)`) reads the stored value, not the lookup | unowned |
 | `[test-counts-stale-in-claude-md]` | `CLAUDE.md:21` and `.claude/rules/test-selection.md:10`, `:26` say "464 of 571"; at `7bb3efd` the default run selects 631 of 761 | 12 |
-| `[show-all-flag-unused]` | `--show-all` is parsed (`config/argument_parser.py`) but read by nothing: `main.py`'s inventory truncates at 20 values regardless | 10 (`verbose`) |
 | `[unified-pipeline-stores-null-instanton-labels]` | *Opened 2026-10-12 at 01's review, from its Observation 2.* The unified pipeline (`--no-store-values`) constructs `FullInstanton` and `SlowRollInstanton` with no label (`ComputeTargets/pipeline.py:288-298`, `:304-314`), so they are stored with `label` NULL, where the per-stage queues store the factory's default (`Datastore/SQL/ObjectFactories/FullInstanton.py:149-155`, `SlowRollInstanton.py:148-154`). No science value differs and no reader fails, but the provenance footers read `label` (`plotting/provenance.py:46`), so a scalars-only store's figures lack it. `tools/compare_stores.py` treats the two columns as bookkeeping for this reason | unowned |
 | `[gci-picard-inner-fails-on-rehearsal-grid]` | *Opened 2026-10-20 at 02's first attempt (§5.12).* At the rehearsal grid (`quadratic-minimal.yaml`, `m = 10⁻⁵ M_P`, `n = 5`, `α = 0.01`, no wall-clock budget) none of the four `GradientCoupledInstanton` solves of the first wave (`δN★` = 0.1, 0.4222, 0.7444, 1.711) finished in 5 h 24 min at full CPU. Each worker's log shows only `Picard inner failed at lambda=…`, 85–105 times, with λ halved after each failure and the sign alternating between outer attempts. July's 315 s a solve at `δN★ = 1.0` (`.documents/gradient-coupled-instanton/24-phase-a-deep-dive.md:43`) was measured at an older tree. Not investigated here: the gradient code is P3's, and the rehearsals no longer build it (U11). The workers' logs are kept in the orchestrator's scratchpad of 2026-10-20 only; the first attempt's store and log are under `$REHEARSAL_ROOT/02-attempt-1-aborted/` | P3 |
 | `[pool-prose-stale-after-raypoolkit-adoption]` | *Opened 2026-10-20 at 04 (§5.16).* Two statements 04 leaves, both outside its §5 list: (1) `ComputeTargets/GradientCoupledInstanton/picard.py:450-456`, a July comment (`b5a3a9f`), says `RayTools/RayWorkPool.py` is protected infrastructure (`CLAUDE.md`) and has no per-task timeout hook; the path is gone and the pool is no longer SI's to protect, though the substance holds (no `timeout` or `cancel` in `raypoolkit/RayWorkPool.py` at `v0.2.0`); a `ComputeTargets/` edit would also widen the suites to the `slow` block. (2) The constructor sketches at `.documents/INFRASTRUCTURE.md:357-373` and `.documents/architecture-summary.md:328-344` give `create_batch_size=10`, `process_batch_size=10`, `max_task_queue=50` as defaults; the defaults of the copy and of the package are both 5, 1 and 200 (`DEFAULT_*`, `:26-29`). Wrong before 04, not made false by it | 12 |
+| `[gci-value-table-outside-the-inventory]` | *Opened 2026-10-21 at 10 (§5.23).* A spec has one `values` slot, and `GradientCoupledInstanton` has two child tables. `GradientCoupledInstantonProfile` (`parent_serial`), written for every row (the radial profile, the science output), takes it; `GradientCoupledInstantonValue` (`instanton_serial`), written only when `store_full_values` is set (`Datastore/SQL/ObjectFactories/GradientCoupledInstanton.py`'s `store`), is excluded, with that reason, in `tests/test_inventory_specs.py`'s `EXCLUDED`. So `read_inventory`, and a fingerprint taken through it (RunRegistryKit, README §7), cannot see that table: neither its rows nor an orphan among them. Whether to ask DatastoreKit for more than one value table per spec is the user's (README §6.3); a request would be a DatastoreKit release and a pin prompt here (README §5 rule 11) | the user (README §6.3) |
 
 ## 4. Resolved issues
 
@@ -202,6 +202,7 @@ Opened at planning, 2026-10-11, unless the row says otherwise.
 | `[ray-address-auto-attaches-to-foreign-cluster]` | 2026-10-12 (opened and closed the same day, §5.9, §5.10) | Every project's drivers defaulted to `--ray-address auto`, which attaches to any running cluster once the clusters are isolated (`ray_current_cluster` is no longer in `/tmp/ray`). The brief's §3 "Address it explicitly" now covers every run that takes the lock and forbids leaving a driver at `auto`; §5 asks SGK to pass `local` to its long builds. The user ruled SI's default: `--ray-address` is now required (`config/argument_parser.py`), for `main.py` and both plot scripts; `CLAUDE.md`'s run instructions say so. ChamPBH's and SGK's defaults are theirs to change |
 | `[inflaton-trajectory-prune-orphans-value-rows]` | 2026-10-20 (06, §5.18; opened at planning) | `sqla_InflatonTrajectory_factory.validate_on_startup` now deletes the unvalidated trajectories' `InflatonTrajectoryValue` rows, by `trajectory_serial`, before the trajectories, in the same transaction (`tables.get`, the pattern of `FullInstanton`'s hook); `.claude/rules/validate-on-startup.md`'s cascade map has the row. For DatastoreKit's prune, the value table declares `owner_column: "trajectory_serial"`. Shown by `tests/test_inflaton_trajectory_prune.py`: on a store the factory wrote, the prune deletes the trajectory and its 3 value rows and no other table loses a row; through SI's `ShardedPool` on two shards, a pruning reopen leaves no orphan, where without the cascade it left 3 on each shard |
 | `[config-datastore-cannot-be-imported-before-the-layer]` | 2026-10-21 (09, §5.22; opened at 05) | 09 deleted SI's layer and emptied `Datastore/__init__.py` and `Datastore/SQL/__init__.py` (P6), so nothing imports the layer and the cycle through it is gone. `import config.datastore` alone, in a fresh process, exits 0: 30 entries, every one an instance of the package's `SQLAFactoryBase`, `ray.is_initialized()` `False` (run with the root put on `sys.path` by `PYTHONPATH`, and by `-I` with the root inserted by the code, since `-I` ignores `PYTHONPATH`). `tests/test_config_datastore.py`'s two `import_module` calls of the layer are gone and its subprocess test imports `config.datastore` alone; `tests/test_compare_stores.py`'s `_registry()` imports it directly, its `ImportError` fallback gone |
+| `[show-all-flag-unused]` | 2026-10-21 (10, §5.23; opened at planning) | `main.py --inventory` passes `verbose=args.show_all` to `tools/inventory_report.py`'s `format_inventory_report`: without it a list of more than 20 values shows its first and last 10, and a group of more than 10 records its first and last 5, as today's report did; with it nothing is truncated. The flag's help says so (`config/argument_parser.py`). Shown by `tests/test_inventory_report.py` (truncation and `verbose`) and `tests/test_inventory_store.py` (`main.py --inventory --show-all` prints the verbose report) |
 
 ## 5. Dispatch record
 
@@ -1562,3 +1563,52 @@ follow-up (records only); nothing is opened.
     `tools/compare_stores.py:39`, `:94`, `:115`, `:116`, `tests/test_rehearsal_stage_counts.py:26`, three comments in
     `ObjectFactories/InflatonTrajectory.py`), and `pool-read-apis.md`'s claim that `config/sharding.py` is on
     `CLAUDE.md`'s protected list, which it never was.
+
+### 5.23 After prompt 10 (2026-10-21)
+
+- **Landed:** this commit, results note
+  [`10-port-the-inventory.md`](../../.documents/dk-and-rpk-migration/10-port-the-inventory.md).
+  **COMPLETE:** N1–N6 hold; no stop condition met; `[show-all-flag-unused]` closed (§4);
+  `[gci-value-table-outside-the-inventory]` opened (§3).
+- **N1.** 22 `def inventory_spec(self)` in 22 factory modules, serving **24** registry entries (the dimensionful
+  factory serves `inflaton_mass`, `phi_value`, `pi_value`), each the identity its `build` matches: the results
+  note's table, written out in `tests/test_inventory_specs.py`'s `EXPECTED_SPECS`. Four polymorphic parents
+  (`potential` by `potential_type`; `diffusion_model` by `diffusion_type` on the three instantons), maps from SI's
+  registries, equal to `tools/compare_stores.py`'s; `CompactionFunction`'s two instantons `nullable`; no
+  `cross_shard`; `version` no parent; `MasslessDecoupledDiffusion` `InventorySpec()`; `IntegrationSolver`
+  `label`, `stepping` (a minimum); `CosmologicalParams` `name`. Key fields are named after `build`'s payload keys.
+  `inventory_classes` accepts the registry (24); every column resolves against `build_schema`.
+- **N2.** `tools/inventory_report.py`: `format_inventory_report(inventory, db_name, verbose=False) -> str` (no
+  `units`: the unit is the column's suffix; deviation 5). Reads nothing but the registry's column types, in memory.
+  Today's 13 sections, titles and order kept, 11 classes added; values `.6g` with units; more than 20 values → the
+  first and last 10, more than 10 records → 5 and 5, as today; compute targets by validated group, records by
+  physical labels, one timestamp range per class (the inventory has no per-group range); every problem whole.
+  Version labels struck (brief correction 3); the field table is in the results note.
+- **N3.** `main.py --inventory` before `ray.init`: exit 0 with the report, 1 on the reader's `RuntimeError` (the
+  only exception caught), 2 with `--drop`; nothing created or changed; `--show-all` → `verbose`, its help true.
+- **N4.** The 17 hooks deleted with the 11 `datetime` imports only they used; `config/sharding.py`'s
+  `inventory_config`, `_instanton_merge` and comment. **U5 unmoved:** 31 of 31 sets, decision, message and
+  `dependent_tables` equal with 0 and 24 specs (10 closed); the specs' only new edges (trajectory → potentials,
+  instantons → diffusion model) reach no drop group. `tests/test_tables_to_drop.py`: docstring only.
+- **N5.** 30 entries: 24 specs, 5 read through (`values`), 1 excluded (`GradientCoupledInstantonValue`, with its
+  reason); the test names a class in none or two places, a stale or unexplained exclusion, a wrong slot or owner.
+- **N6.** `pool-read-apis.md` §1; `FILE_MAP.md` (`:17`, `:41`, new `:42`); the `--show-all` help. Stale for 12: a
+  spec rule for new factories; `INFRASTRUCTURE.md` `:183`, `:228`, `:232`, `:498`; `architecture-summary.md` `:194`,
+  `:227`, `:394`, `:403`, `:494-500`, `:580`; `FILE_MAP.md:54`; 09's list.
+- **Verification.** Suites: default **730 (729 passed, 1 skipped)**, integration **67 (66 passed, 1 skipped)**: the
+  gate's 707 and 63, + `test_inventory_specs.py` 12, `test_inventory_report.py` 10, `test_main_refusals.py` 3 → 4,
+  + `test_inventory_store.py` 4 (integration: a two-shard store through the pool in a subprocess under a private Ray;
+  read back with every class at its count and no named problem; `main.py --inventory` exit 0 with that report,
+  every file unchanged; `--show-all` verbose). No `slow` run (no `ComputeTargets/` change). `ruff` F401/F811/F821:
+  18 at the gate, 18 now, none new. Breakages 1–6 caught (the spec table; a column and the table; the package's
+  `inventory_classes` refusal; the `ast` order test; coverage names the owner and its profile table; coverage names
+  `ScratchValue`).
+- **Found, not acted on:** `redshift`'s `z = 0` lookup has its comparison inside the `abs` (added to
+  `[redshift-registered-in-neither-table-list]`); a failed and a successful compute target under one key would be a
+  `duplicate` to the package (SI's drivers write neither).
+- **Rollback:** `git revert` of this commit alone; nothing in the venv (README §4.4).
+- **Deviations:** the board section and the counts (correction 1); version labels struck (3); nullable parents (4);
+  today's truncation thresholds (13); no `units` parameter (an implementation choice); one timestamp range per
+  class; key fields named by payload keys; the new `--inventory` tests in `test_main_refusals.py` (correction 10);
+  the docstring and `FILE_MAP.md` rows (9, 12); the redshift finding added to its open row; one new test corrected
+  before the suites were recorded. One `UNINTENDED DRIFT`, that test, caught by the suite.

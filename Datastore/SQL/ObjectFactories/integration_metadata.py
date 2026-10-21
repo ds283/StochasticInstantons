@@ -16,6 +16,7 @@
 import sqlalchemy as sqla
 
 from datastorekit.SQL.factory_base import SQLAFactoryBase
+from datastorekit.store_inventory import InventorySpec
 from Quadrature.integration_metadata import IntegrationSolver
 from config.defaults import DEFAULT_STRING_LENGTH
 
@@ -33,6 +34,10 @@ class sqla_IntegrationSolver_factory(SQLAFactoryBase):
                 sqla.Column("label", sqla.String(DEFAULT_STRING_LENGTH)),
             ],
         }
+
+    def inventory_spec(self):
+        # build() matches label, and stepping as a minimum (dk-and-rpk-migration prompt 10)
+        return InventorySpec(leaves=("label", "stepping"))
 
     def build(self, payload, conn, table, inserter, tables, inserters):
         label = payload["label"]
