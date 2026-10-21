@@ -420,7 +420,7 @@ held to the same criterion with RH1's stores and, through them, RH0's.
 
 ### 2.5 The tag
 
-`pre-datastorekit`, annotated, on the commit that adds this section. It is not pushed.
+`pre-datastorekit`, annotated, on the commit that adds this section (`0527480`). It is not pushed.
 
 ### 2.6 The suites, before the cluster
 

@@ -1,7 +1,7 @@
 # 07 — rehearse before the DatastoreKit swap (RH1)
 
 **Subject:** Rehearse 06's tree (RH1), compare it bit for bit with RH0, and tag `pre-datastorekit`
-**Commit:** the commit tagged `pre-datastorekit`, on branch `dk-and-rpk-migration`, on top of `9214c9b`
+**Commit:** `0527480`, the commit tagged `pre-datastorekit`, on branch `dk-and-rpk-migration`, on top of `9214c9b`
 **Date:** 2026-10-20 (gate and suites) and 2026-10-21 (the rehearsal), by Claude Opus 5.5
 **Result:** **COMPLETE.** L1–L4 hold, and **RH1 equals RH0 bit for bit in both modes.**
 - All five comparisons give `RESULT: equal`, exit 0. Every row of all 30 tables matched, and only
@@ -93,7 +93,9 @@ were applied as stated (below). The record of the rehearsal is
 8. The comparison files are named as the correction gives them.
 9. The readers' outputs and the CSVs are kept and staged as 02's D6.
 10. The profile database is recorded beside RH0's, and its difference explained.
-11. One `git ls-remote` was made, at the gate. The tag is checked after the commit and not pushed.
+11. Two `git ls-remote` calls were made: one at the gate, and one after the tag, for the reply's
+    check (both empty). The tag is not pushed. *(Corrected at the orchestrator's review: this
+    said one call, at the gate.)*
 12. `verification.md` §2 is appended.
 13. `OPEN-ISSUES.md` is untouched.
 
@@ -529,8 +531,8 @@ After the one commit:
 ```bash
 git tag -a pre-datastorekit -m "Last commit on StochasticInstanton's own datastore layer, rehearsed (RH1, dk-and-rpk-migration prompt 07)"
 git cat-file -t pre-datastorekit                 # tag
-git rev-parse 'pre-datastorekit^{commit}'        # this commit
-git ls-remote --tags origin pre-datastorekit     # not run again: nothing is pushed
+git rev-parse 'pre-datastorekit^{commit}'        # 05274802c08b4b67381341e3a30ce7261914f457
+git ls-remote --tags origin pre-datastorekit     # empty, exit 0: nothing is pushed
 ```
 
 The tag is annotated, local, and points at the commit that adds this note. **It is not pushed,
