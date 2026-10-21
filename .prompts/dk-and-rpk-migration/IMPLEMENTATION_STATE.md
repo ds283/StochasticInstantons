@@ -4,7 +4,7 @@
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
-the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package; 09 landed and reviewed (§5.22): SI's layer deleted, every pool the package's, U5's drop policy before Ray, `--inventory` refused until 10, `[config-datastore-cannot-be-imported-before-the-layer]` closed; 10 landed (§5.23): the inventory is `read_inventory` over 24 `inventory_spec`s (22 definitions), `tools/inventory_report.py` prints it before Ray, every registered class is covered (U8), `[show-all-flag-unused]` closed and `[gci-value-table-outside-the-inventory]` opened. U1–U9 ruled (2026-10-12),
+the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package; 09 landed and reviewed (§5.22): SI's layer deleted, every pool the package's, U5's drop policy before Ray, `--inventory` refused until 10, `[config-datastore-cannot-be-imported-before-the-layer]` closed; 10 landed and reviewed (§5.23): the inventory is `read_inventory` over 24 `inventory_spec`s (22 definitions), `tools/inventory_report.py` prints it before Ray, every registered class is covered (U8), `[show-all-flag-unused]` closed and `[gci-value-table-outside-the-inventory]` opened. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -70,7 +70,7 @@ on any of them.
 | 07 | [Rehearse before the DatastoreKit swap (RH1)](07-rehearse-before-the-datastore-swap.md) | **RH1**, bitwise against RH0; the tag (**U7**) | Opus | ✍️ 2026-10-20 | ✅ 2026-10-21 (§5.19) | `0527480`, tagged `pre-datastorekit` | [`07-rehearse-before-the-datastore-swap.md`](../../.documents/dk-and-rpk-migration/07-rehearse-before-the-datastore-swap.md) |
 | 08 | [Pin `datastorekit` `v0.4.0`](08-pin-datastorekit-v0.4.0.md) | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.21) | `1b1ca6d` | [`08-pin-datastorekit-v0.4.0.md`](../../.documents/dk-and-rpk-migration/08-pin-datastorekit-v0.4.0.md) |
 | 09 | [Adopt `datastorekit`](09-adopt-datastorekit.md) | the DatastoreKit swap; **U5**; closes `[config-datastore-cannot-be-imported-before-the-layer]` | Opus | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.22) | `f4da58f` | [`09-adopt-datastorekit.md`](../../.documents/dk-and-rpk-migration/09-adopt-datastorekit.md) |
-| 10 | [Port the inventory](10-port-the-inventory.md) | **U6**, **U8**; `inventory_spec`, `tools/inventory_report.py`; closes `[show-all-flag-unused]` | Opus | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.23) | this commit | [`10-port-the-inventory.md`](../../.documents/dk-and-rpk-migration/10-port-the-inventory.md) |
+| 10 | [Port the inventory](10-port-the-inventory.md) | **U6**, **U8**; `inventory_spec`, `tools/inventory_report.py`; closes `[show-all-flag-unused]` | Opus | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.23) | `e2c7b22` | [`10-port-the-inventory.md`](../../.documents/dk-and-rpk-migration/10-port-the-inventory.md) |
 | 11 | [Rehearse through both packages (RH2)](11-rehearse-through-both-packages.md) | **RH2**, bitwise against RH1; **DatastoreKit G4** | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
 | 12 | Close the migration | `CLAUDE.md`, rules, documents, handover to P2, close | Sonnet | ⬜ | ⬜ | — | — |
 
@@ -97,6 +97,7 @@ before each dispatch:
 - [`prompt-07.md`](orchestrator/prompt-07.md) — used for 07 (`9214c9b`).
 - [`prompt-08.md`](orchestrator/prompt-08.md) — used for 08 (`7ef06ad`).
 - [`prompt-09.md`](orchestrator/prompt-09.md) — used for 09 (`597730f`).
+- [`prompt-10.md`](orchestrator/prompt-10.md) — used for 10 (`62cdca5`).
 
 ### 1.1 Items
 
@@ -1566,7 +1567,7 @@ follow-up (records only); nothing is opened.
 
 ### 5.23 After prompt 10 (2026-10-21)
 
-- **Landed:** this commit, results note
+- **Landed:** `e2c7b22`, results note
   [`10-port-the-inventory.md`](../../.documents/dk-and-rpk-migration/10-port-the-inventory.md).
   **COMPLETE:** N1–N6 hold; no stop condition met; `[show-all-flag-unused]` closed (§4);
   `[gci-value-table-outside-the-inventory]` opened (§3).
@@ -1606,9 +1607,85 @@ follow-up (records only); nothing is opened.
 - **Found, not acted on:** `redshift`'s `z = 0` lookup has its comparison inside the `abs` (added to
   `[redshift-registered-in-neither-table-list]`); a failed and a successful compute target under one key would be a
   `duplicate` to the package (SI's drivers write neither).
-- **Rollback:** `git revert` of this commit alone; nothing in the venv (README §4.4).
+- **Rollback:** `git revert` of `e2c7b22` alone; nothing in the venv (README §4.4).
 - **Deviations:** the board section and the counts (correction 1); version labels struck (3); nullable parents (4);
   today's truncation thresholds (13); no `units` parameter (an implementation choice); one timestamp range per
   class; key fields named by payload keys; the new `--inventory` tests in `test_main_refusals.py` (correction 10);
   the docstring and `FILE_MAP.md` rows (9, 12); the redshift finding added to its open row; one new test corrected
   before the suites were recorded. One `UNINTENDED DRIFT`, that test, caught by the suite.
+
+**Orchestrator review of prompt 10 (2026-10-21)**, by orchestrator note
+[`prompt-10.md`](orchestrator/prompt-10.md), at `e2c7b22`. All twelve checks pass. The residue is fixed in this
+follow-up (records only); nothing is opened.
+- **(1) Scope.** 36 files: the 22 factory modules, `config/sharding.py`, `config/argument_parser.py`, `main.py`,
+  `tools/inventory_report.py`, three new test modules, `test_main_refusals.py`, `test_tables_to_drop.py`,
+  `pool-read-apis.md`, `FILE_MAP.md`, the results note, the board and `OPEN-ISSUES.md`; nothing else. One commit of
+  the agent's on `62cdca5`, no amend in the reflog, no leftover branch; `git status` clean; nothing untracked.
+- **(2) The specs against the lookups.** Compared column by column (field names aside) with the pre-dispatch
+  prototype, which was read against each `build`: **24 of 24 equal**, leaves, parents (with `of`, type map, type
+  column, `nullable`, `cross_shard`), `values` and `validated`; `inventory_classes` gives the prototype's order. 22
+  `def inventory_spec`; no `cross_shard`; no `version` parent; `CompactionFunction`'s two instantons `nullable`; the
+  maps built in the method from `POTENTIAL_REGISTRY` and `DIFFUSION_MODEL_REGISTRY`.
+- **(3) The factory diffs.** By `ast`, each of the 22 modules at `e2c7b22~1` equals `e2c7b22`'s with `inventory_spec`,
+  `inventory()` and the imports set aside, docstrings included (22 of 22). Imports: one `datastorekit.store_inventory`
+  line added to each, `from datetime import datetime` removed from 11 (used by the hooks alone). Added lines are the
+  specs, their comments and the two registry imports inside them; no comment removed outside a hook.
+  `config/sharding.py` loses `:78-102` alone (`inventory_config`, `_instanton_merge`, their comment).
+- **(4) `main.py`.** Two imports, and the refusal replaced by the `--inventory` branch (`:103-121`), still before the
+  `--drop` `try` and `ray.init`: `--drop` → exit 2; `read_inventory(args.database, factories)`, `RuntimeError` →
+  `!! --inventory: …` exit 1; the report with `verbose=args.show_all`, exit 0. Nothing else changed.
+- **(5) By running it**, address `127.0.0.1:9`, `RAY_ADDRESS` the same: an absent store exit 1 with the reader's
+  message, no file; `--drop full-instanton` exit 2, no file; copies of the prototype's `store-a`, exit 0 (107 lines,
+  stderr empty, the three files' SHA-1 unchanged) and with `--show-all`; `store-b`, exit 0 with `problems: 2` and
+  both problems printed whole under their classes. Records render by physical labels; the NULL slow-roll side as
+  `none`. No Ray process after.
+- **(6) The report.** By `ast`, no `open`, `sqlite3`, `create_engine`, `connect`, `read_inventory`,
+  `open_read_only` or `execute` in `tools/inventory_report.py`; it imports `build_schema` and the registry (column
+  types, in memory). One public function. The field table accounts for every field of today's report (note
+  correction 13); version labels and `N_end` not kept, with reasons; one timestamp range per class, since
+  `ClassInventory` has no per-group range. The `units` parameter is dropped (deviation 5): accepted, the unit is the
+  column's suffix.
+- **(7) The tests, read.** Licence headers. `test_inventory_store.py` builds its own two-shard store in a subprocess
+  under `ray.init(address="local")`, not `live_pool`'s, every parent real, failed rows under keys of their own; its
+  four tests are `integration`-marked and say why. `test_inventory_report.py` asserts decimal text the test chose and
+  a problem over 600 characters on one line. `test_inventory_specs.py`'s `EXPECTED_SPECS`, `READ_THROUGH` and
+  `EXCLUDED` are literal; the `ast` order test counts one branch.
+- **(8) The breakages**, extracted from the results note and replayed in `bash`: each `--check`s, applies,
+  `-R --check`s and reverts. 1 and 2: `test_each_spec_is_the_identity_its_build_matches` (`FullInstanton`,
+  `N_init`); 3: the package's `ValueError` from `inventory_classes`, naming `potential_type`; 4: "the --inventory
+  branch (line 117) must precede ray.init (line 111)"; 5: the order test, and the coverage test naming
+  `GradientCoupledInstanton` (and its profile table); 6: the coverage test naming `ScratchValue`. Tree clean after.
+  Breakage 1 is caught only by the literal spec table (the foreign key keeps U5's table whole), which is why that
+  table is in the test.
+- **(9) U5, replayed** at `e2c7b22` over all 31 subsets, with the 24 specs and with every spec hidden: 10 closed in
+  both, no decision or message differs. `test_tables_to_drop.py`'s bodies equal `e2c7b22~1`'s by `ast`, docstrings
+  stripped. `test_main_refusals.py`: the `drop-full-instanton` case and the `--drop` half of the order test unchanged;
+  the inventory case now `--inventory --drop` (exit 2), one test added (absent store, exit 1).
+- **(10) The suites.** The agent's 730 and 67. The orchestrator re-ran at `e2c7b22` (19:48 BST, load 10–32):
+  default **730 (729 passed, 1 skipped)**, 32.1 s; integration **67 (66 passed, 1 skipped)**, 55.2 s. `slow` not
+  run: no `ComputeTargets/`, `Numerics/` or `Interpolation/` change. `ruff check --select F401,F811,F821`, per file,
+  each at the gate by stdin: 18 at the gate (`main.py` 16, `CompactionFunction.py` 1, `FullInstanton.py` 1), 18 now,
+  the four new files clean.
+- **(11) Hygiene.** `pip freeze` equals the dispatch copy; `pip check` clean. DatastoreKit `38ebb9f` and RayPoolKit
+  `17029d9`, clean. The 17 store files and the 835 `~/ScienceData/` entries keep their mtimes and sizes. No Ray
+  process; the lock free.
+- **(12) The records.** `pool-read-apis.md` says the inventory is `read_inventory` through `main.py --inventory`,
+  before Ray; `FILE_MAP.md` `:17`, `:41`, `:42`; the `--show-all` help true. The results note follows README §5.1
+  with the prompt's §6 additions. The board: §1 row, N1–N6, the header, this section with the rollback, the issue
+  moved §3 → §4, the GCI issue in §3, the `redshift` row widened by the `z = 0` finding (checked: the comparison is
+  inside `sqla.func.abs`). `OPEN-ISSUES.md`: the closed row in §7, the new row in §6a, 60 open, 28 closed,
+  2026-10-21.
+  - *Residue, fixed here:* "this commit" → `e2c7b22` (board ×3, results note ×6); the header's "10 landed" reads
+    "landed and reviewed"; this note added to the list of orchestrator notes; the campaign's line in
+    `.prompts/INDEX.md` (10 landed and reviewed; one issue closed, one opened; 7 open, unchanged).
+- **The deviations are accepted.** Deviation 12 (a `ray.is_initialized()` assertion that failed in the suite, where
+  another module had started Ray) was fixed before the recorded runs; the Ray-free claim is shown instead by
+  `main.py --inventory` in a subprocess with a dead address.
+- **Handed on.**
+  - **To 11:** `main.py --inventory` reads before Ray and prints the report of the results note's samples; its layout
+    differs from RH1's by design, and nothing parses it. A clean RH2 store should print `problems: none`. RH0's and
+    RH1's stores would be refused (exit 1), so `compare_stores` stays the comparison. The suites start from 730 and 67.
+  - **To 12:** the stale list of the results note (a spec rule for new factories; `INFRASTRUCTURE.md`,
+    `architecture-summary.md`, `FILE_MAP.md:54`; 09's list).
+  - **To the user:** `[gci-value-table-outside-the-inventory]`, whether to ask DatastoreKit for a second value table
+    per spec (README §6.3).

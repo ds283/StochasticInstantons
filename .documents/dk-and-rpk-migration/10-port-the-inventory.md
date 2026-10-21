@@ -6,7 +6,7 @@ class the inventory reads (24 registry entries, from 22 definitions), each the i
 problem whole; `main.py --inventory` reading the closed store before Ray; the 17 old `inventory()` hooks and
 `config/sharding.py`'s `inventory_config` deleted; every registered class covered, read through, or excluded with a
 reason (U8), enforced by a test
-**Commit:** this commit, on branch `dk-and-rpk-migration`, on top of `62cdca5`
+**Commit:** `e2c7b22`, on branch `dk-and-rpk-migration`, on top of `62cdca5`
 **Date:** 2026-10-21, by Claude Opus 5.5
 **Result:** **COMPLETE.** N1–N6 hold. `inventory_classes` accepts the registry (24 classes); every column a spec
 names is a column `build_schema` builds; a two-shard store written through the package's pool under a private Ray
@@ -237,7 +237,7 @@ run at the gate (0 specs) and after (24 specs):
 | | Specs | Closed | Refused | Sets equal to the gate's (deps, decision, message) |
 |---|---|---|---|---|
 | gate (`u5-before.json`) | 0 | 10 | 21 | — |
-| this commit (`u5-after.json`) | 24 | 10 | 21 | **31 of 31** |
+| `e2c7b22` (`u5-after.json`) | 24 | 10 | 21 | **31 of 31** |
 
 The closed sets, both runs: `compaction-function` alone; `gradient-coupled-instanton` alone; `compaction-function`
 with any non-empty set of `full-instanton`, `slow-roll-instanton` and `gradient-coupled-instanton` (7); all five. **Nothing moved**: the specs' edges that no foreign key gives are `InflatonTrajectory` →
@@ -658,10 +658,10 @@ were used by the hooks alone, so they are not findings at the gate and would hav
 
 ## The deliberate-breakage record
 
-Each diff was applied with `git apply` to the working tree that this commit records, the named tests run, and
+Each diff was applied with `git apply` to the working tree that `e2c7b22` records, the named tests run, and
 reverted with `git apply -R`; after all six, `git diff` and `git status --short` were byte-identical to those saved
 before the first. Each is recorded as `diff -u` labelled `a/` and `b/`, so that `git apply` replays it from a clean
-tree at this commit. (`git apply --check` and `-R --check` after the commit are in the hand-off, since a commit
+tree at `e2c7b22`. (`git apply --check` and `-R --check` after the commit are in the hand-off, since a commit
 cannot record its own check.)
 
 ### Breakage 1 — one spec's parent removed (`FullInstanton`'s `delta_Nstar`)
@@ -896,7 +896,7 @@ the coverage tests that compare against the registry's own failures).
 
 ## State handed to the next prompt
 
-- **Branch** `dk-and-rpk-migration`, this commit on `62cdca5`. Changed: the 22 factory modules (a spec and its
+- **Branch** `dk-and-rpk-migration`, `e2c7b22` on `62cdca5`. Changed: the 22 factory modules (a spec and its
   import each; the 17 hooks and 11 `datetime` imports gone), `config/sharding.py` (`inventory_config`,
   `_instanton_merge` and their comment gone), `config/argument_parser.py` (`--show-all`'s help), `main.py` (the
   `--inventory` branch and two imports), `tests/test_main_refusals.py`, `tests/test_tables_to_drop.py` (docstring),
@@ -939,5 +939,5 @@ the coverage tests that compare against the registry's own failures).
 - **Closed:** `[show-all-flag-unused]` (board §4; `.documents/OPEN-ISSUES.md` §7). **Opened:**
   `[gci-value-table-outside-the-inventory]` (board §3; index §6a; the user's, README §6.3). 60 open, 28 closed. The
   README and `.prompts/INDEX.md` are the orchestrator's.
-- **Rollback:** `git revert` of this commit alone; nothing in the venv (README §4.4). The revert restores 09's
+- **Rollback:** `git revert` of `e2c7b22` alone; nothing in the venv (README §4.4). The revert restores 09's
   refusal and the old hooks; no store changes.
