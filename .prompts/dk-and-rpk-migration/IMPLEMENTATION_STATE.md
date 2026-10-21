@@ -4,7 +4,7 @@
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
-the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package. U1–U9 ruled (2026-10-12),
+the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package; 09 landed (§5.22): SI's layer deleted, every pool the package's, U5's drop policy before Ray, `--inventory` refused until 10, `[config-datastore-cannot-be-imported-before-the-layer]` closed. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -69,7 +69,7 @@ on any of them.
 | 06 | [Prepare the `InflatonTrajectory` factories](06-prepare-the-inflaton-trajectory-factories.md) | **U4**, P17; closes `[inflaton-trajectory-prune-orphans-value-rows]` | Opus | ✍️ 2026-10-20 | ✅ 2026-10-20 | `5e41ce8` | [`06-prepare-the-inflaton-trajectory-factories.md`](../../.documents/dk-and-rpk-migration/06-prepare-the-inflaton-trajectory-factories.md) |
 | 07 | [Rehearse before the DatastoreKit swap (RH1)](07-rehearse-before-the-datastore-swap.md) | **RH1**, bitwise against RH0; the tag (**U7**) | Opus | ✍️ 2026-10-20 | ✅ 2026-10-21 (§5.19) | `0527480`, tagged `pre-datastorekit` | [`07-rehearse-before-the-datastore-swap.md`](../../.documents/dk-and-rpk-migration/07-rehearse-before-the-datastore-swap.md) |
 | 08 | [Pin `datastorekit` `v0.4.0`](08-pin-datastorekit-v0.4.0.md) | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.21) | `1b1ca6d` | [`08-pin-datastorekit-v0.4.0.md`](../../.documents/dk-and-rpk-migration/08-pin-datastorekit-v0.4.0.md) |
-| 09 | [Adopt `datastorekit`](09-adopt-datastorekit.md) | the DatastoreKit swap; **U5**; closes `[config-datastore-cannot-be-imported-before-the-layer]` | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
+| 09 | [Adopt `datastorekit`](09-adopt-datastorekit.md) | the DatastoreKit swap; **U5**; closes `[config-datastore-cannot-be-imported-before-the-layer]` | Opus | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.22) | this commit | [`09-adopt-datastorekit.md`](../../.documents/dk-and-rpk-migration/09-adopt-datastorekit.md) |
 | 10 | [Port the inventory](10-port-the-inventory.md) | **U6**, **U8**; `inventory_spec`, `tools/inventory_report.py`; closes `[show-all-flag-unused]` | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
 | 11 | [Rehearse through both packages (RH2)](11-rehearse-through-both-packages.md) | **RH2**, bitwise against RH1; **DatastoreKit G4** | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
 | 12 | Close the migration | `CLAUDE.md`, rules, documents, handover to P2, close | Sonnet | ⬜ | ⬜ | — | — |
@@ -138,15 +138,15 @@ before each dispatch:
 | **K5** | 08 | the venv installed from it; one distribution added | ✅ dry run and install each added `datastorekit-0.4.0` alone |
 | **K6** | 08 | the proof: `c8570e849334…`, the tag's 21 modules, no `tests/`, not editable | ✅ freeze differs by one line; `pip check` clean; `direct_url.json` VCS at `c8570e84…`, `v0.4.0`, no `dir_info`; 21 of 21 modules byte-equal, no `tests/`; `raypoolkit` mtimes unchanged; import starts no Ray; `sharded_store --help` exits 0 |
 | **K7** | 08 | on the installed package: U3's `timestamp`; the factory base; SI's 30 entries instantiate | ✅ run from `site-packages`; `timestamp` round-trips, `None` by default, read-only, keyword-only; `build` abstract; 30 of 30 entries instantiate (28 classes; 12 define all three hooks, 16 none, 0 some) |
-| **A1** | 09 | the 7 layer modules deleted; the two `__init__.py` emptied (P6) | ⬜ |
-| **A2** | 09 | the 48 layer imports rewritten by the module map | ⬜ |
-| **A3** | 09 | each factory's diff its import line alone | ⬜ |
-| **A4** | 09 | the four pools take `factories=` and `serial_batch_sizes=`; no `drop_actions=`, no `inventory_config=` | ⬜ |
-| **A5** | 09 | **U5**: unclosed `--drop` groups refused before Ray, naming the groups to add | ⬜ |
-| **A6** | 09 | the harness rebuilt; the named tests changed (charter, and §5.20's additions) | ⬜ |
-| **A7** | 09 | `--inventory` refuses before Ray (P11); the prose this commit makes false (P13) | ⬜ |
-| **A8** | 09 | `[config-datastore-cannot-be-imported-before-the-layer]` closed | ⬜ |
-| **A9** | 09 | the verification: the script, the schema, the suites with `slow`, acceptance 4 (the package's replicated prune) and 5 (U3 through the package) | ⬜ |
+| **A1** | 09 | the 7 layer modules deleted; the two `__init__.py` emptied (P6) | ✅ 2,546 lines in 7 modules deleted (`git rm`), their 9 ignored `.pyc` removed; `Datastore/__init__.py` and `Datastore/SQL/__init__.py` 0 bytes; DatastoreKit's script at the dangling commit: the 7 absent, 0 imports, 0 literals, 0 `import_module` |
+| **A2** | 09 | the 48 layer imports rewritten by the module map | ✅ 47 statements by the module map (24 `SQLAFactoryBase`, 12 + 6 `DatastoreObject`, 4 `ShardedPool`, 1 `ProfileAgent`), the 48th (`test_compare_stores.py:944`'s fallback) removed; I6's subprocess script's import rewritten too |
+| **A3** | 09 | each factory's diff its import line alone | ✅ by `ast`, the module path normalised: 42 of the 48 files of README §1.2 identical (the 22 factories, the 2 registries, 18 concept and compute-target modules); the 6 others are the drivers, `conftest.py` and the 2 tests §1.6 names |
+| **A4** | 09 | the four pools take `factories=` and `serial_batch_sizes=`; no `drop_actions=`, no `inventory_config=` | ✅ `main.py`, both plot scripts and `live_pool`, by keyword from `config.datastore`; `main.py`'s `drop_tables=tables_to_drop(args.drop)`; every other argument unchanged; no driver imports `inventory_config`; pinned by an `ast` test |
+| **A5** | 09 | **U5**: unclosed `--drop` groups refused before Ray, naming the groups to add | ✅ `config.datastore.tables_to_drop`, by `dependent_tables`; `main.py` refuses on stderr, exit 2, before `ray.init`; 10 of 31 sets closed, 21 refused, as measured; `tests/test_tables_to_drop.py` 9 |
+| **A6** | 09 | the harness rebuilt; the named tests changed (charter, and §5.20's additions) | ✅ `live_pool` the package's pool; `test_grid_builder_integration.py` by `sqlite3` `mode=ro`; `test_config_datastore.py` (2 layer tests → 1 `ast` test); `test_inflaton_trajectory_prune.py` (I6 on the package's pool); `test_compare_stores.py`'s fallback gone; new: `test_tables_to_drop.py` 9, `test_main_refusals.py` 3, `test_datastorekit_timestamp.py` 1 (integration) |
+| **A7** | 09 | `--inventory` refuses before Ray (P11); the prose this commit makes false (P13) | ✅ exit 2 before `ray.init`, nothing created; the 5 helpers, 2 printers and 4 `pool.inventory` calls deleted; `CLAUDE.md`, `pool-read-apis.md`, `datastore-factories.md`, the two shard-key notes, `FILE_MAP.md`, `config/datastore.py` corrected; what stays stale listed for 12 |
+| **A8** | 09 | `[config-datastore-cannot-be-imported-before-the-layer]` closed | ✅ §4; `import config.datastore` alone exits 0 in a fresh process (30 entries on the package's base, no Ray) |
+| **A9** | 09 | the verification: the script, the schema, the suites with `slow`, acceptance 4 (the package's replicated prune) and 5 (U3 through the package) | ✅ schema: "the schemas agree" with the gate's and `07-reference-schema.json` (`out/09-temp-schema.json`); default 707 (706 passed, 1 skipped), integration 63 (62 passed, 1 skipped), `slow` 69 passed (S1's); I6 passes on the package's prune; U3's test passes; six breakages caught |
 | **N1** | 10 | `inventory_spec()` on every covered factory and every class a spec depends on | ⬜ |
 | **N2** | 10 | `tools/inventory_report.py`, at least what today's report shows (P18), every problem in full | ⬜ |
 | **N3** | 10 | `main.py --inventory` by `read_inventory`, before Ray; `--show-all` is `verbose` | ⬜ |
@@ -193,7 +193,6 @@ Opened at planning, 2026-10-11, unless the row says otherwise.
 | `[unified-pipeline-stores-null-instanton-labels]` | *Opened 2026-10-12 at 01's review, from its Observation 2.* The unified pipeline (`--no-store-values`) constructs `FullInstanton` and `SlowRollInstanton` with no label (`ComputeTargets/pipeline.py:288-298`, `:304-314`), so they are stored with `label` NULL, where the per-stage queues store the factory's default (`Datastore/SQL/ObjectFactories/FullInstanton.py:149-155`, `SlowRollInstanton.py:148-154`). No science value differs and no reader fails, but the provenance footers read `label` (`plotting/provenance.py:46`), so a scalars-only store's figures lack it. `tools/compare_stores.py` treats the two columns as bookkeeping for this reason | unowned |
 | `[gci-picard-inner-fails-on-rehearsal-grid]` | *Opened 2026-10-20 at 02's first attempt (§5.12).* At the rehearsal grid (`quadratic-minimal.yaml`, `m = 10⁻⁵ M_P`, `n = 5`, `α = 0.01`, no wall-clock budget) none of the four `GradientCoupledInstanton` solves of the first wave (`δN★` = 0.1, 0.4222, 0.7444, 1.711) finished in 5 h 24 min at full CPU. Each worker's log shows only `Picard inner failed at lambda=…`, 85–105 times, with λ halved after each failure and the sign alternating between outer attempts. July's 315 s a solve at `δN★ = 1.0` (`.documents/gradient-coupled-instanton/24-phase-a-deep-dive.md:43`) was measured at an older tree. Not investigated here: the gradient code is P3's, and the rehearsals no longer build it (U11). The workers' logs are kept in the orchestrator's scratchpad of 2026-10-20 only; the first attempt's store and log are under `$REHEARSAL_ROOT/02-attempt-1-aborted/` | P3 |
 | `[pool-prose-stale-after-raypoolkit-adoption]` | *Opened 2026-10-20 at 04 (§5.16).* Two statements 04 leaves, both outside its §5 list: (1) `ComputeTargets/GradientCoupledInstanton/picard.py:450-456`, a July comment (`b5a3a9f`), says `RayTools/RayWorkPool.py` is protected infrastructure (`CLAUDE.md`) and has no per-task timeout hook; the path is gone and the pool is no longer SI's to protect, though the substance holds (no `timeout` or `cancel` in `raypoolkit/RayWorkPool.py` at `v0.2.0`); a `ComputeTargets/` edit would also widen the suites to the `slow` block. (2) The constructor sketches at `.documents/INFRASTRUCTURE.md:357-373` and `.documents/architecture-summary.md:328-344` give `create_batch_size=10`, `process_batch_size=10`, `max_task_queue=50` as defaults; the defaults of the copy and of the package are both 5, 1 and 200 (`DEFAULT_*`, `:26-29`). Wrong before 04, not made false by it | 12 |
-| `[config-datastore-cannot-be-imported-before-the-layer]` | *Opened 2026-10-20 at 05 (§5.17).* A fresh `import config.datastore` fails with `ImportError: cannot import name 'serial_batch_sizes' from partially initialized module 'config.datastore'`. `Datastore/SQL/__init__.py` is `from .Datastore import Datastore`, so importing any `Datastore.SQL.*` module runs the layer, which imports `Datastore/SQL/ClientPool.py`, which imports `config.datastore`, which imports the factories inside that package. No order of the three definitions or the imports avoids it, and breaking it means emptying `Datastore/SQL/__init__.py`, which is 09's (P6). **Impact: none today.** Every driver, actor and test imports the layer first. One test meets it silently: `tests/test_compare_stores.py:938-945`'s `_registry()` tries `from config.datastore import factories` and falls back, on `ImportError`, to `from Datastore.SQL.Datastore import _factories`, which returns the same object; the fallback would also hide a genuine `ImportError` in the module. Bare `import Datastore` and `import plotting.fetch` do not load the layer, so they do not serve either. **Next step:** 09 deletes the layer and empties the two `__init__.py` files (P6); its acceptance should include a fresh `./venv/bin/python -I -c "import config.datastore"`, and the test's fallback can go with it. ChamPBH met the same cycle at its 05 | 09 |
 
 ## 4. Resolved issues
 
@@ -201,6 +200,7 @@ Opened at planning, 2026-10-11, unless the row says otherwise.
 |---|---|---|
 | `[ray-address-auto-attaches-to-foreign-cluster]` | 2026-10-12 (opened and closed the same day, §5.9, §5.10) | Every project's drivers defaulted to `--ray-address auto`, which attaches to any running cluster once the clusters are isolated (`ray_current_cluster` is no longer in `/tmp/ray`). The brief's §3 "Address it explicitly" now covers every run that takes the lock and forbids leaving a driver at `auto`; §5 asks SGK to pass `local` to its long builds. The user ruled SI's default: `--ray-address` is now required (`config/argument_parser.py`), for `main.py` and both plot scripts; `CLAUDE.md`'s run instructions say so. ChamPBH's and SGK's defaults are theirs to change |
 | `[inflaton-trajectory-prune-orphans-value-rows]` | 2026-10-20 (06, §5.18; opened at planning) | `sqla_InflatonTrajectory_factory.validate_on_startup` now deletes the unvalidated trajectories' `InflatonTrajectoryValue` rows, by `trajectory_serial`, before the trajectories, in the same transaction (`tables.get`, the pattern of `FullInstanton`'s hook); `.claude/rules/validate-on-startup.md`'s cascade map has the row. For DatastoreKit's prune, the value table declares `owner_column: "trajectory_serial"`. Shown by `tests/test_inflaton_trajectory_prune.py`: on a store the factory wrote, the prune deletes the trajectory and its 3 value rows and no other table loses a row; through SI's `ShardedPool` on two shards, a pruning reopen leaves no orphan, where without the cascade it left 3 on each shard |
+| `[config-datastore-cannot-be-imported-before-the-layer]` | 2026-10-21 (09, §5.22; opened at 05) | 09 deleted SI's layer and emptied `Datastore/__init__.py` and `Datastore/SQL/__init__.py` (P6), so nothing imports the layer and the cycle through it is gone. `import config.datastore` alone, in a fresh process, exits 0: 30 entries, every one an instance of the package's `SQLAFactoryBase`, `ray.is_initialized()` `False` (run with the root put on `sys.path` by `PYTHONPATH`, and by `-I` with the root inserted by the code, since `-I` ignores `PYTHONPATH`). `tests/test_config_datastore.py`'s two `import_module` calls of the layer are gone and its subprocess test imports `config.datastore` alone; `tests/test_compare_stores.py`'s `_registry()` imports it directly, its `ImportError` fallback gone |
 
 ## 5. Dispatch record
 
@@ -1428,3 +1428,47 @@ Nothing opened or closed, so `.documents/OPEN-ISSUES.md` is unchanged.
   - SI's 30 registry entries instantiate on the installed base as they stand, so 09's factories change only their import.
   - `requirements.txt`'s lines after `:15` moved down by one.
   - 09's suites start from 696 and 62; `slow` from S1's 69.
+
+### 5.22 After prompt 09 (2026-10-21)
+
+- **Landed:** this commit, results note
+  [`09-adopt-datastorekit.md`](../../.documents/dk-and-rpk-migration/09-adopt-datastorekit.md).
+  **COMPLETE:** A1–A9 hold; no stop condition met; `[config-datastore-cannot-be-imported-before-the-layer]`
+  closed (§4); nothing opened.
+- **A1.** The 7 layer modules deleted (2,546 lines) and their `.pyc`; `Datastore/__init__.py` and
+  `Datastore/SQL/__init__.py` 0 bytes. DatastoreKit's script: **48** statements in 47 files (2 nested), 0
+  literals, **3** `import_module` at `597730f`; at a dangling commit of the staged tree the 7 absent and **0**,
+  **0**, **0**.
+- **A2–A3.** 47 imports rewritten by the module map, the 48th (the fallback) removed. By `ast`, the module path
+  normalised: 42 of the 48 files of §1.2 identical to the gate (every factory, concept and compute-target
+  module); the 6 others are `main.py`, the plot scripts, `conftest.py` and the two tests §1.6 names.
+- **A4.** The four constructions pass `factories=` and `serial_batch_sizes=` from `config.datastore`, no
+  `drop_actions=`, no `inventory_config=`; `main.py`'s `drop_tables=`. The package's default lease is 500 and it
+  ignores `temperature`; neither matters to SI.
+- **A5 (U5).** `config.datastore.tables_to_drop`, by `dependent_tables`, called before `ray.init`; exit 2 on
+  stderr. Over the 31 sets: 10 closed, 21 refused, equal to the orchestrator's measurement. Messages: see the
+  results note.
+- **A6.** `live_pool` is the package's; `test_grid_builder_integration.py` counts by `sqlite3` `mode=ro`;
+  `test_config_datastore.py` loses its 2 layer tests for 1 `ast` test of the four pools;
+  `test_inflaton_trajectory_prune.py`'s I6 runs the package's pool; `test_compare_stores.py`'s fallback gone. New:
+  `test_tables_to_drop.py` (9), `test_main_refusals.py` (3), `test_datastorekit_timestamp.py` (1, integration).
+- **A7.** `--inventory` refuses before Ray; the 7 inventory functions deleted. Prose corrected: `CLAUDE.md`'s
+  protected list and the sentence after it, `pool-read-apis.md`, `datastore-factories.md`'s replication account,
+  the two shard-key notes, `FILE_MAP.md`, `config/datastore.py`'s docstring. Stale for 12:
+  `INFRASTRUCTURE.md`, `architecture-summary.md`, `tools/compare_stores.py:39`, `:94`, `:115-116`,
+  `tests/test_rehearsal_stage_counts.py:26`, three comments in `ObjectFactories/InflatonTrajectory.py` (listed in
+  the results note).
+- **A8.** `import config.datastore` alone exits 0: 30 entries on the package's base, no Ray.
+- **A9.** Schema: "the schemas agree" with the gate's snapshot and `07-reference-schema.json`
+  (`out/09-temp-schema.json`); no difference. Suites: default 707 (706 passed, 1 skipped), integration 63 (62
+  passed, 1 skipped), `slow` 69 passed (397 s). Acceptance 4: I6 on the package's replicated prune, both shards,
+  no orphan, no refusal. Acceptance 5: U3's test passes for a `delta_Nstar` and a `FullInstanton`. Breakages
+  1–6 caught (the factory import, `timestamp=`, `owner_column` — the package's `_prune_shard` refusal —, the
+  closure check, `factories=` in `live_pool`, the refusal's order).
+- **Inherited hazard, recorded:** the only closed set with `inflaton-trajectory` (all five) drops a replicated
+  table: DatastoreKit's `[00-a-drop-action-drops-a-replicated-table-outside-the-in-flight-record]`.
+- **Rollback:** `git revert` of this commit alone; nothing in the venv (README §4.4).
+- **Deviations:** the board section and greps as the brief corrected; the grid-builder test by `sqlite3`
+  (correction 3); §1.8's `-I` command cannot see the root, so the import was run with `PYTHONPATH` and with `-I`
+  plus an explicit `sys.path` entry; the pools import the two objects by name; U3's test is one test of both
+  objects; one new test fixed before the suites were recorded. None unintended.

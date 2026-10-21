@@ -20,7 +20,7 @@ import ray
 from ray import ObjectRef
 
 from CosmologyConcepts.Potentials.AbstractPotential import AbstractPotential
-from Datastore.object import DatastoreObject
+from datastorekit.object import DatastoreObject
 from InflationConcepts.delta_Nstar import delta_Nstar
 from InflationConcepts.DiffusionModel import (
     AbstractDiffusionModel,

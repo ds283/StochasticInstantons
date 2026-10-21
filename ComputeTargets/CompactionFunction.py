@@ -22,7 +22,7 @@ import ray
 from ray import ObjectRef
 
 from ComputeTargets.compaction_scalars import classify_radii
-from Datastore.object import DatastoreObject
+from datastorekit.object import DatastoreObject
 from InflationConcepts.delta_Nstar import delta_Nstar
 from MetadataConcepts.store_tag import store_tag
 from MetadataConcepts.tolerance import tolerance

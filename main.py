@@ -20,12 +20,12 @@ from ComputeTargets.FullInstanton import FullInstantonProxy
 from ComputeTargets.pipeline import PipelineWorkItem
 from ComputeTargets.SlowRollInstanton import SlowRollInstantonProxy
 from config.argument_parser import create_argument_parser
+from config.datastore import factories, serial_batch_sizes, tables_to_drop
 from config.grid_builder import build_gradient_grid, build_instanton_grid
 from config.pipeline_setup import build_pipeline_inputs
 from config.sharding import (
     ShardKeyType,
     get_shard_key_store_id,
-    inventory_config,
     read_table_config,
     replicated_tables,
     sharded_tables,
@@ -34,8 +34,8 @@ from config.sharding import (
 from CosmologyConcepts import phi_value, pi_value
 from CosmologyModels.cosmo_params import CosmologicalParams
 from CosmologyModels.params import Planck2018
-from Datastore.SQL.ProfileAgent import ProfileAgent
-from Datastore.SQL.ShardedPool import ShardedPool
+from datastorekit.SQL.ProfileAgent import ProfileAgent
+from datastorekit.SQL.ShardedPool import ShardedPool
 from InflationConcepts import (
     N_final,
     N_init,
@@ -97,6 +97,25 @@ if args.database is None:
     sys.exit()
 
 print(format_package_provenance(installed_package_provenance()), flush=True)
+
+# --inventory refuses until the inventory is ported to the datastorekit package, whose pool has no
+# inventory(); before Ray starts, so that nothing is created (dk-and-rpk-migration prompt 09; P11)
+if args.inventory:
+    print(
+        "!! --inventory: the datastore inventory is unavailable until it is ported to the "
+        "datastorekit package (dk-and-rpk-migration prompt 10). Nothing was opened",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+
+# the --drop groups become the tables the pool drops; a drop that would leave rows naming dropped
+# rows is refused here, before Ray starts (dk-and-rpk-migration prompt 09; U5)
+try:
+    drop_tables = tables_to_drop(args.drop)
+except ValueError as e:
+    print(f"!! --drop: {e}. Nothing was opened", file=sys.stderr)
+    sys.exit(2)
+
 ray.init(address=args.ray_address)
 
 
@@ -1224,106 +1243,6 @@ def execute(pool: ShardedPool, units: UnitsLike):
     )
 
 
-def inventory(pool: ShardedPool, units: UnitsLike):
-    print("\n@@ DATASTORE INVENTORY")
-    # delta_Nstar values
-    _inventory_dimensionless(pool, "delta_Nstar", "Delta N★ values")
-    # N_init, N_final values
-    _inventory_dimensionless(pool, "N_init", "N_init values")
-    _inventory_dimensionless(pool, "N_final", "N_final values")
-    # phi0, pi0
-    _inventory_dimensionful(pool, "phi_value", "phi_0 values", units)
-    _inventory_dimensionful(pool, "pi_value", "pi_0 values", units)
-    # inflaton_mass, quartic_coupling
-    _inventory_dimensionful(pool, "inflaton_mass", "Inflaton mass values", units)
-    _inventory_dimensionless(pool, "quartic_coupling", "Quartic coupling values")
-    # efold values
-    _inventory_efold(pool)
-    # Compute targets
-    _inventory_object(pool, "InflatonTrajectory", "Inflaton trajectories")
-    _inventory_object(pool, "FullInstanton", "Full MSR instantons")
-    _inventory_object(pool, "SlowRollInstanton", "Slow-roll instantons")
-    _inventory_object(pool, "CompactionFunction", "Compaction functions")
-    _inventory_object(pool, "GradientCoupledInstanton", "Gradient-coupled (onion model) instantons")
-
-
-def _inventory_dimensionless(pool, type_name, label):
-    print(f"\n   -- {label}")
-    try:
-        data = pool.inventory(type_name)
-        vals = sorted(data.get("values", []))
-        _print_value_list(vals, fmt=lambda v: f"{v:.6g}")
-    except Exception as e:
-        print(f"      (error: {e})")
-
-
-def _inventory_dimensionful(pool, type_name, label, units):
-    print(f"\n   -- {label}")
-    try:
-        data = pool.inventory(type_name, units)
-        unit_name = data.get("unit", "?")
-        unit_val = getattr(units, unit_name, 1.0)
-        vals = sorted(data.get("values", []))
-        _print_value_list(vals, fmt=lambda v: f"{v / unit_val:.6g} {unit_name}")
-    except Exception as e:
-        print(f"      (error: {e})")
-
-
-def _inventory_efold(pool):
-    print("\n   -- E-fold sample values")
-    try:
-        data = pool.inventory("efold_value")
-        vals = sorted(data.get("values", []))
-        _print_value_list(vals, fmt=lambda v: f"{v:.6g}")
-    except Exception as e:
-        print(f"      (error: {e})")
-
-
-def _inventory_object(pool, type_name, label):
-    print(f"\n   -- {label}")
-    try:
-        data = pool.inventory(type_name)
-        for group_name, group in [
-            ("validated", data.get("validated", {})),
-            ("unvalidated", data.get("unvalidated", {})),
-        ]:
-            labels = sorted(group.get("labels", []))
-            n = len(labels)
-            ts_early = group.get("earliest_timestamp")
-            ts_late = group.get("latest_timestamp")
-            print(f"      @@ {group_name}: {n} record(s)", end="")
-            if ts_early:
-                print(
-                    f" | {ts_early.strftime('%Y-%m-%d %H:%M')} – "
-                    f"{ts_late.strftime('%H:%M')}",
-                    end="",
-                )
-            print()
-            _print_label_list(labels)
-    except Exception as e:
-        print(f"      (error: {e})")
-
-
-def _print_value_list(vals, fmt):
-    n = len(vals)
-    if n == 0:
-        print("      no values committed")
-    elif n <= 20:
-        print(f"      {n} value(s): [ {', '.join(fmt(v) for v in vals)} ]")
-    else:
-        low = [fmt(v) for v in vals[:10]]
-        high = [fmt(v) for v in vals[-10:]]
-        print(f"      {n} values: [ {', '.join(low)}, ..., {', '.join(high)} ]")
-
-
-def _print_label_list(labels):
-    if not labels:
-        return
-    show = labels if len(labels) <= 10 else labels[:5] + ["..."] + labels[-5:]
-    for lbl in show:
-        print(f"         :: {lbl}")
-
-
 # ── ProfileAgent (optional) ──────────────────────────────────────────────────
 profile_agent = None
 if args.profile_db is not None:
@@ -1351,12 +1270,10 @@ with ShardedPool(
     profile_agent=profile_agent,
     job_name=args.job_name,
     prune_unvalidated=args.prune_unvalidated,
-    drop_actions=args.drop,
+    drop_tables=drop_tables,
     read_table_config=read_table_config,
-    inventory_config=inventory_config,
+    factories=factories,
+    serial_batch_sizes=serial_batch_sizes,
 ) as pool:
     units = Planck_units()
-    if args.inventory:
-        inventory(pool, units)
-    else:
-        execute(pool, units)
+    execute(pool, units)

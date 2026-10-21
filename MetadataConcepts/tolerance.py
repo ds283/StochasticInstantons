@@ -17,7 +17,7 @@ from datetime import datetime
 from math import log10, pow
 from typing import Optional
 
-from Datastore import DatastoreObject
+from datastorekit import DatastoreObject
 
 
 class tolerance(DatastoreObject):

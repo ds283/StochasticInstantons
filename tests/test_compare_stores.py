@@ -936,12 +936,10 @@ def test_the_tool_imports_the_standard_library_only():
 
 
 def _registry():
-    """The factory registry: config.datastore's from dk-and-rpk-migration prompt 05 on, the
-    layer's before it. Importing it imports ray, but needs no cluster."""
-    try:
-        from config.datastore import factories
-    except ImportError:
-        from Datastore.SQL.Datastore import _factories as factories
+    """The factory registry, config.datastore's (dk-and-rpk-migration prompt 05; imported
+    directly from prompt 09, which deleted the layer). Importing it imports ray, but needs no
+    cluster."""
+    from config.datastore import factories
     return factories
 
 

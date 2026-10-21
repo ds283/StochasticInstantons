@@ -12,10 +12,13 @@ via ``pytest -m "not integration"``.
 """
 
 import os
+import sqlite3
 import tempfile
+from pathlib import Path
 
 import pytest
 import ray
+from datastorekit.shard_paths import shard_file_name
 
 from config.grid_builder import build_grid_from_csv
 
@@ -36,6 +39,24 @@ def _count_approx(values: list, target: float, rtol: float = 1e-9) -> int:
     if abs(target) == 0.0:
         return sum(1 for v in values if abs(v) < rtol)
     return sum(1 for v in values if abs(v - target) / abs(target) < rtol)
+
+
+def _shard_values(pool, table: str) -> dict:
+    """
+    Every ``value`` of *table* on each of *pool*'s shards, read with ``sqlite3`` ``mode=ro``
+    from the shard files beside the pool's primary, as {shard file name: [values]}.
+    """
+    primary = Path(pool.primary)
+    shards = sorted(primary.parent.glob(f"{primary.stem}-shard*{primary.suffix}"))
+    assert shards and shards[0].name == shard_file_name(primary, 0), shards
+    values = {}
+    for shard in shards:
+        conn = sqlite3.connect(f"file:{shard}?mode=ro", uri=True)
+        try:
+            values[shard.name] = [v for (v,) in conn.execute(f'SELECT value FROM "{table}"')]
+        finally:
+            conn.close()
+    return values
 
 
 def _mint_via_object_get(pool, n_init_val, n_final_val, dns_val):
@@ -112,8 +133,11 @@ class TestCsvAxisGridDedup:
         After minting the same value through both paths, the underlying table
         must contain exactly one row for that value — not two.
 
-        Uses pool.inventory() (available for all replicated tables without
-        requiring read_table_config) to count rows by value.
+        Counts rows by value with a ``sqlite3`` ``mode=ro`` read of each of the
+        pool's shard files (dk-and-rpk-migration prompt 09): the package's pool has
+        no ``inventory()``, and ``read_table_config`` has no entry for ``N_init``
+        or ``N_final``. The three tables are replicated, so every shard holds
+        every row and is counted alone.
         """
         # Ensure the value is in the DB via the axis-grid path
         _mint_via_object_get(live_pool, _N_INIT_A, _N_FINAL_A, _DNS_A)
@@ -129,17 +153,15 @@ class TestCsvAxisGridDedup:
         finally:
             os.unlink(csv_path)
 
-        # Exactly one row for each target value in the respective tables
-        n_init_inv = live_pool.inventory("N_init")
-        n_final_inv = live_pool.inventory("N_final")
-        dns_inv = live_pool.inventory("delta_Nstar")
-
-        assert _count_approx(n_init_inv["values"],  _N_INIT_A)  == 1, \
-            f"Expected 1 N_init row for {_N_INIT_A}, got {_count_approx(n_init_inv['values'], _N_INIT_A)}"
-        assert _count_approx(n_final_inv["values"], _N_FINAL_A) == 1, \
-            f"Expected 1 N_final row for {_N_FINAL_A}, got {_count_approx(n_final_inv['values'], _N_FINAL_A)}"
-        assert _count_approx(dns_inv["values"],     _DNS_A)     == 1, \
-            f"Expected 1 delta_Nstar row for {_DNS_A}, got {_count_approx(dns_inv['values'], _DNS_A)}"
+        # Exactly one row for each target value in the respective tables, on every shard
+        for table, target in (
+            ("N_init", _N_INIT_A),
+            ("N_final", _N_FINAL_A),
+            ("delta_Nstar", _DNS_A),
+        ):
+            for shard, values in _shard_values(live_pool, table).items():
+                assert _count_approx(values, target) == 1, \
+                    f"Expected 1 {table} row for {target} on {shard}, got {_count_approx(values, target)}"
 
     def test_distinct_values_give_distinct_store_ids_via_both_paths(self, live_pool, tmp_path):
         """

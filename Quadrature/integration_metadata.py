@@ -15,7 +15,7 @@
 
 from collections import namedtuple
 
-from Datastore import DatastoreObject
+from datastorekit import DatastoreObject
 
 
 class IntegrationSolver(DatastoreObject):

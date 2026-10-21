@@ -1,6 +1,6 @@
 import sqlalchemy as sqla
 
-from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+from datastorekit.SQL.factory_base import SQLAFactoryBase
 from InflationConcepts.DiffusionModel.model_ids import MASSLESS_DECOUPLED_DIFFUSION
 from InflationConcepts.DiffusionModel.registry import (
     DIFFUSION_MODEL_REGISTRY,

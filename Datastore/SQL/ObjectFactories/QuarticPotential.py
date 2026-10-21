@@ -5,7 +5,7 @@ import sqlalchemy as sqla
 from CosmologyConcepts.Potentials.model_ids import QUARTIC_POTENTIAL
 from InflationConcepts.QuarticPotential import QuarticPotential
 from InflationConcepts.quartic_coupling import quartic_coupling
-from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+from datastorekit.SQL.factory_base import SQLAFactoryBase
 
 
 class sqla_QuarticPotential_factory(SQLAFactoryBase):

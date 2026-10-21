@@ -16,7 +16,7 @@
 from datetime import datetime
 from typing import Optional
 
-from Datastore.object import DatastoreObject
+from datastorekit.object import DatastoreObject
 
 
 class CosmologicalParams(DatastoreObject):

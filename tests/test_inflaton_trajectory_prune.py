@@ -21,19 +21,18 @@ its fourth parameter ``prune``, the two factories declare ``owner_column`` and
 ``validated_column``, and ``revalidate`` recomputes the stored flag by ``validate``'s rule.
 
 The tests without Ray build a temporary SQLite store whose tables are built from every
-factory's ``register()`` in ``config.datastore.factories``, in its order, as
-``Datastore._build_schema`` builds them (``serial``, ``version``, ``timestamp`` and
-``stepping`` by the flags, then the columns). All 30 tables are built because SQLAlchemy
+factory's ``register()`` in ``config.datastore.factories``, in its order, as the package's
+``datastorekit.SQL.schema.build_schema`` builds them (``serial``, ``version``, ``timestamp``
+and ``stepping`` by the flags, then the columns; SI's old layer's ``Datastore._build_schema``
+had the same rule). All 30 tables are built because SQLAlchemy
 resolves every ``ForeignKey`` at ``create_all``. The parent rows a trajectory names
 (``tolerance``, ``phi_value``, ``pi_value``, ``inflaton_mass``, ``QuadraticPotential``,
 ``efold_value``, ``version``) are minted by their own factories' ``build()``, and the
 trajectories are written and validated by ``sqla_InflatonTrajectory_factory``'s own
 ``store()`` and ``validate()``, each in one transaction, as the actor runs them.
 
-The integration test runs SI's own ``ShardedPool`` in subprocesses (see its docstring).
-
-The layer is imported first, with ``importlib``: until prompt 09 deletes the layer, importing
-``config.datastore`` in a fresh process fails with a circular-import ``ImportError``.
+The integration test runs the ``datastorekit`` package's ``ShardedPool`` in subprocesses (see
+its docstring): since prompt 09 the prune at open is the package's replicated prune.
 """
 
 import importlib
@@ -49,8 +48,6 @@ from pathlib import Path
 import pytest
 import sqlalchemy as sqla
 
-# Layer first, then config.datastore (see the module docstring).
-importlib.import_module("Datastore.SQL.Datastore")
 _config = importlib.import_module("config.datastore")
 
 from ComputeTargets.InflatonTrajectory import (  # noqa: E402
@@ -62,7 +59,8 @@ from Units import Planck_units  # noqa: E402
 _ROOT = Path(__file__).resolve().parent.parent
 _factories = _config.factories
 
-# The factories whose own class defines validate_on_startup (the others inherit base.py's).
+# The factories whose own class defines validate_on_startup (the others inherit the package's
+# SQLAFactoryBase's).
 _HOOK_FACTORIES = [
     "InflatonTrajectory",
     "InflatonTrajectoryValue",
@@ -125,7 +123,7 @@ class _Store:
         self.version_serial = self.get("version", label="06-test").store_id
 
     def _inserter(self, tab, use_serial, use_version, use_timestamp):
-        # Datastore._insert without the serial broker: the engine assigns the serial.
+        # The actor's insert without the serial broker: the engine assigns the serial.
         def insert(conn, payload):
             payload = dict(payload)
             if not use_serial:
@@ -446,7 +444,7 @@ def test_register_declares_owner_column_and_validated_column():
 
 
 # ---------------------------------------------------------------------------
-# I6 — the prune at open, through SI's ShardedPool, on two shards
+# I6 — the prune at open, through the package's ShardedPool, on two shards
 # ---------------------------------------------------------------------------
 
 _POOL_SCRIPT = r"""
@@ -456,8 +454,9 @@ root, mode, db = sys.argv[1], sys.argv[2], sys.argv[3]
 sys.path.insert(0, root)
 
 import ray
-from Datastore.SQL.ShardedPool import ShardedPool
-from config.sharding import (ShardKeyType, get_shard_key_store_id, inventory_config,
+from datastorekit.SQL.ShardedPool import ShardedPool
+import config.datastore
+from config.sharding import (ShardKeyType, get_shard_key_store_id,
                              read_table_config, replicated_tables, sharded_tables)
 from ComputeTargets.InflatonTrajectory import InflatonTrajectory, InflatonTrajectoryValue
 from Units import Planck_units
@@ -468,8 +467,9 @@ try:
         version_label="06-prune-test", db_name=db, ShardKeyType=ShardKeyType,
         ShardKeyStoreIdGetter=get_shard_key_store_id, replicated_tables=replicated_tables,
         sharded_tables=sharded_tables, shards=2, profile_agent=None, job_name="06-prune-test",
-        prune_unvalidated=(mode == "reopen"), drop_actions=[],
-        read_table_config=read_table_config, inventory_config=inventory_config,
+        prune_unvalidated=(mode == "reopen"), read_table_config=read_table_config,
+        factories=config.datastore.factories,
+        serial_batch_sizes=config.datastore.serial_batch_sizes,
     )
     try:
         result = {}
@@ -554,15 +554,20 @@ def _read_shard(path):
 
 @pytest.mark.integration
 def test_prune_at_open_leaves_no_orphan_on_either_shard():
-    """The old layer prunes inside its Datastore actors, at open, so this needs Ray.
+    """The package's replicated prune at open (U4; dk-and-rpk-migration prompt 09, acceptance 4).
 
-    It runs SI's ShardedPool in two fresh processes, one per open, each under its own
-    ``ray.init(address="local")``, and never initialises or shuts down Ray in the pytest
-    process. ``live_pool`` cannot serve: it is session-scoped and opened without the prune.
-    Nor can a second pool share its Ray: SI's pool names its actors (``SerialPoolBroker``,
-    ``shard0000-store``, ...), so a second pool cannot open in a Ray session where another is
-    open, and SI's ``__exit__`` does not free the names. A process per open exits with its
-    Ray, so nothing depends on when the first pool is collected.
+    It needs Ray because the store is written through the package's pool, whose actors hold
+    the shards. It runs the package's ShardedPool in two fresh processes, one per open, each
+    under its own ``ray.init(address="local")``, and never initialises or shuts down Ray in the
+    pytest process. ``live_pool`` cannot serve: it is session-scoped and opened without the
+    prune. Nor can a second pool share its Ray while ``live_pool`` is open: the pool names its
+    actors, so a second pool cannot open in a Ray session where another is open. The package's
+    ``__exit__`` does free the names (its contract §9.3), so one process would do for the two
+    opens; the two processes of prompt 06's test are kept, and each exits with its Ray.
+    At the reopen the package prunes the replicated class before any actor exists
+    (``_prune_replicated_tables``, ``_prune_shard``), deleting from the class's unit only: the
+    ``InflatonTrajectoryValue`` rows are in it because that factory declares ``owner_column``,
+    or the prune is refused.
     """
     with tempfile.TemporaryDirectory(prefix="si06-prune-pool-") as tmpdir:
         db = Path(tmpdir) / "prune.sqlite"

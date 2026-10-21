@@ -1,17 +1,20 @@
-# `ShardedPool` read APIs — `read_table()` vs `inventory()`
+# `ShardedPool` read APIs — `read_table()`, and no `inventory()`
 
 This rule has no `paths:` frontmatter, so it loads at session start alongside
-`CLAUDE.md`. It applies whenever code calls `pool.read_table()` or
-`pool.inventory()` — driver scripts (`main.py`, `plot_*.py`) and anywhere else
-that consumes a `ShardedPool`.
+`CLAUDE.md`. It applies whenever code calls `pool.read_table()` — driver
+scripts (`main.py`, `plot_*.py`) and anywhere else that consumes a
+`ShardedPool`. The pool is the `datastorekit` package's
+(`datastorekit.SQL.ShardedPool`), since dk-and-rpk-migration prompt 09.
 
-## `pool.inventory()` is a human-readable summary tool, not a data API
+## There is no `pool.inventory()`
 
-`pool.inventory(cls_name)` exists to print/report what's in the datastore
-(`main.py`'s `inventory()` function, `_inventory_dimensionless`,
-`_inventory_object`, etc.). It returns aggregated, lossy summaries — lists of
-labels, counts, earliest/latest timestamps — not full deserialised objects
-with valid `store_id`s. Do not call it to fetch objects for use in a pipeline
+The package's `ShardedPool` has no `inventory` method; SI's old layer had one,
+a lossy, human-readable summary (labels, counts, earliest/latest timestamps),
+and it went with that layer. Until dk-and-rpk-migration prompt 10 ports it,
+`main.py --inventory` refuses before Ray starts. From 10 the inventory is
+`datastorekit.store_inventory.read_inventory(primary, factories)`: read-only,
+on a closed store, over each factory's `inventory_spec()`. An inventory is a
+report, not a data API: do not use one to fetch objects for use in a pipeline
 (e.g. to obtain `delta_Nstar` instances to pass into `object_get()` payloads).
 
 ## If `pool.read_table()` raises for a replicated table, fix the config
@@ -20,7 +23,7 @@ with valid `store_id`s. Do not call it to fetch objects for use in a pipeline
 deserialised objects from a replicated table. If it raises
 `RuntimeError: ... the read_table service is not available for objects of
 class "..."`, the fix is to add an entry to `read_table_config` in
-`config/sharding.py` — not to route around the gap with `pool.inventory()`.
+`config/sharding.py` — not to route around the gap some other way.
 
 ```python
 read_table_config = {
@@ -32,7 +35,7 @@ read_table_config = {
 
 `config/sharding.py` is listed as protected infrastructure in `CLAUDE.md`, so
 adding this entry requires the user's explicit go-ahead — flag the missing
-entry and ask, rather than reaching for `pool.inventory()` as a workaround.
+entry and ask, rather than reaching for a workaround.
 
 ## `sharded_tables` and `replicated_tables` partition the database's tables
 

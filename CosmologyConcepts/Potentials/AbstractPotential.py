@@ -3,7 +3,7 @@ from datetime import datetime
 from math import log
 from typing import Optional
 
-from Datastore import DatastoreObject
+from datastorekit import DatastoreObject
 from Units.base import UnitsLike
 
 

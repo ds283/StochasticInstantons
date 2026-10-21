@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from Datastore import DatastoreObject
+from datastorekit import DatastoreObject
 
 
 class store_tag(DatastoreObject):

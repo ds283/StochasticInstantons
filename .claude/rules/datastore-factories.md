@@ -246,17 +246,34 @@ else:
 
 ### How `ShardedPool` replicates a new row
 
-When `pool.object_get()` is called for a replicated table, `ShardedPool`:
+The pool is the `datastorekit` package's (dk-and-rpk-migration prompt 09). When
+`pool.object_get()` is called for a replicated table, it makes a *recorded*
+replicated write (`_replicated_write`, `_get_impl_replicated_table` in
+`datastorekit/SQL/ShardedPool.py`):
 
-1. Picks a random "controlling" shard and calls `factory.build()` on it.
-2. If `build()` set `_new_insert` on the returned object, the pool calls
+1. It commits a `replication_in_flight` record on the primary, naming the
+   operation, the class and the controlling shard, which it picks at random.
+2. It calls `factory.build()` on the controlling shard.
+3. If the returned object carries `_new_insert` (or `_updated`), it calls
    `factory.build()` on every **other** shard, passing `serial=<store_id>` in
-   the kwargs so they insert with the same serial.
+   the payload so they insert with the same serial, and one timestamp chosen
+   for the write, so that the copies of the row are identical.
+4. It checks every replica's answer against the controller's serial; a
+   difference raises `ReplicationMismatch`.
+5. Only then does it delete the record.
 
-Step 2 only works if the factory honours that supplied serial. If `inserter()` is
-called without forwarding `payload["serial"]`, each shard uses its own
-autoincrement sequence and the same logical object ends up with **different
-serials in different shards**.
+At every open, before any actor exists, the pool compares the replicated
+tables of every shard (`_reconcile_replicated_tables`). If the shards differ
+and a record explains the difference (an interrupted write), it repairs them
+from the controlling shard; any other difference refuses the open with
+`ReplicatedDivergence`.
+
+Step 3 only works if the factory honours that supplied serial. If `inserter()` is
+called without forwarding `payload["serial"]`, a replica inserts under its own
+serial, step 4 raises `ReplicationMismatch`, the record stays set, and the next
+open must repair or refuse the store. (SI's old layer had no check: there, the
+same logical object silently ended up with **different serials in different
+shards**, as below.)
 
 ### The consequence of ignoring the serial
 
@@ -290,7 +307,9 @@ else:
 ```
 
 Both `_new_insert` (on insert) and `_deserialized` (on existing-row read) must
-be set so `ShardedPool` can tell whether to trigger replication.
+be set. The package's pool reads only `_new_insert` (or `_updated`) to decide
+whether to replicate (`ShardedPool._needs_replication`); `_deserialized` is
+SI's own mark of a row that already existed, and the rule keeps it.
 
 ### Checklist for every replicated-table factory
 

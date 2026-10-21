@@ -21,7 +21,7 @@ from ray import ObjectRef
 
 from CosmologyConcepts.FieldValues import phi_value, pi_value
 from CosmologyConcepts.Potentials.AbstractPotential import AbstractPotential
-from Datastore.object import DatastoreObject
+from datastorekit.object import DatastoreObject
 from InflationConcepts.efold_value import efold_value
 from MetadataConcepts.store_tag import store_tag
 from MetadataConcepts.tolerance import tolerance

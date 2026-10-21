@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The data SI hands to its datastore layer.
+"""The data SI hands to its datastore layer, the ``datastorekit`` package.
 
-Three objects, each moved verbatim from the layer that used to define them:
+Three objects, each moved verbatim from SI's own layer, which used to define them:
 
 ``factories``
     The registry of storable classes: table name -> factory instance, in registration order.
@@ -27,19 +27,24 @@ Three objects, each moved verbatim from the layer that used to define them:
 
 ``serial_batch_sizes``
     How many serial numbers a client leases from the actor at a time, per table. A table
-    with no entry leases in batches of the layer's own default.
+    with no entry leases in batches of the package's own default (500). ``temperature`` has no
+    table and is ignored.
 
-``Datastore.SQL.Datastore`` and ``Datastore.SQL.ClientPool`` read these (and, from prompt 09
-of the ``dk-and-rpk-migration`` campaign, the DatastoreKit package will be given them as arguments).
+And one function, ``tables_to_drop(groups)``: the tables of the requested ``--drop`` groups,
+refused when another table would be left naming their rows (prompt 09 of the
+``dk-and-rpk-migration`` campaign; its README's U5).
 
-Import order. Until prompt 09 deletes that layer, this module must be imported AFTER
-``Datastore.SQL.Datastore`` (or ``Datastore.SQL.ClientPool``, ``Datastore.SQL.ShardedPool``, or any
-``Datastore.SQL.ObjectFactories`` module). Importing the bare package ``Datastore`` or ``plotting.fetch``
-does not load the layer, so it does not serve. ``Datastore/SQL/__init__.py`` imports the layer, the layer
-imports this module, and this module imports the factories, which sit inside that package; a
-fresh ``import config.datastore`` therefore re-enters itself and fails with a circular-import
-``ImportError``. Every driver, actor and test imports the layer first, so none meets it.
+Every ``ShardedPool`` is given ``factories=`` and ``serial_batch_sizes=``, and ``main.py``'s
+``drop_tables=tables_to_drop(...)``. Since prompt 09 deleted SI's own layer, nothing imports
+this module but its callers, and it imports in a fresh process on its own: the circular import
+that once made it wait for the layer is gone.
 """
+
+from typing import Iterable, List
+
+import sqlalchemy as sqla
+from datastorekit.SQL.schema import build_schema, dependent_tables
+from datastorekit.store_inventory import inventory_specs
 
 from CosmologyConcepts.FieldValues import phi_value, pi_value
 from Datastore.SQL.ObjectFactories.DimensionfulQuantity import (
@@ -178,3 +183,85 @@ serial_batch_sizes = {
     "CompactionFunctionSamples": 500,
     "IntegrationSolver": 6,
 }
+
+
+def _naming(tables: List[str], among: List[str]) -> List[str]:
+    """
+    Which of ``among`` name a table of ``tables`` directly, by the rule ``dependent_tables``
+    follows transitively (a foreign key, or a parent a factory's ``inventory_spec`` declares), in
+    registry order. Used only to word ``tables_to_drop``'s refusal: which tables must go is
+    ``dependent_tables``' answer alone.
+    """
+    built = build_schema(sqla.MetaData(), factories).tables
+    named = {
+        name: {fk.column.table.name for fk in table.foreign_keys} for name, table in built.items()
+    }
+    for name, spec in inventory_specs(factories).items():
+        named.setdefault(name, set()).update(spec.dependencies())
+    return [
+        name for name in built if name in among and not named.get(name, set()).isdisjoint(tables)
+    ]
+
+
+def _joined(items: List[str]) -> str:
+    if len(items) <= 1:
+        return "".join(items)
+    return ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def tables_to_drop(groups: Iterable[str]) -> List[str]:
+    """
+    The tables of the ``--drop`` groups named by ``groups``, each once, in ``drop_groups``' order,
+    for ``ShardedPool(drop_tables=...)``.
+
+    A name that is not a drop group raises ``ValueError``, naming it. A request that would leave
+    a table naming rows it drops raises ``ValueError``: which tables must go with it is
+    ``datastorekit.SQL.schema.dependent_tables``' answer, read from the registry, and the message
+    names the requested groups, the tables that name their rows directly, every table that must be
+    dropped with them, and the ``--drop`` groups to add (a table that must go but is in no group is
+    named as a table). ``main.py`` calls this before Ray starts and refuses with exit status 2
+    (dk-and-rpk-migration prompt 09; its README's U5). The package refuses the same drop itself, at
+    open (``ShardedPool._refuse_drop_that_leaves_references``); this check is the earlier one, and
+    speaks in groups.
+    """
+    requested = list(dict.fromkeys(groups))
+    unknown = [group for group in requested if group not in drop_groups]
+    if len(unknown) > 0:
+        raise ValueError(
+            f"unknown drop group(s) {unknown}: the drop groups are {list(drop_groups)}"
+        )
+
+    tables = [
+        table
+        for group, group_tables in drop_groups.items()
+        if group in requested
+        for table in group_tables
+    ]
+    dependents = [table for table in dependent_tables(tables, factories) if table not in tables]
+    if len(dependents) == 0:
+        return tables
+
+    group_of = {
+        table: group for group, group_tables in drop_groups.items() for table in group_tables
+    }
+    asked = [group for group in drop_groups if group in requested]
+    to_add = [
+        group
+        for group in drop_groups
+        if group not in requested and any(group_of.get(table) == group for table in dependents)
+    ]
+    loose = [table for table in dependents if table not in group_of]
+    referrers = _naming(tables, dependents)
+
+    additions = []
+    if len(to_add) > 0:
+        additions.append(f"--drop {' '.join(to_add)}")
+    if len(loose) > 0:
+        additions.append(
+            f"the table{'s' if len(loose) > 1 else ''} {_joined(loose)}, which no drop group holds"
+        )
+    raise ValueError(
+        f"cannot drop {_joined(asked)} alone: {_joined(referrers)} "
+        f"name{'s' if len(referrers) == 1 else ''} {'its' if len(asked) == 1 else 'their'} rows, "
+        f"so {_joined(dependents)} must be dropped too; add {' and '.join(additions)}"
+    )

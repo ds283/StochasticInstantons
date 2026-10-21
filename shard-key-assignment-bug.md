@@ -1,5 +1,12 @@
 # ShardedPool: shard key assignment persistence bug
 
+**Status (2026-10-21, dk-and-rpk-migration prompt 09):** SI no longer carries a `ShardedPool` of its
+own; its layer is the `datastorekit` package (`v0.4.0`), which carries the fix in
+`ShardedPool._assign_shard_keys` (`datastorekit/SQL/ShardedPool.py:3618`), with both of SI's commits
+present: `3f1caad`'s `key_serial` (the insert at `:3674`) and `20d9a61`'s de-duplication (`:3626`).
+A change to it is made in DatastoreKit and reaches SI through its pin (DatastoreKit's SI adoption
+checklist, item 10).
+
 ## What this document is for
 
 This document describes a latent but serious bug found in `ShardedPool._assign_shard_keys`

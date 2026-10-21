@@ -3,7 +3,7 @@ from datetime import datetime
 from math import pi as PI
 from typing import Any, Optional, Tuple
 
-from Datastore import DatastoreObject
+from datastorekit import DatastoreObject
 
 
 class AbstractDiffusionModel(DatastoreObject, ABC):

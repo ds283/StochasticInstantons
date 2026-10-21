@@ -47,18 +47,18 @@ from ComputeTargets.GradientCoupledInstanton.GradientCoupledInstanton import (
     GradientCoupledInstantonProxy,
 )
 from config.argument_parser import create_argument_parser
+from config.datastore import factories, serial_batch_sizes
 from config.grid_builder import build_gradient_grid
 from config.pipeline_setup import build_pipeline_inputs
 from config.sharding import (
     ShardKeyType,
     get_shard_key_store_id,
-    inventory_config,
     read_table_config,
     replicated_tables,
     sharded_tables,
 )
 from CosmologyModels.params import Planck2018
-from Datastore.SQL.ShardedPool import ShardedPool
+from datastorekit.SQL.ShardedPool import ShardedPool
 from plotting.adapters.full import FullInstantonAdapter
 from plotting.adapters.gradient import GradientCoupledAdapter
 from plotting.adapters.slow_roll import SlowRollInstantonAdapter
@@ -985,8 +985,8 @@ if __name__ == "__main__":
         profile_agent=None,
         job_name="plot_GradientCoupledSolutions",
         prune_unvalidated=False,
-        drop_actions=[],
         read_table_config=read_table_config,
-        inventory_config=inventory_config,
+        factories=factories,
+        serial_batch_sizes=serial_batch_sizes,
     ) as pool:
         run_plots(pool, units, args)

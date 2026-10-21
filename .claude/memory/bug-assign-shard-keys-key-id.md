@@ -22,3 +22,8 @@ correct shard; the records are on a different shard).
 runs, suspect this class of column-name mismatch in `_assign_shard_keys`.
 
 Fixed 2026-06-20: `Datastore/SQL/ShardedPool.py` line 819, `"key_id"` → `"key_serial"`.
+
+**Status (2026-10-21, dk-and-rpk-migration prompt 09):** that file is deleted; SI's layer is now the
+`datastorekit` package (`v0.4.0`), which carries the fix in `ShardedPool._assign_shard_keys`
+(`datastorekit/SQL/ShardedPool.py:3618`: the insert names `key_serial` at `:3674`, and the
+de-duplication is at `:3626`). A change to it is made in DatastoreKit and reaches SI through its pin.

@@ -72,7 +72,7 @@ from ray import ObjectRef
 
 from Caching.ExtractionCache import ExtractionCache, InMemoryExtractionCache
 from CosmologyModels.cosmo_params import CosmologicalParams
-from Datastore.object import DatastoreObject
+from datastorekit.object import DatastoreObject
 from InflationConcepts.alpha_regularization import alpha_regularization as alpha_regularization_t
 from InflationConcepts.delta_Nstar import delta_Nstar
 from InflationConcepts.DiffusionModel import (

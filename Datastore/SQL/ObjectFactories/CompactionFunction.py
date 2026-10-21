@@ -18,7 +18,7 @@ from datetime import datetime
 
 import sqlalchemy as sqla
 
-from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+from datastorekit.SQL.factory_base import SQLAFactoryBase
 
 
 class sqla_CompactionFunctionFactory(SQLAFactoryBase):

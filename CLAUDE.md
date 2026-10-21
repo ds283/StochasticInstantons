@@ -98,10 +98,6 @@ Never modify these files unless a prompt explicitly names them and describes
 exactly what to change:
 
 ```
-Datastore/SQL/ShardedPool.py
-Datastore/object.py                Datastore/SQL/SerialPoolBroker.py
-Datastore/SQL/ClientPool.py        Datastore/SQL/ProfileAgent.py
-Datastore/SQL/ObjectFactories/base.py
 Datastore/SQL/ObjectFactories/version.py
 Datastore/SQL/ObjectFactories/store_tag.py
 Datastore/SQL/ObjectFactories/tolerance.py
@@ -114,8 +110,13 @@ Quadrature/supervisors/base.py
 Units/    MetadataConcepts/    utilities.py    constants.py
 ```
 
-When a prompt says "modify `Datastore/SQL/Datastore.py`", change only what it
-describes (e.g. adding factory entries). Do not reformat or reorder anything else.
+The datastore layer itself (`ShardedPool`, the `Datastore` actor, `ClientPool`,
+`SerialPoolBroker`, `ProfileAgent`, `DatastoreObject` and `SQLAFactoryBase`) is
+the `datastorekit` package, pinned in `requirements.txt`; SI has no copy of it.
+A change to it is made in DatastoreKit and reaches SI through a new pin. SI's
+own data for it (the factory registry, the `--drop` groups and the serial batch
+sizes) is `config/datastore.py`. Do not reformat or reorder anything else in a
+file you are told to modify.
 
 ## Units convention
 

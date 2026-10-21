@@ -4,7 +4,7 @@ from math import fabs
 import sqlalchemy as sqla
 
 from InflationConcepts.delta_Nstar import delta_Nstar
-from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+from datastorekit.SQL.factory_base import SQLAFactoryBase
 from config.defaults import (
     DEFAULT_EFOLD_PRECISION,
     DEFAULT_EFOLD_RELATIVE_PRECISION,

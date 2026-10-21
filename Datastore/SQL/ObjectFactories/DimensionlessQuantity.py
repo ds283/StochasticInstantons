@@ -18,7 +18,7 @@ from math import fabs
 
 import sqlalchemy as sqla
 
-from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+from datastorekit.SQL.factory_base import SQLAFactoryBase
 from config.defaults import (
     DEFAULT_DIMENSIONLESS_QUANTITY_PRECISION,
     DEFAULT_DIMENSIONLESS_QUANTITY_RELATIVE_PRECISION,

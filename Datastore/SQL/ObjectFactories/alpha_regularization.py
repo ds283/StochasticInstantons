@@ -19,7 +19,7 @@ from math import fabs
 import sqlalchemy as sqla
 
 from InflationConcepts.alpha_regularization import alpha_regularization
-from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+from datastorekit.SQL.factory_base import SQLAFactoryBase
 from config.defaults import (
     DEFAULT_ALPHA_PRECISION,
     DEFAULT_ALPHA_RELATIVE_PRECISION,

@@ -19,7 +19,7 @@ from typing import Optional
 
 import numpy as np
 
-from Datastore import DatastoreObject
+from datastorekit import DatastoreObject
 
 
 @total_ordering

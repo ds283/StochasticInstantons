@@ -18,7 +18,7 @@ from datetime import datetime
 import sqlalchemy as sqla
 
 from InflationConcepts.n_collocation_points import n_collocation_points
-from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+from datastorekit.SQL.factory_base import SQLAFactoryBase
 
 
 class sqla_n_collocation_points_factory(SQLAFactoryBase):

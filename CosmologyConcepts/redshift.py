@@ -16,7 +16,7 @@
 from functools import total_ordering
 from typing import Iterable, Self
 
-from Datastore import DatastoreObject
+from datastorekit import DatastoreObject
 from config.defaults import DEFAULT_FLOAT_PRECISION
 
 

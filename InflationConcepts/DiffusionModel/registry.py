@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+    from datastorekit.SQL.factory_base import SQLAFactoryBase
 
 
 @dataclass

@@ -17,7 +17,7 @@ import json
 
 import sqlalchemy as sqla
 
-from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+from datastorekit.SQL.factory_base import SQLAFactoryBase
 from InflationConcepts.efold_value import efold_value
 
 

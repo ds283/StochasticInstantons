@@ -1,7 +1,8 @@
 """
 Shared pytest fixtures for the StochasticInstanton test suite.
 
-The ``live_pool`` session fixture provides a real ShardedPool backed by a
+The ``live_pool`` session fixture provides a real ShardedPool (the
+``datastorekit`` package's, since dk-and-rpk-migration prompt 09) backed by a
 temporary single-shard SQLite database.  It is intended for reuse across
 integration tests that need to verify store/build round-trips against an
 actual datastore — not just a mock.  Upcoming prompts (scalars-only storage
@@ -15,21 +16,22 @@ Design constraints:
   not allow two pools with the same actor names in the same process.
 - ``shards=1``: a single shard is sufficient for all current integration tests
   and keeps setup/teardown fast.
-- Uses the production ``config.sharding`` objects so that the real factory
-  and table wiring is exercised, not a test-only stand-in.
+- Uses the production ``config.sharding`` objects, and ``config.datastore``'s
+  factory registry and serial batch sizes, so that the real factory and table
+  wiring is exercised, not a test-only stand-in.
 """
 
 import ray
 import pytest
 
-from Datastore.SQL.ShardedPool import ShardedPool
+from datastorekit.SQL.ShardedPool import ShardedPool
+from config.datastore import factories, serial_batch_sizes
 from config.sharding import (
     ShardKeyType,
     get_shard_key_store_id,
     replicated_tables,
     sharded_tables,
     read_table_config,
-    inventory_config,
 )
 
 
@@ -41,8 +43,9 @@ def live_pool(tmp_path_factory):
 
     Intended for reuse by any integration test that needs a real datastore:
     deduplication checks, store/build round-trips, ``_do_not_populate`` guard
-    tests, etc.  Uses the production ``config.sharding`` configuration so the
-    actual factory and table wiring is exercised.
+    tests, etc.  Uses the production ``config.sharding`` configuration and
+    ``config.datastore``'s registry so the actual factory and table wiring is
+    exercised.
 
     The pool is created once per pytest session, yielded to all tests that
     request it, then torn down (ShardedPool.__exit__ + ray.shutdown) after the
@@ -65,9 +68,9 @@ def live_pool(tmp_path_factory):
         profile_agent=None,
         job_name="pytest-integration",
         prune_unvalidated=False,
-        drop_actions=[],
         read_table_config=read_table_config,
-        inventory_config=inventory_config,
+        factories=factories,
+        serial_batch_sizes=serial_batch_sizes,
     ) as pool:
         yield pool
 

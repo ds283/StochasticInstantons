@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Dict
 
 from CosmologyConcepts.Potentials.model_ids import QUADRATIC_POTENTIAL, QUARTIC_POTENTIAL
-from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+from datastorekit.SQL.factory_base import SQLAFactoryBase
 from Datastore.SQL.ObjectFactories.QuadraticPotential import sqla_QuadraticPotential_factory
 from Datastore.SQL.ObjectFactories.QuarticPotential import sqla_QuarticPotential_factory
 from InflationConcepts.QuadraticPotential import QuadraticPotential

@@ -15,7 +15,7 @@
 
 import sqlalchemy as sqla
 
-from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+from datastorekit.SQL.factory_base import SQLAFactoryBase
 from Quadrature.integration_metadata import IntegrationSolver
 from config.defaults import DEFAULT_STRING_LENGTH
 

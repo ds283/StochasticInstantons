@@ -13,30 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""config.datastore's three objects, against the layer's at prompt 05's gate.
+"""config.datastore's three objects, against SI's old layer's at prompt 05's gate.
 
-The literals below were captured from the layer (``Datastore.SQL.Datastore`` and
-``Datastore.SQL.ClientPool``) at the gate of prompt 05 of the ``dk-and-rpk-migration``
+The literals below were captured from SI's own layer (its ``Datastore/SQL/Datastore.py`` and
+``Datastore/SQL/ClientPool.py``) at the gate of prompt 05 of the ``dk-and-rpk-migration``
 campaign, before the data moved, by a script that read the layer and not
 ``config.datastore``. They are written out, not computed from the module under test, so that
 an entry dropped, reordered, retyped or resized in ``config/datastore.py`` fails here.
 
-The layer is imported first, with ``importlib``: until prompt 09 deletes the layer, importing
-``config.datastore`` in a fresh process fails with a circular-import ``ImportError``
-(``Datastore/SQL/__init__.py`` imports the layer, which imports ``config.datastore``, which
-imports the factories inside that package). ``import Datastore.SQL.Datastore as m`` would
-not do for the module, since the package attribute ``Datastore.SQL.Datastore`` is the actor.
+Prompt 09 deleted that layer: the pool is the ``datastorekit`` package's, and every pool
+construction is given ``config.datastore``'s registry and batch sizes, which an ``ast`` test
+below pins. With the layer gone, ``config.datastore`` imports on its own in a fresh process
+(the circular import through ``Datastore/SQL/__init__.py`` that once made it wait for the
+layer is gone), which the last test checks.
 """
 
+import ast
 import importlib
 import os
 import subprocess
 import sys
 from pathlib import Path
 
-# Layer first, then config.datastore (see the module docstring).
-_layer = importlib.import_module("Datastore.SQL.Datastore")
-_client_pool = importlib.import_module("Datastore.SQL.ClientPool")
 _config = importlib.import_module("config.datastore")
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -170,23 +168,85 @@ def test_batch_sizes_per_table():
     assert set(_config.serial_batch_sizes) == set(expected)
 
 
-def test_layer_reads_the_data_from_config_datastore():
-    assert _layer._factories is _config.factories
-    assert _layer._drop_actions is _config.drop_groups
-    assert _client_pool._default_serial_batch_size is _config.serial_batch_sizes
+# The four ShardedPool constructions: the two drivers' and the plot scripts', and live_pool's.
+_POOL_FILES = [
+    "main.py",
+    "plot_GradientCoupledSolutions.py",
+    "plot_InstantonSolutions.py",
+    "tests/conftest.py",
+]
 
 
-def test_layer_drop_order_names_exactly_the_drop_groups():
-    # _drop_order stays in the layer until prompt 09 deletes it
-    assert set(_layer._drop_order) == set(_config.drop_groups)
+def _config_datastore_names(tree):
+    """{local name: name in config.datastore} for each ``from config.datastore import ...``."""
+    names = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "config.datastore":
+            for alias in node.names:
+                names[alias.asname or alias.name] = alias.name
+    return names
+
+
+def _named(value, imported):
+    """What config.datastore object an argument names: an imported name, or the dotted
+    ``config.datastore.<name>``; else None."""
+    if isinstance(value, ast.Name):
+        return imported.get(value.id)
+    if (
+        isinstance(value, ast.Attribute)
+        and isinstance(value.value, ast.Attribute)
+        and isinstance(value.value.value, ast.Name)
+        and value.value.value.id == "config"
+        and value.value.attr == "datastore"
+    ):
+        return value.attr
+    return None
+
+
+def test_every_pool_construction_passes_config_datastore():
+    """Each of the four files constructs one ShardedPool, by keyword ``factories=`` and
+    ``serial_batch_sizes=`` naming config.datastore's two objects, and passes neither of the
+    old layer's ``drop_actions=`` and ``inventory_config=``. A failure names the file and line."""
+    problems = []
+    for rel in _POOL_FILES:
+        tree = ast.parse((_ROOT / rel).read_text(), filename=rel)
+        imported = _config_datastore_names(tree)
+        calls = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and (
+                (isinstance(node.func, ast.Name) and node.func.id == "ShardedPool")
+                or (isinstance(node.func, ast.Attribute) and node.func.attr == "ShardedPool")
+            )
+        ]
+        if len(calls) != 1:
+            problems.append(f"{rel}: {len(calls)} ShardedPool(...) calls, expected 1")
+            continue
+        (call,) = calls
+        where = f"{rel}:{call.lineno}"
+        keywords = {kw.arg: kw.value for kw in call.keywords if kw.arg is not None}
+        for name in ("factories", "serial_batch_sizes"):
+            if name not in keywords:
+                problems.append(f"{where}: no {name}=")
+            elif _named(keywords[name], imported) != name:
+                problems.append(f"{where}: {name}= does not name config.datastore.{name}")
+        for name in ("drop_actions", "inventory_config"):
+            if name in keywords:
+                problems.append(f"{where}: passes {name}=")
+        if any(kw.arg is None for kw in call.keywords):
+            problems.append(f"{where}: passes **kwargs")
+    assert not problems, "\n".join(problems)
 
 
 def test_importing_the_data_starts_no_ray():
-    """In a fresh process, so the answer does not depend on test order."""
+    """In a fresh process, so the answer does not depend on test order. config.datastore is
+    imported alone, first: the closing test of
+    ``[config-datastore-cannot-be-imported-before-the-layer]`` (dk-and-rpk-migration prompt 09)."""
     code = (
-        "import importlib, ray; "
-        "importlib.import_module('Datastore.SQL.Datastore'); "
+        "import importlib; "
         "importlib.import_module('config.datastore'); "
+        "import ray; "
         "assert not ray.is_initialized(); print('ok')"
     )
     result = subprocess.run(

@@ -15,7 +15,7 @@
 
 import sqlalchemy as sqla
 
-from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+from datastorekit.SQL.factory_base import SQLAFactoryBase
 
 
 class sqla_cosmological_params_factory(SQLAFactoryBase):

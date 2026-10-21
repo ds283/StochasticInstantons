@@ -17,7 +17,7 @@ from math import fabs
 import sqlalchemy as sqla
 
 from CosmologyConcepts import redshift
-from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+from datastorekit.SQL.factory_base import SQLAFactoryBase
 from config.defaults import (
     DEFAULT_REDSHIFT_RELATIVE_PRECISION,
     DEFAULT_REDSHIFT_PRECISION,

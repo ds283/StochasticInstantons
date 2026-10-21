@@ -1,6 +1,6 @@
 # Open issues — project-wide index
 
-**Last updated:** 2026-10-20 · **61 open**, 26 closed. Seeded from
+**Last updated:** 2026-10-21 · **60 open**, 27 closed. Seeded from
 [`RECONSTRUCTION.md`](handoff-notes/2026-10-08/RECONSTRUCTION.md) Parts A0–D
 and D0, the open-issue `todo`s of
 [`onion_model.tex`](../notes/onion-model/onion_model.tex) as rewritten in
@@ -161,7 +161,6 @@ Opened at the campaign's planning, 2026-10-11, or at a review where the row says
 | `[unified-pipeline-stores-null-instanton-labels]` | board §3 (01's review) | unowned | The unified pipeline stores `FullInstanton` and `SlowRollInstanton` with `label` NULL, so a scalars-only store's figure footers lack it. |
 | `[gci-picard-inner-fails-on-rehearsal-grid]` | board §3 (02's first attempt, 2026-10-20) | P3 | At the rehearsal grid (`quadratic-minimal.yaml`, `n = 5`, `α = 0.01`, no budget) no `GradientCoupledInstanton` solve finished in over five hours: every inner Picard step failed and the shooting halved λ again and again. July's 315 s does not hold at today's tree. The rehearsals build no gradient branch (U11). See also `[gci-n5-n7-solutions-provisional]`. |
 | `[pool-prose-stale-after-raypoolkit-adoption]` | board §3 (04, 2026-10-20) | dk-12 | `picard.py:450-456` still calls `RayTools/RayWorkPool.py` protected infrastructure; the constructor sketches in `INFRASTRUCTURE.md` and `architecture-summary.md` give defaults of 10, 10 and 50 where the pool's are 5, 1 and 200. |
-| `[config-datastore-cannot-be-imported-before-the-layer]` | board §3 (05, 2026-10-20) | dk-09 | A fresh `import config.datastore` fails with a circular-import `ImportError` until the layer goes: `Datastore/SQL/__init__.py` imports the layer, which imports `config.datastore`, which imports the factories inside that package. No entry point meets it today. |
 
 ## 7. Closed
 
@@ -188,3 +187,4 @@ Opened at the campaign's planning, 2026-10-11, or at a review where the row says
 | `[inner-edge-coarse-graining-radius-or-fixed]` (board `notes/OPEN-ISSUES.md`) | 2026-10-09 | David's decision: inner edge at the current coarse-graining scale `R_σ(N)`; a change of definition. Fixed-edge alternative not taken up. |
 | `[ray-address-auto-attaches-to-foreign-cluster]` (dk-and-rpk-migration board §4) | 2026-10-12 | The lock brief's §3 and §5 amended; SI's `--ray-address` made required by the user's ruling. |
 | `[inflaton-trajectory-prune-orphans-value-rows]` (dk-and-rpk-migration board §4) | 2026-10-20 | dk-06: `InflatonTrajectory`'s prune deletes the unvalidated trajectories' `InflatonTrajectoryValue` rows before them, in the same transaction; the cascade map of `validate-on-startup.md` has the row, and the value table declares `owner_column` for DatastoreKit's prune. Shown on two shards through SI's pool. |
+| `[config-datastore-cannot-be-imported-before-the-layer]` (dk-and-rpk-migration board §4) | 2026-10-21 | dk-09: the layer is deleted and `Datastore/__init__.py` and `Datastore/SQL/__init__.py` are empty, so nothing imports it; `import config.datastore` alone, in a fresh process, succeeds and starts no Ray (`tests/test_config_datastore.py`; its 30 entries are instances of the package's `SQLAFactoryBase`), and `test_compare_stores.py`'s fallback import is gone. |

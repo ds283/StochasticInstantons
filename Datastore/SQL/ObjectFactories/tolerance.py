@@ -17,7 +17,7 @@ from math import log10
 
 import sqlalchemy as sqla
 
-from Datastore.SQL.ObjectFactories.base import SQLAFactoryBase
+from datastorekit.SQL.factory_base import SQLAFactoryBase
 from MetadataConcepts import tolerance
 from config.defaults import DEFAULT_FLOAT_PRECISION
 
