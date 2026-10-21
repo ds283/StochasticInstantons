@@ -1,10 +1,10 @@
 # dk-and-rpk-migration campaign — implementation state
 
-**Last updated:** 2026-10-21 · **Status: LIVE — 12 of 13 prompts written (01–11, 01a), 01 and 01a
+**Last updated:** 2026-10-21 (after 08) · **Status: LIVE — 12 of 13 prompts written (01–11, 01a), 01 and 01a
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
-the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20). U1–U9 ruled (2026-10-12),
+the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -68,7 +68,7 @@ on any of them.
 | 05 | [Move SI's data out of the layer](05-move-si-data-out-of-the-layer.md) | `config/datastore.py`; the vectorized gets (P8) | Sonnet | ✍️ 2026-10-20 | ✅ 2026-10-20 | `875cf41` | [`05-move-si-data-out-of-the-layer.md`](../../.documents/dk-and-rpk-migration/05-move-si-data-out-of-the-layer.md) |
 | 06 | [Prepare the `InflatonTrajectory` factories](06-prepare-the-inflaton-trajectory-factories.md) | **U4**, P17; closes `[inflaton-trajectory-prune-orphans-value-rows]` | Opus | ✍️ 2026-10-20 | ✅ 2026-10-20 | `5e41ce8` | [`06-prepare-the-inflaton-trajectory-factories.md`](../../.documents/dk-and-rpk-migration/06-prepare-the-inflaton-trajectory-factories.md) |
 | 07 | [Rehearse before the DatastoreKit swap (RH1)](07-rehearse-before-the-datastore-swap.md) | **RH1**, bitwise against RH0; the tag (**U7**) | Opus | ✍️ 2026-10-20 | ✅ 2026-10-21 (§5.19) | `0527480`, tagged `pre-datastorekit` | [`07-rehearse-before-the-datastore-swap.md`](../../.documents/dk-and-rpk-migration/07-rehearse-before-the-datastore-swap.md) |
-| 08 | [Pin `datastorekit` `v0.4.0`](08-pin-datastorekit-v0.4.0.md) | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ✍️ 2026-10-21 | ⬜ | — | — |
+| 08 | [Pin `datastorekit` `v0.4.0`](08-pin-datastorekit-v0.4.0.md) | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.21) | the commit that adds the note | [`08-pin-datastorekit-v0.4.0.md`](../../.documents/dk-and-rpk-migration/08-pin-datastorekit-v0.4.0.md) |
 | 09 | [Adopt `datastorekit`](09-adopt-datastorekit.md) | the DatastoreKit swap; **U5**; closes `[config-datastore-cannot-be-imported-before-the-layer]` | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
 | 10 | [Port the inventory](10-port-the-inventory.md) | **U6**, **U8**; `inventory_spec`, `tools/inventory_report.py`; closes `[show-all-flag-unused]` | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
 | 11 | [Rehearse through both packages (RH2)](11-rehearse-through-both-packages.md) | **RH2**, bitwise against RH1; **DatastoreKit G4** | Opus | ✍️ 2026-10-21 | ⬜ | — | — |
@@ -133,10 +133,10 @@ before each dispatch:
 | **L1**–**L4** (RH1) | 07 | README §4.1 at 06's tree; bitwise equality with `02-reference.sqlite` and with `02-scalars-2.sqlite` / the readers' `before/` copy of `02-scalars.sqlite`, compared before the readers; `scalar_data.csv` `b0564eec…58a2`; L4 against RH0's pattern | ✅ L1–L3 hold; `resumed-a2` (second attempt, `S` = 12.0 s) left 8 validated and 1 unvalidated `FullInstanton`, `resumed-b` pruned the 1 and computed 2; **§4.3: all five comparisons `RESULT: equal`, exit 0, against RH0 and within RH1, dense and scalars-only**; both `scalar_data.csv` `b0564eec…58a2`; L4: `reference`'s and `scalars`' parsed records equal RH0's but for the provenance line |
 | **V2** | 07 | `verification.md` §2 RH1; `out/07-*` | ✅ [`verification.md`](../../.documents/dk-and-rpk-migration/verification.md) §2; `out/07-*` (5 comparisons, schema snapshot, stage counts, readers' outputs) |
 | **Z1** | 07 | the annotated tag `pre-datastorekit` on 07's commit (U7), not pushed | ✅ annotated, on 07's commit `0527480`; pushed by the user 2026-10-21 |
-| **K4** | 08 | the `datastorekit` pin in `requirements.txt` | ⬜ |
-| **K5** | 08 | the venv installed from it; one distribution added | ⬜ |
-| **K6** | 08 | the proof: `c8570e849334…`, the tag's 21 modules, no `tests/`, not editable | ⬜ |
-| **K7** | 08 | on the installed package: U3's `timestamp`; the factory base; SI's 30 entries instantiate | ⬜ |
+| **K4** | 08 | the `datastorekit` pin in `requirements.txt` | ✅ one line at `:16`, between `cycler==0.12.1` and `distlib==0.4.3`; 73 lines |
+| **K5** | 08 | the venv installed from it; one distribution added | ✅ dry run and install each added `datastorekit-0.4.0` alone |
+| **K6** | 08 | the proof: `c8570e849334…`, the tag's 21 modules, no `tests/`, not editable | ✅ freeze differs by one line; `pip check` clean; `direct_url.json` VCS at `c8570e84…`, `v0.4.0`, no `dir_info`; 21 of 21 modules byte-equal, no `tests/`; `raypoolkit` mtimes unchanged; import starts no Ray; `sharded_store --help` exits 0 |
+| **K7** | 08 | on the installed package: U3's `timestamp`; the factory base; SI's 30 entries instantiate | ✅ run from `site-packages`; `timestamp` round-trips, `None` by default, read-only, keyword-only; `build` abstract; 30 of 30 entries instantiate (28 classes; 12 define all three hooks, 16 none, 0 some) |
 | **A1** | 09 | the 7 layer modules deleted; the two `__init__.py` emptied (P6) | ⬜ |
 | **A2** | 09 | the 48 layer imports rewritten by the module map | ⬜ |
 | **A3** | 09 | each factory's diff its import line alone | ⬜ |
@@ -1354,3 +1354,32 @@ Nothing opened or closed, so `.documents/OPEN-ISSUES.md` is unchanged.
   - `--inventory` compared with RH1's field by field, since its layout is 10's;
   - H1 runs before the readers;
   - a miss marks no gate and commits nothing; an L4 difference alone holds back G4 for the user.
+
+### 5.21 After prompt 08 (2026-10-21)
+
+- **Landed:** the commit that adds the results note
+  [`08-pin-datastorekit-v0.4.0.md`](../../.documents/dk-and-rpk-migration/08-pin-datastorekit-v0.4.0.md).
+  **COMPLETE:** K4–K7 hold; no code or test changed; no issue opened, so
+  `.documents/OPEN-ISSUES.md` is unchanged.
+- **K4.** `requirements.txt` gains `datastorekit @ git+https://github.com/ds283/DatastoreKit@v0.4.0` at
+  `:16`, nothing else (73 lines). `ray==2.55.1` is now `:58`, `raypoolkit` `:59`, `SQLAlchemy` `:67`.
+- **K5.** The dry run reported `datastorekit-0.4.0` alone; the install, run once, installed it alone.
+  pip's `Resolved … to commit 8e7c1d77…` names the tag object; the commit is `c8570e84…`.
+  `raypoolkit` was re-resolved, not reinstalled (its 16 files keep their mtimes). pip itself was not
+  upgraded.
+- **K6.** `pip freeze` differs from the saved one by the one line
+  `datastorekit @ git+https://github.com/ds283/DatastoreKit@c8570e849334d09085bbd84876095fc9e22bd005`;
+  `pip check` is clean; `direct_url.json` is a VCS record at that commit, requested `v0.4.0`, no
+  `dir_info`; the 21 modules equal `git archive v0.4.0`'s byte for byte, `tests/` and its data are not
+  installed; the import starts no Ray; `sharded_store --help` exits 0. The provenance line is
+  `>> packages: datastorekit 0.4.0 (https://github.com/ds283/DatastoreKit@c8570e849334d09085bbd84876095fc9e22bd005, requested v0.4.0); raypoolkit 0.2.0 (https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976, requested v0.2.0)`.
+- **K7.** On the installed package (imported from the venv's `site-packages`): U3's `timestamp` behaves as
+  required; `SQLAFactoryBase` refuses a subclass without `build`; SI's 30 registry entries (28 classes)
+  instantiate on it; 12 classes define all of `store`, `validate`, `validate_on_startup`, 16 none, 0
+  some.
+- **Suites:** 696 (695 passed, 1 skipped) and 62 (61 passed, 1 skipped), unchanged from 07.
+- **Rollback:** `git revert` of the commit **plus** `./venv/bin/pip uninstall -y datastorekit`
+  (README §4.4). The venv is outside git, so the revert alone leaves the package installed (inert
+  until 09 imports it).
+- **Deviations:** the board section number, the pin's line number and the suites' commands, as the
+  orchestrator's brief corrected; none unintended.
