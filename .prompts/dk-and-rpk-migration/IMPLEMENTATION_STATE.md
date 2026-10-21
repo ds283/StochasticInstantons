@@ -1271,3 +1271,6 @@ docstring) and in this follow-up (records); nothing more is opened.
   - *To 11's note:* the window moves with load (`efold_value` minting slowed by ≥ 1.1 s at a load near 100); aim later on a
     loaded machine, and ask other sessions to hold their suites before the cluster starts.
   - *To the user:* push the tag (`git push origin pre-datastorekit`) when ready (README §6.3).
+- **The tag pushed** (2026-10-21), by the user: `git push origin pre-datastorekit`. `git ls-remote` gives tag object
+  `9234839` on `origin`, peeling to `0527480`. The branch `dk-and-rpk-migration` itself is not pushed; the tag carried its
+  commits up to `0527480` to the remote as objects only.
