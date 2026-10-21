@@ -1,0 +1,400 @@
+{
+  "a": {
+    "primary": "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-reference.sqlite",
+    "shards": [
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-reference-shard0000.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-reference-shard0001.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-reference-shard0002.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-reference-shard0003.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-reference-shard0004.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-reference-shard0005.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-reference-shard0006.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-reference-shard0007.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-reference-shard0008.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-reference-shard0009.sqlite"
+    ]
+  },
+  "b": {
+    "primary": "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-resumed.sqlite",
+    "shards": [
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-resumed-shard0000.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-resumed-shard0001.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-resumed-shard0002.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-resumed-shard0003.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-resumed-shard0004.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-resumed-shard0005.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-resumed-shard0006.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-resumed-shard0007.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-resumed-shard0008.sqlite",
+      "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-resumed-shard0009.sqlite"
+    ]
+  },
+  "tables": {
+    "CompactionFunction": {
+      "kind_a": "sharded",
+      "kind_b": "sharded",
+      "matched": 10,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "CompactionFunctionSamples": {
+      "kind_a": "sharded",
+      "kind_b": "sharded",
+      "matched": 33128,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "CosmologicalParams": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 1,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "FullInstanton": {
+      "kind_a": "sharded",
+      "kind_b": "sharded",
+      "matched": 10,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "FullInstantonValue": {
+      "kind_a": "sharded",
+      "kind_b": "sharded",
+      "matched": 16564,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "GradientCoupledInstanton": {
+      "kind_a": "sharded",
+      "kind_b": "sharded",
+      "matched": 0,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "GradientCoupledInstantonProfile": {
+      "kind_a": "sharded",
+      "kind_b": "sharded",
+      "matched": 0,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "GradientCoupledInstantonValue": {
+      "kind_a": "sharded",
+      "kind_b": "sharded",
+      "matched": 0,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "InflatonTrajectory": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 1,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "InflatonTrajectoryValue": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 5713,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "IntegrationSolver": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 0,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "MasslessDecoupledDiffusion": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 1,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "N_final": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 1,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "N_init": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 1,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "QuadraticPotential": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 1,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "QuarticPotential": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 0,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "SlowRollInstanton": {
+      "kind_a": "sharded",
+      "kind_b": "sharded",
+      "matched": 10,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "SlowRollInstantonValue": {
+      "kind_a": "sharded",
+      "kind_b": "sharded",
+      "matched": 16564,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "alpha_regularization": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 1,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "delta_Nstar": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 10,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "efold_value": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 7521,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "inflaton_mass": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 1,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "n_collocation_points": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 1,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "phi_value": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 1,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "pi_value": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 1,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "quartic_coupling": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 0,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "redshift": {
+      "kind_a": "sharded",
+      "kind_b": "sharded",
+      "matched": 0,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "store_tag": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 0,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "tolerance": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 1,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    },
+    "version": {
+      "kind_a": "replicated",
+      "kind_b": "replicated",
+      "matched": 1,
+      "a_only": 0,
+      "b_only": 0,
+      "near_misses": [],
+      "rows_a_only": [],
+      "rows_b_only": []
+    }
+  },
+  "bookkeeping_differences": {
+    "CompactionFunction": {
+      "metadata[\"compute_time\"]": 10,
+      "metadata[\"full\"][\"compute_time\"]": 10,
+      "metadata[\"slow_roll\"][\"compute_time\"]": 10,
+      "timestamp": 10
+    },
+    "CosmologicalParams": {
+      "timestamp": 1
+    },
+    "FullInstanton": {
+      "diagnostics_json[\"compute_time\"]": 10,
+      "diagnostics_json[\"mean_time_per_picard_iteration\"]": 10,
+      "timestamp": 10
+    },
+    "InflatonTrajectory": {
+      "diagnostics_json[\"compute_time\"]": 1,
+      "timestamp": 1
+    },
+    "MasslessDecoupledDiffusion": {
+      "timestamp": 1
+    },
+    "N_final": {
+      "timestamp": 1
+    },
+    "N_init": {
+      "timestamp": 1
+    },
+    "QuadraticPotential": {
+      "timestamp": 1
+    },
+    "SlowRollInstanton": {
+      "diagnostics_json[\"compute_time\"]": 10,
+      "timestamp": 10
+    },
+    "alpha_regularization": {
+      "timestamp": 1
+    },
+    "delta_Nstar": {
+      "timestamp": 10
+    },
+    "efold_value": {
+      "timestamp": 7521
+    },
+    "inflaton_mass": {
+      "timestamp": 1
+    },
+    "n_collocation_points": {
+      "timestamp": 1
+    },
+    "phi_value": {
+      "timestamp": 1
+    },
+    "pi_value": {
+      "timestamp": 1
+    },
+    "tolerance": {
+      "timestamp": 1
+    }
+  },
+  "problems": [],
+  "notes": [
+    "A: redshift is on the shards but in neither of the primary's table lists; compared as sharded (its rows taken from every shard)",
+    "B: redshift is on the shards but in neither of the primary's table lists; compared as sharded (its rows taken from every shard)"
+  ],
+  "equal": true
+}

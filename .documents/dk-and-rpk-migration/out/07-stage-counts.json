@@ -1,0 +1,295 @@
+{
+  "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/07-reference.log": {
+    "entries": [
+      {
+        "kind": "pool",
+        "title": "STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES",
+        "complete": true,
+        "counts": {
+          "lookup": 1,
+          "compute": 1,
+          "store": 1,
+          "validation": 1
+        },
+        "no_compute": false
+      },
+      {
+        "kind": "lookup",
+        "title": "STAGE 2: FULL MSR INSTANTONS",
+        "already_computed": 0,
+        "to_compute": 10,
+        "skipped": 0
+      },
+      {
+        "kind": "pool",
+        "title": "STAGE 2: FULL MSR INSTANTONS",
+        "complete": true,
+        "counts": {
+          "lookup": 10,
+          "compute": 10,
+          "store": 10,
+          "validation": 10
+        },
+        "no_compute": false
+      },
+      {
+        "kind": "lookup",
+        "title": "STAGE 3: SLOW-ROLL INSTANTONS",
+        "already_computed": 0,
+        "to_compute": 10,
+        "skipped": 0
+      },
+      {
+        "kind": "pool",
+        "title": "STAGE 3: SLOW-ROLL INSTANTONS",
+        "complete": true,
+        "counts": {
+          "lookup": 10,
+          "compute": 10,
+          "store": 10,
+          "validation": 10
+        },
+        "no_compute": false
+      },
+      {
+        "kind": "section",
+        "title": "STAGE 4: COMPACTION FUNCTIONS"
+      },
+      {
+        "kind": "lookup",
+        "title": "COMPACTION FUNCTIONS",
+        "already_computed": 0,
+        "to_compute": 10,
+        "skipped": 0
+      },
+      {
+        "kind": "pool",
+        "title": "STAGE 4: COMPACTION FUNCTIONS AND MASSES",
+        "complete": true,
+        "counts": {
+          "lookup": 10,
+          "compute": 10,
+          "store": 10,
+          "validation": 10
+        },
+        "no_compute": false
+      },
+      {
+        "kind": "skip",
+        "title": "Skipping gradient branch (--targets excludes 'gradient')"
+      }
+    ],
+    "complete_lines": 4,
+    "packages": [
+      ">> packages: datastorekit not installed; raypoolkit 0.2.0 (https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976, requested v0.2.0)"
+    ],
+    "integrity": [],
+    "exit_status": 0
+  },
+  "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/07-resumed-a.log": {
+    "entries": [
+      {
+        "kind": "pool",
+        "title": "STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES",
+        "complete": true,
+        "counts": {
+          "lookup": 1,
+          "compute": 1,
+          "store": 1,
+          "validation": 1
+        },
+        "no_compute": false
+      },
+      {
+        "kind": "lookup",
+        "title": "STAGE 2: FULL MSR INSTANTONS",
+        "already_computed": 0,
+        "to_compute": 10,
+        "skipped": 0
+      },
+      {
+        "kind": "pool",
+        "title": "STAGE 2: FULL MSR INSTANTONS",
+        "complete": false,
+        "counts": null,
+        "no_compute": false
+      }
+    ],
+    "complete_lines": 1,
+    "packages": [
+      ">> packages: datastorekit not installed; raypoolkit 0.2.0 (https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976, requested v0.2.0)"
+    ],
+    "integrity": [],
+    "exit_status": 15
+  },
+  "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/07-resumed-a2.log": {
+    "entries": [
+      {
+        "kind": "pool",
+        "title": "STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES",
+        "complete": true,
+        "counts": {
+          "lookup": 1,
+          "compute": 1,
+          "store": 1,
+          "validation": 1
+        },
+        "no_compute": false
+      },
+      {
+        "kind": "lookup",
+        "title": "STAGE 2: FULL MSR INSTANTONS",
+        "already_computed": 0,
+        "to_compute": 10,
+        "skipped": 0
+      },
+      {
+        "kind": "pool",
+        "title": "STAGE 2: FULL MSR INSTANTONS",
+        "complete": false,
+        "counts": null,
+        "no_compute": false
+      }
+    ],
+    "complete_lines": 1,
+    "packages": [
+      ">> packages: datastorekit not installed; raypoolkit 0.2.0 (https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976, requested v0.2.0)"
+    ],
+    "integrity": [],
+    "exit_status": 1
+  },
+  "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/07-resumed-b.log": {
+    "entries": [
+      {
+        "kind": "pool",
+        "title": "STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES",
+        "complete": true,
+        "counts": {
+          "lookup": 1,
+          "compute": 0,
+          "store": 0,
+          "validation": 0
+        },
+        "no_compute": true
+      },
+      {
+        "kind": "lookup",
+        "title": "STAGE 2: FULL MSR INSTANTONS",
+        "already_computed": 8,
+        "to_compute": 2,
+        "skipped": 0
+      },
+      {
+        "kind": "pool",
+        "title": "STAGE 2: FULL MSR INSTANTONS",
+        "complete": true,
+        "counts": {
+          "lookup": 2,
+          "compute": 2,
+          "store": 2,
+          "validation": 2
+        },
+        "no_compute": false
+      },
+      {
+        "kind": "lookup",
+        "title": "STAGE 3: SLOW-ROLL INSTANTONS",
+        "already_computed": 0,
+        "to_compute": 10,
+        "skipped": 0
+      },
+      {
+        "kind": "pool",
+        "title": "STAGE 3: SLOW-ROLL INSTANTONS",
+        "complete": true,
+        "counts": {
+          "lookup": 10,
+          "compute": 10,
+          "store": 10,
+          "validation": 10
+        },
+        "no_compute": false
+      },
+      {
+        "kind": "section",
+        "title": "STAGE 4: COMPACTION FUNCTIONS"
+      },
+      {
+        "kind": "lookup",
+        "title": "COMPACTION FUNCTIONS",
+        "already_computed": 0,
+        "to_compute": 10,
+        "skipped": 0
+      },
+      {
+        "kind": "pool",
+        "title": "STAGE 4: COMPACTION FUNCTIONS AND MASSES",
+        "complete": true,
+        "counts": {
+          "lookup": 10,
+          "compute": 10,
+          "store": 10,
+          "validation": 10
+        },
+        "no_compute": false
+      },
+      {
+        "kind": "skip",
+        "title": "Skipping gradient branch (--targets excludes 'gradient')"
+      }
+    ],
+    "complete_lines": 4,
+    "packages": [
+      ">> packages: datastorekit not installed; raypoolkit 0.2.0 (https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976, requested v0.2.0)"
+    ],
+    "integrity": [
+      "Pruned 1 unvalidated FullInstanton records"
+    ],
+    "exit_status": 0
+  },
+  "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/07-scalars.log": {
+    "entries": [
+      {
+        "kind": "pool",
+        "title": "STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES",
+        "complete": true,
+        "counts": {
+          "lookup": 1,
+          "compute": 1,
+          "store": 1,
+          "validation": 1
+        },
+        "no_compute": false
+      },
+      {
+        "kind": "lookup",
+        "title": "PIPELINE",
+        "already_computed": 0,
+        "to_compute": 10,
+        "skipped": 10
+      },
+      {
+        "kind": "pool",
+        "title": "STAGES 2+3+4: UNIFIED PIPELINE",
+        "complete": true,
+        "counts": {
+          "lookup": 10,
+          "compute": 10,
+          "store": 10,
+          "validation": 10
+        },
+        "no_compute": false
+      },
+      {
+        "kind": "skip",
+        "title": "Skipping gradient branch (--targets excludes 'gradient')"
+      }
+    ],
+    "complete_lines": 2,
+    "packages": [
+      ">> packages: datastorekit not installed; raypoolkit 0.2.0 (https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976, requested v0.2.0)"
+    ],
+    "integrity": [],
+    "exit_status": 0
+  }
+}

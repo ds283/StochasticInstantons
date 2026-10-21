@@ -1,0 +1,51 @@
+compare_stores: A = /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-readers/scalars/before/07-scalars.sqlite (10 shards)
+                B = /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-scalars.sqlite (10 shards)
+
+tables:
+  CompactionFunction               sharded     matched       10  A only      0  B only      0
+  CompactionFunctionSamples        sharded     matched        0  A only      0  B only      0
+  CosmologicalParams               replicated  matched        1  A only      0  B only      0
+  FullInstanton                    sharded     matched       10  A only      0  B only      0
+  FullInstantonValue               sharded     matched        0  A only      0  B only      0
+  GradientCoupledInstanton         sharded     matched        0  A only      0  B only      0
+  GradientCoupledInstantonProfile  sharded     matched        0  A only      0  B only      0
+  GradientCoupledInstantonValue    sharded     matched        0  A only      0  B only      0
+  InflatonTrajectory               replicated  matched        1  A only      0  B only      0
+  InflatonTrajectoryValue          replicated  matched     5713  A only      0  B only      0
+  IntegrationSolver                replicated  matched        0  A only      0  B only      0
+  MasslessDecoupledDiffusion       replicated  matched        1  A only      0  B only      0
+  N_final                          replicated  matched        1  A only      0  B only      0
+  N_init                           replicated  matched        1  A only      0  B only      0
+  QuadraticPotential               replicated  matched        1  A only      0  B only      0
+  QuarticPotential                 replicated  matched        0  A only      0  B only      0
+  SlowRollInstanton                sharded     matched       10  A only      0  B only      0
+  SlowRollInstantonValue           sharded     matched        0  A only      0  B only      0
+  alpha_regularization             replicated  matched        1  A only      0  B only      0
+  delta_Nstar                      replicated  matched       10  A only      0  B only      0
+  efold_value                      replicated  matched     7521  A only      0  B only      0
+  inflaton_mass                    replicated  matched        1  A only      0  B only      0
+  n_collocation_points             replicated  matched        1  A only      0  B only      0
+  phi_value                        replicated  matched        1  A only      0  B only      0
+  pi_value                         replicated  matched        1  A only      0  B only      0
+  quartic_coupling                 replicated  matched        0  A only      0  B only      0
+  redshift                         sharded     matched        0  A only      0  B only      0
+  store_tag                        replicated  matched        0  A only      0  B only      0
+  tolerance                        replicated  matched        1  A only      0  B only      0
+  version                          replicated  matched        1  A only      0  B only      1   <-- differs
+
+differences:
+  version:
+    in B only (1):
+      version{label='2026.3.0'}
+
+bookkeeping that differs between matched rows (not compared):
+  none
+
+notes:
+  - A: redshift is on the shards but in neither of the primary's table lists; compared as sharded (its rows taken from every shard)
+  - B: redshift is on the shards but in neither of the primary's table lists; compared as sharded (its rows taken from every shard)
+
+problems:
+  none
+
+RESULT: the stores differ, or a problem was named
