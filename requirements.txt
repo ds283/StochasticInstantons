@@ -13,7 +13,7 @@ ConfigArgParse==1.7.5
 contourpy==1.3.3
 cryptography==49.0.0
 cycler==0.12.1
-datastorekit @ git+https://github.com/ds283/DatastoreKit@v0.4.0
+datastorekit @ git+https://github.com/ds283/DatastoreKit@v0.5.0
 distlib==0.4.3
 filelock==3.29.4
 fonttools==4.63.0
