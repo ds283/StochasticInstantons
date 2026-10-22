@@ -101,32 +101,34 @@ _INSTANTON = {
 
 # The spec table, class by class, as each build() matches (the results note gives each source):
 # (leaves, {key field: (column, parent class or polymorphic map[, type column][, "nullable"])},
-#  values, validated)
+#  values, validated, extra_values); extra_values, the further value tables a spec counts
+#  (table: its column naming the owner), is {} but for GradientCoupledInstanton's (prompt 10b)
 EXPECTED_SPECS: Dict[str, tuple] = {
-    "version": (("label",), {}, None, None),
-    "store_tag": (("label",), {}, None, None),
-    "redshift": (("z",), {}, None, None),
-    "tolerance": (("log10_tol",), {}, None, None),
-    "efold_value": (("N",), {}, None, None),
-    "delta_Nstar": (("value",), {}, None, None),
-    "N_init": (("value",), {}, None, None),
-    "N_final": (("value",), {}, None, None),
-    "n_collocation_points": (("n_collocation_points",), {}, None, None),
-    "alpha_regularization": (("alpha",), {}, None, None),
-    "inflaton_mass": (("value_PlanckMass",), {}, None, None),
-    "quartic_coupling": (("value",), {}, None, None),
-    "phi_value": (("value_PlanckMass",), {}, None, None),
-    "pi_value": (("value_PlanckMass",), {}, None, None),
-    "QuadraticPotential": ((), {"m": ("mass_id", "inflaton_mass")}, None, None),
+    "version": (("label",), {}, None, None, {}),
+    "store_tag": (("label",), {}, None, None, {}),
+    "redshift": (("z",), {}, None, None, {}),
+    "tolerance": (("log10_tol",), {}, None, None, {}),
+    "efold_value": (("N",), {}, None, None, {}),
+    "delta_Nstar": (("value",), {}, None, None, {}),
+    "N_init": (("value",), {}, None, None, {}),
+    "N_final": (("value",), {}, None, None, {}),
+    "n_collocation_points": (("n_collocation_points",), {}, None, None, {}),
+    "alpha_regularization": (("alpha",), {}, None, None, {}),
+    "inflaton_mass": (("value_PlanckMass",), {}, None, None, {}),
+    "quartic_coupling": (("value",), {}, None, None, {}),
+    "phi_value": (("value_PlanckMass",), {}, None, None, {}),
+    "pi_value": (("value_PlanckMass",), {}, None, None, {}),
+    "QuadraticPotential": ((), {"m": ("mass_id", "inflaton_mass")}, None, None, {}),
     "QuarticPotential": (
         (),
         {"lambda_": ("coupling_id", "quartic_coupling")},
         None,
         None,
+        {},
     ),
-    "MasslessDecoupledDiffusion": ((), {}, None, None),
-    "IntegrationSolver": (("label", "stepping"), {}, None, None),
-    "CosmologicalParams": (("name",), {}, None, None),
+    "MasslessDecoupledDiffusion": ((), {}, None, None, {}),
+    "IntegrationSolver": (("label", "stepping"), {}, None, None, {}),
+    "CosmologicalParams": (("name",), {}, None, None, {}),
     "InflatonTrajectory": (
         ("potential_type",),
         {
@@ -137,18 +139,21 @@ EXPECTED_SPECS: Dict[str, tuple] = {
         },
         ("InflatonTrajectoryValue", "trajectory_serial"),
         "validated",
+        {},
     ),
     "FullInstanton": (
         ("diffusion_type",),
         dict(_INSTANTON),
         ("FullInstantonValue", "instanton_serial"),
         "validated",
+        {},
     ),
     "SlowRollInstanton": (
         ("diffusion_type",),
         dict(_INSTANTON),
         ("SlowRollInstantonValue", "instanton_serial"),
         "validated",
+        {},
     ),
     "GradientCoupledInstanton": (
         ("diffusion_type",),
@@ -166,6 +171,7 @@ EXPECTED_SPECS: Dict[str, tuple] = {
         },
         ("GradientCoupledInstantonProfile", "parent_serial"),
         "validated",
+        {"GradientCoupledInstantonValue": "instanton_serial"},
     ),
     "CompactionFunction": (
         (),
@@ -183,6 +189,7 @@ EXPECTED_SPECS: Dict[str, tuple] = {
         },
         ("CompactionFunctionSamples", "parent_serial"),
         "validated",
+        {},
     ),
 }
 
@@ -202,18 +209,14 @@ READ_THROUGH: Dict[str, Tuple[str, str]] = {
     "SlowRollInstantonValue": ("SlowRollInstanton", "values"),
     "CompactionFunctionSamples": ("CompactionFunction", "values"),
     "GradientCoupledInstantonProfile": ("GradientCoupledInstanton", "values"),
+    "GradientCoupledInstantonValue": ("GradientCoupledInstanton", "extra_values"),
 }
 
-# N5: the registered classes that are in no spec, each with a one-line reason
-EXCLUDED: Dict[str, str] = {
-    "GradientCoupledInstantonValue": (
-        "written only when store_full_values is set, and a spec has one values slot, which "
-        "GradientCoupledInstantonProfile (written for every row) takes; a fingerprint cannot see "
-        "it: [gci-value-table-outside-the-inventory]"
-    ),
-}
+# N5: the registered classes that are in no spec, each with a one-line reason. None since prompt
+# 10b, which reads GradientCoupledInstantonValue through its owner's extra_values
+EXCLUDED: Dict[str, str] = {}
 
-SLOTS = ("tags", "values", "parent_sets")
+SLOTS = ("tags", "values", "parent_sets", "extra_values")
 
 
 def _spec(factory):
@@ -224,6 +227,9 @@ def _spec(factory):
 def _slot_tables(spec: InventorySpec, slot: str) -> List[str]:
     if slot == "parent_sets":
         return [p.table for p in spec.parent_sets.values()]
+    if slot == "extra_values":
+        # a mapping, table -> its column naming the owner: its tables are its keys
+        return list(spec.extra_values)
     value = getattr(spec, slot)
     return [] if value is None else [value[0]]
 
@@ -294,7 +300,13 @@ def _as_table(spec: InventorySpec) -> tuple:
         if parent.nullable:
             entry = entry + ("nullable",)
         parents[field] = entry
-    return (tuple(spec.leaves), parents, spec.values, spec.validated)
+    return (
+        tuple(spec.leaves),
+        parents,
+        spec.values,
+        spec.validated,
+        dict(spec.extra_values),
+    )
 
 
 # --- the specs -------------------------------------------------------------------------------
@@ -334,6 +346,7 @@ def test_each_spec_is_the_identity_its_build_matches():
 
 def test_every_named_column_is_a_column_of_its_table():
     tables = build_schema(sqla.MetaData(), factories).tables
+    extra_checked = {}
     for name, spec in _specs().items():
         table = tables[name]
         assert "serial" in table.c, name
@@ -356,6 +369,24 @@ def test_every_named_column_is_a_column_of_its_table():
                 fk.column.table.name
                 for fk in tables[value_table].c[column].foreign_keys
             } == {name}, f"{name}: values"
+        # each further value table (prompt 10b) is checked as the values table is
+        for extra_table, column in spec.extra_values.items():
+            assert extra_table in tables, f"{name}: extra_values {extra_table}"
+            assert column in tables[extra_table].c, (
+                f"{name}: extra_values {extra_table}.{column}"
+            )
+            assert {
+                fk.column.table.name
+                for fk in tables[extra_table].c[column].foreign_keys
+            } == {name}, f"{name}: extra_values {extra_table}.{column}"
+            extra_checked.setdefault(name, []).append(extra_table)
+    # every further value table the spec table names was met above, so this test cannot pass by
+    # meeting none
+    assert extra_checked == {
+        name: list(expected[4])
+        for name, expected in EXPECTED_SPECS.items()
+        if expected[4]
+    }
 
 
 def test_the_polymorphic_maps_are_si_registries_and_compare_stores():
@@ -409,7 +440,7 @@ def test_every_registered_class_is_placed_exactly_once():
     assert coverage_failures(registry, READ_THROUGH, EXCLUDED) == []
     assert len(registry) == 30
     declaring = [n for n, f in registry.items() if _spec(f) is not None]
-    assert (len(declaring), len(READ_THROUGH), len(EXCLUDED)) == (24, 5, 1)
+    assert (len(declaring), len(READ_THROUGH), len(EXCLUDED)) == (24, 6, 0)
 
 
 def test_a_class_in_none_of_the_three_is_named():
@@ -431,8 +462,13 @@ def test_a_stale_or_unexplained_exclusion_is_named():
     assert coverage_failures(
         dict(factories), READ_THROUGH, dict(EXCLUDED, temperature="no table")
     ) == ["temperature: named in the test but no longer registered"]
+    # the class is taken out of READ_THROUGH for this case (prompt 10b put it there), so that a
+    # blank reason is the one failure
+    read_through = {
+        k: v for k, v in READ_THROUGH.items() if k != "GradientCoupledInstantonValue"
+    }
     assert coverage_failures(
-        dict(factories), READ_THROUGH, {"GradientCoupledInstantonValue": " "}
+        dict(factories), read_through, {"GradientCoupledInstantonValue": " "}
     ) == ["GradientCoupledInstantonValue: excluded with no reason"]
 
 

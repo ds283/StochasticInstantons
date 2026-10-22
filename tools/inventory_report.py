@@ -42,9 +42,11 @@ or sharded.
 - **A compute target** (``InflatonTrajectory``, ``FullInstanton``, ``SlowRollInstanton``,
   ``CompactionFunction``, ``GradientCoupledInstanton``): the earliest and latest timestamp of the
   class (the inventory carries one range per class, not one per validated group), the number of
-  value rows its spec counts, a ``common to every record`` line, and then the validated and the
-  unvalidated records, each group with its count, each record by the physical labels that vary
-  across the class and its value-row count.
+  value rows its spec counts and, by each table's name, the rows of each further value table it
+  declares (``extra_values``: ``GradientCoupledInstanton``'s ``GradientCoupledInstantonValue``,
+  0 for a row stored without full values; prompt 10b), a ``common to every record`` line, and then
+  the validated and the unvalidated records, each group with its count, each record by the
+  physical labels that vary across the class and its value-row counts.
 - **Every named problem, whole**, one to a line under its class (``!! <problem>``). Problems are
   never truncated, by ``verbose`` or otherwise.
 
@@ -363,6 +365,18 @@ def _values_lines(renderer: _Renderer, name: str, verbose: bool) -> List[str]:
     return [f"{_INDENT}{_plural(cls.count, 'value')}: [ {', '.join(shown)} ]"]
 
 
+def _counts_text(value_count: Optional[int], extra_value_counts) -> str:
+    """A record's value rows, then the rows of each further value table its class's spec
+    declares (``extra_values``), by the table's name, 0 printed as 0; empty where it has
+    neither (dk-and-rpk-migration prompt 10b)."""
+    counts = []
+    if value_count is not None:
+        counts.append(_plural(value_count, "value row"))
+    for table in sorted(extra_value_counts):
+        counts.append(_plural(extra_value_counts[table], f"{table} row"))
+    return "; ".join(counts)
+
+
 def _record_lines(
     renderer: _Renderer, name: str, records: Sequence[Record], fields_of, verbose: bool
 ) -> List[str]:
@@ -370,8 +384,9 @@ def _record_lines(
     for record in records:
         fields = fields_of(record)
         line = renderer.record_text(name, record, fields)
-        if record.value_count is not None:
-            line += f" | {_plural(record.value_count, 'value row')}"
+        counts = _counts_text(record.value_count, record.extra_value_counts)
+        if counts != "":
+            line += f" | {counts}"
         entries.append((renderer.record_sort(name, record, fields), line))
     entries.sort(key=lambda e: e[0])
     texts = [line for _, line in entries]
@@ -405,6 +420,10 @@ def _compute_lines(renderer: _Renderer, name: str, verbose: bool) -> List[str]:
     if any(r.value_count is not None for r in cls.records):
         total = sum(r.value_count or 0 for r in cls.records)
         summary.append(_plural(total, "value row"))
+    # each further value table's rows, by the table's name (prompt 10b)
+    for table in sorted({t for r in cls.records for t in r.extra_value_counts}):
+        total = sum(r.extra_value_counts.get(table, 0) for r in cls.records)
+        summary.append(_plural(total, f"{table} row"))
     if cls.earliest_timestamp is not None:
         summary.append(
             f"committed {_timestamp(cls.earliest_timestamp)} – {_timestamp(cls.latest_timestamp)}"

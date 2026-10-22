@@ -415,6 +415,95 @@ def test_every_class_of_the_inventory_is_printed():
     ]
 
 
+def _with_gradient_instantons():
+    """``_inventory()`` and three gradient-coupled instantons, as prompt 10b's store holds them:
+    one with full values (5 profile rows, 3 GradientCoupledInstantonValue rows), one stored
+    without them (5, 0) and one failed (0, 0). The profile is the spec's ``values``; the value
+    table is its one ``extra_values`` table, counted into ``extra_value_counts``."""
+    inventory = _inventory()
+    classes = dict(inventory.classes)
+    trajectory = classes["InflatonTrajectory"].records[0]
+    delta_nstar = {r.key["value"]: r for r in classes["delta_Nstar"].records}
+
+    def gradient(dn, profile_rows, value_rows):
+        return Record(
+            key={
+                "trajectory": _ref(trajectory),
+                "delta_Nstar": _ref(delta_nstar[_h(dn)]),
+            },
+            tags=(),
+            validated=True,
+            value_count=profile_rows,
+            extra_value_counts={"GradientCoupledInstantonValue": value_rows},
+        )
+
+    classes["GradientCoupledInstanton"] = _cls(
+        "GradientCoupledInstanton",
+        [gradient(0.25, 5, 3), gradient(0.75, 5, 0), gradient(1.25, 0, 0)],
+        replicated=False,
+        parents={"trajectory": "InflatonTrajectory", "delta_Nstar": "delta_Nstar"},
+        stamps=(_T0, _T1),
+    )
+    return StoreInventory(
+        primary=inventory.primary, shards=inventory.shards, classes=classes
+    )
+
+
+def test_a_further_value_table_is_counted_by_its_name():
+    # prompt 10b: each further value table's rows, by the table's name, a 0 printed as 0, on
+    # every record line and in the class's summary, after the value rows the spec's values counts
+    for verbose in (False, True):
+        lines = _section(
+            format_inventory_report(_with_gradient_instantons(), "x", verbose),
+            "Gradient-coupled (onion model) instantons",
+        )
+        assert lines == [
+            "   -- Gradient-coupled (onion model) instantons (GradientCoupledInstanton, sharded)",
+            "      3 records; 10 value rows; 3 GradientCoupledInstantonValue rows; "
+            "committed 2026-10-21 10:19:00 – 2026-10-21 10:20:30",
+            "      common to every record: trajectory=InflatonTrajectory(phi0=14.5 PlanckMass, "
+            "potential=QuadraticPotential(m=2e-06 PlanckMass))",
+            "      @@ validated: 3 record(s)",
+            "         :: delta_Nstar=0.25 | 5 value rows; 3 GradientCoupledInstantonValue rows",
+            "         :: delta_Nstar=0.75 | 5 value rows; 0 GradientCoupledInstantonValue rows",
+            "         :: delta_Nstar=1.25 | 0 value rows; 0 GradientCoupledInstantonValue rows",
+            "      @@ unvalidated: 0 record(s)",
+        ]
+
+
+def test_a_class_with_no_further_value_table_prints_as_before():
+    # beside a class that declares one, a class that declares none prints as prompt 10's report
+    # did, line for line, and names no further table
+    report = format_inventory_report(_with_gradient_instantons(), "x")
+    assert _section(report, "Inflaton trajectories")[1:] == [
+        "      2 records; 14 value rows; committed 2026-10-21 10:19:00 – 2026-10-21 10:19:00",
+        "      common to every record: phi0=14.5 PlanckMass, pi0=-0.25 PlanckMass, atol=1e-09, "
+        "rtol=1e-07",
+        "      @@ validated: 2 record(s)",
+        "         :: potential=QuadraticPotential(m=2e-06 PlanckMass) | 7 value rows",
+        "         :: potential=QuarticPotential(lambda_=3e-14) | 7 value rows",
+        "      @@ unvalidated: 0 record(s)",
+    ]
+    assert _section(report, "Compaction functions")[1:] == [
+        "      1 record; 4 value rows; committed 2026-10-21 10:20:30 – 2026-10-21 10:20:30",
+        "      @@ validated: 0 record(s)",
+        "      @@ unvalidated: 1 record(s)",
+        "         :: delta_Nstar=0.75, trajectory=InflatonTrajectory(phi0=14.5 PlanckMass, "
+        "potential=QuarticPotential(lambda_=3e-14)), full_instanton=FullInstanton(N_init=30), "
+        "slow_roll_instanton=none, cosmo=Planck2018 test, atol=1e-09, rtol=1e-07 | 4 value rows",
+    ]
+    full = _section(report, "Full MSR instantons")
+    assert full[1] == (
+        "      12 records; 36 value rows; committed 2026-10-21 10:19:00 – 2026-10-21 10:20:30"
+    )
+    assert full[4] == "         :: N_init=30 | 3 value rows"
+    # the table is named on the gradient section's four count lines and nowhere else
+    gradient = _section(report, "Gradient-coupled (onion model) instantons")
+    named = [ln for ln in report.split("\n") if "GradientCoupledInstantonValue" in ln]
+    assert len(named) == 4
+    assert all(ln in gradient for ln in named)
+
+
 def test_the_report_reads_nothing():
     tree = ast.parse((_ROOT / "tools" / "inventory_report.py").read_text())
     names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}

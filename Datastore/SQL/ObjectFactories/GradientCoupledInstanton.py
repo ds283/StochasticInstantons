@@ -150,9 +150,9 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
         # model (with diffusion_type, which names its table) and the cosmology; the version,
         # label, tags and the runtime knobs are not matched. The diffusion model's map is
         # DIFFUSION_MODEL_REGISTRY's. Of the two child tables, the profile, written for every
-        # row, takes the one values slot; GradientCoupledInstantonValue, written only with full
-        # values, is outside the inventory (dk-and-rpk-migration prompt 10;
-        # [gci-value-table-outside-the-inventory])
+        # row, takes the values slot; GradientCoupledInstantonValue, written only with full
+        # values, is counted as a further value table (extra_values), 0 for a row stored without
+        # full values (dk-and-rpk-migration prompts 10 and 10b)
         from InflationConcepts.DiffusionModel.registry import DIFFUSION_MODEL_REGISTRY
 
         return InventorySpec(
@@ -178,6 +178,7 @@ class sqla_GradientCoupledInstantonFactory(SQLAFactoryBase):
                 "cosmo": Parent("cosmo_serial", of="CosmologicalParams"),
             },
             values=("GradientCoupledInstantonProfile", "parent_serial"),
+            extra_values={"GradientCoupledInstantonValue": "instanton_serial"},
             validated="validated",
         )
 

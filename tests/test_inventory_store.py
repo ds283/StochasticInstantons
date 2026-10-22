@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The inventory of a store the package wrote (dk-and-rpk-migration prompt 10, N1-N3).
+"""The inventory of a store the package wrote (dk-and-rpk-migration prompt 10, N1-N3; the third
+gradient-coupled instanton and its counts, prompt 10b, X4).
 
 A two-shard store is built through the ``datastorekit`` package's ``ShardedPool``, in a
 subprocess under its own private Ray (``ray.init(address="local")``), as prompt 06's I6 and 09's
@@ -22,11 +23,15 @@ the pool wrote: three trajectories (both potential types, one failed), and of ea
 a successful and a failed record, under keys of their own (another ``delta_Nstar``, or another
 ``phi0``), since a failed and a successful record with one key would be a ``duplicate``. One
 compaction function is left unvalidated, with no slow-roll instanton (the nullable parent). The
-store is then closed, and read in the test process by ``read_inventory``, read-only and without
-Ray: every class is present with its count and **no named problem**, and the report rendered from
-it shows today's fields. ``main.py --inventory`` on it exits 0 with that report, before Ray (an
-address nothing listens on, and ``RAY_ADDRESS`` set to it), and changes no file; with
-``--show-all`` it prints the verbose report.
+gradient-coupled instanton has a third record, successful and stored without full values
+(``set_store_full_values(False)``, under a ``delta_Nstar`` of its own), so the store holds a row
+with profile rows and no ``GradientCoupledInstantonValue`` rows. The store is then closed, and
+read in the test process by ``read_inventory``, read-only and without Ray: every class is present
+with its count and **no named problem**, each gradient record counts its
+``GradientCoupledInstantonValue`` rows (the spec's ``extra_values``), and the report rendered from
+it shows today's fields and those counts. ``main.py --inventory`` on it exits 0 with that report,
+before Ray (an address nothing listens on, and ``RAY_ADDRESS`` set to it), and changes no file;
+with ``--show-all`` it prints the verbose report.
 
 Needs Ray, so ``integration``: the store is written through the package's pool, whose actors
 hold the shards. ``live_pool`` cannot serve: it is one shard, and other modules write rows into
@@ -173,7 +178,7 @@ try:
         compaction(p_quartic, fi[1], None, dns[1], False, False)
         compaction(p_quadratic, fi[2], sri[2], dns[2], True, True)
 
-        def gradient(proxy, dn, failure):
+        def gradient(proxy, dn, failure, full=True):
             obj = GradientCoupledInstanton(
                 store_id=None, trajectory=proxy, N_init=n_init, N_final=n_final, delta_Nstar=dn,
                 n_collocation_points=ncp, alpha_regularization=alpha, atol=atol, rtol=rtol,
@@ -188,11 +193,15 @@ try:
                 obj._profile = [GradientCoupledInstantonProfileValue(
                     node_index=j, zeta=0.01 * j, r_ratio=1.0 - 0.1 * j, C=0.05 * j,
                     r_phys=1.0e3 * (5 - j), C_bar=0.04 * j) for j in range(5)]
+            # full=False: stored without full values, by the flag alone; _values stays populated,
+            # so the factory's store writes no value rows because of the flag (prompt 10b)
+            obj.set_store_full_values(full)
             stored = ray.get(pool.object_store(obj))
             assert ray.get(pool.object_validate(stored)) is True
             return stored
 
         gradient(p_quadratic, dns[0], False)
+        gradient(p_quadratic, dns[1], False, full=False)
         gradient(p_quadratic, dns[2], True)
         result["ok"] = True
     finally:
@@ -225,7 +234,7 @@ EXPECTED_COUNTS = {
     "QuarticPotential": (1, True),
     "InflatonTrajectory": (3, True),
     "FullInstanton": (3, False),
-    "GradientCoupledInstanton": (2, False),
+    "GradientCoupledInstanton": (3, False),
     "SlowRollInstanton": (3, False),
     "CompactionFunction": (3, False),
 }
@@ -308,7 +317,23 @@ def test_the_store_reads_back_with_every_class_and_no_problem(store):
     assert flags("InflatonTrajectory") == [(True, 0), (True, 25), (True, 25)]
     assert flags("FullInstanton") == [(True, 0), (True, 3), (True, 3)]
     assert flags("SlowRollInstanton") == [(True, 0), (True, 3), (True, 3)]
-    assert flags("GradientCoupledInstanton") == [(True, 0), (True, 5)]
+
+    # the gradient instantons by delta_Nstar, with their further value table (prompt 10b):
+    # (validated, profile rows, GradientCoupledInstantonValue rows), 0 for the row stored without
+    # full values and for the failed one
+    def delta_nstar(record):
+        resolved = inventory.resolve("GradientCoupledInstanton", record)
+        return float.fromhex(resolved["delta_Nstar"]["key"]["value"])
+
+    gradients = {
+        delta_nstar(r): (r.validated, r.value_count, dict(r.extra_value_counts))
+        for r in inventory["GradientCoupledInstanton"].records
+    }
+    assert gradients == {
+        0.5: (True, 5, {"GradientCoupledInstantonValue": 3}),
+        1.5: (True, 5, {"GradientCoupledInstantonValue": 0}),
+        2.5: (True, 0, {"GradientCoupledInstantonValue": 0}),
+    }
     assert flags("CompactionFunction") == [(False, 4), (True, 0), (True, 8)]
     # the unvalidated compaction function has no slow-roll instanton: a nullable parent's None
     (unvalidated,) = [
@@ -336,10 +361,18 @@ def test_the_report_shows_the_fields_of_today_s_report(store):
         "         :: m=1e-05 PlanckMass",
         "         :: lambda_=1e-13",
         "      @@ unvalidated: 1 record(s)",
-        "         :: delta_Nstar=0.5 | 5 value rows",
-        "         :: delta_Nstar=2.5 | 0 value rows",
+        "         :: delta_Nstar=0.5 | 5 value rows; 3 GradientCoupledInstantonValue rows",
+        "         :: delta_Nstar=1.5 | 5 value rows; 0 GradientCoupledInstantonValue rows",
+        "         :: delta_Nstar=2.5 | 0 value rows; 0 GradientCoupledInstantonValue rows",
     ):
         assert line in lines, line
+    # the gradient instantons' summary counts the further value table by its name (prompt 10b)
+    assert any(
+        ln.startswith(
+            "      3 records; 10 value rows; 3 GradientCoupledInstantonValue rows; committed "
+        )
+        for ln in lines
+    )
     # 25 e-fold values: the first and last ten
     assert any(
         ln.startswith("      25 values: [ 0, 0.5, ")
@@ -374,6 +407,11 @@ def test_main_inventory_prints_the_report_before_ray_and_changes_nothing(store):
     assert (
         rest == format_inventory_report(read_inventory(store, factories), store) + "\n"
     )
+    # the printed text carries the further value table's counts (prompt 10b)
+    assert (
+        "         :: delta_Nstar=0.5 | 5 value rows; 3 GradientCoupledInstantonValue rows"
+        in rest.split("\n")
+    )
     assert result.stderr == "", result.stderr
     assert _files(store.parent) == before
 
@@ -386,5 +424,10 @@ def test_main_inventory_show_all_is_verbose(store):
         read_inventory(store, factories), store, verbose=True
     )
     assert result.stdout.split("\n", 1)[1] == verbose + "\n"
+    # the printed text carries the further value table's counts (prompt 10b)
+    assert (
+        "         :: delta_Nstar=1.5 | 5 value rows; 0 GradientCoupledInstantonValue rows"
+        in verbose.split("\n")
+    )
     every = ", ".join(f"{0.5 * k:.6g}" for k in range(25))
     assert f"      25 values: [ {every} ]" in verbose.split("\n")
