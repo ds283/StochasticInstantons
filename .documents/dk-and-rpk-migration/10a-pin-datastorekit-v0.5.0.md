@@ -1,7 +1,7 @@
 # 10a - pin `datastorekit` `v0.5.0`
 
 **Subject:** Pin `datastorekit` `v0.5.0` in `requirements.txt`, install it into the venv in place of `v0.4.0`, and check on the installed package what SI needs of the release
-**Commit:** the commit that adds this note, on branch `dk-and-rpk-migration`, on top of `3fd8778`
+**Commit:** `80d99a7`, on branch `dk-and-rpk-migration`, on top of `3fd8778`
 **Date:** 2026-10-22, by Claude Sonnet 5.5
 **Result:** **COMPLETE.** K8-K11 hold. The venv's `datastorekit` is replaced: 0.4.0 uninstalled, 0.5.0
 installed from the tag's commit `f47b9a255e9ad58e0d0eaf85644f53b575884d31`, and nothing else moved. Its 21
@@ -296,7 +296,7 @@ other module would fail the comparison with the saved hashes.
   in its extra_values`). `GradientCoupledInstanton`'s values slot is `('GradientCoupledInstantonProfile',
   'parent_serial')`. SI's registry gives 24 inventory classes.
 - **Suites:** 730 (729 passed, 1 skipped) and 67 (66 passed, 1 skipped); `slow` baseline 69 of 69 (02's S1), not run.
-- **Rollback:** `git revert` of this commit **plus** `./venv/bin/pip install -r requirements.txt` after the revert,
+- **Rollback:** `git revert` of `80d99a7` **plus** `./venv/bin/pip install -r requirements.txt` after the revert,
   which pip resolves to `v0.4.0` (`c8570e84...`) (README §4.4); the revert alone leaves `v0.5.0` in the venv.
 - No Ray cluster is up; the rehearsal lock is untouched; no store was opened. No issue is opened, so
   `.documents/OPEN-ISSUES.md` is unchanged. `.prompts/INDEX.md` and the README are the orchestrator's.

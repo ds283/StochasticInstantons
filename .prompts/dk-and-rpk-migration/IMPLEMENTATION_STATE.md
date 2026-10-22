@@ -4,7 +4,7 @@
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
-the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package; 09 landed and reviewed (§5.22): SI's layer deleted, every pool the package's, U5's drop policy before Ray, `--inventory` refused until 10, `[config-datastore-cannot-be-imported-before-the-layer]` closed; 10 landed and reviewed (§5.23): the inventory is `read_inventory` over 24 `inventory_spec`s (22 definitions), `tools/inventory_report.py` prints it before Ray, every registered class is covered (U8), `[show-all-flag-unused]` closed and `[gci-value-table-outside-the-inventory]` opened; DatastoreKit `v0.5.0` released at SI's request and evaluated (§5.24, §5.25), 10a and 10b written to adopt it before 11 (U12); 10a landed (§5.26): `datastorekit` `v0.5.0` pinned and installed, the distribution replaced, K11 holds on the installed package. U1–U9 ruled (2026-10-12),
+the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package; 09 landed and reviewed (§5.22): SI's layer deleted, every pool the package's, U5's drop policy before Ray, `--inventory` refused until 10, `[config-datastore-cannot-be-imported-before-the-layer]` closed; 10 landed and reviewed (§5.23): the inventory is `read_inventory` over 24 `inventory_spec`s (22 definitions), `tools/inventory_report.py` prints it before Ray, every registered class is covered (U8), `[show-all-flag-unused]` closed and `[gci-value-table-outside-the-inventory]` opened; DatastoreKit `v0.5.0` released at SI's request and evaluated (§5.24, §5.25), 10a and 10b written to adopt it before 11 (U12); 10a landed and reviewed (§5.26): `datastorekit` `v0.5.0` pinned and installed, the distribution replaced, K11 holds on the installed package. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20), U12 (2026-10-22); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -72,7 +72,7 @@ on any of them.
 | 08 | [Pin `datastorekit` `v0.4.0`](08-pin-datastorekit-v0.4.0.md) | the DatastoreKit pin (**U10**, carrying **U3**; `c8570e8`) | Sonnet | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.21) | `1b1ca6d` | [`08-pin-datastorekit-v0.4.0.md`](../../.documents/dk-and-rpk-migration/08-pin-datastorekit-v0.4.0.md) |
 | 09 | [Adopt `datastorekit`](09-adopt-datastorekit.md) | the DatastoreKit swap; **U5**; closes `[config-datastore-cannot-be-imported-before-the-layer]` | Opus | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.22) | `f4da58f` | [`09-adopt-datastorekit.md`](../../.documents/dk-and-rpk-migration/09-adopt-datastorekit.md) |
 | 10 | [Port the inventory](10-port-the-inventory.md) | **U6**, **U8**; `inventory_spec`, `tools/inventory_report.py`; closes `[show-all-flag-unused]` | Opus | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.23) | `e2c7b22` | [`10-port-the-inventory.md`](../../.documents/dk-and-rpk-migration/10-port-the-inventory.md) |
-| 10a | [Pin `datastorekit` `v0.5.0`](10a-pin-datastorekit-v0.5.0.md) | the DatastoreKit pin moved to `v0.5.0` (**U12**; `f47b9a2`) | Sonnet | ✍️ 2026-10-22 | ✅ 2026-10-22 (§5.26) | the commit that adds its results note | [`10a-pin-datastorekit-v0.5.0.md`](../../.documents/dk-and-rpk-migration/10a-pin-datastorekit-v0.5.0.md) |
+| 10a | [Pin `datastorekit` `v0.5.0`](10a-pin-datastorekit-v0.5.0.md) | the DatastoreKit pin moved to `v0.5.0` (**U12**; `f47b9a2`) | Sonnet | ✍️ 2026-10-22 | ✅ 2026-10-22 (§5.26) | `80d99a7` | [`10a-pin-datastorekit-v0.5.0.md`](../../.documents/dk-and-rpk-migration/10a-pin-datastorekit-v0.5.0.md) |
 | 10b | [Count the gradient value table](10b-count-the-gradient-value-table.md) | **U12**; `extra_values` on `GradientCoupledInstanton`; closes `[gci-value-table-outside-the-inventory]` | Opus | ✍️ 2026-10-22 | ⬜ | — | — |
 | 11 | [Rehearse through both packages (RH2)](11-rehearse-through-both-packages.md) | **RH2**, bitwise against RH1; **DatastoreKit G4** | Opus | ✍️ 2026-10-21; amended 2026-10-22 (U12: at 10b's tree, on `v0.5.0`) | ⬜ | — | — |
 | 12 | Close the migration | `CLAUDE.md`, rules, documents, handover to P2, close | Sonnet | ⬜ | ⬜ | — | — |
@@ -102,6 +102,7 @@ before each dispatch:
 - [`prompt-08.md`](orchestrator/prompt-08.md) — used for 08 (`7ef06ad`).
 - [`prompt-09.md`](orchestrator/prompt-09.md) — used for 09 (`597730f`).
 - [`prompt-10.md`](orchestrator/prompt-10.md) — used for 10 (`62cdca5`).
+- [`prompt-10a.md`](orchestrator/prompt-10a.md) — used for 10a (`3fd8778`).
 
 ### 1.1 Items
 
@@ -1759,7 +1760,7 @@ unchanged).
 
 ### 5.26 After prompt 10a (2026-10-22)
 
-- **Landed:** the commit that adds the results note
+- **Landed:** `80d99a7`, results note
   [`10a-pin-datastorekit-v0.5.0.md`](../../.documents/dk-and-rpk-migration/10a-pin-datastorekit-v0.5.0.md).
   **COMPLETE:** K8-K11 hold; no code or test changed; no issue opened, so
   `.documents/OPEN-ISSUES.md` is unchanged (60 open, 28 closed).
@@ -1781,5 +1782,58 @@ unchanged).
   a registry copy naming `GradientCoupledInstantonProfile` in both `values` and `extra_values` is refused by
   `inventory_classes`, naming the class and the table; `tests/test_tables_to_drop.py` 9 passed (U5 unmoved).
 - **Suites:** 730 (729 passed, 1 skipped) and 67 (66 passed, 1 skipped), as 10's.
-- **Rollback:** `git revert` of the commit **plus** `./venv/bin/pip install -r requirements.txt` after the
+- **Rollback:** `git revert` of `80d99a7` **plus** `./venv/bin/pip install -r requirements.txt` after the
   revert, which pip resolves to `v0.4.0` (`c8570e84…`) (README §4.4). The revert alone leaves `v0.5.0` in the venv.
+
+**Orchestrator review of prompt 10a (2026-10-22)**, by orchestrator note
+[`prompt-10a.md`](orchestrator/prompt-10a.md), at `80d99a7`. All ten checks pass, read from the venv. The residue is
+fixed in this follow-up (records only); nothing is opened.
+- **(1) Scope.** 3 files: `requirements.txt`, the results note and the board. One commit of the agent's on `3fd8778`, no
+  amend in the reflog, no other branch; `git status` clean; no scratch file in the repository.
+- **(2) K8.** One line replaced at `:16`, `@v0.4.0` → `@v0.5.0`; 73 lines.
+- **(3) The freeze.** Against the pre-dispatch copy: the `datastorekit` line alone, `c8570e849334…` → `f47b9a255e9a…`;
+  83 lines. `pip check` clean; pip still 26.0.1. `raypoolkit`'s 16 files keep their pre-dispatch mtimes and sizes.
+  site-packages differs from the pre-dispatch listing by `datastorekit-0.4.0.dist-info` → `datastorekit-0.5.0.dist-info`
+  only.
+- **(4) The origin.** `direct_url.json`: `url` `https://github.com/ds283/DatastoreKit`, `commit_id` `f47b9a255e9a…`,
+  `requested_revision` `v0.5.0`, `vcs` `git`, no `dir_info`. `INSTALLER` `pip`; the only `.pth` is `_virtualenv.pth`; no
+  `__editable__` or `.egg-link`.
+- **(5) The files.** The same 21 `.py` files as `git archive v0.5.0`'s, none different under `cmp`; no `tests/`, no data
+  file. `RECORD`: 42 `datastorekit/` entries (21 modules, 21 `.pyc`), every hash matching. Against the SHA-256 of the
+  `v0.4.0` modules taken before dispatch: **exactly `store_fingerprint.py` and `store_inventory.py` differ**, the other 19
+  hash the same.
+- **(6) Import and helper.** The import one-liner prints `False`; `sharded_store --help` exits 0. The helper gives
+  `datastorekit` `0.5.0`, `f47b9a255e9a…`, `v0.5.0`, `editable: False`, `raypoolkit` unchanged, and prints the prompt's line.
+  `pip show`: `Version: 0.5.0`, `Requires: ray, sqlalchemy`.
+- **(7) K11 replayed.** The orchestrator's `k11_proto.py`, run against `site-packages`, prints the same as it did on the
+  tag's archive before dispatch (the import path aside); `tests/test_tables_to_drop.py` 9 passed. The agent's
+  `k11_10a.py`, read: run under `python -I`, it asserts its import is from `site-packages`, appends SI's root itself, edits
+  nothing, wraps the GCI entry with `dataclasses.replace`, and asserts the class order and the error's text.
+- **(8) The pip account.** The note quotes `Would install datastorekit-0.5.0`, the uninstall of `datastorekit-0.4.0` and
+  `Successfully installed datastorekit-0.5.0`, nothing else (the agent's `install.txt` agrees), both `Resolved …` lines
+  (`6a6809d5…`, `4e7eb153…`) as tag objects, and `raypoolkit` re-resolved.
+- **(9) Hygiene.** DatastoreKit `2900d82` and RayPoolKit `17029d9`, clean. The 17 store files and all 835 entries under
+  `~/ScienceData/` keep their pre-dispatch mtimes and sizes. No Ray process after the suites; the lock free.
+  - *An incident, harmless.* The agent's first write of the results note was `python3 - <<E`, an unquoted heredoc, so the
+    shell tried 17 backticked spans as commands; by its account all were bare names or paths (`datastorekit`, `tests/`,
+    `requirements.txt:16`) and failed with "command not found" or "permission denied". The evidence agrees: no command
+    span in the committed note begins a command that could have changed anything (`ray` is not on `PATH`), the reflog has
+    only the one commit, and the venv, the stores and the other repositories are as above. The note was rewritten from a
+    quoted template.
+- **(10) The suites and the records.** The agent's 730 and 67. The orchestrator re-ran both at `80d99a7` (19:28 BST, load
+  16–60): default **730 (729 passed, 1 skipped)**, 39.2 s; integration **67 (66 passed, 1 skipped)**, 59.9 s. The results
+  note follows README §5.1, every §2 check with its command and output and K11's script whole; the board has the §1 row,
+  K8–K11, the header and this section with the rollback.
+  - *Residue, fixed here:* "the commit that adds the (results) note" → `80d99a7` (board ×3, results note ×2); the header's
+    "10a landed" reads "landed and reviewed"; this note added to the list of orchestrator notes; the campaign's line in
+    `.prompts/INDEX.md`.
+- **The deviations are accepted:** D1–D4 are the brief's corrections, D5–D7 sound choices (D7's `python -I` is a stronger
+  guard than the brief asked for).
+- **Handed on to 10b.**
+  - Every driver now prints `>> packages: datastorekit 0.5.0 (…@f47b9a255e9a…, requested v0.5.0); raypoolkit 0.2.0
+    (…@eaef0ce6…, requested v0.2.0)`.
+  - On the installed package SI declares no `extra_values`, `inventory_classes` gives the 24 classes in 10's order, and it
+    refuses the profile named in both slots with `ValueError: inventory_classes(): GradientCoupledInstanton names
+    GradientCoupledInstantonProfile both as its value table and in its extra_values`: the message 10b's third breakage
+    should meet.
+  - 10b's suites start from 730 and 67; `slow` from S1's 69.
