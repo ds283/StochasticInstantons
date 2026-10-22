@@ -532,7 +532,7 @@ that each carries the previous review's findings:
   U10), so 08 waits on nothing else. *Written 2026-10-21, after 07's review (board §5.20).*
 - **10a** and **10b** follow 10's review and the ruling U12 (`v0.5.0`, §0.6). *Written 2026-10-22
   (board §5.25)*; 11 amended with them.
-- **12** follows 11's review.
+- **12** follows 11's review. *Written 2026-10-23 (board §5.29).*
 
 Orchestrator notes are written one prompt at a time, in [`orchestrator/`](orchestrator/), just
 before each dispatch.
@@ -1282,7 +1282,8 @@ convention), plus:
    `test_config_datastore.py`, `test_inflaton_trajectory_prune.py` and `test_compare_stores.py`'s
    fallback (*added 2026-10-21*, board §5.20); and 10b's changes to 10's own
    `test_inventory_specs.py`, `test_inventory_store.py` and `test_inventory_report.py` (*added
-   2026-10-22*, U12).
+   2026-10-22*, U12); and 12's correction of `test_rehearsal_stage_counts.py`'s module docstring,
+   prose only (*added 2026-10-23*).
 8. **Deliberate breakage.** Each prompt names mutations its tests must catch. The results note
    records each as a diff, exactly as applied, so that the orchestrator can replay it with
    `git apply`. Mutations are never committed.
@@ -1308,8 +1309,9 @@ convention), plus:
 16. **Which tests a prompt runs** (P16):
     - the default run and the `integration` run, always, since every code prompt touches
       `Datastore/`, `config/` or the drivers;
-    - and the `slow` block once more in 09, which touches `ComputeTargets/`
-      (`.claude/rules/test-selection.md`).
+    - and the `slow` block once more in 09, which touches `ComputeTargets/`, and in 12, whose
+      comment correction in `ComputeTargets/GradientCoupledInstanton/picard.py` does
+      (`.claude/rules/test-selection.md`; 12 *added 2026-10-23*).
 17. **Ray** (U9, ruled 2026-10-12). **No prompt runs `ray stop`**, which stops every Ray process on
     the machine. A cluster is started and stopped only by 01a's `ray_cluster.sh` (from 01a on),
     and every driver and `ray` CLI call is given its address. The `integration` suite runs as

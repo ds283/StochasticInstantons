@@ -1,6 +1,6 @@
 # dk-and-rpk-migration campaign — implementation state
 
-**Last updated:** 2026-10-22 · **Status: LIVE — 14 of 15 prompts written (01–11, 01a, 10a, 10b), 01 and 01a
+**Last updated:** 2026-10-23 · **Status: LIVE — 15 of 15 prompts written (01–12, 01a, 10a, 10b), 01 and 01a
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
@@ -75,7 +75,7 @@ on any of them.
 | 10a | [Pin `datastorekit` `v0.5.0`](10a-pin-datastorekit-v0.5.0.md) | the DatastoreKit pin moved to `v0.5.0` (**U12**; `f47b9a2`) | Sonnet | ✍️ 2026-10-22 | ✅ 2026-10-22 (§5.26) | `80d99a7` | [`10a-pin-datastorekit-v0.5.0.md`](../../.documents/dk-and-rpk-migration/10a-pin-datastorekit-v0.5.0.md) |
 | 10b | [Count the gradient value table](10b-count-the-gradient-value-table.md) | **U12**; `extra_values` on `GradientCoupledInstanton`; closes `[gci-value-table-outside-the-inventory]` | Opus | ✍️ 2026-10-22 | ✅ 2026-10-22 (§5.27) | `19716cd` | [`10b-count-the-gradient-value-table.md`](../../.documents/dk-and-rpk-migration/10b-count-the-gradient-value-table.md) |
 | 11 | [Rehearse through both packages (RH2)](11-rehearse-through-both-packages.md) | **RH2**, bitwise against RH1; **DatastoreKit G4** | Opus | ✍️ 2026-10-21; amended 2026-10-22 (U12: at 10b's tree, on `v0.5.0`) | ✅ 2026-10-22 (§5.28) | `2179854` | [`11-rehearse-through-both-packages.md`](../../.documents/dk-and-rpk-migration/11-rehearse-through-both-packages.md) |
-| 12 | Close the migration | `CLAUDE.md`, rules, documents, handover to P2, close | Sonnet | ⬜ | ⬜ | — | — |
+| 12 | [Close the migration](12-close-the-migration.md) | `CLAUDE.md`, rules, documents, the final measurements, the G4 drafts, the handover to P2, the close; closes `[test-counts-stale-in-claude-md]` and `[pool-prose-stale-after-raypoolkit-adoption]` | Sonnet | ✍️ 2026-10-23 | ⬜ | — | — |
 
 **Legend.** ✍️ written · ⏸ held, with what it waits on · ⬜ not yet · ✅ landed.
 
@@ -87,7 +87,7 @@ on any of them.
 - **08–11** are written after 07's review (`v0.4.0`, which 08 pins, is released). *Written
   2026-10-21 (§5.20).*
 - **10a**, **10b** are written after 10's review and the ruling U12. *Written 2026-10-22 (§5.25).*
-- **12** is written after 11's review.
+- **12** is written after 11's review. *Written 2026-10-23 (§5.29).*
 
 Orchestrator notes are written one prompt at a time, in [`orchestrator/`](orchestrator/), just
 before each dispatch:
@@ -175,7 +175,13 @@ before each dispatch:
 | **V3** | 11 | `verification.md` §3 RH2; `out/11-*` | ✅ [`verification.md`](../../.documents/dk-and-rpk-migration/verification.md) §3; `out/11-*` (7 comparisons, schema snapshot, stage counts, H1's four records, readers' outputs) |
 | **H1** | 11 | `shard_key_audit` on each store; a `sharded_store copy` read and compared, then `delete_store` | ✅ `VERDICT: OK`, exit 0, on `11-reference`, `11-resumed`, `11-scalars`; the copy of `11-reference` read back by `read_inventory` with no problem and every class's count equal, `compare_stores` `RESULT: equal`; `closed_store_files` and `delete_store` the same 11 paths, none left |
 
-Items of 12 are added when it is written.
+| **Y1** | 12 | `CLAUDE.md`: the test counts, critical rules 2, 3 and 5 pointing at the contract, the protected list checked, both packages named with the upstream rule; closes `[test-counts-stale-in-claude-md]` | ⬜ |
+| **Y2** | 12 | `.claude/rules/`: `test-selection.md`'s counts, `pool-read-apis.md:37-39`, a coverage rule for every new factory's `inventory_spec`, the other rule files checked; the two shard-key memory notes | ⬜ |
+| **Y3** | 12 | `INFRASTRUCTURE.md`, `architecture-summary.md` and `FILE_MAP.md` describe the packages: what SI supplies, what each package does, pointers to the contract | ⬜ |
+| **Y4** | 12 | the prose in code: `tools/compare_stores.py`, `picard.py:450-456`, `InflatonTrajectory.py`'s three comments, `test_rehearsal_stage_counts.py`'s docstring; `ast`-equal; closes `[pool-prose-stale-after-raypoolkit-adoption]` with Y3 | ⬜ |
+| **Y5** | 12 | the final measurements: both packages' scripts, the suites by marker, the venv | ⬜ |
+| **Y6** | 12 | `verification.md` §4, the close: RH0–RH2 in one table, the measurements, the two G4 records drafted (P14), the stale-lists' closing list, the handover to P2 | ⬜ |
+| **Y7** | 12 | the board closed; `.prompts/INDEX.md`; `.documents/OPEN-ISSUES.md` (two issues closed) | ⬜ |
 
 The measurement the plan was written against is [`measure/out/`](measure/out/). It holds:
 - both packages' scripts at `7bb3efd`, each equal to its checklist's appendix byte for byte;
@@ -2077,3 +2083,27 @@ only); nothing is opened, so `.documents/OPEN-ISSUES.md` is unchanged (59 open, 
     prompt"); RayPoolKit G4's, held at 04 and run under real Ray at RH1 and RH2; the final counts (732, 67; `slow` S1's
     69); RH2's stores kept (README §3).
   - 12 can now be written (README §2.1).
+
+### 5.29 Prompt 12 written (2026-10-23)
+
+Written at `18b490a`, after 11's review, from README §2.2's charter, §7, the stale lists of 09's and
+10's results notes, both packages' "what goes stale" sections, and ChamPBH's 11 as done (its board
+§5.16–§5.17), which is the model. Measured read-only at `18b490a`: both packages' scripts (DatastoreKit's
+finds 0 layer imports, literals and `import_module` calls, the 7 modules absent; RayPoolKit's 0 imports,
+2 docstring literals, 16 calls all `constructs`); the suites by marker (868: 732 default, 67
+`integration`, 69 `slow`, disjoint); a stale-path sweep (246 lines in 21 files: 17 to change in five
+files, 7 that stay, 222 in dated records); the two documents' stale sections; both package boards'
+G4 cells and the forms of their holding neighbours. Nothing dispatched; nothing opened or closed, so
+`.documents/OPEN-ISSUES.md` is unchanged.
+- **[12](12-close-the-migration.md)** (Sonnet), items Y1–Y7; closes `[test-counts-stale-in-claude-md]`
+  and `[pool-prose-stale-after-raypoolkit-adoption]` (both its own), and the campaign. Beyond the charter:
+  - the prose in code is the 17 swept lines and three factory comments, `ast`-checked; the one test
+    whose docstring changes is named, so README §5 rule 7 gains it, and `picard.py`'s comment puts
+    `ComputeTargets/` in the diff, so rule 16 gains a `slow` run for 12 (both amended here);
+  - `pool-read-apis.md:37-39`'s claim that `config/sharding.py` is protected (09's list) is corrected;
+  - a rule asks every new factory for its `inventory_spec` and its row in the coverage test (10's list);
+  - the handover is `verification.md` §4's last subsection, and its premise is checked: the tag's tree,
+    extracted to the scratchpad, imports with the main checkout's venv, no store opened;
+  - SI owes no science-store rebuild (README §0.3), so, unlike ChamPBH's, the handover names no run
+    script; the merge into `main` (P15), the G4 commits (P14) and removing the rehearsal stores are the
+    user's.
