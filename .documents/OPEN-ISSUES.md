@@ -1,6 +1,6 @@
 # Open issues — project-wide index
 
-**Last updated:** 2026-10-21 · **60 open**, 28 closed. Seeded from
+**Last updated:** 2026-10-22 · **60 open**, 28 closed. Seeded from
 [`RECONSTRUCTION.md`](handoff-notes/2026-10-08/RECONSTRUCTION.md) Parts A0–D
 and D0, the open-issue `todo`s of
 [`onion_model.tex`](../notes/onion-model/onion_model.tex) as rewritten in
@@ -160,7 +160,7 @@ Opened at the campaign's planning, 2026-10-11, or at a review where the row says
 | `[unified-pipeline-stores-null-instanton-labels]` | board §3 (01's review) | unowned | The unified pipeline stores `FullInstanton` and `SlowRollInstanton` with `label` NULL, so a scalars-only store's figure footers lack it. |
 | `[gci-picard-inner-fails-on-rehearsal-grid]` | board §3 (02's first attempt, 2026-10-20) | P3 | At the rehearsal grid (`quadratic-minimal.yaml`, `n = 5`, `α = 0.01`, no budget) no `GradientCoupledInstanton` solve finished in over five hours: every inner Picard step failed and the shooting halved λ again and again. July's 315 s does not hold at today's tree. The rehearsals build no gradient branch (U11). See also `[gci-n5-n7-solutions-provisional]`. |
 | `[pool-prose-stale-after-raypoolkit-adoption]` | board §3 (04, 2026-10-20) | dk-12 | `picard.py:450-456` still calls `RayTools/RayWorkPool.py` protected infrastructure; the constructor sketches in `INFRASTRUCTURE.md` and `architecture-summary.md` give defaults of 10, 10 and 50 where the pool's are 5, 1 and 200. |
-| `[gci-value-table-outside-the-inventory]` | board §3 (10, 2026-10-21) | the user; then DatastoreKit and an SI pin prompt | A spec has one `values` slot; `GradientCoupledInstantonProfile` takes it, so `GradientCoupledInstantonValue` (written only with full values) is outside the inventory and any fingerprint taken through it. Requested of DatastoreKit 2026-10-21 ([brief](../.prompts/dk-and-rpk-migration/datastorekit-second-value-table-brief.md)). |
+| `[gci-value-table-outside-the-inventory]` | board §3 (10, 2026-10-21) | dk-10b | A spec has one `values` slot; `GradientCoupledInstantonProfile` takes it, so `GradientCoupledInstantonValue` (written only with full values) is outside the inventory and any fingerprint taken through it. DatastoreKit `v0.5.0` adds `extra_values` (at SI's [brief](../.prompts/dk-and-rpk-migration/datastorekit-second-value-table-brief.md)); 10a pins it and 10b declares the table (U12). |
 
 ## 7. Closed
 

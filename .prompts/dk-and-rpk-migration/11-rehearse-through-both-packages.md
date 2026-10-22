@@ -5,12 +5,17 @@
 **Board:** [`IMPLEMENTATION_STATE.md`](IMPLEMENTATION_STATE.md)
 **Written:** 2026-10-21, with prompts 08–10, after 07's review (board §5.19). It runs README §4.1
 as amended by U11, held to RH1 as 07 was held to RH0.
+*Amended 2026-10-22, when the user ruled **U12** (README §6.1; board §5.25): 10a pins `datastorekit`
+`v0.5.0` and 10b counts the gradient instanton's value table, both before this prompt. RH2 runs at
+10b's tree, on `v0.5.0`; the gate, the provenance line, G4's record and the counts below follow.
+Nothing else changes: `v0.5.0` differs from `v0.4.0` only in the read-only inventory modules
+(README §0.6), and RH2's stores hold no gradient row (U11).*
 **Gate:**
-- 08, 09 and 10 landed and reviewed (board §1);
+- 08, 09, 10, 10a and 10b landed and reviewed (board §1);
 - on branch `dk-and-rpk-migration`, no tracked change in `git status`;
 - **the rehearsal tooling is RH0's:** `git diff 5868231 HEAD -- .documents/dk-and-rpk-migration/rehearsal/
   tools/compare_stores.py` is empty (README §4: 11 runs the scripts and the tool **unchanged**);
-- the venv holds `datastorekit` 0.4.0 at `c8570e849334…` and `raypoolkit` 0.2.0 at `eaef0ce6…`,
+- the venv holds `datastorekit` 0.5.0 at `f47b9a255e9a…` and `raypoolkit` 0.2.0 at `eaef0ce6…`,
   neither editable (`utilities.installed_package_provenance()`);
 - **RH1's stores are in place** under `$REHEARSAL_ROOT` (below): `07-reference.sqlite`,
   `07-readers/resumed/before/07-resumed.sqlite` and `07-readers/scalars/before/07-scalars.sqlite`,
@@ -42,8 +47,8 @@ agent's work for 02, 07 and 11, within README §4.1 and no further.
 4. Prompt 02's results note, for RH0's protocol, and [`07-rehearse-before-the-datastore-swap.md`](07-rehearse-before-the-datastore-swap.md),
    the prompt: §1–§2 are the steps this prompt repeats, with the changes of §1 below.
 5. The board's §5.19 (07's review and its "Handed on"), and the "State handed to the next prompt"
-   of 08, 09 and 10.
-6. DatastoreKit's SI checklist item 9 (G4) and its `v0.4.0` addendum (G4 reads "SI has adopted
+   of 08, 09, 10, 10a and 10b.
+6. DatastoreKit's SI checklist item 9 (G4) and its `v0.4.0` and `v0.5.0` addenda (G4 reads "SI has adopted
    `v0.3.0` or later"), and `datastorekit/tools/shard_key_audit.py` and `sharded_store.py`'s
    docstrings at the tag. **Read; edit nothing there.**
 7. ChamPBH's 10, as done (read only): its board §5.15 and the review below it. Its `resumed-a`
@@ -54,7 +59,7 @@ agent's work for 02, 07 and 11, within README §4.1 and no further.
 
 ## 0. What this prompt is
 
-RH2 rebuilds RH0's grid at 10's tree, through `datastorekit` and `raypoolkit`. It answers:
+RH2 rebuilds RH0's grid at 10b's tree, through `datastorekit` and `raypoolkit`. It answers:
 - **does the tree after the swap build, resume and read the grid cleanly?** (L1–L3);
 - **is what it stores RH1's, and so RH0's, bit for bit?** RH1 equals RH0 bit for bit in both modes
   (board §5.19), so RH2 is held to **bitwise equality** with RH1, timings and timestamps aside
@@ -175,9 +180,9 @@ No `slow` block runs: 11 changes no code.
     the package's actors and pool print some lines SI's layer did not (09's results note), and
     each is named.
   - **The provenance line**, once in each log, names both packages at their commits, requested
-    `v0.4.0` and `v0.2.0`, neither editable:
-    `>> packages: datastorekit 0.4.0 (https://github.com/ds283/DatastoreKit@c8570e849334d09085bbd84876095fc9e22bd005, requested v0.4.0); raypoolkit 0.2.0 (https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976, requested v0.2.0)`.
-    Check it against 08's results note, and quote what each log prints.
+    `v0.5.0` and `v0.2.0`, neither editable:
+    `>> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.2.0 (https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976, requested v0.2.0)`.
+    Check it against 10a's results note, and quote what each log prints.
 - **L2 — the resume is the reference.** §1.4.1 gives `RESULT: equal`, exit 0; the prune at
   `resumed-b`'s open removed only unvalidated rows (its printed reports against §1.3.4's count, and
   the store read `mode=ro`); `resumed-b` computed only what `resumed-a` had not kept, by
@@ -200,7 +205,7 @@ No `slow` block runs: 11 changes no code.
   - **`--inventory`** (step 1) reports **no named problem** on either store, and the same values and
     counts as RH1's inventory (`out/07-readers-*-inventory.log`): the ten `δN★`, `N_init` 20,
     `N_final` 5, φ₀ 15, π₀ 0, m 1e-05 `PlanckMass`, 7,521 efold values, 1 trajectory and 10 of each
-    instanton and compaction function validated, 0 unvalidated, no gradient row. Its layout is 10's,
+    instanton and compaction function validated, 0 unvalidated, no gradient row. Its layout is 10's (with 10b's counts),
     so the text differs from RH1's by design: compare the content, field by field.
 - **L4 — RH1's pattern.** The builds that do not depend on the signal equal RH1's: for
   `reference` and `scalars`, `stage_counts.py`'s `entries`, `complete_lines`, `integrity` and
@@ -223,10 +228,10 @@ No `slow` block runs: 11 changes no code.
 5. **H1:** `shard_key_audit` is OK on each store; the copy reads back with no problem and compares
    equal; it is deleted with `delete_store`, and nothing of it remains.
 6. **DatastoreKit G4**, once 1–5 hold, and only then: the board's §2 records it as holding (the
-   layer deleted at 09, the pin `v0.4.0` installed at 08, the suites below, the grid rebuilt and
+   layer deleted at 09, the pin `v0.5.0` installed at 10a (`v0.4.0` at 08), the suites below, the grid rebuilt and
    equal to RH1). If L4 alone differs, record the rest and **do not mark G4**: stop and ask.
 7. **The suites**, before `ray_cluster.sh start`: the default and `RAY_ADDRESS=local
-   ./venv/bin/python -m pytest -m integration` give 10's counts. Record them.
+   ./venv/bin/python -m pytest -m integration` give 10b's counts. Record them.
 8. **No deliberate breakage** (README §5 rule 8): 11 changes no code. Each check is one a bad build
    fails, and RH0's control (02's D5) showed the comparison can fail.
 9. **The records**, in the one commit:
@@ -247,7 +252,7 @@ No `slow` block runs: 11 changes no code.
   baseline has moved, or the rehearsal tooling differs from RH0's.
 - `reference` takes more than 45 minutes.
 - A build fails, raises, or does not end as §2 says. **The package refuses something**: record the
-  refusal whole; it is a finding about the package or about 09–10, not something to work around
+  refusal whole; it is a finding about the package or about 09–10b, not something to work around
   (README §5 rule 11).
 - `resumed-a` cannot be made to fall in its window in three attempts.
 - An actor of the killed build is still alive after a minute.
@@ -256,7 +261,7 @@ No `slow` block runs: 11 changes no code.
     order whose rows differ (trajectory, `FullInstanton`, `SlowRollInstanton`,
     `CompactionFunction`);
   - run the readers anyway only if the stores are otherwise sound, and say so;
-  - **change no code, commit nothing, and mark no gate.** The cause is the package's or 08–10's
+  - **change no code, commit nothing, and mark no gate.** The cause is the package's or 08–10b's
     (README §4.1). Leave the results note and the verification section uncommitted, stop the
     cluster, and report.
 - `--inventory` names a problem on an RH2 store, or `shard_key_audit` is not OK.

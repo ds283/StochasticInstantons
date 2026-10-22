@@ -3,8 +3,8 @@
 **Written:** 2026-10-11 on `main` at `7bb3efd`, by Claude Opus 5.5. **Status: reviewed; prompts
 01–04 and 01a written (2026-10-12); 01 and 01a landed; 02 landed at its third attempt (2026-10-20),
 RH0 bitwise reproducible; 05–07 written (2026-10-20).**
-All eleven decisions of §6.1 are ruled: U3, U8 and U9 on their own, and U1, U2 and U4–U7 as
-recommended, on 2026-10-12; U10 on 2026-10-19; U11 on 2026-10-20.
+All twelve decisions of §6.1 are ruled: U3, U8 and U9 on their own, and U1, U2 and U4–U7 as
+recommended, on 2026-10-12; U10 on 2026-10-19; U11 on 2026-10-20; U12 on 2026-10-22.
 P1–P19 stand as proposed (§6.2). The DatastoreKit release U3 asked for is out, as `v0.3.0` (§0.4),
 and is carried unchanged into `v0.4.0`, which the campaign pins (U10; §0.5).
 
@@ -42,12 +42,24 @@ older tree. The dense builds become `--targets homogeneous`, the interrupt moves
 The gradient tables are left to the suites (§1). §0.2, §1, §4.1, §4.3, §6.1 (U11) and §6.2 (P1)
 amended, with prompt 02, `build.sh` and `run_readers.sh`.*
 
+*Revised 2026-10-22, when the user ruled **U12**: DatastoreKit released **`v0.5.0`** (tag object
+`6a6809d`, commit `f47b9a2`), the release SI asked for after 10 in
+[`datastorekit-second-value-table-brief.md`](datastorekit-second-value-table-brief.md): an
+`InventorySpec` may count further value tables (`extra_values`), so the inventory can see
+`GradientCoupledInstantonValue` (`[gci-value-table-outside-the-inventory]`). It meets the brief
+(§0.6). Two prompts are inserted **before 11**: **10a** pins `v0.5.0` in a commit of its own, as 08
+did `v0.4.0`, and **10b** declares the table in `GradientCoupledInstanton`'s spec, extends 10's
+tests and report, and closes the issue. 11 then rehearses `v0.5.0` at 10b's tree, so RH2 and
+DatastoreKit's G4 are recorded on the pin the campaign hands to P2. §0.6 (new), §2, §2.1, §2.2 (10a,
+10b, 11), §4.4, §5 rule 7, §6.1, §6.3 and §7 amended, with prompt 11.*
+
 It is planned from:
 - **the two packages' adoption checklists for StochasticInstantons (SI)**, which are data, not
   instructions:
   - DatastoreKit's `docs/adoption/stochasticinstantons.md`, read with its three addenda (`v0.2.1`,
     `v0.2.2`, `v0.2.3`), and its `docs/adoption/README.md` and `docs/client-contract.md`; and, as
-    each release came, its `v0.3.0` addendum (§0.4) and its `v0.4.0` addendum (§0.5);
+    each release came, its `v0.3.0` addendum (§0.4), its `v0.4.0` addendum (§0.5) and its `v0.5.0` addendum
+    (§0.6);
   - RayPoolKit's `docs/adoption/stochasticinstantons.md` and its `docs/adoption/README.md`.
 
   Both repositories are under `/Users/ds283/Documents/Code/`. **No prompt edits either** (§5
@@ -401,6 +413,49 @@ Checked on 2026-10-19, read-only, in both repositories (each at its remote `main
   spec" until SI's 10 settles it and the user asks (its README §1, out of scope); this plan's §6.3
   already leaves that to the user at 10.
 
+### 0.6 DatastoreKit `v0.5.0`: a second value table (2026-10-22)
+
+Evaluated on 2026-10-22, read-only in DatastoreKit (at `2900d82`, its `extra-values` campaign
+closed) and without touching SI's venv (the tag's package put on `PYTHONPATH` from a scratch
+export). The request was the brief written after 10's review (board §5.24).
+- **The tag.** `git ls-remote` gives `refs/tags/v0.5.0` → `6a6809d570023ce3…`, `^{}` →
+  `f47b9a255e9ad58e…`, made 2026-10-22 after CI passed at both ends. The pin is
+  `datastorekit @ git+https://github.com/ds283/DatastoreKit@v0.5.0`.
+- **What changed in the package since `v0.4.0`.** Two modules of the 21 the wheel ships:
+  `store_inventory.py` (+57 −18) and `store_fingerprint.py` (+6, a comment); `pyproject.toml`'s
+  version line; nothing else under `datastorekit/` but tests and test data. The other 19 modules are
+  byte-identical to those installed. The pool, the reader and the schema are untouched.
+- **The feature.** `InventorySpec.extra_values`, a mapping **table → its column naming the owner's
+  serial**, defaulted empty; each table counted per record by one `GROUP BY` per shard into
+  `Record.extra_value_counts` (0 where none), its orphans an `orphan-value` problem naming the
+  table; `Record.as_json` carries the new key only where it is not empty; `inventory_classes`
+  refuses a spec naming its `values` table among its `extra_values`. `ENCODING_FORMAT` stays 1
+  (DatastoreKit's U2, the user's ruling there), the comment beside it saying why. Contract §9.8.
+- **Against the brief.** It meets the one requirement the brief held it to: a spec that declares no
+  extra table gives the records it gave. It departs in three ways, each recorded by DatastoreKit and
+  none a loss for SI: the mapping is keyed by table name, not by a name SI chooses (SI needs one
+  table, so nothing is lost); the neutral client's tests declare the field on the neutral registry
+  (its format moved to 2 with a new golden; the format-1 golden is kept as the compatibility test);
+  and the refusal sits in `inventory_classes`, not in the spec's construction.
+- **Measured on SI, by the orchestrator, 2026-10-22:**
+  - SI's suites, unchanged, on the tag's package: **730 (729 passed, 1 skipped)** and **67 (66
+    passed, 1 skipped)**, as on `v0.4.0`. The overlay reached pytest and the Ray workers it starts;
+  - on a two-shard SI store (10's prototype, with three `GradientCoupledInstantonValue` rows added):
+    with SI's specs unchanged, `fingerprint_of` gives **the same overall digest, the same class
+    digests and the same records** under `v0.4.0` and `v0.5.0`; with `extra_values` declared on
+    `GradientCoupledInstanton`, **only that class's digest moves**, its record carrying
+    `"extra_value_counts":{"GradientCoupledInstantonValue":3}`, and no problem; with an orphan value
+    row added, exactly one `orphan-value: GradientCoupledInstanton: 1 GradientCoupledInstantonValue
+    row(s) on shard #1 …`;
+  - `pip install --dry-run` of the pin over SI's venv: `Would install datastorekit-0.5.0`, nothing
+    else.
+- **SI's checklist addendum** ("Addendum: v0.5.0", read through `git` at SI's `f5f395b`): nothing SI
+  calls changes; SI declares `extra_values={"GradientCoupledInstantonValue": "instanton_serial"}`; its
+  coverage test, spec tests, report and the spec's comment move; G4 reads, as before, "SI has
+  adopted `v0.3.0` or later". It also advises, for a spec guard SI may build with RunRegistryKit,
+  leaving out an empty `extra_values` (§7).
+- **The other clients** need nothing, and their recorded fingerprints stay valid.
+
 ## 1. Scope
 
 **In scope:**
@@ -457,6 +512,8 @@ Checked on 2026-10-19, read-only, in both repositories (each at its remote `main
 | 08 | `08-pin-datastorekit-v0.4.0.md` | The `v0.4.0` pin (U10; §0.5), which carries `v0.3.0`'s timestamp (U3; §0.4), in a commit of its own, installed as 03. On the installed package, SI's factory classes instantiate on its base, and its `DatastoreObject` carries a timestamp | Sonnet |
 | 09 | `09-adopt-datastorekit.md` | **The DatastoreKit swap.** The 7 layer modules go and the 2 `__init__.py` are emptied (P6). Every layer import outside `.prompts/` is rewritten. The pools take `factories=`, `serial_batch_sizes=` and `drop_tables=`. U5's drop refusal. `live_pool` is rebuilt. `--inventory` refuses until 10 (P11) | Opus |
 | 10 | `10-port-the-inventory.md` | `inventory_spec()` on the factories. `tools/inventory_report.py` over `read_inventory`. `main.py --inventory` on the closed store, before Ray. The 17 `inventory()` hooks and `inventory_config` deleted | Opus |
+| 10a | `10a-pin-datastorekit-v0.5.0.md` | The `v0.5.0` pin (U12; §0.6), replacing `v0.4.0`'s line, in a commit of its own, installed as 08. On the installed package, the new field behaves as its addendum says, and SI's suites do not move | Sonnet |
+| 10b | `10b-count-the-gradient-value-table.md` | `GradientCoupledInstanton`'s spec counts `GradientCoupledInstantonValue` as a further value table. 10's spec, coverage and store tests and the report follow; all 30 classes covered, none excluded. Closes `[gci-value-table-outside-the-inventory]` | Opus |
 | 11 | `11-rehearse-through-both-packages.md` | **RH2.** §4.1 through both packages. Equal to RH1 by §4.2. **DatastoreKit's G4 holds** | Opus |
 | 12 | `12-close-the-migration.md` | `CLAUDE.md` (the protected list, the test commands and counts), the `.claude/rules/` files, the documents. The final measurements. The G4 records drafted for both packages' boards. The handover to P2. The index; the board closed | Sonnet |
 
@@ -473,6 +530,8 @@ that each carries the previous review's findings:
 - **08–11** follow 07's review. 07's results note fixes the counts and names they cite. The
   release U3 asked for is tagged (`v0.3.0`, §0.4), and so is the release 08 pins (`v0.4.0`, §0.5;
   U10), so 08 waits on nothing else. *Written 2026-10-21, after 07's review (board §5.20).*
+- **10a** and **10b** follow 10's review and the ruling U12 (`v0.5.0`, §0.6). *Written 2026-10-22
+  (board §5.25)*; 11 amended with them.
 - **12** follows 11's review.
 
 Orchestrator notes are written one prompt at a time, in [`orchestrator/`](orchestrator/), just
@@ -903,8 +962,35 @@ deletes, and the seven protected factories, the files of `MetadataConcepts/` and
        and opened as an issue: a fingerprint of a GCI store then cannot see it. Whether to ask
        DatastoreKit for more than one value table per spec is the user's (§6.3).
 
+**10a — Pin `datastorekit` `v0.5.0`** (Sonnet; *added 2026-10-22, U12*). As 08, for the next
+release.
+- **What it changes.** `requirements.txt`'s `datastorekit` line, from `@v0.4.0` to `@v0.5.0`, and
+  nothing else; the venv, by `pip install -r requirements.txt` after a dry run that reports
+  `datastorekit-0.5.0` alone.
+- **Acceptance.** `pip freeze` differs by the one line replaced; the installed files are the tag's,
+  and only `store_inventory.py` and `store_fingerprint.py` differ from `v0.4.0`'s; the new field
+  behaves as the addendum says on the installed package, and `inventory_classes` refuses a `values`
+  table named again in `extra_values`; U5 does not move; the suites give 10's counts (730, 67).
+- **Out.** Any spec; any code. No deliberate breakage (it adds none).
+
+**10b — Count the gradient instanton's value table** (Opus; *added 2026-10-22, U12*).
+- **What it changes.** `GradientCoupledInstanton`'s spec gains
+  `extra_values={"GradientCoupledInstantonValue": "instanton_serial"}`, and its comment is made true.
+  10's tests follow (§5 rule 7, named): the spec table and the column test see `extra_values`; the
+  coverage test reads the table through its owner's `extra_values` slot, so 24 specs, 6 read through,
+  none excluded; the integration store holds a third gradient instanton stored without full values,
+  and the read-back asserts the three records' counts. The report prints each further table's count.
+- **Acceptance.** The store reads back with no named problem and the counts written; only
+  `GradientCoupledInstanton`'s fingerprint digest moves when the declaration is added; U5 unmoved;
+  five breakages caught (the keyword removed, the column misnamed, the profile named in both slots,
+  the report's count dropped, the table excluded as well); the suites give 10a's counts plus the new
+  report tests. `[gci-value-table-outside-the-inventory]` closed.
+- **Out.** Any other factory; `ComputeTargets/`; a `fingerprint_format` or a recorded fingerprint
+  (§7).
+
 **11 — Rehearse through both packages, RH2** (Opus).
-- **What it does.** Runs §4.1's protocol with slug prefix `dk-and-rpk-migration-11`, at 10's tree.
+- **What it does.** Runs §4.1's protocol with slug prefix `dk-and-rpk-migration-11`, at 10b's tree
+  (*amended 2026-10-22, U12*: on `v0.5.0`).
 - **Acceptance.**
   1. L1–L3 hold, and `main.py --inventory` reports no named problem on any store.
   2. Both provenance entries name their tag's commit, `editable: false`.
@@ -1167,6 +1253,8 @@ independently, on one tree, and so do `scalars` and `scalars-2`.
 
 Each prompt is one commit, reverted by `git revert`.
 - **The venv is shared**, so reverting 03 or 08 also needs `./venv/bin/pip uninstall -y <package>`.
+  Reverting 10a needs `./venv/bin/pip install -r requirements.txt` after the revert, which puts
+  `v0.4.0` back (*added 2026-10-22*). Reverting 10b alone needs nothing in the venv.
 - **Reverting 04 or 09 alone needs nothing in the venv.** An installed, unimported package is
   inert.
 - **Reverting 09 makes RH2's stores unreadable by the tree**, as every package-written store is to
@@ -1192,7 +1280,9 @@ convention), plus:
 7. **Existing tests are not modified**, except where a prompt names the test and the reason: 05's
    four stubs, and 09's `live_pool` and `test_grid_builder_integration.py`, with
    `test_config_datastore.py`, `test_inflaton_trajectory_prune.py` and `test_compare_stores.py`'s
-   fallback (*added 2026-10-21*, board §5.20).
+   fallback (*added 2026-10-21*, board §5.20); and 10b's changes to 10's own
+   `test_inventory_specs.py`, `test_inventory_store.py` and `test_inventory_report.py` (*added
+   2026-10-22*, U12).
 8. **Deliberate breakage.** Each prompt names mutations its tests must catch. The results note
    records each as a diff, exactly as applied, so that the orchestrator can replay it with
    `git apply`. Mutations are never committed.
@@ -1244,8 +1334,8 @@ convention), plus:
 
 ### 6.1 Ruled by the user
 
-Each row gives the planner's recommendation first. **All eleven are ruled.** U3, U8 and U9 were
-ruled on 2026-10-12, U10 on 2026-10-19 and U11 on 2026-10-20, as their rows say. **U1, U2 and U4–U7 were ruled on 2026-10-12 as recommended**:
+Each row gives the planner's recommendation first. **All twelve are ruled.** U3, U8 and U9 were
+ruled on 2026-10-12, U10 on 2026-10-19, U11 on 2026-10-20 and U12 on 2026-10-22, as their rows say. **U1, U2 and U4–U7 were ruled on 2026-10-12 as recommended**:
 the recommendation in each row is the decision, and the alternative beside it is rejected.
 
 | | Recommended | The alternative, and why not |
@@ -1261,6 +1351,7 @@ the recommendation in each row is the decision, and the alternative beside it is
 | **U9** — other projects' Ray clusters (**ruled 2026-10-12**) | **Isolate, and take a shared lock.** SI's cluster runs on its own temp dir and ports and is stopped by a targeted stop, never `ray stop`; one lock, `~/ScienceData/.rehearsal-lock`, shared with ChamPBH and SGK, lets one rehearsal run at a time. ChamPBH adopts the same targeted stop, and SGK takes the lock (its in-process clusters are already isolated). The contract is [`rehearsal-lock-brief.md`](rehearsal-lock-brief.md); 01a implements SI's side. Raised at 01's review: SGK's rehearsal ran beside this campaign's suites, ChamPBH's protocol runs a bare `ray stop`, and ChamPBH's BBN wall-clock limit makes its results sensitive to load | Moving SI's campaign to another machine: a rebuilt venv, two unpushed branches, and sibling repositories at the same paths, for nothing isolation does not give. Interleaving by hand, with no lock: a `ray stop` from either side still kills the other's build |
 | **U10** — which DatastoreKit release (**ruled 2026-10-19**) | **Pin `v0.4.0`** (§0.5). It is `v0.3.0` plus one module, `store_fingerprint.py`, which the layer never calls and SI does not import; `object.py` and `store_inventory.py` are unchanged, so nothing in 08–11 changes but 08's pin and the commit it checks. SI's checklist addendum offers `v0.3.0` or `v0.4.0`, and G4 reads "`v0.3.0` or later". RunRegistryKit's `[stores]` extra requires `datastorekit>=0.4.0`, so the RunRegistryKit adoption that follows this campaign (U8, §7) starts from SI's pin. *The user asked to adopt `v0.4.0` once it was released* | Stay on `v0.3.0`: the same layer, and a second pin commit owed to the RunRegistryKit campaign |
 | **U11** — the gradient branch in the rehearsals (**ruled 2026-10-20**) | **Drop it from every build.** 02's first `reference` ran 5 h 36 min and was stopped: none of the first four gradient solves finished, each over five hours at full CPU with every inner Picard step failing and λ halved again and again (`[gci-picard-inner-fails-on-rehearsal-grid]`). Solves that do not converge will not start to; the campaign is about the storage layer, not the solver. The dense builds become `--targets homogeneous`, the interrupt moves to `STAGE 2`, and `plot_GradientCoupledSolutions.py` leaves the readers. The gradient tables are covered by the suites only. *Ruled by the user, who chose it as the only viable option* | A wall-clock budget: bounded, but where a solve stops would depend on load, so two builds could differ and §4.3's bitwise criterion would mean nothing. A converging configuration, or a cap by iteration count: physics work outside this campaign (P3's) |
+| **U12** — DatastoreKit `v0.5.0`, and where (**ruled 2026-10-22**) | **Adopt it before 11**, in two prompts: **10a** pins `v0.5.0` in a commit of its own (§5 rule 13), and **10b** declares `GradientCoupledInstantonValue` in `GradientCoupledInstanton`'s spec as a further value table, with 10's tests and report extended, closing `[gci-value-table-outside-the-inventory]`. 11 then rehearses `v0.5.0`. The release meets the brief (§0.6): only the read-only inventory modules change, SI's suites and fingerprints do not move until the spec declares the table, and then only that class's. So RH2 and DatastoreKit's G4 are recorded on the pin the campaign hands to P2, and the migration closes with every registered class in the inventory. *Ruled by the user as recommended* | After 11, before 12: RH2 and G4 would describe `v0.4.0`, and the final pin would not be the one rehearsed (low risk, since only the inventory modules differ, but the record would be of a tree the campaign does not hand on). Outside the campaign, at the RunRegistryKit adoption: fewest prompts now, but the migration closes with a known gap in the inventory |
 
 ### 6.2 Proposed by the planner
 
@@ -1333,7 +1424,8 @@ U4–U7 on 2026-10-12 and gave no ruling on any of P1–P19, so all nineteen sta
   `fingerprint` plan left this out of `v0.4.0` explicitly, "until SI's prompt 10 settles it and
   the user asks" (its README §1, out of scope), so a request would be a new DatastoreKit release
   and a new pin prompt here (§5 rule 11). *Asked 2026-10-21, after 10's review: the request is
-  [`datastorekit-second-value-table-brief.md`](datastorekit-second-value-table-brief.md) (board §5.24).*
+  [`datastorekit-second-value-table-brief.md`](datastorekit-second-value-table-brief.md) (board §5.24).
+  Delivered as `v0.5.0` (§0.6), and adopted before 11 (U12, ruled 2026-10-22).*
 - **At 07:** pushing the tag.
 - **At the close:**
   - removing the rehearsal stores (§3);
@@ -1359,6 +1451,9 @@ U4–U7 on 2026-10-12 and gave no ruling on any of P1–P19, so all nineteen sta
   `docs/adoption/v0.2.0/stochasticinstantons.md`) says SI adopts `v0.2.0` directly, the core at
   any time and the store layer only after this campaign. This campaign leaves what the store layer
   needs: `datastorekit` `v0.4.0` pinned (08), `config/datastore.py`'s registry (05), and specs that
-  cover it (10). The checklist also offers replacing `utilities.installed_package_provenance` (01)
+  cover it (10). *Amended 2026-10-22 (U12):* the pin is `v0.5.0` (10a), which satisfies the
+  `[stores]` extra's `>=0.4.0`, and the specs cover every registered class, none excluded (10b).
+  DatastoreKit's `v0.5.0` addendum advises that a spec guard built with RunRegistryKit's recipe leave
+  out an empty `extra_values`: that campaign's, with the guard. The checklist also offers replacing `utilities.installed_package_provenance` (01)
   by `runregistrykit.package_provenance`, and advises building its format-bump guard with the
   fingerprinter, right after 10. Both are that campaign's, not this one's.
