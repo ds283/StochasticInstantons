@@ -483,3 +483,283 @@ sqlite3 "file:$R/07-reference-profile.sqlite?mode=ro" "select method, count(*) f
 
 Each comparison's text output, and `stage_counts.py`'s, was redirected to the `.txt` beside its
 JSON. The L4 comparison with RH0's records is a scratch script, reproduced in the results note.
+
+## 3. RH2 — through both packages (prompt 11, 2026-10-22)
+
+Results note: [`11-rehearse-through-both-packages.md`](11-rehearse-through-both-packages.md).
+Tree: `66b1c81` (10b's code, `19716cd`, with records on top). Every pool is `datastorekit` `v0.5.0`'s
+(`f47b9a2`) and every work pool `raypoolkit` `v0.2.0`'s (`eaef0ce6`), both installed from their tags, neither
+editable.
+
+**RH2 equals RH1, and so RH0, bit for bit, in both modes.** All six comparisons give `RESULT: equal`, exit 0.
+L1–L4 hold, and so does H1. DatastoreKit's G4 holds for SI.
+
+### 3.1 The cluster and the load
+
+- 10 CPUs. The load was 9.05 / 12.84 / 22.65 at the gate (21:26 BST) and 31.90 / 17.67 / 22.87 at 21:29:01, just
+  after the integration suite. During the builds it rose to 57–64 from their own workers, and to 80 during the
+  scalars readers, with desktop processes beside them. No other session's suite, build or Ray job ran at any
+  point (the user had been asked to hold them).
+- Started with
+  `.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start "dk-and-rpk-migration 11 (RH2)"` at 21:29:01 in
+  5 s, `gcs_server` pid 72107. Address `127.0.0.1:6390`; actor line
+  `./venv/bin/ray list actors --address 127.0.0.1:6390`.
+- Stopped with `ray_cluster.sh stop` at 21:35:35, in 19 s: `SIGTERM` to 18 processes, `SIGKILL` to 72107 and
+  72108, no process names `/tmp/ray-si`, ports 6390, 6391, 8266 and 52366 free, the lock released.
+- The raylet's disk line ("over 95% full, available space: 18.2 GB") appeared in every build. Ray refused nothing.
+
+### 3.2 The builds
+
+Each build ran from the repository root, as a background task, with
+`.documents/dk-and-rpk-migration/rehearsal/build.sh`. The load column is the 1-minute load at the build's start.
+
+| Build | `build.sh` arguments | Start | End | Wall | Load | Exit |
+|---|---|---|---|---|---|---|
+| `reference` | `11 reference reference 127.0.0.1:6390 dense --profile-db` | 21:29:10 | 21:29:50 | 40 s | 32.10 | 0 |
+| `resumed-a` | `11 resumed resumed-a 127.0.0.1:6390 dense` | 21:30:24 | 21:30:53 | 29 s | 55.73 | 15, by `SIGTERM`: inside the window |
+| `resumed-b` | `11 resumed resumed-b 127.0.0.1:6390 dense` | 21:31:30 | 21:31:58 | 28 s | 57.30 | 0 |
+| `scalars` | `11 scalars scalars 127.0.0.1:6390 scalars` | 21:32:17 | 21:32:50 | 33 s | 53.23 | 0 |
+
+`reference`'s stages took 6.04 s, 12.9 s, 9.59 s and 2.27 s. RH1's took 5.47, 12.1, 8.76 and 1.61.
+
+**`S`**, chosen from `reference`. The times are the stores' and the profile database's, BST.
+- The `STAGE 2` lookup ran at 21:29:21.865–21:29:21.875 (the profile database's `object_get
+  {'object': 'FullInstanton', 'type': 'vector'}` calls, RH1's labels).
+- The last `efold_value` row was minted at banner +8.76 s (RH1: +9.41).
+- The `FullInstanton` rows came at +9.76, +9.78, +9.85, +10.88, +10.91, +11.32, +11.56, +11.58, +12.30 and +12.89 s
+  after it. RH1's came at +9.49 to +12.07 s.
+- The last `CompactionFunction` row came at +26.3 s.
+
+**The interrupt**, started straight after its build:
+
+```bash
+./venv/bin/python .documents/dk-and-rpk-migration/rehearsal/interrupt_when.py \
+    ~/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/11-resumed-a.log \
+    ~/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/11-resumed-a.pid \
+    --banner "STAGE 2: FULL MSR INSTANTONS" --after 12.0 --poll 0.2
+```
+
+- **`resumed-a`, `S` = 12.0 s, the first and only attempt.** Set late in the window, for a loaded machine: at
+  `reference`'s pace it falls between the eighth and ninth rows, and it stays in the narrow window for a driver up
+  to about 23% slower.
+  - The script saw the banner at 20:30:39 UTC and sent the signal at 20:30:51 UTC to pid 73409, the pidfile's. The
+    driver logged `*** SIGTERM received at time=1792701051 ***` at 21:30:51.666 BST.
+  - `FullInstanton` rows were stored from 21:30:50.012 to 21:30:51.590, the last 76 ms before the signal.
+- **`resumed-a` left** (read `mode=ro` after it ended):
+  - the trajectory, validated (10 replicas, 57,130 value rows);
+  - **4 `FullInstanton` validated** (δN★ 0.1, 0.42222, 1.0667, 1.7111; 6,336 value rows);
+  - **2 not validated**: δN★ 2.0333 on `shard0005` (serial 81, 1,705 value rows) and δN★ 1.3889 on `shard0003`
+    (serial 101, 1,640);
+  - δN★ 0.74444, 2.3556, 2.6778 and 3.0 not stored;
+  - no `SlowRollInstanton` and no `CompactionFunction`;
+  - **the primary's `replication_in_flight`: 0 rows**; no `-journal`, `-wal` or `-shm` file; `efold_value` 7,521
+    rows on each of the ten shards.
+- **The actor check** at 21:31:00, 9 s after the signal: `ray list actors --address 127.0.0.1:6390 --filter
+  "state=ALIVE"` gave "No resource in the cluster". The full listing shows all 11 actors of job `02000000` (10
+  `Datastore`, 1 `SerialPoolBroker`) `DEAD`.
+
+### 3.3 L1–L4
+
+- **L1 holds.**
+  - `reference`, `resumed-b` and `scalars` end `** driver exit status 0` with 4, 4 and 2
+    `ALL WORK ITEMS COMPLETE`.
+  - `resumed-a` ends by the signal (`*** SIGTERM received …`, the absl stack), exit 15: Ray's driver handler's
+    `sys.exit(15)`.
+  - No traceback. The only `WARNING`/`Warning` lines are Ray's start-up `FutureWarning` and `resumed-b`'s two
+    prune headers. No line says `did not validate`.
+  - The provenance line appears once in each of the four logs, and in each reader's logs:
+    `>> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.2.0 (https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976, requested v0.2.0)`.
+- **L2 holds.**
+  - `compare_stores.py $R/11-reference.sqlite $R/11-resumed.sqlite`: `RESULT: equal`, exit 0.
+  - `resumed-b`'s open printed no reconciliation line (no record had been left) and no replicated prune. Two
+    actors pruned, each printing RH1's text:
+    `!! INTEGRITY WARNING (2026-10-22T21:31:34): datastore "shard0003-store" …` with
+    `Pruned 1 unvalidated FullInstanton records`, and the same for `shard0005-store`. Ray forwarded the second
+    only at the end of the log; both actors' own logs under
+    `/tmp/ray-si/session_2026-10-22_21-29-03_242377_72080/logs/` hold their two lines, read before the stop.
+    `stage_counts.py` finds both.
+  - So 2 were pruned, and 2 were unvalidated, on the same shards. Afterwards every `FullInstantonValue` row has a
+    validated parent (16,564), and no orphan is left.
+  - `resumed-b`:
+    - STAGE 1 computed nothing ("no compute items were evaluated");
+    - STAGE 2's lookup read "4 already computed, 6 to compute", and it computed 6;
+    - STAGES 3 and 4 computed 10 each.
+  - The 4 kept rows keep their `resumed-a` timestamps.
+- **L3 holds.** `run_readers.sh 11 resumed 127.0.0.1:6390` (21:34:10–21:34:42) and
+  `run_readers.sh 11 scalars 127.0.0.1:6390` (21:34:51–21:35:18) each exit 1, by design.
+  - `status.txt`: steps 0–2 exit 0, step 4 exit 1, step 3 not run (U11).
+  - Step 4 finds exactly one row, `version{label='2026.3.0'}`, B only. No bookkeeping differs and no problem is
+    named.
+  - The plot logs read `n_collocation_points: 1 value = [ 5 ]`.
+  - `scalar_data.csv` hashes to
+    `b0564eecc22f9106dcccb57fd1a419749543c4b9d15dc0ffe7a8e0780e9058a2` on both stores (11 lines, 3,592 bytes),
+    RH0's and RH1's byte for byte.
+  - `--inventory` (now `read_inventory`, before Ray) on each store: `problems: none`; 10 shards, 7,574 records in
+    24 classes; the ten δN★, `N_init` 20, `N_final` 5, φ₀ 15, π₀ 0 and m 1e-05 `PlanckMass`, 7,521 e-fold values,
+    1 trajectory and 10 of each instanton and compaction function validated, 0 unvalidated, no gradient row:
+    RH1's values and counts, in 10's layout.
+- **L4 holds.**
+  - `stage_counts.py`'s records for `reference` and `scalars` (`entries`, `complete_lines`, `integrity`,
+    `exit_status`) equal RH1's exactly. Only the provenance line differs, as it must. The control (RH1's
+    `reference` against RH2's `resumed-b`) differs, so the comparison can fail.
+  - `stage_counts.py` parsed every log unchanged.
+  - The resume's pattern is RH1's:
+    - only unvalidated rows were pruned (2 = 2);
+    - only what was not kept was computed (STAGE 2: 4 + 6);
+    - the counts add up to `reference`'s (10 / 10 / 10 / 1).
+  - The figures differ from RH1's (8 + 2, 1 pruned) because the signal fell at a different point.
+
+  | Stage | `reference` | `resumed-a` | `resumed-b` | `scalars` |
+  |---|---|---|---|---|
+  | STAGE 1 | 1 | 1 | 0 (read) | 1 |
+  | STAGE 2 lookup; pool | 0 / 10; 10 | 0 / 10; killed | 4 / 6; 6 | — |
+  | STAGE 3 | 0 / 10; 10 | — | 0 / 10; 10 | — |
+  | STAGE 4 | 0 / 10; 10 | — | 0 / 10; 10 | — |
+  | Unified pipeline | — | — | — | 0 / 10; 10 |
+  | Pruned at open | — | — | 2 `FullInstanton` (one per actor) | — |
+
+- **The schema** (`out/11-reference-schema.json`, 30 tables) is RH1's: it differs from
+  `out/07-reference-schema.json` and `out/09-temp-schema.json` only in its `source` line. `--schema` of
+  `11-reference` and of `11-scalars` against RH1's snapshot gives "the schemas agree", exit 0, for both.
+- **The profile database** (not under §4.3) holds `jobs` 1 and `profile_data` **712**, against RH1's 803:
+
+  | Method | RH1 | RH2 |
+  |---|---|---|
+  | `object_get` | 443 | 352 |
+  | `ClientPool.lease_serial\|lease_serials` | 135 | 135 |
+  | `ClientPool.lease_serial\|commit_serials` | 76 | 76 |
+  | `ClientPool.release` | 59 | 59 |
+  | `object_store` | 40 | 40 |
+  | `object_validate_item` | 40 | 40 |
+  | `read_largest_store_ids` | 10 | 10 |
+
+  The 91 fewer `object_get` events are `efold_value` (210 → 120) and `version` (11 → 10). STAGE 3's ten gets of
+  grids every shard already holds ran on all ten actors at RH1 and on one actor each at RH2: the package reads a
+  replicated table's existing rows from one shard. No stored value depends on it. The `ProfileAgent` also printed
+  its slow-query report (3 `object_get` over 2 s: STAGE 1's `efold_value` replica writes under load), a message
+  SI's old agent had too.
+
+### 3.4 §4.3: RH2 equals RH1, and so RH0, bit for bit, in both modes
+
+The comparisons ran before the readers, so every store is compared as its build left it, against baselines with
+no readers' row.
+
+| Comparison | Exit | Result |
+|---|---|---|
+| `compare_stores.py $R/11-reference.sqlite $R/11-resumed.sqlite` | **0** | **`RESULT: equal`** |
+| `compare_stores.py $R/07-reference.sqlite $R/11-reference.sqlite` | **0** | **`RESULT: equal`** |
+| `compare_stores.py $R/07-reference.sqlite $R/11-resumed.sqlite` | **0** | **`RESULT: equal`** |
+| `compare_stores.py $R/07-readers/scalars/before/07-scalars.sqlite $R/11-scalars.sqlite` | **0** | **`RESULT: equal`** |
+| `compare_stores.py $R/02-scalars-2.sqlite $R/11-scalars.sqlite` | **0** | **`RESULT: equal`** |
+| `compare_stores.py $R/02-reference.sqlite $R/11-reference.sqlite` | **0** | **`RESULT: equal`** |
+
+- Each comparison covers all 30 tables, with nothing in A or B only and no problem named.
+- **Dense** (each of the four), RH1's rows per store:
+  - `CompactionFunctionSamples` 33,128;
+  - `FullInstantonValue` 16,564 and `SlowRollInstantonValue` 16,564;
+  - `InflatonTrajectoryValue` 5,713 (57,130 over the ten shards);
+  - `efold_value` 7,521;
+  - `CompactionFunction`, `FullInstanton` and `SlowRollInstanton` 10 each, and `InflatonTrajectory` 1;
+  - `delta_Nstar` 10, and every other replicated parameter table 1 (`version` 1);
+  - the three gradient tables, `IntegrationSolver`, `QuarticPotential`, `quartic_coupling`, `redshift` and
+    `store_tag` 0.
+- **Scalars-only** (both): the same, with the three value/sample tables 0, as at RH0 and RH1.
+- Only bookkeeping differs between matched rows: timestamps, and the JSON timing keys `compute_time` and
+  `mean_time_per_picard_iteration`. The four dense texts are identical below their headers, and so are the two
+  scalars-only texts.
+- The first table in build order whose rows differ is **none**.
+
+**So RH2 equals RH1.** SI's tree after the swap, its pools and actors the package's, stores what SI's own layer
+stored before it, bit for bit, across a kill, the package's prune at open and a resume, in both modes.
+
+### 3.5 H1: store hygiene by the package
+
+Run after the comparisons and before the readers; no Ray is needed and none was initialised by the tools.
+- `./venv/bin/python -m datastorekit.tools.shard_key_audit` on `11-reference`, `11-resumed` and `11-scalars`: each
+  `VERDICT: OK -- no inconsistency found in <primary>.`, exit 0 (10 shard keys, one per shard; the cross-file check
+  against shard #0 by its bare record; 10 `delta_Nstar` rows).
+- `./venv/bin/python -m datastorekit.tools.sharded_store copy $R/11-reference.sqlite $R/11-reference-copy.sqlite`:
+  `>> copy: "…/11-reference-copy.sqlite" with 10 shards` and its ten shard lines, exit 0.
+- The copy read with `read_inventory` (read-only, Ray not initialised): no problem; 24 classes, each class's
+  `(records, validated)` equal to `11-reference`'s.
+- `compare_stores.py $R/11-reference.sqlite $R/11-reference-copy.sqlite`: `RESULT: equal`, exit 0, with no
+  bookkeeping difference.
+- `ShardedPool.closed_store_files` and `ShardedPool.delete_store` on the copy's primary: the same 11 paths (the ten
+  shards in serial order, then the primary), deleted; no `11-reference-copy*` file remains.
+
+### 3.6 The suites, before the cluster
+
+Run on 2026-10-22 at 21:27–21:29 BST at `66b1c81`, serially, in the foreground.
+- `./venv/bin/python -m pytest -m "not integration and not slow" -q -p no:cacheprovider`: **732**
+  (731 passed, 1 skipped), 41.11 s, at a load of 8.64.
+- `RAY_ADDRESS=local ./venv/bin/python -m pytest -m integration -q -p no:cacheprovider`: **67**
+  (66 passed, 1 skipped), 47.91 s, at a load of 12.80.
+
+### 3.7 The commands, verbatim
+
+From the repository root, in order. `$R` is
+`~/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration`.
+
+```bash
+./venv/bin/python tools/compare_stores.py $R/07-reference.sqlite $R/07-readers/resumed/before/07-resumed.sqlite
+./venv/bin/python tools/compare_stores.py $R/07-readers/scalars/before/07-scalars.sqlite $R/02-scalars-2.sqlite
+./venv/bin/python -m pytest -m "not integration and not slow" -q -p no:cacheprovider
+RAY_ADDRESS=local ./venv/bin/python -m pytest -m integration -q -p no:cacheprovider
+.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start "dk-and-rpk-migration 11 (RH2)"
+.documents/dk-and-rpk-migration/rehearsal/build.sh 11 reference reference 127.0.0.1:6390 dense --profile-db
+./venv/bin/python rows.py $R/11-reference $R/11-reference-profile.sqlite   # scratch; in the results note
+.documents/dk-and-rpk-migration/rehearsal/build.sh 11 resumed resumed-a 127.0.0.1:6390 dense
+./venv/bin/python .documents/dk-and-rpk-migration/rehearsal/interrupt_when.py \
+    ~/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/11-resumed-a.log \
+    ~/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/logs/11-resumed-a.pid \
+    --banner "STAGE 2: FULL MSR INSTANTONS" --after 12.0 --poll 0.2
+./venv/bin/ray list actors --address 127.0.0.1:6390 --filter "state=ALIVE"
+./venv/bin/ray list actors --address 127.0.0.1:6390 --limit 1000
+./venv/bin/python rows.py $R/11-resumed   # scratch
+.documents/dk-and-rpk-migration/rehearsal/build.sh 11 resumed resumed-b 127.0.0.1:6390 dense
+./venv/bin/python rows.py $R/11-resumed   # scratch
+.documents/dk-and-rpk-migration/rehearsal/build.sh 11 scalars scalars 127.0.0.1:6390 scalars
+./venv/bin/python tools/compare_stores.py $R/11-reference.sqlite $R/11-resumed.sqlite \
+    --json .documents/dk-and-rpk-migration/out/11-compare-reference-resumed.json
+./venv/bin/python tools/compare_stores.py $R/07-reference.sqlite $R/11-reference.sqlite \
+    --json .documents/dk-and-rpk-migration/out/11-compare-07reference-11reference.json
+./venv/bin/python tools/compare_stores.py $R/07-reference.sqlite $R/11-resumed.sqlite \
+    --json .documents/dk-and-rpk-migration/out/11-compare-07reference-11resumed.json
+./venv/bin/python tools/compare_stores.py $R/02-reference.sqlite $R/11-reference.sqlite \
+    --json .documents/dk-and-rpk-migration/out/11-compare-02reference-11reference.json
+./venv/bin/python tools/compare_stores.py $R/07-readers/scalars/before/07-scalars.sqlite $R/11-scalars.sqlite \
+    --json .documents/dk-and-rpk-migration/out/11-compare-07scalarsbefore-11scalars.json
+./venv/bin/python tools/compare_stores.py $R/02-scalars-2.sqlite $R/11-scalars.sqlite \
+    --json .documents/dk-and-rpk-migration/out/11-compare-02scalars2-11scalars.json
+./venv/bin/python tools/compare_stores.py --snapshot $R/11-reference.sqlite --out .documents/dk-and-rpk-migration/out/11-reference-schema.json
+./venv/bin/python tools/compare_stores.py --schema $R/11-reference.sqlite --against .documents/dk-and-rpk-migration/out/07-reference-schema.json
+./venv/bin/python tools/compare_stores.py --schema $R/11-scalars.sqlite --against .documents/dk-and-rpk-migration/out/07-reference-schema.json
+./venv/bin/python .documents/dk-and-rpk-migration/rehearsal/stage_counts.py $R/logs/11-reference.log \
+    $R/logs/11-resumed-a.log $R/logs/11-resumed-b.log $R/logs/11-scalars.log \
+    --json .documents/dk-and-rpk-migration/out/11-stage-counts.json
+./venv/bin/python -m datastorekit.tools.shard_key_audit $R/11-reference.sqlite
+./venv/bin/python -m datastorekit.tools.shard_key_audit $R/11-resumed.sqlite
+./venv/bin/python -m datastorekit.tools.shard_key_audit $R/11-scalars.sqlite
+./venv/bin/python -m datastorekit.tools.sharded_store copy $R/11-reference.sqlite $R/11-reference-copy.sqlite
+./venv/bin/python h1_readback.py $R/11-reference.sqlite $R/11-reference-copy.sqlite   # scratch; in the results note
+./venv/bin/python tools/compare_stores.py $R/11-reference.sqlite $R/11-reference-copy.sqlite \
+    --json .documents/dk-and-rpk-migration/out/11-compare-reference-copy.json
+./venv/bin/python -c "
+import sys
+from datastorekit.SQL.ShardedPool import ShardedPool
+p = sys.argv[1]
+planned = ShardedPool.closed_store_files(p)
+print('closed_store_files:'); [print('  ', x) for x in planned]
+deleted = ShardedPool.delete_store(p)
+print('delete_store returned:'); [print('  ', x) for x in deleted]
+print('same list:', [str(x) for x in planned] == [str(x) for x in deleted], len(deleted), 'paths')
+import ray; print('ray initialised:', ray.is_initialized())
+" $R/11-reference-copy.sqlite
+.documents/dk-and-rpk-migration/rehearsal/run_readers.sh 11 resumed 127.0.0.1:6390
+.documents/dk-and-rpk-migration/rehearsal/run_readers.sh 11 scalars 127.0.0.1:6390
+.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh stop
+```
+
+Each comparison's text output, `stage_counts.py`'s and the H1 tools' were redirected to the `.txt` files of
+[`out/`](out/) named in the results note. The L4 comparison with RH1's records and `rows.py` are scratch scripts,
+reproduced in the results note.

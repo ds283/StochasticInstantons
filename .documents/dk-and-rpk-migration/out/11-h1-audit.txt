@@ -1,0 +1,27 @@
+$ ./venv/bin/python -m datastorekit.tools.shard_key_audit $R/11-reference.sqlite
+>> /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference.sqlite: current-generation schema (key_serial present)
+>> shard_keys row count: 10
+>> per-shard key distribution: {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1}
+>> cross-file check against shard #0: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-shard0000.sqlite (record '11-reference-shard0000.sqlite')
+>> 'delta_Nstar' table (shard #0) row count: 10
+VERDICT: OK -- no inconsistency found in /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference.sqlite.
+exit 0
+
+$ ./venv/bin/python -m datastorekit.tools.shard_key_audit $R/11-resumed.sqlite
+>> /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-resumed.sqlite: current-generation schema (key_serial present)
+>> shard_keys row count: 10
+>> per-shard key distribution: {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1}
+>> cross-file check against shard #0: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-resumed-shard0000.sqlite (record '11-resumed-shard0000.sqlite')
+>> 'delta_Nstar' table (shard #0) row count: 10
+VERDICT: OK -- no inconsistency found in /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-resumed.sqlite.
+exit 0
+
+$ ./venv/bin/python -m datastorekit.tools.shard_key_audit $R/11-scalars.sqlite
+>> /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-scalars.sqlite: current-generation schema (key_serial present)
+>> shard_keys row count: 10
+>> per-shard key distribution: {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1}
+>> cross-file check against shard #0: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-scalars-shard0000.sqlite (record '11-scalars-shard0000.sqlite')
+>> 'delta_Nstar' table (shard #0) row count: 10
+VERDICT: OK -- no inconsistency found in /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-scalars.sqlite.
+exit 0
+

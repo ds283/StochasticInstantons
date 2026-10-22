@@ -1,0 +1,30 @@
+$ ./venv/bin/python -c '...closed_store_files, then delete_store...' $R/11-reference-copy.sqlite
+closed_store_files:
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0000.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0001.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0002.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0003.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0004.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0005.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0006.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0007.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0008.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0009.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy.sqlite
+delete_store returned:
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0000.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0001.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0002.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0003.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0004.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0005.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0006.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0007.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0008.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0009.sqlite
+   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy.sqlite
+same list: True 11 paths
+ray initialised: False
+exit 0
+$ ls $R | grep -c 11-reference-copy
+0

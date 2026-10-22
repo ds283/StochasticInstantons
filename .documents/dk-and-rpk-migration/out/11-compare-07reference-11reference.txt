@@ -1,0 +1,69 @@
+compare_stores: A = /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/07-reference.sqlite (10 shards)
+                B = /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference.sqlite (10 shards)
+
+tables:
+  CompactionFunction               sharded     matched       10  A only      0  B only      0
+  CompactionFunctionSamples        sharded     matched    33128  A only      0  B only      0
+  CosmologicalParams               replicated  matched        1  A only      0  B only      0
+  FullInstanton                    sharded     matched       10  A only      0  B only      0
+  FullInstantonValue               sharded     matched    16564  A only      0  B only      0
+  GradientCoupledInstanton         sharded     matched        0  A only      0  B only      0
+  GradientCoupledInstantonProfile  sharded     matched        0  A only      0  B only      0
+  GradientCoupledInstantonValue    sharded     matched        0  A only      0  B only      0
+  InflatonTrajectory               replicated  matched        1  A only      0  B only      0
+  InflatonTrajectoryValue          replicated  matched     5713  A only      0  B only      0
+  IntegrationSolver                replicated  matched        0  A only      0  B only      0
+  MasslessDecoupledDiffusion       replicated  matched        1  A only      0  B only      0
+  N_final                          replicated  matched        1  A only      0  B only      0
+  N_init                           replicated  matched        1  A only      0  B only      0
+  QuadraticPotential               replicated  matched        1  A only      0  B only      0
+  QuarticPotential                 replicated  matched        0  A only      0  B only      0
+  SlowRollInstanton                sharded     matched       10  A only      0  B only      0
+  SlowRollInstantonValue           sharded     matched    16564  A only      0  B only      0
+  alpha_regularization             replicated  matched        1  A only      0  B only      0
+  delta_Nstar                      replicated  matched       10  A only      0  B only      0
+  efold_value                      replicated  matched     7521  A only      0  B only      0
+  inflaton_mass                    replicated  matched        1  A only      0  B only      0
+  n_collocation_points             replicated  matched        1  A only      0  B only      0
+  phi_value                        replicated  matched        1  A only      0  B only      0
+  pi_value                         replicated  matched        1  A only      0  B only      0
+  quartic_coupling                 replicated  matched        0  A only      0  B only      0
+  redshift                         sharded     matched        0  A only      0  B only      0
+  store_tag                        replicated  matched        0  A only      0  B only      0
+  tolerance                        replicated  matched        1  A only      0  B only      0
+  version                          replicated  matched        1  A only      0  B only      0
+
+bookkeeping that differs between matched rows (not compared):
+  CompactionFunction.metadata["compute_time"]: 10 matched row(s)
+  CompactionFunction.metadata["full"]["compute_time"]: 10 matched row(s)
+  CompactionFunction.metadata["slow_roll"]["compute_time"]: 10 matched row(s)
+  CompactionFunction.timestamp: 10 matched row(s)
+  CosmologicalParams.timestamp: 1 matched row(s)
+  FullInstanton.diagnostics_json["compute_time"]: 10 matched row(s)
+  FullInstanton.diagnostics_json["mean_time_per_picard_iteration"]: 10 matched row(s)
+  FullInstanton.timestamp: 10 matched row(s)
+  InflatonTrajectory.diagnostics_json["compute_time"]: 1 matched row(s)
+  InflatonTrajectory.timestamp: 1 matched row(s)
+  MasslessDecoupledDiffusion.timestamp: 1 matched row(s)
+  N_final.timestamp: 1 matched row(s)
+  N_init.timestamp: 1 matched row(s)
+  QuadraticPotential.timestamp: 1 matched row(s)
+  SlowRollInstanton.diagnostics_json["compute_time"]: 10 matched row(s)
+  SlowRollInstanton.timestamp: 10 matched row(s)
+  alpha_regularization.timestamp: 1 matched row(s)
+  delta_Nstar.timestamp: 10 matched row(s)
+  efold_value.timestamp: 7521 matched row(s)
+  inflaton_mass.timestamp: 1 matched row(s)
+  n_collocation_points.timestamp: 1 matched row(s)
+  phi_value.timestamp: 1 matched row(s)
+  pi_value.timestamp: 1 matched row(s)
+  tolerance.timestamp: 1 matched row(s)
+
+notes:
+  - A: redshift is on the shards but in neither of the primary's table lists; compared as sharded (its rows taken from every shard)
+  - B: redshift is on the shards but in neither of the primary's table lists; compared as sharded (its rows taken from every shard)
+
+problems:
+  none
+
+RESULT: equal

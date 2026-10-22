@@ -1,0 +1,13 @@
+$ ./venv/bin/python -m datastorekit.tools.sharded_store copy $R/11-reference.sqlite $R/11-reference-copy.sqlite
+>> copy: "/Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy.sqlite" with 10 shards
+>>   shard #0: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0000.sqlite
+>>   shard #1: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0001.sqlite
+>>   shard #2: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0002.sqlite
+>>   shard #3: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0003.sqlite
+>>   shard #4: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0004.sqlite
+>>   shard #5: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0005.sqlite
+>>   shard #6: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0006.sqlite
+>>   shard #7: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0007.sqlite
+>>   shard #8: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0008.sqlite
+>>   shard #9: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy-shard0009.sqlite
+exit 0

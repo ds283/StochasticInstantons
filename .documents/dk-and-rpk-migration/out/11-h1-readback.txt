@@ -1,0 +1,33 @@
+$ ./venv/bin/python h1_readback.py $R/11-reference.sqlite $R/11-reference-copy.sqlite
+source: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference.sqlite
+copy:   /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-reference-copy.sqlite
+problems (source): ()
+problems (copy):   ()
+classes: 24 24
+  version                      source (1, 0)  copy (1, 0)  equal
+  store_tag                    source (0, 0)  copy (0, 0)  equal
+  redshift                     source (0, 0)  copy (0, 0)  equal
+  tolerance                    source (1, 0)  copy (1, 0)  equal
+  efold_value                  source (7521, 0)  copy (7521, 0)  equal
+  delta_Nstar                  source (10, 0)  copy (10, 0)  equal
+  N_init                       source (1, 0)  copy (1, 0)  equal
+  N_final                      source (1, 0)  copy (1, 0)  equal
+  n_collocation_points         source (1, 0)  copy (1, 0)  equal
+  alpha_regularization         source (1, 0)  copy (1, 0)  equal
+  inflaton_mass                source (1, 0)  copy (1, 0)  equal
+  quartic_coupling             source (0, 0)  copy (0, 0)  equal
+  phi_value                    source (1, 0)  copy (1, 0)  equal
+  pi_value                     source (1, 0)  copy (1, 0)  equal
+  MasslessDecoupledDiffusion   source (1, 0)  copy (1, 0)  equal
+  IntegrationSolver            source (0, 0)  copy (0, 0)  equal
+  CosmologicalParams           source (1, 0)  copy (1, 0)  equal
+  QuadraticPotential           source (1, 0)  copy (1, 0)  equal
+  QuarticPotential             source (0, 0)  copy (0, 0)  equal
+  InflatonTrajectory           source (1, 1)  copy (1, 1)  equal
+  FullInstanton                source (10, 10)  copy (10, 10)  equal
+  GradientCoupledInstanton     source (0, 0)  copy (0, 0)  equal
+  SlowRollInstanton            source (10, 10)  copy (10, 10)  equal
+  CompactionFunction           source (10, 10)  copy (10, 10)  equal
+ray initialised: False
+RESULT: copy reads back with no problem, every count equal to the source's
+exit 0

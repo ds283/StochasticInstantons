@@ -1,0 +1,122 @@
+>> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.2.0 (https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976, requested v0.2.0)
+@@ DATASTORE INVENTORY: /Users/ds283/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/11-resumed.sqlite
+   read-only; 10 shards (#0, #1, #2, #3, #4, #5, #6, #7, #8, #9); 7,574 records in 24 classes
+   problems: none
+
+   -- Delta N★ values (delta_Nstar, replicated)
+      10 values: [ 0.1, 0.422222, 0.744444, 1.06667, 1.38889, 1.71111, 2.03333, 2.35556, 2.67778, 3 ]
+
+   -- N_init values (N_init, replicated)
+      1 value: [ 20 ]
+
+   -- N_final values (N_final, replicated)
+      1 value: [ 5 ]
+
+   -- phi_0 values (phi_value, replicated)
+      1 value: [ 15 PlanckMass ]
+
+   -- pi_0 values (pi_value, replicated)
+      1 value: [ 0 PlanckMass ]
+
+   -- Inflaton mass values (inflaton_mass, replicated)
+      1 value: [ 1e-05 PlanckMass ]
+
+   -- Quartic coupling values (quartic_coupling, replicated)
+      no values committed
+
+   -- E-fold sample values (efold_value, replicated)
+      7,521 values: [ 0, 0.01, 0.0100003, 0.02, 0.0200007, 0.03, 0.030001, 0.04, 0.0400014, 0.05, ... 7,501 values not shown (--show-all shows every one) ..., 57.032, 57.042, 57.052, 57.062, 57.072, 57.082, 57.092, 57.102, 57.112, 57.122 ]
+
+   -- Inflaton trajectories (InflatonTrajectory, replicated)
+      1 record; 5,713 value rows; committed 2026-10-22 21:30:38 – 2026-10-22 21:30:38
+      @@ validated: 1 record(s)
+         :: phi0=15 PlanckMass, pi0=0 PlanckMass, potential=QuadraticPotential(m=1e-05 PlanckMass), atol=1e-08, rtol=1e-08 | 5,713 value rows
+      @@ unvalidated: 0 record(s)
+
+   -- Full MSR instantons (FullInstanton, sharded)
+      10 records; 16,564 value rows; committed 2026-10-22 21:30:50 – 2026-10-22 21:31:44
+      common to every record: N_init=20, N_final=5, trajectory=InflatonTrajectory(phi0=15 PlanckMass, potential=QuadraticPotential(m=1e-05 PlanckMass)), diffusion_model=MasslessDecoupledDiffusion, atol=1e-08, rtol=1e-08
+      @@ validated: 10 record(s)
+         :: delta_Nstar=0.1 | 1,511 value rows
+         :: delta_Nstar=0.422222 | 1,544 value rows
+         :: delta_Nstar=0.744444 | 1,576 value rows
+         :: delta_Nstar=1.06667 | 1,608 value rows
+         :: delta_Nstar=1.38889 | 1,640 value rows
+         :: delta_Nstar=1.71111 | 1,673 value rows
+         :: delta_Nstar=2.03333 | 1,705 value rows
+         :: delta_Nstar=2.35556 | 1,737 value rows
+         :: delta_Nstar=2.67778 | 1,769 value rows
+         :: delta_Nstar=3 | 1,801 value rows
+      @@ unvalidated: 0 record(s)
+
+   -- Slow-roll instantons (SlowRollInstanton, sharded)
+      10 records; 16,564 value rows; committed 2026-10-22 21:31:53 – 2026-10-22 21:31:53
+      common to every record: N_init=20, N_final=5, trajectory=InflatonTrajectory(phi0=15 PlanckMass, potential=QuadraticPotential(m=1e-05 PlanckMass)), diffusion_model=MasslessDecoupledDiffusion, atol=1e-08, rtol=1e-08
+      @@ validated: 10 record(s)
+         :: delta_Nstar=0.1 | 1,511 value rows
+         :: delta_Nstar=0.422222 | 1,544 value rows
+         :: delta_Nstar=0.744444 | 1,576 value rows
+         :: delta_Nstar=1.06667 | 1,608 value rows
+         :: delta_Nstar=1.38889 | 1,640 value rows
+         :: delta_Nstar=1.71111 | 1,673 value rows
+         :: delta_Nstar=2.03333 | 1,705 value rows
+         :: delta_Nstar=2.35556 | 1,737 value rows
+         :: delta_Nstar=2.67778 | 1,769 value rows
+         :: delta_Nstar=3 | 1,801 value rows
+      @@ unvalidated: 0 record(s)
+
+   -- Compaction functions (CompactionFunction, sharded)
+      10 records; 33,128 value rows; committed 2026-10-22 21:31:55 – 2026-10-22 21:31:56
+      common to every record: trajectory=InflatonTrajectory(phi0=15 PlanckMass, potential=QuadraticPotential(m=1e-05 PlanckMass)), cosmo=Planck2018 68% central values TT+TE+EE+lowP+lensing+BAO, atol=1e-08, rtol=1e-08
+      @@ validated: 10 record(s)
+         :: delta_Nstar=0.1, full_instanton=FullInstanton(delta_Nstar=0.1), slow_roll_instanton=SlowRollInstanton(delta_Nstar=0.1) | 3,022 value rows
+         :: delta_Nstar=0.422222, full_instanton=FullInstanton(delta_Nstar=0.422222), slow_roll_instanton=SlowRollInstanton(delta_Nstar=0.422222) | 3,088 value rows
+         :: delta_Nstar=0.744444, full_instanton=FullInstanton(delta_Nstar=0.744444), slow_roll_instanton=SlowRollInstanton(delta_Nstar=0.744444) | 3,152 value rows
+         :: delta_Nstar=1.06667, full_instanton=FullInstanton(delta_Nstar=1.06667), slow_roll_instanton=SlowRollInstanton(delta_Nstar=1.06667) | 3,216 value rows
+         :: delta_Nstar=1.38889, full_instanton=FullInstanton(delta_Nstar=1.38889), slow_roll_instanton=SlowRollInstanton(delta_Nstar=1.38889) | 3,280 value rows
+         :: delta_Nstar=1.71111, full_instanton=FullInstanton(delta_Nstar=1.71111), slow_roll_instanton=SlowRollInstanton(delta_Nstar=1.71111) | 3,346 value rows
+         :: delta_Nstar=2.03333, full_instanton=FullInstanton(delta_Nstar=2.03333), slow_roll_instanton=SlowRollInstanton(delta_Nstar=2.03333) | 3,410 value rows
+         :: delta_Nstar=2.35556, full_instanton=FullInstanton(delta_Nstar=2.35556), slow_roll_instanton=SlowRollInstanton(delta_Nstar=2.35556) | 3,474 value rows
+         :: delta_Nstar=2.67778, full_instanton=FullInstanton(delta_Nstar=2.67778), slow_roll_instanton=SlowRollInstanton(delta_Nstar=2.67778) | 3,538 value rows
+         :: delta_Nstar=3, full_instanton=FullInstanton(delta_Nstar=3), slow_roll_instanton=SlowRollInstanton(delta_Nstar=3) | 3,602 value rows
+      @@ unvalidated: 0 record(s)
+
+   -- Gradient-coupled (onion model) instantons (GradientCoupledInstanton, sharded)
+      0 records
+      @@ validated: 0 record(s)
+      @@ unvalidated: 0 record(s)
+
+   -- Quadratic potentials (QuadraticPotential, replicated)
+      1 record
+         :: m=1e-05 PlanckMass
+
+   -- Quartic potentials (QuarticPotential, replicated)
+      no records committed
+
+   -- Diffusion models (MasslessDecoupledDiffusion, replicated)
+      1 record
+         :: (no key fields)
+
+   -- Collocation points (n_collocation_points, replicated)
+      1 value: [ 5 ]
+
+   -- Regularization alpha values (alpha_regularization, replicated)
+      1 value: [ 0.01 ]
+
+   -- Tolerances (tolerance, replicated)
+      1 value: [ 1e-08 ]
+
+   -- Cosmological parameters (CosmologicalParams, replicated)
+      1 value: [ Planck2018 68% central values TT+TE+EE+lowP+lensing+BAO ]
+
+   -- Redshifts (redshift, sharded)
+      no values committed
+
+   -- Integration solvers (IntegrationSolver, replicated)
+      no records committed
+
+   -- Version labels (version, replicated)
+      1 value: [ 2026.6.1 ]
+
+   -- Store tags (store_tag, replicated)
+      no values committed
