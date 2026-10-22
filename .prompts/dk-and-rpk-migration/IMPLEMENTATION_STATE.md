@@ -4,7 +4,7 @@
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
-the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package; 09 landed and reviewed (§5.22): SI's layer deleted, every pool the package's, U5's drop policy before Ray, `--inventory` refused until 10, `[config-datastore-cannot-be-imported-before-the-layer]` closed; 10 landed and reviewed (§5.23): the inventory is `read_inventory` over 24 `inventory_spec`s (22 definitions), `tools/inventory_report.py` prints it before Ray, every registered class is covered (U8), `[show-all-flag-unused]` closed and `[gci-value-table-outside-the-inventory]` opened; DatastoreKit `v0.5.0` released at SI's request and evaluated (§5.24, §5.25), 10a and 10b written to adopt it before 11 (U12); 10a landed and reviewed (§5.26): `datastorekit` `v0.5.0` pinned and installed, the distribution replaced, K11 holds on the installed package; 10b landed and reviewed (§5.27): `GradientCoupledInstanton`'s spec counts `GradientCoupledInstantonValue` as a further value table, every registered class is covered and none excluded (24 specs, 6 read through), the report prints the count, `[gci-value-table-outside-the-inventory]` closed; 11 landed (§5.28): RH2 equals RH1 bit for bit in both modes through both packages, the resume pruned only unvalidated rows (2 of 2), H1 holds, and **DatastoreKit G4 holds**. U1–U9 ruled (2026-10-12),
+the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package; 09 landed and reviewed (§5.22): SI's layer deleted, every pool the package's, U5's drop policy before Ray, `--inventory` refused until 10, `[config-datastore-cannot-be-imported-before-the-layer]` closed; 10 landed and reviewed (§5.23): the inventory is `read_inventory` over 24 `inventory_spec`s (22 definitions), `tools/inventory_report.py` prints it before Ray, every registered class is covered (U8), `[show-all-flag-unused]` closed and `[gci-value-table-outside-the-inventory]` opened; DatastoreKit `v0.5.0` released at SI's request and evaluated (§5.24, §5.25), 10a and 10b written to adopt it before 11 (U12); 10a landed and reviewed (§5.26): `datastorekit` `v0.5.0` pinned and installed, the distribution replaced, K11 holds on the installed package; 10b landed and reviewed (§5.27): `GradientCoupledInstanton`'s spec counts `GradientCoupledInstantonValue` as a further value table, every registered class is covered and none excluded (24 specs, 6 read through), the report prints the count, `[gci-value-table-outside-the-inventory]` closed; 11 landed and reviewed (§5.28): RH2 equals RH1 bit for bit in both modes through both packages, the resume pruned only unvalidated rows (2 of 2), H1 holds, and **DatastoreKit G4 holds**. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20), U12 (2026-10-22); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -74,7 +74,7 @@ on any of them.
 | 10 | [Port the inventory](10-port-the-inventory.md) | **U6**, **U8**; `inventory_spec`, `tools/inventory_report.py`; closes `[show-all-flag-unused]` | Opus | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.23) | `e2c7b22` | [`10-port-the-inventory.md`](../../.documents/dk-and-rpk-migration/10-port-the-inventory.md) |
 | 10a | [Pin `datastorekit` `v0.5.0`](10a-pin-datastorekit-v0.5.0.md) | the DatastoreKit pin moved to `v0.5.0` (**U12**; `f47b9a2`) | Sonnet | ✍️ 2026-10-22 | ✅ 2026-10-22 (§5.26) | `80d99a7` | [`10a-pin-datastorekit-v0.5.0.md`](../../.documents/dk-and-rpk-migration/10a-pin-datastorekit-v0.5.0.md) |
 | 10b | [Count the gradient value table](10b-count-the-gradient-value-table.md) | **U12**; `extra_values` on `GradientCoupledInstanton`; closes `[gci-value-table-outside-the-inventory]` | Opus | ✍️ 2026-10-22 | ✅ 2026-10-22 (§5.27) | `19716cd` | [`10b-count-the-gradient-value-table.md`](../../.documents/dk-and-rpk-migration/10b-count-the-gradient-value-table.md) |
-| 11 | [Rehearse through both packages (RH2)](11-rehearse-through-both-packages.md) | **RH2**, bitwise against RH1; **DatastoreKit G4** | Opus | ✍️ 2026-10-21; amended 2026-10-22 (U12: at 10b's tree, on `v0.5.0`) | ✅ 2026-10-22 (§5.28) | this commit | [`11-rehearse-through-both-packages.md`](../../.documents/dk-and-rpk-migration/11-rehearse-through-both-packages.md) |
+| 11 | [Rehearse through both packages (RH2)](11-rehearse-through-both-packages.md) | **RH2**, bitwise against RH1; **DatastoreKit G4** | Opus | ✍️ 2026-10-21; amended 2026-10-22 (U12: at 10b's tree, on `v0.5.0`) | ✅ 2026-10-22 (§5.28) | `2179854` | [`11-rehearse-through-both-packages.md`](../../.documents/dk-and-rpk-migration/11-rehearse-through-both-packages.md) |
 | 12 | Close the migration | `CLAUDE.md`, rules, documents, handover to P2, close | Sonnet | ⬜ | ⬜ | — | — |
 
 **Legend.** ✍️ written · ⏸ held, with what it waits on · ⬜ not yet · ✅ landed.
@@ -104,6 +104,7 @@ before each dispatch:
 - [`prompt-10.md`](orchestrator/prompt-10.md) — used for 10 (`62cdca5`).
 - [`prompt-10a.md`](orchestrator/prompt-10a.md) — used for 10a (`3fd8778`).
 - [`prompt-10b.md`](orchestrator/prompt-10b.md) — used for 10b (`d590b30`).
+- [`prompt-11.md`](orchestrator/prompt-11.md) — used for 11 (`66b1c81`).
 
 ### 1.1 Items
 
@@ -1946,7 +1947,7 @@ follow-up (records only); nothing is opened.
 
 ### 5.28 After prompt 11 (2026-10-22)
 
-- **Landed:** this commit. Results note
+- **Landed:** `2179854`. Results note
   [`11-rehearse-through-both-packages.md`](../../.documents/dk-and-rpk-migration/11-rehearse-through-both-packages.md);
   record [`verification.md`](../../.documents/dk-and-rpk-migration/verification.md) §3.
   **COMPLETE:** L1–L4 (RH2), V3 and H1 hold, and gates **RH2** and **DatastoreKit G4** hold. No code changed. No
@@ -1999,5 +2000,80 @@ follow-up (records only); nothing is opened.
   - the profile count is not a reproducibility measure.
 - **Handed on.**
   - *To 12:* DatastoreKit G4's record for its board (the results note's "State handed to the next prompt", this
-    commit's hash to fill in); the final counts (732, 67; `slow` S1's 69); RH2's stores in place
+    commit's hash, `2179854`, now filled in); the final counts (732, 67; `slow` S1's 69); RH2's stores in place
     (`11-resumed` and `11-scalars` carry the readers' row; `11-reference` does not).
+
+**Orchestrator review of prompt 11 (2026-10-22)**, by orchestrator note
+[`prompt-11.md`](orchestrator/prompt-11.md), at `2179854`. All twelve checks pass. **RH2 equals RH1, and so RH0, bit for
+bit in both modes, confirmed independently; DatastoreKit G4 holds.** The residue is fixed in this follow-up (records
+only); nothing is opened, so `.documents/OPEN-ISSUES.md` is unchanged (59 open, 29 closed).
+- **(1) Scope.** 33 files: the results note, `verification.md` (§3 appended, no line removed), the board and 30
+  `out/11-*` files, all text, the largest the 2,482-line schema snapshot (40 KB). One commit of the agent's on
+  `66b1c81`, no amend in the reflog, no tag, nothing pushed; `git status` clean; no scratch file in the repository.
+- **(2) Ray and the lock.** `ray_cluster.sh status`: lock free, no `/tmp/ray-si` process, the four ports free; no Ray
+  process on the machine. The results note shows `start` (5 s), the address and actor line, the actor check, and
+  `stop` (19 s) with the lock released; `ray stop` only as "never run".
+- **(3) The logs**, all four read (`reference`, `resumed-a`, `resumed-b`, `scalars`). The provenance line once each,
+  identical, naming `datastorekit` 0.5.0 at `f47b9a25…` and `raypoolkit` 0.2.0 at `eaef0ce6…`, both requested at their
+  tags. `reference`, `resumed-b`, `scalars` end `** driver exit status 0` with 4, 4, 2 `ALL WORK ITEMS COMPLETE`;
+  `resumed-a` ends **15** with `SIGTERM received` (twice, the absl dump) inside the `STAGE 2` pool, pid 73409 the
+  pidfile's. No `STAGE G`, no `Traceback`, no `did not validate`. The only other `WARNING` lines are Ray's
+  `FutureWarning` and `resumed-b`'s two prune headers; the raylet's "over 95% full" `E` line appears 2–4 times per log.
+- **(4) The counts.** `stage_counts.py` re-run on the four logs, its `--json` into the scratchpad, gives the committed
+  text and JSON byte for byte. The orchestrator's own script finds `reference`'s and `scalars`' `entries`,
+  `complete_lines`, `integrity` and `exit_status` equal to `out/07-stage-counts.json`'s, only `packages` differing; its
+  control (07's `reference` against 11's `resumed-b`) differs in `entries` and `integrity`. `mode=ro`: every row of the
+  three stores validated, 10 / 10 / 10 / 1 (10 replicas), `efold_value` 7,521 on every shard, no gradient row, no
+  orphan in any of the five value/sample tables. In `11-resumed` (and its readers' `before/` copy), 4 `FullInstanton`
+  rows predate the signal (21:30:51.666 BST) and 6 follow it, and every `SlowRollInstanton` and `CompactionFunction`
+  follows it: `resumed-b`'s "4 already computed, 6 to compute", then 10 and 10.
+- **(5) The prune.** Two reports in `resumed-b`'s log, `shard0003-store` and `shard0005-store`, each
+  `Pruned 1 unvalidated FullInstanton records`, in RH1's text: the 2 unvalidated rows recorded between builds, on the
+  same shards. No other build pruned; no trajectory pruned; no reconciliation or replicated-prune line; every primary's
+  `replication_in_flight` is empty.
+- **(6) H1.** `shard_key_audit` re-run on the three RH2 stores: `VERDICT: OK`, exit 0. No `11-reference-copy*` file
+  exists; `out/11-h1-delete.txt` shows `closed_store_files` and `delete_store` the same 11 paths; the read-back's counts
+  are `11-reference`'s; `11-compare-reference-copy` names both stores and is `RESULT: equal`.
+- **(7) §4.3, re-run.** The six comparisons re-run into the scratchpad, `11-resumed` and `11-scalars` through the
+  readers' `before/` copies: each `RESULT: equal`, exit 0, text and JSON equal to the committed ones but for paths; 30
+  tables with RH1's counts; the bookkeeping that differs only timestamps and the timing keys. Against the live read
+  stores the two give exit 1 on the readers' `version{label='2026.3.0'}` row alone, as expected.
+- **(8) Independently of the tool.** 07's review script (`indep.py`), by stored bits: `07-reference` against
+  `11-reference` and against `11-resumed` (`before/`), `07-scalars` (`before/`) against `11-scalars` (`before/`), and
+  `02-reference` against `11-reference`: 0 differing digests over 1 / 10 / 10 / 10 parents, with 57,130 / 16,564 /
+  16,564 / 33,128 child rows (scalars-only 57,130 and none) each side. Control `11-reference` against `11-scalars`: all
+  30 instanton digests differ. On a scratch copy of `11-reference` with one `FullInstantonValue` `P1_invPlanckMass`
+  moved one ulp, both the script (1 `FullInstanton` differing) and `compare_stores` (relative difference 1.13e-16,
+  exit 1) caught it; the copy was deleted.
+- **(9) The readers.** `status.txt` on both stores: steps 0–2 exit 0, step 4 exit 1; each `4-compare_stores.log` finds
+  only `version{label='2026.3.0'}`; both plot logs read `n_collocation_points: 1 value = [ 5 ]`. Both `scalar_data.csv`
+  hash to `b0564eec…58a2` on disk and as committed blobs. `main.py --inventory` re-run on both stores
+  (`--ray-address 127.0.0.1:9`): exit 0, `problems: none`, no store file's mtime moved, no Ray process after; the report
+  equals the committed step-1 log but for the `version` values (`2026.3.0` added by step 2, which ran after step 1).
+- **(10) The schema and the profile database.** `--snapshot` of `11-reference` is byte-identical to
+  `out/11-reference-schema.json`, which differs from 07's in `source` alone; `--schema` of `11-reference` and
+  `11-scalars` against 07's: "the schemas agree". The profile database: `jobs` 1, `profile_data` 712. The 91 fewer
+  `object_get` than RH1's are 90 replica gets of `efold_value` grids already stored (under the package a hit is not
+  replicated: 10 grids × 9 shards) and one `version` get; every other method's count is RH1's.
+- **(11) Hygiene.** Every entry under `~/ScienceData/` at dispatch (835) keeps its mtime and size but three
+  directories: the rehearsal root and its `logs/`, which gained the `11-*` files, and `~/ScienceData` itself (the lock
+  file made and removed). Added: the three stores (11 files each), `11-reference-profile.sqlite`, `11-readers/` and
+  eight `logs/11-*` files, nothing else. The 17 store files in the tree unchanged; `pip freeze` equals the dispatch copy,
+  `pip check` clean; DatastoreKit `2900d82` and RayPoolKit `17029d9`, clean.
+- **(12) The records and the suites.** The results note has README §5.1's sections and the prompt's §6 list, the
+  seventeen corrections and D1–D3; `verification.md` §3 has the commands verbatim and says RH2 equals RH1. The board has
+  the §1 row, L1–L4 (RH2, its tree corrected), V3, H1, the new RH2 gate row, the G4 row and this section. The
+  orchestrator re-ran both suites at `2179854` (23:55 BST, load 14–25): default 732 (731 passed, 1 skipped), 37.1 s;
+  integration 67 (66 passed, 1 skipped), 49.4 s.
+  - *Residue, fixed here:* `2179854` for "this commit" (board ×2, results note ×3, the G4 record's `<this commit>`
+    among them; the rollback line's prose use stays); the header's "11 landed" reads "landed and reviewed"; this note
+    added to the list of orchestrator notes; the campaign's line in `.prompts/INDEX.md`.
+- **The deviations are accepted.** D1's `statfs` read metadata only, and check 11 finds every entry unchanged. D3's
+  control within 11 is the one the brief asked for.
+- **Not exercised, and recorded as such:** the package's repair of an interrupted replicated write (the signal fell
+  2.7 s after the last one). G4 does not ask for it, and nothing is opened; it is reported to the user.
+- **Handed on.**
+  - *To 12:* the G4 record for DatastoreKit's board, now naming `2179854` (the results note's "State handed to the next
+    prompt"); RayPoolKit G4's, held at 04 and run under real Ray at RH1 and RH2; the final counts (732, 67; `slow` S1's
+    69); RH2's stores kept (README §3).
+  - 12 can now be written (README §2.1).

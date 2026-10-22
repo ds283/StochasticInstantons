@@ -2,7 +2,7 @@
 
 **Subject:** Rehearse 10b's tree through `datastorekit` `v0.5.0` and `raypoolkit` `v0.2.0` (RH2), compare it bit
 for bit with RH1 (and so RH0), run the store-hygiene tools, and record DatastoreKit's G4
-**Commit:** this commit, on branch `dk-and-rpk-migration`, on top of `66b1c81`
+**Commit:** `2179854`, on branch `dk-and-rpk-migration`, on top of `66b1c81`
 **Date:** 2026-10-22, 21:26–21:36 BST (gate to cluster stop), by Claude Opus 5.5
 **Result:** **COMPLETE.** L1–L4 (RH2), V3 and H1 hold; gate **RH2** holds and **DatastoreKit G4 holds**.
 - **RH2 equals RH1, and so RH0, bit for bit in both modes.** All six comparisons of prompt §1.4.1–§1.4.4 give
@@ -806,7 +806,7 @@ None. This prompt changes no code (README §5 rule 8). Each check above is one a
     `11-reference.sqlite` does not. The readers' `before/` copies are under `11-readers/{resumed,scalars}/before/`.
   - No prompt deletes them (README §3); the user may remove the campaign's stores after 12's review.
 - **DatastoreKit G4 holds for SI**, recorded on this board (§2). The text for DatastoreKit's extraction board
-  (12's draft; the user's commit, P14), with this commit's hash filled in at the review:
+  (12's draft; the user's commit, P14), with this commit's hash (`2179854`) filled in at the review:
 
   > **G4 holds for StochasticInstanton (SI), 2026-10-22.** SI has adopted `datastorekit` **`v0.5.0`** (tag object
   > `6a6809d`, commit `f47b9a2`), which meets "SI has adopted `v0.3.0` or later" (`v0.4.0` addendum, standing in
@@ -819,7 +819,7 @@ None. This prompt changes no code (README §5 rule 8). Each check above is one a
   > 2. **Both suites pass**, at SI's `66b1c81`: default 732 (731 passed, 1 skipped); integration 67 (66 passed,
   >    1 skipped).
   > 3. **A small grid was rebuilt through the package** (SI's RH2, dk-and-rpk-migration prompt 11, commit
-  >    `<this commit>`), under a real Ray cluster with `raypoolkit` `v0.2.0`: a quadratic-potential grid, 10
+  >    `2179854`), under a real Ray cluster with `raypoolkit` `v0.2.0`: a quadratic-potential grid, 10
   >    shards, one trajectory and ten each of `FullInstanton`, `SlowRollInstanton` and `CompactionFunction`, built
   >    straight through, killed by `SIGTERM` in the `FullInstanton` stage and resumed (the package's actors pruned
   >    the 2 unvalidated rows at open; the resume computed the 6 not kept), and built scalars-only. Each store
