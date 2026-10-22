@@ -4,7 +4,7 @@
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
-the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package; 09 landed and reviewed (§5.22): SI's layer deleted, every pool the package's, U5's drop policy before Ray, `--inventory` refused until 10, `[config-datastore-cannot-be-imported-before-the-layer]` closed; 10 landed and reviewed (§5.23): the inventory is `read_inventory` over 24 `inventory_spec`s (22 definitions), `tools/inventory_report.py` prints it before Ray, every registered class is covered (U8), `[show-all-flag-unused]` closed and `[gci-value-table-outside-the-inventory]` opened; DatastoreKit `v0.5.0` released at SI's request and evaluated (§5.24, §5.25), 10a and 10b written to adopt it before 11 (U12); 10a landed and reviewed (§5.26): `datastorekit` `v0.5.0` pinned and installed, the distribution replaced, K11 holds on the installed package; 10b landed (§5.27): `GradientCoupledInstanton`'s spec counts `GradientCoupledInstantonValue` as a further value table, every registered class is covered and none excluded (24 specs, 6 read through), the report prints the count, `[gci-value-table-outside-the-inventory]` closed. U1–U9 ruled (2026-10-12),
+the pool is the package's, RayPoolKit G4 holds; 05 landed and reviewed (§5.17): SI's data is `config/datastore.py`, the 15 vectorized gets pass the mapping; 06 landed and reviewed (§5.18): `InflatonTrajectory`'s prune cascades to its value rows, the 12 hooks take `prune`, and the factories carry `owner_column`, `validated_column` and `revalidate`; 07 landed and reviewed (§5.19): RH1 equals RH0 bit for bit in both modes, and `pre-datastorekit` is tagged (annotated; pushed by the user 2026-10-21); 08–11 written (§5.20); 08 landed and reviewed (§5.21): `datastorekit` `v0.4.0` pinned and installed, one distribution added, K7 holds on the installed package; 09 landed and reviewed (§5.22): SI's layer deleted, every pool the package's, U5's drop policy before Ray, `--inventory` refused until 10, `[config-datastore-cannot-be-imported-before-the-layer]` closed; 10 landed and reviewed (§5.23): the inventory is `read_inventory` over 24 `inventory_spec`s (22 definitions), `tools/inventory_report.py` prints it before Ray, every registered class is covered (U8), `[show-all-flag-unused]` closed and `[gci-value-table-outside-the-inventory]` opened; DatastoreKit `v0.5.0` released at SI's request and evaluated (§5.24, §5.25), 10a and 10b written to adopt it before 11 (U12); 10a landed and reviewed (§5.26): `datastorekit` `v0.5.0` pinned and installed, the distribution replaced, K11 holds on the installed package; 10b landed and reviewed (§5.27): `GradientCoupledInstanton`'s spec counts `GradientCoupledInstantonValue` as a further value table, every registered class is covered and none excluded (24 specs, 6 read through), the report prints the count, `[gci-value-table-outside-the-inventory]` closed. U1–U9 ruled (2026-10-12),
 U10 (2026-10-19), U11 (2026-10-20), U12 (2026-10-22); P1–P19 stand as proposed. The
 DatastoreKit release requested by [`datastorekit-v0.2.4-brief.md`](datastorekit-v0.2.4-brief.md) is
 out, as `v0.3.0` (README §0.4), and is carried unchanged into `v0.4.0`, which the campaign pins
@@ -73,7 +73,7 @@ on any of them.
 | 09 | [Adopt `datastorekit`](09-adopt-datastorekit.md) | the DatastoreKit swap; **U5**; closes `[config-datastore-cannot-be-imported-before-the-layer]` | Opus | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.22) | `f4da58f` | [`09-adopt-datastorekit.md`](../../.documents/dk-and-rpk-migration/09-adopt-datastorekit.md) |
 | 10 | [Port the inventory](10-port-the-inventory.md) | **U6**, **U8**; `inventory_spec`, `tools/inventory_report.py`; closes `[show-all-flag-unused]` | Opus | ✍️ 2026-10-21 | ✅ 2026-10-21 (§5.23) | `e2c7b22` | [`10-port-the-inventory.md`](../../.documents/dk-and-rpk-migration/10-port-the-inventory.md) |
 | 10a | [Pin `datastorekit` `v0.5.0`](10a-pin-datastorekit-v0.5.0.md) | the DatastoreKit pin moved to `v0.5.0` (**U12**; `f47b9a2`) | Sonnet | ✍️ 2026-10-22 | ✅ 2026-10-22 (§5.26) | `80d99a7` | [`10a-pin-datastorekit-v0.5.0.md`](../../.documents/dk-and-rpk-migration/10a-pin-datastorekit-v0.5.0.md) |
-| 10b | [Count the gradient value table](10b-count-the-gradient-value-table.md) | **U12**; `extra_values` on `GradientCoupledInstanton`; closes `[gci-value-table-outside-the-inventory]` | Opus | ✍️ 2026-10-22 | ✅ 2026-10-22 (§5.27) | this commit | [`10b-count-the-gradient-value-table.md`](../../.documents/dk-and-rpk-migration/10b-count-the-gradient-value-table.md) |
+| 10b | [Count the gradient value table](10b-count-the-gradient-value-table.md) | **U12**; `extra_values` on `GradientCoupledInstanton`; closes `[gci-value-table-outside-the-inventory]` | Opus | ✍️ 2026-10-22 | ✅ 2026-10-22 (§5.27) | `19716cd` | [`10b-count-the-gradient-value-table.md`](../../.documents/dk-and-rpk-migration/10b-count-the-gradient-value-table.md) |
 | 11 | [Rehearse through both packages (RH2)](11-rehearse-through-both-packages.md) | **RH2**, bitwise against RH1; **DatastoreKit G4** | Opus | ✍️ 2026-10-21; amended 2026-10-22 (U12: at 10b's tree, on `v0.5.0`) | ⬜ | — | — |
 | 12 | Close the migration | `CLAUDE.md`, rules, documents, handover to P2, close | Sonnet | ⬜ | ⬜ | — | — |
 
@@ -103,6 +103,7 @@ before each dispatch:
 - [`prompt-09.md`](orchestrator/prompt-09.md) — used for 09 (`597730f`).
 - [`prompt-10.md`](orchestrator/prompt-10.md) — used for 10 (`62cdca5`).
 - [`prompt-10a.md`](orchestrator/prompt-10a.md) — used for 10a (`3fd8778`).
+- [`prompt-10b.md`](orchestrator/prompt-10b.md) — used for 10b (`d590b30`).
 
 ### 1.1 Items
 
@@ -1840,7 +1841,7 @@ fixed in this follow-up (records only); nothing is opened.
 
 ### 5.27 After prompt 10b (2026-10-22)
 
-- **Landed:** this commit, results note
+- **Landed:** `19716cd`, results note
   [`10b-count-the-gradient-value-table.md`](../../.documents/dk-and-rpk-migration/10b-count-the-gradient-value-table.md).
   **COMPLETE:** X1–X5 hold; no stop condition met; `[gci-value-table-outside-the-inventory]` closed (§4); nothing
   opened.
@@ -1875,8 +1876,69 @@ fixed in this follow-up (records only); nothing is opened.
 - **Found, not acted on:** a store with no gradient rows prints and fingerprints as before (read from the code); a spec
   with `extra_values` and no `values` would print the extra counts alone (SI has none); DatastoreKit's spec-guard
   advice (leave out an empty `extra_values`) is for the RunRegistryKit adoption.
-- **Rollback:** `git revert` of this commit alone; nothing in the venv (README §4.4).
+- **Rollback:** `git revert` of `19716cd` alone; nothing in the venv (README §4.4).
 - **Deviations:** the board section (correction 1); the grep's 51 lines (3); the report literals (4); the report's
   format (5); the column test's own non-vacuity check; the stale-exclusion literal (8); two report tests (7, 11); the
   gradient read-back keyed by δN★; one assertion in each `main.py` test; `ruff format` on the three test modules (only
   added lines reflowed); breakage 4 removes both prints; the docstrings and comments (6). No `UNINTENDED DRIFT`.
+
+**Orchestrator review of prompt 10b (2026-10-22)**, by orchestrator note
+[`prompt-10b.md`](orchestrator/prompt-10b.md), at `19716cd`. All eleven checks pass. The residue is fixed in this
+follow-up (records only); nothing is opened.
+- **(1) Scope.** 8 files: the factory, `tools/inventory_report.py`, the three inventory test modules, the results note,
+  the board and `OPEN-ISSUES.md`. One commit of the agent's on `d590b30`, no amend in the reflog, no other branch;
+  `git status` clean; nothing untracked.
+- **(2) The factory.** By `ast`, only `inventory_spec` changed; the diff is the `extra_values` keyword (`:181`) and the
+  comment (`:153-155`), which now says the table is counted, 0 for a row stored without full values.
+- **(3) The spec tests.** `EXPECTED_SPECS`, both literals evaluated: 24 entries, each with a fifth element; the first
+  four equal `d590b30`'s for all 24; the one non-empty fifth is `GradientCoupledInstanton`'s. `_as_table` returns
+  `dict(spec.extra_values)`. The column test checks the extra table, its column and that the column's foreign keys name
+  exactly the owner, and asserts that it met every extra table `EXPECTED_SPECS` names (its own non-vacuity check). By
+  `ast`, the functions changed are `_slot_tables`, `_as_table`, the column test, the placement test and the
+  stale-exclusion test; none added or removed.
+- **(4) Coverage.** `READ_THROUGH` six, `GradientCoupledInstantonValue → ("GradientCoupledInstanton", "extra_values")`;
+  `EXCLUDED == {}`, still defined; `SLOTS` names `"extra_values"`; `_slot_tables` returns a mapping's keys; the
+  placement `(24, 6, 0)`. The stale-exclusion case passes `READ_THROUGH` without the class, so it still asserts the one
+  failure, "excluded with no reason".
+- **(5) The report.** `_counts_text` added; `_record_lines` and `_compute_lines` print each extra table's rows by its
+  name, sorted, 0 as 0 (`| 5 value rows; 3 GradientCoupledInstantonValue rows`); otherwise only the module docstring
+  changes, and `test_the_report_reads_nothing` still holds. `test_inventory_report.py`'s ten tests and `_rec` equal
+  `d590b30`'s by `ast`; the two new tests assert the whole gradient section (a 3 and two 0s, verbose and not) and that
+  the trajectories', compaction functions' and full instantons' lines print as 10's, the table named on four lines only.
+- **(6) The store test.** The third row: `set_store_full_values(False)` before `object_store`, at `dns[1]`, `_values`
+  populated. The read-back, keyed by δN★, asserts the three triples of §1.4 exactly, beside 10's `problems == ()`.
+  `EXPECTED_COUNTS` differs by `GradientCoupledInstanton` 2 → 3 alone; the report test differs by the gradient lines
+  (correction 4) and a summary assertion; each `main.py --inventory` test gains a printed-count assertion; every other
+  assertion unchanged.
+- **(7) The breakages**, extracted from the results note and replayed in `bash` (`--check`, apply, `-R --check`,
+  revert): 1, the identity test (`At index 4 diff: {} != {…}`), the column test and coverage ("… does not name it in
+  extra_values"); 2, the identity and column tests (`extra_values GradientCoupledInstantonValue.instanton_serail`); 3,
+  `ValueError: inventory_classes(): GradientCoupledInstanton names GradientCoupledInstantonProfile both as its value
+  table and in its extra_values`; 4, both new report tests; 5, coverage, "in more than one place (read through an
+  owner's spec, excluded)". Tree clean after.
+- **(8) By running it.** The test's own `_STORE_SCRIPT` at `19716cd`, into the scratchpad under a private Ray (exit 0).
+  `read_inventory` from `site-packages`: the three triples, `problems == ()`, no Ray initialised. `main.py --inventory`
+  (address `127.0.0.1:9`, `RAY_ADDRESS` the same), with and without `--show-all`: exit 0, stderr empty, the gradient
+  section with the counts, the store's files unchanged; no Ray process after. The fingerprint with the committed spec
+  and with `extra_values` removed: overall `e3437a9b…7c78` and `ffac9333…8658`, GCI `e342c0aa…12ec` and
+  `5b88f64c…ef74`, 1 of 24 class digests differing — the pre-dispatch prototype's four digests and the results note's.
+- **(9) U5, replayed** at `19716cd` over the 31 subsets, with the committed spec and with `extra_values` removed:
+  decisions, tables and messages equal, 10 closed; the prototype's count.
+- **(10) The suites.** The agent's 732 and 67. The orchestrator re-ran both at `19716cd` (20:23 BST, load 24–67):
+  default **732 (731 passed, 1 skipped)**, 34.1 s; integration **67 (66 passed, 1 skipped)**, 50.1 s. `slow` not run
+  (no `ComputeTargets/`, `Numerics/` or `Interpolation/` change). `ruff check --select F401,F811,F821`: 0 in each of
+  the five files, as at the gate.
+- **(11) Hygiene and the records.** `pip freeze` equals the dispatch copy; `pip check` clean. DatastoreKit `2900d82`
+  and RayPoolKit `17029d9`, clean. The 17 store files and the 835 `~/ScienceData/` entries keep their mtimes and sizes.
+  No Ray process; the lock free. The results note follows README §5.1 with the prompt's §6 additions; the board has the
+  §1 row, X1–X5, the header and this section with the rollback, the issue §3 → §4; `OPEN-ISSUES.md` the row in §7, 59
+  open, 29 closed.
+  - *Residue, fixed here:* "this commit" → `19716cd` (board ×3, results note ×7); the header's "10b landed" reads
+    "landed and reviewed"; this note added to the list of orchestrator notes; the campaign's line in
+    `.prompts/INDEX.md` (10b landed and reviewed; the issue closed; 6 open).
+- **The deviations are accepted.** All are the note's corrections or sound choices; the column test's own non-vacuity
+  check and the δN★-keyed read-back are stronger than asked. `ruff format` on the three test modules reflowed only
+  lines the commit adds (by `ast`, every unchanged function equal).
+- **Handed on to 11.** The inventory counts `GradientCoupledInstantonValue`; RH2's stores hold no gradient rows (U11),
+  so their `--inventory` output differs from 10's report nowhere a gradient row is absent, and a clean store prints
+  `problems: none`. The suites start from **732** and **67**; `slow` from S1's 69.

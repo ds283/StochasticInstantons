@@ -3,7 +3,7 @@
 **Subject:** `GradientCoupledInstanton`'s `inventory_spec` declares `GradientCoupledInstantonValue` as a further value
 table (`extra_values`, DatastoreKit `v0.5.0`, pinned by 10a), so that `read_inventory`, and any fingerprint taken
 through it, counts that table per record; 10's spec, coverage and store tests and the report follow
-**Commit:** this commit, on branch `dk-and-rpk-migration`, on top of `d590b30`
+**Commit:** `19716cd`, on branch `dk-and-rpk-migration`, on top of `d590b30`
 **Date:** 2026-10-22, by Claude Opus 5.5
 **Result:** **COMPLETE.** X1–X5 hold. One keyword in the spec, `extra_values={"GradientCoupledInstantonValue":
 "instanton_serial"}`, and its comment made true; nothing else in the factory. The 30 registry entries are placed
@@ -151,7 +151,7 @@ other helpers are unchanged (by `ast`):
 ### X5 — the records
 
 `[gci-value-table-outside-the-inventory]` closed: board §3 → §4 with how, `.documents/OPEN-ISSUES.md` §6a → §7, its
-header 60 → 59 open, 28 → 29 closed, 2026-10-22. The board's header, §1 row, X1–X5 and §5.27. Prose this commit makes
+header 60 → 59 open, 28 → 29 closed, 2026-10-22. The board's header, §1 row, X1–X5 and §5.27. Prose `19716cd` makes
 false: the spec's comment, the report's docstring, the store test's docstring and the `EXPECTED_SPECS` and `EXCLUDED`
 comments, all corrected in place. `.claude/rules/pool-read-apis.md` says nothing of the table (checked) and is
 unchanged.
@@ -181,7 +181,7 @@ unchanged.
    multiset. `IMPLEMENTATION CHOICE`.
 9. **One assertion added to each `main.py --inventory` test** (the printed text carries the count), under the
    prompt's §1.4 last bullet. `IMPLEMENTATION CHOICE`.
-10. **`ruff format` on the three test modules**, which 10 left formatted: it reflowed only lines this commit adds;
+10. **`ruff format` on the three test modules**, which 10 left formatted: it reflowed only lines `19716cd` adds;
     the store test's δN★ lookup is a small nested function so that it formats readably. `tools/inventory_report.py`
     was already formatted as edited. `IMPLEMENTATION CHOICE`.
 11. **Breakage 4 removes both of the report's extra prints** (the record lines' and the summary's), the prompt's
@@ -558,10 +558,10 @@ On the five Python files the diff touches, each at the gate (`git show HEAD:<fil
 
 ## The deliberate-breakage record
 
-Each diff was applied with `git apply` to the working tree that this commit records, the named tests run, and
+Each diff was applied with `git apply` to the working tree that `19716cd` records, the named tests run, and
 reverted with `git apply -R`; after all five, `git diff` and `git status --short` were byte-identical to those saved
 before the first. Each is recorded as `diff -u` labelled `a/` and `b/`, so that `git apply` replays it from a clean
-tree at this commit (`git apply --check` and `-R --check` after the commit: State handed to the next prompt).
+tree at `19716cd` (`git apply --check` and `-R --check` after the commit: State handed to the next prompt).
 
 ### Breakage 1 — `extra_values` removed from the spec
 
@@ -699,7 +699,7 @@ excluded)"`; the other four coverage tests, which build on `EXCLUDED`, meet the 
 
 ## State handed to the next prompt
 
-- **Branch** `dk-and-rpk-migration`, this commit on `d590b30`. Changed: `Datastore/SQL/ObjectFactories/GradientCoupledInstanton.py`
+- **Branch** `dk-and-rpk-migration`, `19716cd` on `d590b30`. Changed: `Datastore/SQL/ObjectFactories/GradientCoupledInstanton.py`
   (the spec's keyword and comment), `tools/inventory_report.py`, `tests/test_inventory_specs.py`,
   `tests/test_inventory_report.py`, `tests/test_inventory_store.py`, the board, `.documents/OPEN-ISSUES.md`. New:
   this note.
@@ -723,4 +723,4 @@ excluded)"`; the other four coverage tests, which build on `EXCLUDED`, meet the 
   ChamPBH and SGK are untouched (read only).
 - **Closed:** `[gci-value-table-outside-the-inventory]` (board §4; `.documents/OPEN-ISSUES.md` §7). **Opened:** none.
   59 open, 29 closed. The README and `.prompts/INDEX.md` are the orchestrator's.
-- **Rollback:** `git revert` of this commit alone; nothing in the venv (README §4.4).
+- **Rollback:** `git revert` of `19716cd` alone; nothing in the venv (README §4.4).
