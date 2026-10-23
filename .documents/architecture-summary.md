@@ -38,7 +38,7 @@ Datastore/                     — SI's factories only (both __init__.py are emp
       DimensionlessQuantity.py, DimensionfulQuantity.py
       integration_metadata.py, redshift.py
       InflatonTrajectory.py, FullInstanton.py, SlowRollInstanton.py, CompactionFunction.py,
-      GradientCoupledInstanton.py, … (23 modules)
+      GradientCoupledInstanton.py, … (22 modules)
 tools/
   inventory_report.py          — the report main.py --inventory prints
   compare_stores.py            — compares two stores by value
@@ -338,7 +338,7 @@ proxy to touch `proxy._ref` directly.
 
 ## RayWorkPool
 
-*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the layer it described is in git at the tag `pre-datastorekit` (`0527480`).*
+*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the copy of `RayWorkPool` it once described, `RayTools/RayWorkPool.py`, was deleted by prompt 04 (`ef13445`) and is in git at that commit's parent.*
 
 `RayWorkPool` is the `raypoolkit` package's (`from raypoolkit import
 RayWorkPool`, pinned in `requirements.txt` at `v0.2.0`, never editable); SI has

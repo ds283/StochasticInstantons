@@ -77,7 +77,7 @@ parent rows without first deleting their child rows leaves orphans; SQLite then
 reuses the freed serials, causing UNIQUE constraint violations on the next run.
 Always `DELETE FROM <value_table> WHERE <fk_col> IN (serials)` first.
 See `.claude/rules/validate-on-startup.md` for the cascade map and pattern. The
-package calls the hook (DatastoreKit's client contract, §3); for a replicated
+package calls the hook (DatastoreKit's client contract, §3, with §9.5); for a replicated
 table it prunes the owner with the rows of its unit, which a child table joins
 by declaring an `owner_column` (§2).
 

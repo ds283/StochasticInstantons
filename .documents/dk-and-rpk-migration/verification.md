@@ -862,7 +862,7 @@ block replaces **the second column** of the G4 row of that package's extraction 
 adopted `v0.3.0` or later (U37; `actor-names` U3; `factory-defaults` U5; `object-timestamp` U6; `fingerprint`
 U6)", stays), RayPoolKit's at `:666` (its first column is "**G4**"). The line numbers are those of the checkouts'
 `HEAD` (DatastoreKit `2900d82`, RayPoolKit `17029d9`). The drafts name only SI commits that exist, 12's own not among them
-(the results note says "this commit" for it, which the orchestrator fills in).
+(12's own is `ae4f489`).
 
 **DatastoreKit's G4 cell**, in the form of its G3 cell. The italic notes after the first paragraph are the cell's
 own, carried verbatim (extracted from the file, not retyped; the results note shows the `diff`):

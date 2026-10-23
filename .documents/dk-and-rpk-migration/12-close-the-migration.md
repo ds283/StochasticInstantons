@@ -3,7 +3,7 @@
 **Subject:** the campaign's close. `CLAUDE.md`, the rules and the architecture documents now describe the two
 packages; the prose in code that cited a deleted layer is corrected; the final measurements are taken; each
 package's gate record is drafted for its own board; and P2 has its handover.
-**Commit:** this commit, on branch `dk-and-rpk-migration`, on `47c0a77` (the orchestrator's note for 12; code
+**Commit:** `ae4f489`, on branch `dk-and-rpk-migration`, on `47c0a77` (the orchestrator's note for 12; code
 unchanged since `18b490a`). **Result:** complete. Y1–Y7 hold. No build ran, no store was opened, no Ray cluster
 was started, nothing was installed, and nothing was changed outside this repository. The suites give 732 / 67 / 69
 before and after, and the `ast` of every touched Python file is unchanged but for two strings.
@@ -335,7 +335,7 @@ The other 222 are in dated records (the results notes 01–10, 219; `verificatio
 (The sweep reads `git ls-files`; this note is new, so it was added to the index with `git add -N` before the final
 runs, and the counts below include it.)
 
-**After**, at the working tree before this commit: **301 lines in 20 files**.
+**After**, at the working tree before `ae4f489`: **301 lines in 20 files**.
 
 ```text
 == 301 lines in 20 files
@@ -712,5 +712,5 @@ There is no next prompt in this campaign. The branch `dk-and-rpk-migration` is c
 - **State.** The suites give 732 (731 passed, 1 skipped), 67 (66 passed, 1 skipped) and `slow` 69 (all passed). No
   SI Ray process is running, the lock is free, and `ray stop` was never run. DatastoreKit (`2900d82`), RayPoolKit
   (`17029d9`), ChamPBH and SecondaryGWKit are untouched; the venv is unchanged (`pip freeze` 83 lines, `pip check`
-  clean). **Rollback:** `git revert` of this commit alone; nothing in the venv.
+  clean). **Rollback:** `git revert` of `ae4f489` alone; nothing in the venv.
 

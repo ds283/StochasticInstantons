@@ -1,7 +1,7 @@
 # dk-and-rpk-migration campaign — implementation state
 
-**Last updated:** 2026-10-23 · **Status: COMPLETE — 15 of 15 prompts landed (01–12, 01a, 10a, 10b); 12, at this
-commit, closed the campaign (§5.30); before it, 01 and 01a
+**Last updated:** 2026-10-23 · **Status: COMPLETE — 15 of 15 prompts landed (01–12, 01a, 10a, 10b); 12, at `ae4f489`,
+closed the campaign (§5.30); before it, 01 and 01a
 landed and reviewed; 02 landed at its third attempt (§5.12, §5.13): RH0 holds and is bitwise
 reproducible in both modes; 05–07 written after 02's review (§5.14); 03 landed and reviewed
 (§5.15): `raypoolkit` `v0.2.0` pinned and installed; 04 landed and reviewed (§5.16): `RayTools/` deleted,
@@ -76,7 +76,7 @@ on any of them.
 | 10a | [Pin `datastorekit` `v0.5.0`](10a-pin-datastorekit-v0.5.0.md) | the DatastoreKit pin moved to `v0.5.0` (**U12**; `f47b9a2`) | Sonnet | ✍️ 2026-10-22 | ✅ 2026-10-22 (§5.26) | `80d99a7` | [`10a-pin-datastorekit-v0.5.0.md`](../../.documents/dk-and-rpk-migration/10a-pin-datastorekit-v0.5.0.md) |
 | 10b | [Count the gradient value table](10b-count-the-gradient-value-table.md) | **U12**; `extra_values` on `GradientCoupledInstanton`; closes `[gci-value-table-outside-the-inventory]` | Opus | ✍️ 2026-10-22 | ✅ 2026-10-22 (§5.27) | `19716cd` | [`10b-count-the-gradient-value-table.md`](../../.documents/dk-and-rpk-migration/10b-count-the-gradient-value-table.md) |
 | 11 | [Rehearse through both packages (RH2)](11-rehearse-through-both-packages.md) | **RH2**, bitwise against RH1; **DatastoreKit G4** | Opus | ✍️ 2026-10-21; amended 2026-10-22 (U12: at 10b's tree, on `v0.5.0`) | ✅ 2026-10-22 (§5.28) | `2179854` | [`11-rehearse-through-both-packages.md`](../../.documents/dk-and-rpk-migration/11-rehearse-through-both-packages.md) |
-| 12 | [Close the migration](12-close-the-migration.md) | `CLAUDE.md`, rules, documents, the final measurements, the G4 drafts, the handover to P2, the close; closes `[test-counts-stale-in-claude-md]` and `[pool-prose-stale-after-raypoolkit-adoption]` | Sonnet | ✍️ 2026-10-23 | ✅ 2026-10-23 (§5.30) | this commit | [`12-close-the-migration.md`](../../.documents/dk-and-rpk-migration/12-close-the-migration.md) |
+| 12 | [Close the migration](12-close-the-migration.md) | `CLAUDE.md`, rules, documents, the final measurements, the G4 drafts, the handover to P2, the close; closes `[test-counts-stale-in-claude-md]` and `[pool-prose-stale-after-raypoolkit-adoption]` | Sonnet | ✍️ 2026-10-23 | ✅ 2026-10-23 (§5.30) | `ae4f489` | [`12-close-the-migration.md`](../../.documents/dk-and-rpk-migration/12-close-the-migration.md) |
 
 **Legend.** ✍️ written · ⏸ held, with what it waits on · ⬜ not yet · ✅ landed.
 
@@ -106,6 +106,7 @@ before each dispatch:
 - [`prompt-10a.md`](orchestrator/prompt-10a.md) — used for 10a (`3fd8778`).
 - [`prompt-10b.md`](orchestrator/prompt-10b.md) — used for 10b (`d590b30`).
 - [`prompt-11.md`](orchestrator/prompt-11.md) — used for 11 (`66b1c81`).
+- [`prompt-12.md`](orchestrator/prompt-12.md) — used for 12 (`47c0a77`).
 
 ### 1.1 Items
 
@@ -2112,7 +2113,7 @@ G4 cells and the forms of their holding neighbours. Nothing dispatched; nothing 
 
 ### 5.30 After prompt 12 (2026-10-23)
 
-- **Landed:** this commit. Results note
+- **Landed:** `ae4f489`. Results note
   [`12-close-the-migration.md`](../../.documents/dk-and-rpk-migration/12-close-the-migration.md); record
   [`verification.md`](../../.documents/dk-and-rpk-migration/verification.md) §4 (the close). **COMPLETE: the
   campaign is closed.** Y1–Y7 hold. Started from `47c0a77`, on the branch `dk-and-rpk-migration`, with the tree clean,
@@ -2177,3 +2178,76 @@ G4 cells and the forms of their holding neighbours. Nothing dispatched; nothing 
     the package's `--inventory`, `shard_key_audit`, `sharded_store copy`, `closed_store_files` and `delete_store`),
     and `[hfp-closed-form-audit-not-run]` (`.documents/OPEN-ISSUES.md` §2) as P2's first prompt.
   - *Next infrastructure campaign:* RunRegistryKit (README §7).
+
+**Orchestrator review of prompt 12 (2026-10-23)**, by orchestrator note
+[`prompt-12.md`](orchestrator/prompt-12.md), at `ae4f489`. All twelve checks pass. **The campaign is closed.** The
+residue is fixed in this follow-up (records and prose only), with one statement corrected that the close had made
+false; nothing is opened, so `.documents/OPEN-ISSUES.md` stands at 57 open, 31 closed.
+- **(1) Scope.** 29 files, all in the prompt's §5 list (the rule files `compute-targets.md`, `ray-dispatch.md` and
+  `validate-on-startup.md` gained pointers under Y2; `measure/out/12-*` holds ten files); neither memory note
+  touched. One commit of the agent's on `47c0a77`, no amend in the reflog, no tag, nothing pushed; `git status`
+  clean. `.documents/` deletions only in `INFRASTRUCTURE.md`, `architecture-summary.md`, `FILE_MAP.md` and
+  `OPEN-ISSUES.md`; `verification.md` +178 −0, the results note new.
+- **(2) The sweep.** The orchestrator's `sweep.py --commit 47c0a77` prints the 246 lines in 21 files; at `ae4f489`,
+  301 in 20 files, as the agent reported. The 24 non-dated lines after are the 7 that stay, `tools/compare_stores.py`'s
+  four (the old layer cited at the tag), the test docstring's two (history), and the documents' five (three naming
+  `pool.inventory()` as absent, two naming the old files); the rest are dated records, `verification.md` §4 and the
+  results note. No line names a deleted file as current.
+- **(3) Prose only.** The orchestrator's own `ast` script (docstrings stripped at every level), `47c0a77` against
+  `ae4f489`: `picard.py`, `InflatonTrajectory.py` and the test module identical; `tools/compare_stores.py` differs in
+  top-level statement 15 alone, the two `GLOBAL_BOOKKEEPING` values. `git diff -U0` shows only comments, the docstring
+  and those strings. `ruff check --select F401,F811,F821`: 0 in each. The tag's lines the strings now cite
+  (`pre-datastorekit:Datastore/SQL/Datastore.py:539-547`, `:551-552`; `ShardedPool.py:88`, `:296`, `:244-291`) and the
+  package's (`datastorekit/SQL/Datastore.py:793-805`, `:809-815`; `ShardedPool.py:946`, `:995`, `:3202-3203`) hold;
+  the old `:317`, `:639-652` held at 01's `84a5cfc` and not at the tag (D3 is right).
+- **(4) `CLAUDE.md`.** Only the counts, the three rules' pointers and the paragraph after the protected list changed.
+  The 13 entries exist; both pins are `requirements.txt:16` and `:59`; RayPoolKit's README at `v0.2.0` has "Using
+  it" (`:85`). *Residue:* rule 5's pointer to contract §3 now names §9.5, as the brief asked.
+- **(5) The rules.** Every changed line read. The installed citations hold: `ShardedPool.py:3718` (the `read_table`
+  refusal), `:3695` (`read_table`), `:3131` and `:3441` (`object_get`, `object_store`), `:3147-3169` (the replicated
+  write's comment); `raypoolkit/RayWorkPool.py:290` (the in-flight guard), `:26-29`; README "The handlers" and "The
+  sizes" are bold paragraphs of "The constructor". `_do_not_populate`: in `main.py` (`:262`, `:290`, `:357`), in
+  neither package. The coverage section names `EXPECTED_SPECS`, `READ_THROUGH`, `EXCLUDED` and
+  `test_every_registered_class_is_placed_exactly_once` as the test spells them (`:106`, `:206`, `:217`, `:438`).
+- **(6) The documents.** The rewritten sections read in full. Checked against the package: `object.py:5-38`,
+  `factory_base.py:5-80`, `@ray.remote class Datastore` at `Datastore.py:37`, `RayWorkPool.py:385`
+  (`obj.available`), the constructor's `ValueError`s, contract §9.6 ("the layer never sets it and never reads it"),
+  `main.py`'s pool built with 15 of the 16 arguments (`:1273-1289`), `MAX_INFLIGHT_PIPELINE = 50` (`main.py:65`),
+  `validated_column` and `revalidate` in `InflatonTrajectory.py` alone, `--inventory` and the drop refused with
+  exit 2 (`main.py:107-129`). **One statement was false, made so by the close:** `INFRASTRUCTURE.md` §1 put
+  `RayTools/RayWorkPool.py` at the tag `pre-datastorekit`, and the dated notes heading the two `RayWorkPool` sections
+  said the same. `RayTools/` was deleted by 04 (`ef13445`); `git ls-tree pre-datastorekit RayTools` is empty. Fixed
+  here: the paragraph puts the old datastore layer at the tag and the copy of `RayWorkPool` at `ef13445`'s parent,
+  and the two notes say so. *Residue:* `architecture-summary.md`'s "(23 modules)" counted `__init__.py`; it reads 22.
+- **(7) The citations.** Every backticked path in the added text of `CLAUDE.md`, the rules, the three documents and
+  `verification.md` exists in the tree, the installed package, the tag or the package repositories, but for
+  `RayTools/RayWorkPool.py` (check 6); relative paths resolved by hand.
+- **(8) The G4 drafts.** Identical in `verification.md` §4.3 and the results note. DatastoreKit's ends with the G4
+  cell's italic notes byte for byte (4,714 characters, extracted from `:1539` by the orchestrator); RayPoolKit's keeps
+  the checklist pointer. Every SHA exists and is the commit described; the orchestrator re-ran DatastoreKit's script
+  at `f4da58f` (197 files, 0 layer imports or literals) and RayPoolKit's at `ef13445` (2 literals, 16 `constructs`,
+  387 non-`.py` lines); `ef13445` changes 8 lines of `main.py` (1 added, 7 removed), as the draft says.
+- **(9) `verification.md` §4.** The RH table agrees with §1–§3; the closing lists cover DatastoreKit's §10 (5 items)
+  and RayPoolKit's §9; the handover names the tag's import order, the stores' path and 483 MiB, and the package's
+  tools by module.
+- **(10) The measurements.** Both scripts re-run at `47c0a77`: RayPoolKit's equals `measure/out/12-…` byte for byte;
+  DatastoreKit's differs only in its "given as" line (the agent passed the full SHA). At `ae4f489` RayPoolKit's reads 2
+  literals (the docstring still names `RayTools`, as history) and 650 non-`.py` lines. `pip freeze` equals the
+  dispatch copy and the committed one; `pip check` clean.
+- **(11) The suites**, re-run at `ae4f489` (02:25 BST, load 21): default 732 (731 passed, 1 skipped), 43.2 s;
+  integration 67 (66 passed, 1 skipped), 59.2 s. The `slow` run (69 passed, 404 s) is the agent's; check 3 found no
+  code changed, so it was not re-run.
+- **(12) The records and hygiene.** The board COMPLETE, row 12 ✅, Y1–Y7, the line after §2's table, the two issues
+  in §4, §3's four unchanged, §5.30 with the four open issues and five decisions. `.prompts/INDEX.md`: 0 live,
+  1 halted, 5 complete by its table; the row `2026-10-11 → 2026-10-23`, `§6a; 4`. `OPEN-ISSUES.md`: 57 rows in
+  §1–§6a, 26 rows in §7 naming 31 issues. The 17 store files and all 1,061 entries under `~/ScienceData/` keep their
+  dispatch mtimes and sizes; no Ray process; the lock free; DatastoreKit `2900d82`, RayPoolKit `17029d9`, ChamPBH
+  `807f175`, SecondaryGWKit `216e44d`, each clean.
+  - *Residue, fixed here:* `ae4f489` for "this commit" (board ×3, results note ×3, `verification.md` ×1); this note
+    added to the list of orchestrator notes; the `RayTools` statement and the two notes (check 6); "(22 modules)";
+    rule 5's §9.5.
+- **The deviations are accepted.** D1 (`MAX_INFLIGHT_PIPELINE`) and D2 (`_do_not_populate`, the sketch's note)
+  correct statements Y2–Y3 found false; D3 is right (check 3); D5's scratch repository and D7's `ls-remote` and `du`
+  touched nothing of SI's; D6's extra `measure/out/12-*` files are in the prompt's glob.
+- **Handed on.** Nothing in this repository. To the user: the two G4 commits in DatastoreKit and RayPoolKit (P14), from
+  `verification.md` §4.3; the merge into `main` (P15); the rehearsal stores (483 MiB); P9, P10, P6.

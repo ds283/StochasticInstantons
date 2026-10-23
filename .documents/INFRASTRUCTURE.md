@@ -53,10 +53,12 @@ supplies, and what the package does with it:
 | The inventory | `inventory_spec()` on the factories; `tools/inventory_report.py` and `main.py --inventory` | `read_inventory(primary, factories)`: read-only, on a closed store, with no Ray (§4, §7) |
 | The work queue | the work items, `task_builder`, any handlers, and the call sites in `main.py` and the plot scripts | `RayWorkPool`: the state machine, the in-flight cap, the progress lines |
 
-SI's old layer, which these packages replaced, is in git at the tag
-`pre-datastorekit` (`0527480`): `Datastore/object.py`, `Datastore/SQL/*.py` and
-`RayTools/RayWorkPool.py` there. No store written by it is readable by the
-current tree (the package refuses it); the tag reads them.
+SI's old datastore layer, which `datastorekit` replaced, is in git at the tag
+`pre-datastorekit` (`0527480`): `Datastore/object.py` and `Datastore/SQL/*.py`
+there. SI's copy of `RayWorkPool`, `RayTools/RayWorkPool.py`, went earlier: it
+was deleted by prompt 04 (`ef13445`) and is in git at that commit's parent, and
+the tag already uses `raypoolkit`. No store written by the old layer is
+readable by the current tree (the package refuses it); the tag reads them.
 
 ---
 
@@ -448,7 +450,7 @@ sample grid endpoint is known before dispatch:
 
 ## 9. `RayWorkPool` — the distributed work-queue
 
-*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the layer it described is in git at the tag `pre-datastorekit` (`0527480`).*
+*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the copy of `RayWorkPool` it once described, `RayTools/RayWorkPool.py`, was deleted by prompt 04 (`ef13445`) and is in git at that commit's parent.*
 
 `RayWorkPool` is `raypoolkit`'s (`from raypoolkit import RayWorkPool`, pinned in
 `requirements.txt` at `v0.2.0`). Its documentation is RayPoolKit's `README.md`
