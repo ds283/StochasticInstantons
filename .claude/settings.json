@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"${CLAUDE_PROJECT_DIR:-.}\" 2>/dev/null; if [ -x ./venv/bin/python ] && [ -d var/runs ]; then ./venv/bin/python -m runregistrykit list 2>&1 || echo 'run registry: runregistrykit list failed; run it by hand'; else echo 'run registry: not available here (no ./venv/bin/python or var/runs/); skipped'; fi; exit 0",
+            "statusMessage": "Reading the run registry..."
+          }
+        ]
+      }
+    ]
+  }
+}

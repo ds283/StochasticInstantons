@@ -35,6 +35,22 @@ the change touches `ComputeTargets/`, `Numerics/`, `Interpolation/`, or
 `.claude/rules/test-selection.md` for the full decision rule and the current
 list of `slow`-marked files.
 
+## Long-running jobs — the run registry
+
+RunRegistryKit (`runregistrykit`, pinned at `v0.2.0` with its store layer) records each registered
+run in `var/runs/`; `runregistrykit.toml` at the repository root configures it. It records; it does
+not schedule, supervise, restart or lock. The detail is `.claude/rules/run-registry.md`.
+
+- **Discovery.** Run `./venv/bin/python -m runregistrykit list` at the start of a session (the
+  `SessionStart` hook in `.claude/settings.json` runs it) and before launching anything long, and
+  report anything `running`, stale or unknown.
+- **Launching.** A registered run goes through the wrapper `RunDrivers/registered_run.py`, which
+  prompt 03 of `rrk-adoption` adds. `main.py` stays launchable on its own, without the registry,
+  and a run launched that way is recorded nowhere. The plot scripts and `main.py --inventory` are
+  never registered.
+- **Stores** of registered runs live under `var/datastores/`. Since `var/` is ignored, **never run
+  `git clean` with `-x` or `-X`**, which deletes ignored files, the stores among them.
+
 ## Critical rules — read before touching any file
 
 Five rules have caused rework when violated. They are detailed in

@@ -1,6 +1,6 @@
 # rrk-adoption campaign — implementation state
 
-**Last updated:** 2026-10-23 · **Status: READY — 0 of 5 prompts landed; 01–05 written (§5.1). R1–R7,
+**Last updated:** 2026-10-23 · **Status: READY — 1 of 5 prompts landed; 01–05 written (§5.1). R1–R7,
 U1 and U2 ruled by the user; P1–P14 stand as proposed (README §6). The branch `rrk-adoption` is cut
 from `main` at `1c223e8`, after `dk-and-rpk-migration` was merged into `main` (R7).**
 The plan is [`README.md`](README.md), written on 2026-10-23 at `8b4f615`. Prompts 01–05 were written
@@ -50,7 +50,7 @@ any of them.
 
 | # | Prompt | Model | Status |
 |---|---|---|---|
-| 01 | [`01-pin-config-and-rules.md`](01-pin-config-and-rules.md) | Sonnet | written |
+| 01 | [`01-pin-config-and-rules.md`](01-pin-config-and-rules.md) | Sonnet | **landed** 2026-10-23 (`60687f0` and this commit) |
 | 02 | [`02-the-fingerprinter.md`](02-the-fingerprinter.md) | Sonnet | written |
 | 03 | [`03-the-wrapper.md`](03-the-wrapper.md) | Opus | written |
 | 04 | [`04-rehearse-registered-runs.md`](04-rehearse-registered-runs.md) | Opus | written |
@@ -62,11 +62,11 @@ any of them.
 
 | Item | Prompt | What | Status |
 |---|---|---|---|
-| **C1** | 01 | the pin, in a commit of its own; the venv; RunRegistryKit's suite on the installed package | — |
-| **C2** | 01 | `runregistrykit.toml` (no `[stores]`), `var/` ignored, `var/runs/` and `var/datastores/` | — |
-| **C3** | 01 | `CLAUDE.md`'s section and `.claude/rules/run-registry.md` | — |
-| **C4** | 01 | the `SessionStart` discovery hook (U1) | — |
-| **C5** | 01 | `tests/test_registry_config.py` | — |
+| **C1** | 01 | the pin, in a commit of its own; the venv; RunRegistryKit's suite on the installed package | done |
+| **C2** | 01 | `runregistrykit.toml` (no `[stores]`), `var/` ignored, `var/runs/` and `var/datastores/` | done |
+| **C3** | 01 | `CLAUDE.md`'s section and `.claude/rules/run-registry.md` | done |
+| **C4** | 01 | the `SessionStart` discovery hook (U1) | done |
+| **C5** | 01 | `tests/test_registry_config.py` | done |
 | **F1** | 02 | `config/fingerprint.py`: format 1, `SPEC_DIGESTS`, the fingerprinter | — |
 | **F2** | 02 | `[stores]` in the config | — |
 | **F3** | 02 | `tests/test_fingerprint_format_guard.py`, with the `v0.5.0` amendment (P5) | — |
@@ -91,7 +91,7 @@ any of them.
 
 | Gate | Holds when | Status |
 |---|---|---|
-| **Pin** | 01's acceptance: `runregistrykit` 0.2.0 installed from the tag, not editable; the package's suite passes on it; the config, `var/`, the rules and the hook in place | not yet |
+| **Pin** | 01's acceptance: `runregistrykit` 0.2.0 installed from the tag, not editable; the package's suite passes on it; the config, `var/`, the rules and the hook in place | **held** 2026-10-23 |
 | **Fingerprint** | 02's acceptance: `SPEC_DIGESTS[1]` pinned and guarded; the golden fingerprint reproduced | not yet |
 | **Wrapper** | 03's acceptance: the wrapper's tests pass; `main.py` unchanged and importing nothing of the package | not yet |
 | **R** | 04's acceptance: the four registered builds recorded as planned; the resumed store and RH2's reference equal to `reference` | not yet |
@@ -145,3 +145,12 @@ None.
   `quadratic-minimal.yaml` with `--targets homogeneous` (U11 of `dk-and-rpk-migration`), and two
   additions of SI's own: the discovery hook (U1) and the comparison with RH2.
 - **Next:** 01.
+
+### 5.2 After prompt 01 (2026-10-23)
+
+- **Landed** in two commits on `rrk-adoption`: the pin alone, `60687f064a2a706bb39ea6c69fe8f4ace78375a8`, then this commit (config, ignore rule, rules, hook, test, results note). Results: [`.documents/rrk-adoption/01-pin-config-and-rules.md`](../../.documents/rrk-adoption/01-pin-config-and-rules.md).
+- **Gate Pin holds.** `runregistrykit` 0.2.0 from `0bae3a3`, not editable; the freeze changed by that one line; RunRegistryKit's suite on the installed package: 410 tests, OK, 1 skipped (the three failures of README §0.3 pass). `list` on the empty root exits 0; the hook degrades to a notice with `var/runs/` aside.
+- **Suites:** default 738 (737 passed, 1 skipped); `integration` 67 (66 passed, 1 skipped).
+- **One deviation:** `git check-ignore -q` takes a single path, so C5 item 3 is parametrized over the two (6 tests, not 5).
+- No issue opened; `OPEN-ISSUES.md` and `INDEX.md` need no change beyond the INDEX line's status (updated).
+- **Next:** 02 and 03, each needing only 01.
