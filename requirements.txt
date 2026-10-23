@@ -60,6 +60,7 @@ raypoolkit @ git+https://github.com/ds283/RayPoolKit@v0.2.0
 referencing==0.37.0
 requests==2.34.2
 rpds-py==2026.5.1
+runregistrykit[stores] @ git+https://github.com/ds283/RunRegistryKit@v0.2.0
 scipy==1.17.1
 seaborn==0.13.2
 six==1.17.0
