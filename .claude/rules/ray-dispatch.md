@@ -241,8 +241,11 @@ are tiny so the queue drains quickly. Collect all items where
 
 Feed only the missing items into a second `RayWorkPool` with a conservative
 `max_task_queue` (e.g. 20). `RayWorkPool`'s main loop guards task creation
-on `len(self._inflight) < self._max_task_queue`, so the Ray object store
-never gets flooded — no manual batch sizing is required.
+on `len(self._inflight) < self._max_task_queue` (`raypoolkit/RayWorkPool.py:290`),
+so the Ray object store never gets flooded — no manual batch sizing is required.
+The defaults are 5, 1 and 200 for `create_batch_size`, `process_batch_size` and
+`max_task_queue` (`raypoolkit/RayWorkPool.py:26-29`; RayPoolKit's README at
+`v0.2.0`, "The constructor", "The sizes").
 
 ### Why not the grouper-batch approach used in ChamPBH/SecondaryGWKit?
 

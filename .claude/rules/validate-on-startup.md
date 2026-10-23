@@ -75,7 +75,8 @@ the schema hasn't been migrated yet.
 
 `InflatonTrajectory` is replicated, so its value table also declares
 `"owner_column": "trajectory_serial"` in `register()`, which DatastoreKit's
-prune requires before it lets the cascade delete those rows.
+prune requires before it lets the cascade delete those rows (client contract,
+§2, `owner_column`; §3, `validate_on_startup`).
 
 When adding a new factory that has both a parent table and a child value/sample
 table, add a row to this table and implement the cascade delete pattern above.

@@ -13,32 +13,35 @@ pipeline skips work that is already stored and validated).
 
 ## Repository layout
 
+*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the layer it described is in git at the tag `pre-datastorekit` (`0527480`).*
+
 ```
 main.py                        — orchestrator / CLI entry-point
 config/
   argument_parser.py           — CLI + YAML argument parsing
   defaults.py                  — string/float precision constants
   model_list.py                — builds the list of inflationary models
-  sharding.py                  — ShardedPool configuration (shard key, tables)
+  sharding.py                  — the ShardedPool's table lists, shard key, read_table_config
+  datastore.py                 — what SI hands to datastorekit: the factory registry, --drop groups, serial batch sizes
 ComputeTargets/
   InflatonTrajectory.py        — background ODE integration
   FullInstanton.py             — full MSR instanton BVP
   SlowRollInstanton.py         — slow-roll-approximated instanton BVP
-(raypoolkit package, pinned in requirements.txt)
-  RayWorkPool                  — distributed work-queue abstraction
-Datastore/
-  object.py                    — DatastoreObject base class
+(packages, pinned to tags in requirements.txt; not in this repository)
+  raypoolkit                   — RayWorkPool, the distributed work queue
+  datastorekit                 — ShardedPool, the Datastore actors, SerialPoolBroker, ProfileAgent,
+                                 DatastoreObject, SQLAFactoryBase, read_inventory, two tools
+Datastore/                     — SI's factories only (both __init__.py are empty)
   SQL/
-    ShardedPool.py             — multi-shard coordinator (primary API)
-    ClientPool.py              — single-database client pool
-    Datastore.py               — Ray-remote database actor
-    SerialPoolBroker.py        — monotone serial-number service
-    ProfileAgent.py            — optional query profiler
-    ObjectFactories/
-      base.py                  — SQLAFactoryBase (factory protocol)
+    ObjectFactories/           — one factory per persisted type, subclassing SQLAFactoryBase
       version.py, store_tag.py, tolerance.py
       DimensionlessQuantity.py, DimensionfulQuantity.py
       integration_metadata.py, redshift.py
+      InflatonTrajectory.py, FullInstanton.py, SlowRollInstanton.py, CompactionFunction.py,
+      GradientCoupledInstanton.py, … (23 modules)
+tools/
+  inventory_report.py          — the report main.py --inventory prints
+  compare_stores.py            — compares two stores by value
 CosmologyConcepts/
   DimensionlessQuantity.py     — base for dimensionless physics values
   DimensionfulQuantity.py      — base for dimensional physics values
@@ -150,81 +153,98 @@ the diffusion matrix D_{ij}(φ, π) needed for the stochastic equations.
 
 ## Datastore layer
 
-### DatastoreObject base class (`Datastore/object.py`)
+*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the layer it described is in git at the tag `pre-datastorekit` (`0527480`).*
 
-Every persistable domain object inherits from `DatastoreObject`:
+The datastore layer is the `datastorekit` package (`v0.5.0`, pinned in
+`requirements.txt`, never editable); SI has no copy of it. What a client gives
+it is DatastoreKit's client contract, `docs/client-contract.md` at the tag; its
+`README.md`, "Using it", is the index. `.documents/INFRASTRUCTURE.md` §1 lists
+what SI supplies and what the package does; this section is the short form. SI's
+old layer is in git at the tag `pre-datastorekit` (`0527480`).
 
-```python
-class DatastoreObject:
-    def __init__(self, store_id: Optional[int]):
-        self._my_id = store_id
+### DatastoreObject base class (`datastorekit.object`)
 
-    @property
-    def store_id(self) -> Optional[int]:
-        return self._my_id
-
-    @property
-    def available(self) -> bool:
-        return self._my_id is not None
-```
+Every persistable domain object inherits from `datastorekit.object.DatastoreObject`
+(`datastorekit/object.py:5-38`), which carries `_my_id`, the read-only
+properties `store_id` (it raises `RuntimeError` until the id is set),
+`available` (`_my_id is not None`) and `timestamp` (the row's timestamp as the
+factory passed it, or `None`), and takes `store_id` and the keyword-only
+`timestamp` in its constructor.
 
 `available` is the single canonical test for whether an object has been
-persisted. `RayWorkPool` reads this property directly.
+persisted. `RayWorkPool` reads this property directly
+(`raypoolkit/RayWorkPool.py:385`).
 
-### ObjectFactory pattern (`Datastore/SQL/ObjectFactories/base.py`)
+### ObjectFactory pattern (`datastorekit.SQL.factory_base.SQLAFactoryBase`)
 
-Each persisted type has a factory class inheriting `SQLAFactoryBase`, which
-implements four methods:
+Each persisted type has a factory in `Datastore/SQL/ObjectFactories/`
+inheriting `SQLAFactoryBase`; `config/datastore.py` registers an instance of
+each (30 registered classes). The base's abstract hooks are `register()` and
+`build()`; it defaults `store()`, `validate()`, `validate_on_startup()`,
+`revalidate()`, `owned_serials()` and `inventory_spec()` (client contract, §3
+and §9.5):
 
 | Method | Runs on | Purpose |
 |---|---|---|
-| `register()` | startup | declares the SQLAlchemy schema (columns, version/timestamp flags) |
+| `register()` | startup | declares the SQLAlchemy schema (columns, version/timestamp flags, `validate_on_startup`; `owner_column` and `validated_column` where the pool repairs or prunes a replicated class) |
 | `build(payload, conn, ...)` | Datastore actor | **query only** — looks up existing row; returns unpopulated object if not found |
 | `store(obj, conn, ...)` | Datastore actor | inserts new row(s); sets `obj._my_id`; serialises `obj._values` to JSON |
 | `validate(obj, conn, ...)` | Datastore actor | consistency check; sets `validated = TRUE` in database |
+| `validate_on_startup(conn, table, tables, prune)` | actor at open; the pool for a replicated class | reports unvalidated rows; deletes them, with their child rows, under `prune` |
+| `revalidate`, `owned_serials` | the pool | `InflatonTrajectory` defines `revalidate`; no SI factory defines `owned_serials` |
+| `inventory_spec()` | `read_inventory` | how the inventory reads the class (22 definitions, 24 classes) |
 
 The critical invariant is that `build()` **never calls `inserter()`**. It can
 only find or miss. If it misses, it returns an object with `store_id = None`,
 which signals to `RayWorkPool` that computation is needed.
 
-### Datastore actor (`Datastore/SQL/Datastore.py`)
+### Datastore actor (`datastorekit.SQL.Datastore`)
 
-A single `@ray.remote class Datastore` wraps a SQLite connection. It owns a
-registry of all factories (keyed by class name string) and exposes methods
-`get()`, `store()`, `validate()`, `read_table()`, and `inventory()`. Each
-method finds the relevant factory and delegates to it.
+A `@ray.remote class Datastore` per shard wraps a SQLite connection. It is
+given SI's registry (`config/datastore.py`'s `factories`), builds the tables
+from each factory's `register()`, and serves `object_get`, store, validate and
+`read_table` by finding the relevant factory and delegating to it. It has no
+`inventory()`. Beside the shard actors the package runs one `SerialPoolBroker`
+(serial numbers, leased in the batches of `serial_batch_sizes`) and, if asked,
+a `ProfileAgent` (`--profile-db`).
 
-### ShardedPool (`Datastore/SQL/ShardedPool.py`)
+### ShardedPool (`datastorekit.SQL.ShardedPool`)
 
 The primary API seen by `main.py` and all compute targets. It coordinates
 multiple Datastore actors (one per shard), routing calls to the right shard
-based on the shard key.
+based on the shard key. `main.py` builds it from the CLI and from
+`config/sharding.py` and `config/datastore.py` (the contract's §1 lists the
+arguments).
 
 **Sharding configuration** (`config/sharding.py`):
 
 - **Shard key type:** `delta_Nstar` — each shard holds all data for one ΔN★
   value.
 - **Replicated tables:** metadata and small domain objects are identical across
-  all shards (`version`, `tolerance`, `efold_value`, `delta_Nstar`, `N_init`,
-  `N_final`, `phi_value`, `pi_value`, `inflaton_mass`, `quartic_coupling`,
-  `InflatonTrajectory`, `InflatonTrajectoryValue`, potentials, etc.).
+  all shards (`version`, `store_tag`, `tolerance`, `efold_value`, `delta_Nstar`,
+  `N_init`, `N_final`, `phi_value`, `pi_value`, `inflaton_mass`,
+  `quartic_coupling`, `InflatonTrajectory`, `InflatonTrajectoryValue`,
+  potentials, etc.).
 - **Sharded tables:** large compute results are partitioned by `delta_Nstar`
   (`FullInstanton`, `FullInstantonValue`, `SlowRollInstanton`,
-  `SlowRollInstantonValue`).
+  `SlowRollInstantonValue`, `CompactionFunction`, `CompactionFunctionSamples`,
+  `GradientCoupledInstanton` and its two child tables).
 
 Every table name appears in **exactly one** of the two collections; a table in
-both (or neither) causes routing failures.
+both (or neither) causes routing failures. (`redshift` is registered and in
+neither, and nothing uses it: `[redshift-registered-in-neither-table-list]`.)
 
 **Key ShardedPool methods:**
 
 | Method | Description |
 |---|---|
-| `object_get(cls_name, **payload)` | Query or upsert a single object; returns `ObjectRef` resolving to the object |
-| `object_get_vectorized(cls_name, shard_key, payload_data=[...])` | Vectorised query for a whole list of objects on one shard; used in Pass 1 |
+| `object_get(cls_name, **payload)` | Query or insert a single object; returns `ObjectRef` resolving to the object (a recorded replicated write for a replicated class) |
+| `object_get_vectorized(cls_name, shard_key, payload_data=[...])` | Vectorised query for a whole list of objects of a sharded class on one shard; used in Pass 1; the shard key is the mapping `{field: key}` (`config.sharding.vectorized_shard_key`) |
 | `object_store(obj)` | Persist a fully populated object; routes to the appropriate shard |
 | `object_validate(obj)` | Validate a persisted object |
 | `read_table(cls_name, ...)` | Read all rows of a replicated table; requires entry in `read_table_config` |
-| `inventory(cls_name, ...)` | Human-readable summary (counts, timestamps); **not** a data-fetch API |
+
+There is no `ShardedPool.inventory()`; see "Inventory" below.
 
 ---
 
@@ -318,31 +338,41 @@ proxy to touch `proxy._ref` directly.
 
 ## RayWorkPool
 
-`RayWorkPool`, from the `raypoolkit` package (pinned in `requirements.txt`), provides the main distributed work-queue abstraction.
-It manages the full lifecycle of a set of compute targets through the stages:
-**lookup → compute → store → persist → validate**.
+*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the layer it described is in git at the tag `pre-datastorekit` (`0527480`).*
+
+`RayWorkPool` is the `raypoolkit` package's (`from raypoolkit import
+RayWorkPool`, pinned in `requirements.txt` at `v0.2.0`, never editable); SI has
+no copy of it. Its documentation is RayPoolKit's `README.md` at the tag, "Using
+it". It provides the main distributed work-queue abstraction and manages the
+full lifecycle of a set of compute targets through the stages: **lookup →
+compute → store → persist → validate**.
 
 ### Constructor
 
 ```python
 RayWorkPool(
-    pool,                         # ShardedPool
-    task_list,                    # iterable of task descriptors
-    task_builder,                 # callable: descriptor → ObjectRef (lookup)
-    compute_handler=...,          # callable: (obj, label) → ObjectRef
-    store_handler=...,            # callable: (obj, pool) → None
-    persist_handler=...,          # callable: (obj, pool) → ObjectRef
+    pool,                         # the ShardedPool: any object with object_store(obj)
+    task_list,                    # iterable of work items
+    task_builder,                 # callable: item → ObjectRef (lookup)
+    compute_handler=...,          # callable: (obj, **kwargs) → ObjectRef   [default: obj.compute(**kwargs)]
+    store_handler=...,            # callable: (obj, pool) → None            [default: obj.store()]
+    persist_handler=...,          # callable: (obj, pool) → ObjectRef       [default: pool.object_store(obj)]
     available_handler=None,       # called when obj already available
     validation_handler=None,      # callable: obj → ObjectRef
     post_handler=None,            # called after each fully processed item
-    label_builder=None,           # callable: obj → str label for logging
-    create_batch_size=10,         # how many tasks to enqueue per loop iteration
-    process_batch_size=10,        # how many completed tasks to drain per iteration
-    max_task_queue=50,            # cap on concurrent in-flight compute tasks
+    label_builder=None,           # callable: obj → label, passed to the compute handler as label=
+    create_batch_size=5,          # the package's defaults: 5, 1 and 200
+    process_batch_size=1,         #   (raypoolkit/RayWorkPool.py:26-29)
+    max_task_queue=200,           # cap on in-flight tasks
     store_results=False,          # if True, collect results in self.results
     title=None,                   # display name for progress reporting
 )
 ```
+
+The sizes are the package's defaults. SI's call sites give their own: for
+example `create_batch_size=20, process_batch_size=20` for the lookup pools, and
+`create_batch_size=5, process_batch_size=3` with `max_task_queue=50`
+(`MAX_INFLIGHT_PIPELINE`, `main.py:55-65`) for the instanton compute pools.
 
 ### Event loop (`run()`)
 
@@ -374,17 +404,20 @@ for each completed ref (via ray.wait, batched by process_batch_size):
 ```
 
 `max_task_queue` prevents flooding the Ray object store: new tasks are only
-enqueued when the number of in-flight compute tasks drops below the cap.
+enqueued when the number of in-flight tasks drops below the cap
+(`raypoolkit/RayWorkPool.py:290`).
 
 ### Default handlers
 
 The default handlers delegate to the standard object protocol:
-- `compute_handler`: calls `obj.compute(label=label)`, returns the `ObjectRef`
+- `compute_handler`: calls `obj.compute(**kwargs)` (with `label=` when a
+  `label_builder` gives one), returns the `ObjectRef`
 - `store_handler`: calls `obj.store()` (resolves the compute `ObjectRef`)
 - `persist_handler`: calls `pool.object_store(obj)`, returns persist `ObjectRef`
 
 Custom handlers (e.g. `inflaton_trajectory_store_handler` in `main.py`) replace
-only the steps that need non-default behaviour.
+only the steps that need non-default behaviour. A pool with no compute handler
+(a lookup-only pool; 12 of SI's 16 call sites) passes `compute_handler=None`.
 
 ---
 
@@ -396,12 +429,18 @@ report.
 
 ### Top-level flow
 
+*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the layer it described is in git at the tag `pre-datastorekit` (`0527480`).*
+
 ```
 parse_args()
+  → if args.inventory:                     # before Ray starts, before any pool opens
+        inventory = read_inventory(args.database, factories)
+        print(format_inventory_report(inventory, args.database, verbose=args.show_all))
+        exit
+  → drop_tables = tables_to_drop(args.drop)    # refused here (exit 2) if it would leave references
   → ray.init(address=args.ray_address)
-  → ShardedPool(...)  using config/sharding.py
-  → if args.inventory: inventory(pool, units)
-    else:              execute(pool, units)
+  → ShardedPool(...)  using config/sharding.py and config/datastore.py
+  → execute(pool, units)
 ```
 
 ### Pipeline stages (`execute`, then `run_all_pipelines`)
@@ -482,23 +521,32 @@ For each item in compute_list:
 RayWorkPool(
     task_list=compute_list,
     task_builder=task_builder,
-    max_task_queue=MAX_INFLIGHT_COMPUTE,   # = 20
+    max_task_queue=MAX_INFLIGHT_PIPELINE,  # = 50 (main.py:65)
 )
 ```
 
-The `max_task_queue=20` cap ensures that at most 20 instanton BVPs are
-in-flight at once, preventing the Ray object store from being flooded.
+The `max_task_queue` cap (`MAX_INFLIGHT_PIPELINE`, 50, which counts the
+in-flight items of every stage, not only the instanton BVPs; `main.py:55-65`)
+keeps the number of in-flight tasks bounded, preventing the Ray object store
+from being flooded.
 
 ### Inventory
 
-`inventory(pool, units)` produces a human-readable summary of datastore
-contents. It calls helper functions `_inventory_dimensionless`,
-`_inventory_dimensionful`, `_inventory_efold`, and `_inventory_object`, each of
-which calls `pool.inventory(cls_name)` and formats the returned aggregated
-counts and date ranges for display.
+*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the layer it described is in git at the tag `pre-datastorekit` (`0527480`).*
 
-`pool.inventory()` returns lossy aggregates (counts, timestamps, label lists),
-not deserialised objects — it is a reporting tool, not a data-fetch API.
+`main.py --inventory` reads the closed store read-only, before Ray starts and
+before any pool opens, with `datastorekit.store_inventory.read_inventory(primary,
+factories)` (DatastoreKit's client contract, §7): it changes nothing, refuses
+`--drop`, and a store that is absent, or that the package refuses, is refused
+with a `RuntimeError`. `tools/inventory_report.py`'s
+`format_inventory_report(inventory, db_name, verbose=False)` renders the
+`StoreInventory` it returns, and `--show-all` is `verbose`. The inventory is
+read over each factory's `inventory_spec()` (§4 of the contract; see
+`.claude/rules/datastore-factories.md`): 24 classes, each registered class
+covered by a spec or read through one.
+
+The inventory is a report — records, counts and named problems — and **not** a
+data-fetch API. There is no `pool.inventory()`.
 
 ---
 
@@ -577,6 +625,6 @@ RayWorkPool:
 | Every table name appears in exactly one of `replicated_tables` / `sharded_tables` | `.claude/rules/pool-read-apis.md`, CLAUDE.md |
 | `FooProxy` never exposes the raw `ObjectRef`; consumers call `.get()` | `.claude/rules/proxy-pattern.md` |
 | Factory `build()` never inserts; only queries | ObjectFactory protocol |
-| `pool.inventory()` is a reporting tool, not a data-fetch API | `.claude/rules/pool-read-apis.md` |
+| There is no `pool.inventory()`; the inventory (`read_inventory`, `main.py --inventory`) is a report, not a data-fetch API | `.claude/rules/pool-read-apis.md` |
 | `available` is a `@property`, never a plain method | `.claude/rules/ray-dispatch.md` |
 | All physics values in reduced Planck units (Mₚ = 1) | CLAUDE.md, Units/ |

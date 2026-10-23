@@ -24,8 +24,11 @@ The physics notes for the onion model live in `notes/onion-model/onion_model.tex
 reference for how the calculation should be performed and carry no
 implementation details.
 
-Default test run: `pytest -m "not integration and not slow"` (~464 of 571
-tests, well under a minute). A `slow`-marked block of the suite runs real
+Default test run: `pytest -m "not integration and not slow"` (732 of 868
+tests; 731 pass and 1 is skipped; well under a minute). The other 136 are the
+67 `integration`-marked tests, which need a live Ray instance and a SQLite
+store (`RAY_ADDRESS=local pytest -m integration`), and the 69 `slow`-marked
+ones. The `slow`-marked block of the suite runs real
 ODE/spectral solves that take minutes each and is only worth including when
 the change touches `ComputeTargets/`, `Numerics/`, `Interpolation/`, or
 `tools/diagnostics/GradientCoupledInstanton/spectrum.py`. See
@@ -47,14 +50,18 @@ See `.claude/rules/ray-dispatch.md` for the full pattern.
 
 **2. `sharded_tables` in `config/sharding.py` is a dict, never a list.**
 It maps `table_name → shard_key_field_name` (e.g. `{"FullInstanton": "delta_Nstar"}`).
-A list causes a silent `KeyError` deep inside `ShardedPool`.
+A list causes a silent `KeyError` deep inside `ShardedPool`. The pool is the
+`datastorekit` package's; its constructor's table lists are DatastoreKit's
+client contract, §1 (rows 5, 6 and 13).
 
 **3. `sharded_tables` and `replicated_tables` partition the tables — never both.**
 Every table name belongs in exactly one of the two collections in
 `config/sharding.py`. `delta_Nstar` is the shard key type, so it belongs only
 in `replicated_tables`; listing it in `sharded_tables` too made
 `ShardedPool.read_table()` wrongly reject it as sharded. See
-`.claude/rules/pool-read-apis.md` for the full incident and reasoning.
+`.claude/rules/pool-read-apis.md` for the full incident and reasoning, and
+DatastoreKit's client contract, §1 (rows 5 and 6), for what the pool does with
+each list.
 
 **4. All splines use `SplineWrapper`; never call scipy interpolation primitives directly.**
 When adding a new spline, ask the human which x/y transforms to apply before
@@ -64,12 +71,15 @@ the transformed-coordinate `brentq` pattern. See
 catalogue.
 
 **5. `validate_on_startup` must cascade-delete child value rows before deleting parent rows.**
-The value tables (`FullInstantonValue`, `SlowRollInstantonValue`,
-`CompactionFunctionSamples`) have no `ON DELETE CASCADE`. Deleting unvalidated
+The value tables (every child table in the cascade map) have no
+`ON DELETE CASCADE`. Deleting unvalidated
 parent rows without first deleting their child rows leaves orphans; SQLite then
 reuses the freed serials, causing UNIQUE constraint violations on the next run.
 Always `DELETE FROM <value_table> WHERE <fk_col> IN (serials)` first.
-See `.claude/rules/validate-on-startup.md` for the cascade map and pattern.
+See `.claude/rules/validate-on-startup.md` for the cascade map and pattern. The
+package calls the hook (DatastoreKit's client contract, §3); for a replicated
+table it prunes the owner with the rows of its unit, which a child table joins
+by declaring an `owner_column` (§2).
 
 ## Campaigns, the campaign index and the open-issues board
 
@@ -110,13 +120,21 @@ Quadrature/supervisors/base.py
 Units/    MetadataConcepts/    utilities.py    constants.py
 ```
 
-The datastore layer itself (`ShardedPool`, the `Datastore` actor, `ClientPool`,
-`SerialPoolBroker`, `ProfileAgent`, `DatastoreObject` and `SQLAFactoryBase`) is
-the `datastorekit` package, pinned in `requirements.txt`; SI has no copy of it.
-A change to it is made in DatastoreKit and reaches SI through a new pin. SI's
-own data for it (the factory registry, the `--drop` groups and the serial batch
-sizes) is `config/datastore.py`. Do not reformat or reorder anything else in a
-file you are told to modify.
+None of the list is a file of either package. The datastore layer (`ShardedPool`,
+the `Datastore` actor, `ClientPool`, `SerialPoolBroker`, `ProfileAgent`,
+`DatastoreObject` and `SQLAFactoryBase`) is the `datastorekit` package, and
+`RayWorkPool` is the `raypoolkit` package. Each is pinned to a tag in
+`requirements.txt` (`datastorekit` `v0.5.0`, `raypoolkit` `v0.2.0`), installed
+from it and never editable; SI has no copy of either. What a client supplies to
+the first is DatastoreKit's `docs/client-contract.md` at the tag; how the second
+is called is RayPoolKit's `README.md` at its tag, "Using it".
+**A defect in either package is reported to that package's repository, fixed in
+a new release, and reaches SI by a new pin prompt; it is never patched or worked
+around in SI** (DatastoreKit's `v0.3.0` for `DatastoreObject.timestamp` and
+`v0.5.0` for `extra_values` were made at SI's request). SI's own data for the
+datastore package (the factory registry, the `--drop` groups and the serial
+batch sizes) is `config/datastore.py`. Do not reformat or reorder anything else
+in a file you are told to modify.
 
 ## Units convention
 

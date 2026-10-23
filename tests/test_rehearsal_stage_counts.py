@@ -17,15 +17,17 @@
 The rehearsal log parser `.documents/dk-and-rpk-migration/rehearsal/stage_counts.py`
 (dk-and-rpk-migration prompt 01, item T3).
 
-**The fixtures are built from the shape of the lines the code prints, not copied from any run**:
-no StochasticInstanton rehearsal log existed when they were written. The lines are those of
+**The fixtures were built from the shape of the lines the code printed, not copied from any run**:
+no StochasticInstanton rehearsal log existed when they were written. The lines were those of
 RayTools/RayWorkPool.py (the `** TITLE` banner at :181, the progress lines at :556-566, the
-completion and queue summary at :581-590, with rates from `_readable_rate`), of main.py (the
-provenance line before ray.init, the lookup banners, `** STAGE 4: COMPACTION FUNCTIONS`, the
-gradient branch's `>>` lines and the skip lines), of a Datastore actor's integrity report at open
-(`Datastore/SQL/Datastore.py` `_validate_on_startup`, a factory's `Pruned N unvalidated ...`
-line, behind Ray's `(Name pid=N)` prefix and its colour codes), and of build.sh's
-`** driver exit status N`.
+completion and queue summary at :581-590, with rates from `_readable_rate`) and of SI's own
+Datastore actor's integrity report at open (`Datastore/SQL/Datastore.py` `_validate_on_startup`,
+a factory's `Pruned N unvalidated ...` line, behind Ray's `(Name pid=N)` prefix and its colour
+codes), both at prompt 01's commit and both since replaced by the packages `raypoolkit` (prompt
+04) and `datastorekit` (prompt 09), whose logs the parser has read unchanged (prompt 07 for the
+first, prompt 11 for both); and of main.py (the provenance line before ray.init, the lookup banners,
+`** STAGE 4: COMPACTION FUNCTIONS`, the gradient branch's `>>` lines and the skip lines), and of
+build.sh's `** driver exit status N`.
 
 Loaded from its path; no Ray, no store. Under 1 s.
 """

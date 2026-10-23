@@ -36,7 +36,9 @@ primary). The shards are found by the glob `<stem>-shard*<suffix>` beside the pr
 number is checked against the rows of the primary's `shards` table. **No path read from the
 `shards` table is ever opened**, nor is its `filename` column read: a StochasticInstanton primary
 records the absolute path of each shard of the resolved primary
-(`Datastore/SQL/ShardedPool.py:88`, `:296`), which for a copied store names the original's files.
+(`Datastore/SQL/ShardedPool.py:88`, `:296` in git at the tag `pre-datastorekit`, `0527480`, where
+SI's own layer lives), which for a copied store names the original's files; `datastorekit`
+records each shard by its bare file name (`datastorekit/SQL/ShardedPool.py`, `_write_shard_data`).
 
 **What is compared.** Every row of every client table (a table on the shards that is not the
 layer's), as a multiset of identities. A row's identity is its columns but the bookkeeping ones
@@ -90,12 +92,13 @@ EXIT_EQUAL = 0
 EXIT_DIFFERENT = 1
 EXIT_UNREADABLE = 2
 
-# The primary's own tables, which are the layer's and are never compared: StochasticInstanton's
-# (Datastore/SQL/ShardedPool.py:244-284, created at :287-291 by _write_shard_data) and
-# DatastoreKit's, which adds replication_in_flight (client contract section 5). A
-# StochasticInstanton primary holds these five and no client table: the primary's engine creates
-# nothing else (ShardedPool.py:232-291) and writes only shard_keys after creation (:810-821);
-# every Datastore actor is given a shard file, never the primary (:158-191).
+# The primary's own tables, which are the layer's and are never compared. A primary written by SI's
+# own layer (in git at the tag pre-datastorekit, 0527480) holds five of them, defined at
+# Datastore/SQL/ShardedPool.py:244-284 of that tag and created at :287-291 by _write_shard_data,
+# and no client table: its engine creates nothing else (:232-291) and writes only shard_keys after
+# creation (:810-821); every Datastore actor is given a shard file, never the primary (:158-191).
+# A primary written by datastorekit adds replication_in_flight (client contract section 5; defined
+# at datastorekit/SQL/ShardedPool.py:946 and created at :995).
 LAYER_TABLES = frozenset(
     {
         "shards",
@@ -111,9 +114,12 @@ LAYER_TABLES = frozenset(
 # wrote the row, not on the physics. GLOBAL_BOOKKEEPING applies to every table that has the
 # column; BOOKKEEPING_COLUMNS adds per-table ones. Each entry says why. (prompt 01 section 2.2)
 GLOBAL_BOOKKEEPING = {
-    "serial": "the layer's key, leased from the serial broker at insert "
-    "(Datastore/SQL/Datastore.py:317, :639-647); foreign keys are resolved through it",
-    "timestamp": "datetime.now() at insert (Datastore/SQL/Datastore.py:651-652)",
+    "serial": "the layer's key, leased from the serial broker at insert unless the payload gives "
+    "one (pre-datastorekit:Datastore/SQL/Datastore.py:539-547; "
+    "datastorekit/SQL/Datastore.py:793-805); foreign keys are resolved through it",
+    "timestamp": "datetime.now() at insert (pre-datastorekit:Datastore/SQL/Datastore.py:551-552); "
+    "datastorekit stamps a replicated row with the one datetime.now() of the write, the same on "
+    "every shard (datastorekit/SQL/Datastore.py:809-815, ShardedPool.py:3202-3203)",
 }
 
 _LABEL_WHY = (

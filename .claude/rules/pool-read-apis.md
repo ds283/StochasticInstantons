@@ -12,7 +12,8 @@ The package's `ShardedPool` has no `inventory` method; SI's old layer had one,
 a lossy, human-readable summary (labels, counts, earliest/latest timestamps),
 and it went with that layer. Since dk-and-rpk-migration prompt 10 the inventory
 is `datastorekit.store_inventory.read_inventory(primary, factories)`: read-only,
-on a closed store, with no Ray, over each factory's `inventory_spec()`.
+on a closed store, with no Ray, over each factory's `inventory_spec()`
+(DatastoreKit's client contract, §7 for the entry point, §3 and §4 for the spec).
 `main.py --inventory` runs it before Ray starts and prints
 `tools/inventory_report.py`'s report. An inventory is a report, not a data API:
 do not use one to fetch objects for use in a pipeline (e.g. to obtain
@@ -23,8 +24,9 @@ do not use one to fetch objects for use in a pipeline (e.g. to obtain
 `pool.read_table(cls_name, ...)` is the correct API for fetching fully
 deserialised objects from a replicated table. If it raises
 `RuntimeError: ... the read_table service is not available for objects of
-class "..."`, the fix is to add an entry to `read_table_config` in
-`config/sharding.py` — not to route around the gap some other way.
+class "..."` (`datastorekit/SQL/ShardedPool.py:3718`), the fix is to add an
+entry to `read_table_config` in `config/sharding.py` — not to route around the
+gap some other way.
 
 ```python
 read_table_config = {
@@ -34,9 +36,12 @@ read_table_config = {
 }
 ```
 
-`config/sharding.py` is listed as protected infrastructure in `CLAUDE.md`, so
-adding this entry requires the user's explicit go-ahead — flag the missing
-entry and ask, rather than reaching for a workaround.
+`config/sharding.py` is SI's own file and is not on `CLAUDE.md`'s protected
+list. Adding the entry still needs the user's explicit go-ahead: it changes
+which tables the pool serves through `read_table`, and the package refuses an
+entry for a class that is not replicated when the pool opens (DatastoreKit's
+client contract, §1, row 13). Flag the missing entry and ask, rather than
+reaching for a workaround.
 
 ## `sharded_tables` and `replicated_tables` partition the database's tables
 
@@ -60,11 +65,13 @@ When adding a new table to `config/sharding.py`, add it to exactly one of the
 two collections. If a table seems to need to appear in both, that's a sign
 something else is being conflated with shard-key routing — read both
 collections' docstring comments and `object_get`/`object_store` in
-`ShardedPool.py` before adding it to either.
+`datastorekit/SQL/ShardedPool.py` (`:3131`, `:3441`; both check
+`replicated_tables` first) before adding it to either.
 
 ## `pool.read_table()` only ever works for replicated tables
 
-`ShardedPool.read_table()` explicitly raises if `cls_name` is in
+`ShardedPool.read_table()` (`datastorekit/SQL/ShardedPool.py:3695-3731`; contract
+§1, rows 6 and 13) explicitly raises if `cls_name` is in
 `sharded_tables` (it reads from a single, randomly chosen shard, which would
 silently drop data for anything actually partitioned across shards, e.g.
 `FullInstanton`, `SlowRollInstanton`). For sharded tables, fetch records via

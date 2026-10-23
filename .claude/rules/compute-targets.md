@@ -102,7 +102,8 @@ proxy = InflatonTrajectoryProxy(actor)
 ## The `label` parameter
 
 `compute(label=None)` passes the label through to the remote function for
-logging. `RayWorkPool` supplies it via `label_builder` if one is configured.
+logging. `RayWorkPool` supplies it via `label_builder` if one is configured
+(RayPoolKit's README at `v0.2.0`, "The handlers").
 The remote function should include it in any print output so log messages are
 identifiable in a multi-worker environment.
 

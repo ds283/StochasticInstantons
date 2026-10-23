@@ -449,11 +449,12 @@ DEFAULT_TAU_MULTIPLIER = 1.0
 #   3. A Ray task-level hard timeout (outer safety net, defence-in-depth
 #      beyond 1-2 for the case the in-process deadline somehow fails to
 #      fire): NOT implemented here -- ShootingSolver.py/picard.py have no
-#      access to the Ray dispatch layer, and RayTools/RayWorkPool.py (which
-#      main.py's own gradient branch dispatches through) is protected
-#      infrastructure (CLAUDE.md) not to be modified without explicit
-#      instruction, and exposes no per-task timeout/cancel hook to layer
-#      this on top of. A driver that bypasses RayWorkPool and calls
+#      access to the Ray dispatch layer, and RayWorkPool (which main.py's
+#      own gradient branch dispatches through; since dk-and-rpk-migration
+#      prompt 04 it is the pinned raypoolkit package's, not SI's to patch --
+#      CLAUDE.md) exposes no per-task timeout/cancel hook to layer this on
+#      top of (none in raypoolkit/RayWorkPool.py at v0.2.0). A driver that
+#      bypasses RayWorkPool and calls
 #      GradientCoupledInstanton.compute() ObjectRefs directly could add this
 #      via ray.wait(refs, timeout=...) + ray.cancel(ref, force=True) on
 #      whatever is still pending past budget + margin; the prompt-24

@@ -31,7 +31,8 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
             "version": True,
             "timestamp": True,
             "validate_on_startup": True,
-            # Ignored by SI's own layer; DatastoreKit reads it to repair an interrupted validate (U4).
+            # DatastoreKit reads it to repair an interrupted validate (U4); SI's old layer, at the tag
+            # pre-datastorekit, ignored it.
             "validated_column": "validated",
             "columns": [
                 sqla.Column(
@@ -286,7 +287,7 @@ class sqla_InflatonTrajectory_factory(SQLAFactoryBase):
         DatastoreKit calls this (client contract §3) after an interrupted validate of this
         replicated class, on each shard that holds the row, inside a savepoint it opens; it
         keeps a True on a shard that held False, and refuses a False on a shard that held True.
-        SI's own layer never calls it.
+        SI's old layer (at the tag pre-datastorekit) never called it.
 
         The rule, as stored: a row whose N_end is NULL is a failure (store() writes N_end NULL
         exactly on failure) and is validated; otherwise the row is validated when it has at
@@ -416,7 +417,8 @@ class sqla_InflatonTrajectoryValue_factory(SQLAFactoryBase):
             "serial": False,
             "version": False,
             "timestamp": False,
-            # Ignored by SI's own layer; DatastoreKit reads it to put this table in its owner's unit (U4).
+            # DatastoreKit reads it to put this table in its owner's unit (U4); SI's old layer, at the
+            # tag pre-datastorekit, ignored it.
             "owner_column": "trajectory_serial",
             "columns": [
                 sqla.Column(

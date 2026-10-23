@@ -25,6 +25,9 @@ Note: `RayWorkPool` has three distinct handler slots — `store_handler` (calls
 `obj._values`), then `persist_handler` (calls `pool.object_store(obj)`, which
 in turn calls this factory's `store()` method). The factory's `store()` is
 invoked only from `persist_handler`, after `obj._values` is fully populated.
+The handlers and their defaults are RayPoolKit's (its README at `v0.2.0`,
+"The constructor"); the hooks a factory defines, and when the pool calls each,
+are DatastoreKit's client contract, §3 (with §9.5 for the three it defaults).
 
 ### `build()` — query only, no INSERT
 
@@ -199,7 +202,12 @@ means giving it a `type_id`, a `type_id` column on its own factory, a
 
 ## `validate_on_startup` pattern
 
-Factories that set `"validate_on_startup": True` in `register()` must implement:
+Factories that set `"validate_on_startup": True` in `register()` must implement
+the hook below (client contract, §2 and §3). A factory that owns a child value
+or sample table must also delete the child rows first, as
+`.claude/rules/validate-on-startup.md` says; the sketch is the bare shape of the
+hook. For a replicated class the pool prunes at open and requires that a second
+call with `prune=False` then reports nothing (contract, §3):
 
 ```python
 def validate_on_startup(self, conn, table, tables, prune):
@@ -220,8 +228,35 @@ def validate_on_startup(self, conn, table, tables, prune):
 
 When `payload.get("_do_not_populate")` is `True`, `build()` should return the
 object with its `store_id` set but `_values` empty, even if the record exists
-and `validated = True`. This flag is used by `RayWorkPool` for the initial
-existence-check pass, where deserialising the full trajectory would be wasteful.
+and `validated = True`. `main.py` puts this key in the payloads of its Pass 1
+existence check (`.documents/INFRASTRUCTURE.md` §10), where deserialising the
+full trajectory would be wasteful; neither package reads it.
+
+## Every registered factory is covered by the inventory
+
+`main.py --inventory` is `datastorekit.store_inventory.read_inventory` over the
+factories' `inventory_spec()` hooks (client contract, §3 and §4). A
+fingerprint of a store (`datastorekit.store_fingerprint`, §9.7), which
+RunRegistryKit will take for SI in the next infrastructure campaign, is made of
+an inventory, so it reads only the classes that declare a spec; a class that no
+spec covers is passed over without a word (the module docstring of
+`tests/test_inventory_specs.py`). So a new factory registered in
+`config/datastore.py` is covered in exactly one of three ways, and
+`tests/test_inventory_specs.py` fails if it is in none or in more than one
+(`test_every_registered_class_is_placed_exactly_once`):
+
+1. **It declares `inventory_spec()`**, an `InventorySpec` whose `leaves` and
+   `parents` are the columns and references its `build` matches on, and whose
+   `values`, `extra_values`, `tags`, `validated` and `parent_sets` name its child
+   tables. Add its row to `EXPECTED_SPECS`; the test then checks every column the
+   spec names against the table the package builds. A class with
+   `"serial": False` declares no spec (contract, §4).
+2. **Or an owner's spec reads it through**, as a value table: add it to
+   `READ_THROUGH` as `name -> (owner, slot)`, where `slot` is the owner's
+   `values`, `extra_values`, `tags` or `parent_sets`; the test checks that the
+   owner's spec names the table there.
+3. **Or it is excluded** by name in `EXCLUDED`, with a one-line reason.
+   `EXCLUDED` is empty at the close of dk-and-rpk-migration.
 
 ## Idempotency requirement
 
@@ -246,7 +281,10 @@ else:
 
 ### How `ShardedPool` replicates a new row
 
-The pool is the `datastorekit` package's (dk-and-rpk-migration prompt 09). When
+The pool is the `datastorekit` package's (dk-and-rpk-migration prompt 09); the
+steps below are the comment above `_replicated_write`
+(`datastorekit/SQL/ShardedPool.py:3147-3169`) and DatastoreKit's client contract,
+§6. When
 `pool.object_get()` is called for a replicated table, it makes a *recorded*
 replicated write (`_replicated_write`, `_get_impl_replicated_table` in
 `datastorekit/SQL/ShardedPool.py`):

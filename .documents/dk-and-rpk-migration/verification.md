@@ -763,3 +763,181 @@ import ray; print('ray initialised:', ray.is_initialized())
 Each comparison's text output, `stage_counts.py`'s and the H1 tools' were redirected to the `.txt` files of
 [`out/`](out/) named in the results note. The L4 comparison with RH1's records and `rows.py` are scratch scripts,
 reproduced in the results note.
+
+## 4. The close (prompt 12, 2026-10-23)
+
+Results note: [`12-close-the-migration.md`](12-close-the-migration.md). Started from `47c0a77` on the branch
+`dk-and-rpk-migration` (records on `18b490a`, `f5b9334` and `47c0a77`; no code has changed since `18b490a`). 12
+runs no build, opens no store and starts no cluster. The measurements it saves are
+[`../../.prompts/dk-and-rpk-migration/measure/out/`](../../.prompts/dk-and-rpk-migration/measure/out/)`12-*`.
+
+**The campaign is complete.** Both packages are adopted, both gates hold, and RH2 equals RH1 and RH0 bit for bit
+in both modes. The instructions and the documents that describe the code now describe the packages. The two
+gate records are drafted below for the packages' boards (§4.3), and the handover to P2 is §4.5.
+
+### 4.1 RH0, RH1 and RH2
+
+| | RH0 | RH1 | RH2 |
+|---|---|---|---|
+| Prompt, section | 02, §1 | 07, §2 | 11, §3 |
+| Tree | `b218760` (results `5868231`): SI's own layer and `RayTools/` | `9214c9b` (06's code `5e41ce8`; results `0527480`, tagged `pre-datastorekit`): SI's own layer, fed by `config/datastore.py` | `66b1c81` (10b's code `19716cd`; results `2179854`): the packages' pools and actors |
+| Packages installed | neither | `raypoolkit` 0.2.0 (`eaef0ce6…`) | `raypoolkit` 0.2.0 (`eaef0ce6…`) and `datastorekit` 0.5.0 (`f47b9a25…`), both from their tags, neither editable |
+| Stores (under `$R`, ten shards each) | `02-reference`, `02-resumed`, `02-scalars`, `02-scalars-2` | `07-reference`, `07-resumed`, `07-scalars` | `11-reference`, `11-resumed`, `11-scalars` |
+| Builds' end (exit status) | `reference` 0; `resumed-a` 1 (by `SIGTERM`, inside the window); `resumed-b` 0; `scalars` 0; `scalars-2` 0 | `reference` 0; `resumed-a` 15 (`SIGTERM`, outside the window); `resumed-a2` 1 (inside); `resumed-b` 0; `scalars` 0 | `reference` 0; `resumed-a` 15 (`SIGTERM`, inside the window); `resumed-b` 0; `scalars` 0 |
+| Comparisons (`tools/compare_stores.py`) | the criterion is set: `reference` against the readers' `before/` copy of `resumed`, and `scalars` (`before/`) against `scalars-2`, `RESULT: equal`, exit 0 | five, each `RESULT: equal`, exit 0, against RH0 and within RH1 | six, each `RESULT: equal`, exit 0, against RH1 and RH0 and within RH2 |
+| `scalar_data.csv` SHA-256 | `b0564eec…58a2` | `b0564eec…58a2` | `b0564eec…58a2` |
+| Schema | 30 tables | RH0's | RH1's |
+| The resume pruned | 2 unvalidated `FullInstanton` rows | 2 (the second interrupt) | 2 of 2 |
+
+`$R` is `~/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration`. The full hash is
+`b0564eecc22f9106dcccb57fd1a419749543c4b9d15dc0ffe7a8e0780e9058a2`.
+
+### 4.2 The final measurements (Y5)
+
+**Both packages' scripts**, each from its own root with its own venv, at the commit 12 started from, `47c0a77`
+(they read a commit, not the working tree). The full outputs are
+`measure/out/12-datastorekit-measure_client_imports.md` and `measure/out/12-raypoolkit-measure_client_pools.md`.
+
+| Script | Measure | At `47c0a77` | The prompt's figure (`18b490a`) |
+|---|---|---|---|
+| DatastoreKit `docs/extraction/measure_client_imports.py si` (clean, `2900d82`) | layer modules absent | 7 (the two `__init__.py` present, empty) | 7 |
+| | `.py` files read outside the layer, unparsed | 201, 0 | 201, 0 |
+| | import statements, string literals, `import_module` / `__import__` calls naming a layer module | 0, 0, 0 | 0, 0, 0 |
+| | factory-module imports | 25 (`config/` 22, `CosmologyConcepts/` 2, `tests/` 1) | 25 (22, 2, 1) |
+| RayPoolKit `docs/adoption/measure_client_pools.py si` (clean, `17029d9`) | `RayTools/` | absent | absent |
+| | imports of `RayTools` (naming a private name), `import_module` / `__import__` calls | 0 (0), 0 | 0 (0), 0 |
+| | string literals naming `RayTools` | 2, both module docstrings (`rehearsal/stage_counts.py:16`, `tests/test_rehearsal_stage_counts.py:16`) | 2, the same |
+| | `RayWorkPool(...)` calls | 16, all `constructs` (12 with `compute_handler=None`, 4 with one) | 16, 12 and 4 |
+| | lines of non-`.py` files naming `RayTools` or `RayWorkPool` | **421** | 402 |
+| | test modules naming either | 1 | 1 |
+| | `ray.is_initialized()` after the verdicts | False | False |
+
+- **The non-`.py` count is 421, not 402.** It counts `.prompts/` and the rest of the working record, which grow
+  with every records commit: 255 lines in `.prompts/` (236 at `18b490a`; the 19 more are prompt 12's own
+  and the orchestrator's note's), 18 in `.claude/` and 148 in `.documents/`. The figure outside the campaign's own records
+  (`prompts/`, `.prompts/`) is **166** (`.claude/` 18, `.documents/` 148); it was 166 at `f5b9334`. Not a gate.
+- **What Y1–Y3 moved** (measured on a copy of the tree with their edits, before this section and the results note
+  were written; the script's `--repository` option reads the copy, no repository of SI's is touched):
+  432 in all and 177 outside the records: `.claude/` 19 (+1: `ray-dispatch.md` +2, the pointer to the package's defaults; `datastore-factories.md` −1,
+  the corrected `_do_not_populate` sentence), `.documents/` 157 (+9: `INFRASTRUCTURE.md` +5 and
+  `architecture-summary.md` +4, the rewritten sections) and
+  `CLAUDE.md` 1 (+1, the paragraph that names both packages). Y4 moved nothing: the script still finds 2 string
+  literals, the test docstring still names `RayTools` as history. This section and the results note add lines
+  of their own to `.documents/`.
+- The DatastoreKit script has no `--repository` option; 12 changes no import (the results note's `ast` check), so its
+  figures do not move. The orchestrator re-runs both at 12's commit.
+
+**The suites**, serially (the default and `integration` runs in the foreground, the `slow` run in the background),
+their outputs saved as `measure/out/12-suite-*.txt`. The load was that of backups and system services; no suite or
+Ray job of any project ran:
+
+| Run | Collected | Result | Wall (pytest; total) | Load at start |
+|---|---|---|---|---|
+| all (`--collect-only`) | 868 | — | — | — |
+| default, `-m "not integration and not slow"`, **before** 12's edits (01:45 BST) | 732 of 868 | 731 passed, 1 skipped | 37.98 s; 42.3 s | 75.5 |
+| `RAY_ADDRESS=local`, `-m integration`, before (01:45 BST) | 67 | 66 passed, 1 skipped | 57.40 s; 58.7 s | 93.9 |
+| default, **after** (02:02 BST) | 732 | 731 passed, 1 skipped | 34.07 s; 38.1 s | 51.7 |
+| `RAY_ADDRESS=local`, `-m integration`, after (02:02 BST) | 67 | 66 passed, 1 skipped | 47.62 s; 48.8 s | 38.9 |
+| `-m slow`, after, in the background (02:03 BST) | 69 | 69 passed, 799 deselected, 11 warnings | 404.36 s (6:44); 6:45.80 in all | 75.7 |
+
+`-m "not integration"` collects 801; `-m "slow and integration"` collects none; the nine `slow`-marked files are
+`.claude/rules/test-selection.md`'s table (1 + 1 + 3 + 4 + 5 + 18 + 11 + 10 + 16 = 69). The counts equal 11's,
+at `66b1c81`, and S1's 69 (§1.5). They were run after Y4's edits to `ComputeTargets/` (a comment in `picard.py`), as
+`.claude/rules/test-selection.md` asks.
+
+**The venv.** `pip freeze` is 83 lines, the saved 81 (`7bb3efd-pip-freeze.txt`) plus the two packages' lines:
+`datastorekit @ git+https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31` and
+`raypoolkit @ git+https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976`; `pip check`: no
+broken requirements; each package's `direct_url.json` records its tag as the requested revision and no editable
+install; `utilities.format_package_provenance(installed_package_provenance())` prints
+`>> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.2.0 (https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976, requested v0.2.0)`,
+the line 11 and every build log since carry. The files are `measure/out/12-pip-freeze.txt` and
+`measure/out/12-suites.md`.
+
+### 4.3 The two G4 records, drafted for the packages' boards (P14)
+
+Neither is committed in its repository: the user makes those commits, or has a session there make them. Each
+block replaces **the second column** of the G4 row of that package's extraction board
+(`prompts/extraction/IMPLEMENTATION_STATE.md`, §2): DatastoreKit's at `:1539` (its first column, "**G4**: SI
+adopted `v0.3.0` or later (U37; `actor-names` U3; `factory-defaults` U5; `object-timestamp` U6; `fingerprint`
+U6)", stays), RayPoolKit's at `:666` (its first column is "**G4**"). The line numbers are those of the checkouts'
+`HEAD` (DatastoreKit `2900d82`, RayPoolKit `17029d9`). The drafts name only SI commits that exist, 12's own not among them
+(the results note says "this commit" for it, which the orchestrator fills in).
+
+**DatastoreKit's G4 cell**, in the form of its G3 cell. The italic notes after the first paragraph are the cell's
+own, carried verbatim (extracted from the file, not retyped; the results note shows the `diff`):
+
+```text
+✅ 2026-10-22: holds. SI adopted `v0.5.0` (the pin at SI `80d99a7`, moved from `v0.4.0` at `1b1ca6d`; installed at `f47b9a255e9ad58e…`, not editable) in its campaign `dk-and-rpk-migration`, and a rehearsal through the package reproduces, bit for bit, the rehearsal made before the swap. Against the checklist, [`docs/adoption/stochasticinstantons.md`](../../docs/adoption/stochasticinstantons.md) §9, with its `v0.4.0` addendum ("SI has adopted `v0.3.0` or later"), which stands in the `v0.5.0` addendum: (1) **the 9 layer files are deleted and the tag imported**: the 7 modules removed and the two `__init__.py` emptied (0 bytes, P6) by SI `f4da58f` (dk-and-rpk-migration prompt 09); `docs/extraction/measure_client_imports.py si --commit 47c0a77`, run from this repository (clean, `2900d82`) with its own venv, finds the 7 absent and 0 import statements, 0 string literals and 0 `import_module` / `__import__` calls naming a layer module in 201 tracked `.py` files (0 unparsed), the same at `f4da58f` (197 files) and `2179854`; the 25 factory-module imports it counts (`config/` 22, `CosmologyConcepts/` 2, `tests/` 1) are SI's own modules importing its factories; `requirements.txt:16` holds `datastorekit @ git+https://github.com/ds283/DatastoreKit@v0.5.0`, installed from the tag, not editable, `pip check` clean; (2) **its suites pass**: the default run 732 (731 passed, 1 skipped) and the integration run 67 (66 passed, 1 skipped) at SI `66b1c81` (RH2's tree), and the same counts again at SI `47c0a77` and after the close's prose edits; the `slow` block, 69 tests, passed after the close's edits (69 passed in 404 s, against 390 s at RH0); (3) **a small grid is rebuilt through the package**: RH2, SI `2179854` (reviewed at `18b490a`), dk-and-rpk-migration prompt 11, under a real Ray 2.55.1 cluster, through the package's `ShardedPool`, `Datastore` actors and `SerialPoolBroker` and `raypoolkit` `v0.2.0`: a quadratic-potential grid on 10 shards (one trajectory and ten each of `FullInstanton`, `SlowRollInstanton` and `CompactionFunction`), built straight through, killed by `SIGTERM` in the `FullInstanton` stage and resumed (the package's actors pruned the 2 unvalidated rows at open; the resume computed the 6 it had not kept), and built scalars-only. Each store equals SI's RH1 store of the same mode, built by SI's own layer at the tag `pre-datastorekit` (`0527480`), and so RH0's, in every stored science column (30 tables, RH1's row counts), by SI's `tools/compare_stores.py` (`sqlite3` `mode=ro`; six comparisons, each `RESULT: equal`, exit 0, only timestamps and the JSON timing keys differing); the schema equals RH1's; `scalar_data.csv` hashes to `b0564eec…58a2` at RH0, RH1 and RH2. Beyond §9: `python -m datastorekit.tools.shard_key_audit` gives `VERDICT: OK` on the three stores; a `python -m datastorekit.tools.sharded_store copy` of `11-reference` is read back with `read_inventory` with no problem and every class's count equal, compares equal, and is deleted by `ShardedPool.delete_store` — the same 11 paths `ShardedPool.closed_store_files` named, and nothing else; `main.py --inventory` reads the stores through `read_inventory` before Ray starts with `problems: none` (24 classes). Not exercised: the package's repair of an interrupted replicated write (the signal fell 2.7 s after the last one, so nothing was in flight). SI's record is `.documents/dk-and-rpk-migration/verification.md` §3 and §4 and the results notes 09 to 12 (campaign `dk-and-rpk-migration`). SI is on `v0.5.0`. *(2026-10-09: the adoption checklist is [`docs/adoption/stochasticinstantons.md`](../../docs/adoption/stochasticinstantons.md), measured at SI `7bb3efd` by 07a; its stores are rebuilt, U31.)* *(2026-10-10: `v0.2.1` is ready to be tagged on extraction prompt 10's commit once CI passes there at both ends, as U23 and U28; 10 makes no tag and pushes nothing. SI's addendum is [`docs/adoption/stochasticinstantons.md`](../../docs/adoption/stochasticinstantons.md#addendum-v021-extraction-prompt-10-2026-10-10).)* *(2026-10-10: `v0.2.1` is made, annotated, on 10's commit `33778b0` (tag object `0ba2e4d`) and pushed, after CI passed there at both ends, [run 38054748108](https://github.com/ds283/DatastoreKit/actions/runs/38054748108): Python 3.12.15 / Ray 2.43.0 / SQLAlchemy 2.0.39 and 3.13.16 / 2.55.1 / 2.0.46, SQLite 3.45.1 at both, each `Ran 486 tests … OK`. SI may now adopt it.)* *(2026-10-11: `v0.2.2` is ready to be tagged on `actor-names` prompt 02's commit once CI passes there at both ends, as U23 and U28; 02 makes no tag and pushes nothing. SI's addendum is [`docs/adoption/stochasticinstantons.md`](../../docs/adoption/stochasticinstantons.md#addendum-v022-actor-names-prompt-02-2026-10-11).)* *(2026-10-11: `v0.2.2` is made, annotated, on 02's commit `6d8ee9a` (tag object `c32d027`) and pushed, after CI passed there at both ends, [run 38131949852](https://github.com/ds283/DatastoreKit/actions/runs/38131949852): Python 3.12.15 / Ray 2.43.0 / SQLAlchemy 2.0.39 and 3.13.16 / 2.55.1 / 2.0.46, SQLite 3.45.1 at both, each `Ran 494 tests … OK`. SI may now adopt it.)* *(2026-10-11: `v0.2.3` is ready to be tagged on `factory-defaults` prompt 02's commit once CI passes there at both ends, as U23 and U28; 02 makes no tag and pushes nothing. SI's addendum is [`docs/adoption/stochasticinstantons.md`](../../docs/adoption/stochasticinstantons.md#addendum-v023-factory-defaults-prompt-02-2026-10-11).)* *(2026-10-11: `v0.2.3` is made, annotated, on `factory-defaults` 02's commit `0de2b16` (tag object `8dac562`) and pushed, after CI passed there at both ends, [run 38177954330](https://github.com/ds283/DatastoreKit/actions/runs/38177954330): Python 3.12.15 / Ray 2.43.0 / SQLAlchemy 2.0.39 and 3.13.16 / 2.55.1 / 2.0.46, SQLite 3.45.1 at both, each `Ran 504 tests … OK`. SI may now adopt it.)* *(2026-10-12: `v0.3.0` is ready to be tagged on `object-timestamp` prompt 02's commit once CI passes there at both ends, as U23 and U28; 02 makes no tag and pushes nothing. SI's addendum is [`docs/adoption/stochasticinstantons.md`](../../docs/adoption/stochasticinstantons.md#addendum-v030-object-timestamp-prompt-02-2026-10-12).)* *(2026-10-12: `v0.3.0` is made, annotated, on `object-timestamp` 02's commit `2f5417e` (tag object `bf0a3b2`) and pushed, after CI passed there at both ends, [run 38220924369](https://github.com/ds283/DatastoreKit/actions/runs/38220924369): Python 3.12.15 / Ray 2.43.0 / SQLAlchemy 2.0.39 and 3.13.16 / 2.55.1 / 2.0.46, SQLite 3.45.1 at both, each `Ran 509 tests … OK`. SI may now adopt it.)* *(2026-10-14: `v0.4.0` is ready to be tagged on `fingerprint` prompt 02's commit once CI passes there at both ends, as U23 and U28; 02 makes no tag and pushes nothing. SI may adopt `v0.3.0` or `v0.4.0`, as it chooses (`fingerprint` U6). SI's addendum is [`docs/adoption/stochasticinstantons.md`](../../docs/adoption/stochasticinstantons.md#addendum-v040-fingerprint-prompt-02-2026-10-14).)* *(2026-10-14: `v0.4.0` is made, annotated, on `fingerprint` 02's commit `c8570e8` (tag object `8e7c1d7`) and pushed, after CI passed there at both ends, [run 38538726292](https://github.com/ds283/DatastoreKit/actions/runs/38538726292): Python 3.12.15 / Ray 2.43.0 / SQLAlchemy 2.0.39 and 3.13.16 / 2.55.1 / 2.0.46, SQLite 3.45.1 at both, each `Ran 530 tests … OK`. SI may adopt `v0.3.0` or `v0.4.0`, as it chooses (`fingerprint` U6).)* *(2026-10-21: `v0.5.0` is ready to be tagged on `extra-values` prompt 02's commit once CI passes there at both ends, as U23 and U28; 02 makes no tag and pushes nothing. SI adopts `v0.5.0` (`extra-values` U5). SI's addendum is [`docs/adoption/stochasticinstantons.md`](../../docs/adoption/stochasticinstantons.md#addendum-v050-extra-values-prompt-02-2026-10-21).)* *(2026-10-22: `v0.5.0` is made, annotated, on `extra-values` 02's commit `f47b9a2` (tag object `6a6809d`) and pushed, after CI passed at both ends on its tree, [run 39729857177](https://github.com/ds283/DatastoreKit/actions/runs/39729857177), on `dfd45c4`, whose tree outside `prompts/` is `f47b9a2`'s (the user's ruling): Python 3.12.15 / Ray 2.43.0 / SQLAlchemy 2.0.39 and 3.13.16 / 2.55.1 / 2.0.46, SQLite 3.45.1 at both, each `Ran 538 tests … OK`. SI adopts `v0.5.0` (`extra-values` U5).)*
+```
+
+**RayPoolKit's G4 cell**, in the form of its G2 and G3 cells:
+
+```text
+**holds** 2026-10-20: SI adopted `v0.2.0` in its campaign `dk-and-rpk-migration`, and the five parts of the checklist's item 8 hold. (1) `RayTools/` is gone: `git ls-tree ef13445 RayTools` is empty (SI's prompt 04), and so it is at `0527480`, `2179854` and `47c0a77`. (2) No import of it, and none of `_default_store_handler`: `docs/adoption/measure_client_pools.py si --commit ef13445`, run from this repository (clean, `17029d9`) with its own venv, gives 0 imports (0 naming a private name) and 0 `import_module` / `__import__` calls naming `RayTools`, and 2 string literals, the module docstrings of `.documents/dk-and-rpk-migration/rehearsal/stage_counts.py:16` and `tests/test_rehearsal_stage_counts.py:16` (dated statements about the log parser's fixtures, not imports), and 1 test module naming it (that docstring); the figures are the same at `0527480`, `2179854` and `47c0a77`. SI took option (a) of item 3: it dropped `_default_store_handler`, and the compute pools use the package's default `store_handler`, `obj.store()`, which is what it passed; `git grep _default_store_handler 47c0a77 -- main.py plot_InstantonSolutions.py plot_GradientCoupledSolutions.py` finds nothing. (3) The pin is in place and the venv installed from it: `raypoolkit @ git+https://github.com/ds283/RayPoolKit@v0.2.0` at `requirements.txt:58` (SI `5396a3d`; `:59` since SI's DatastoreKit pin, `1b1ca6d`, sits above it), `raypoolkit` 0.2.0 at `eaef0ce60e2fc354bb32f0ad576010e6a83c1976`, not editable, named by the provenance line of every build log from RH1 on. (4) SI's suites pass: at `ef13445` the default run 680 (679 passed, 1 skipped) and the integration run 61 (60 passed, 1 skipped), as before the change; at RH2's tree (`66b1c81`) 732 (731 passed, 1 skipped) and 67 (66 passed, 1 skipped). (5) Every site constructs: the same script gives 16 `RayWorkPool(...)` calls, every one `constructs` (12 with `compute_handler=None`, 4 with one), at `ef13445`, `0527480`, `2179854` and `47c0a77`, with `ray.is_initialized()` False; its 5 flags (on 4 calls: `MAX_INFLIGHT_PIPELINE_UNIFIED` = 16, `MAX_INFLIGHT_PIPELINE` = 50 twice, `len(traj_payloads)` twice) were checked by hand at 04, and `model_list` is never empty. The code of `ef13445` is 8 lines of `main.py` (the import, `_default_store_handler` and the `store_handler` it was passed as) and the one import line in each plot script. RH1 (SI `0527480`, `raypoolkit` alone, 2026-10-21) and RH2 (SI `2179854`, with `datastorekit` too, 2026-10-22) ran it under real Ray, on SI's isolated cluster: each built the 10-shard quadratic grid straight through, killed and resumed, and scalars-only, every pool completing and printing its lines in the layout RH0's copy printed (SI's `stage_counts.py` parsed them unchanged), every store equal to RH0's, bit for bit, by SI's `tools/compare_stores.py`. SI's record is `.documents/dk-and-rpk-migration/verification.md` §2 to §4 and the results notes 04, 07, 11 and 12 (campaign `dk-and-rpk-migration`). Checklist: [`docs/adoption/stochasticinstantons.md`](../../docs/adoption/stochasticinstantons.md), measured at SI `7bb3efd`; its item 8 is the acceptance
+```
+
+### 4.4 What went stale in the two checklists, and where it was done
+
+DatastoreKit's checklist §10 ("What goes stale in it", `docs/adoption/stochasticinstantons.md` at `v0.5.0`):
+
+| Item | Done | Where |
+|---|---|---|
+| `CLAUDE.md:89-112`: the layer's files leave the protected list | 09 (`f4da58f`) rewrote the paragraph; 12 names both packages and states the rule | `CLAUDE.md`, "Protected infrastructure" |
+| `.claude/rules/pool-read-apis.md:8-15`: `pool.inventory()` does not exist | 09 and 10 (`e2c7b22`); 12 corrected `:37-39` (the file is not protected) and added the contract pointers | the rule file |
+| `.claude/rules/datastore-factories.md:245-301`: the account of replication | 09 made it the package's; 12 checked it against the package and the contract and added the pointers, and added the coverage section (10's list) | the rule file |
+| `.claude/memory/bug-assign-shard-keys-key-id.md:24` | 09 added the dated status line naming `ShardedPool._assign_shard_keys` (`datastorekit/SQL/ShardedPool.py:3618`, `:3674`, `:3626`); 12 read the lines in the installed `v0.5.0` and left the note | the note |
+| `shard-key-assignment-bug.md` | the same, with both of SI's commits (`3f1caad`, `20d9a61`) | the note, at the repository root |
+
+RayPoolKit's checklist §9:
+
+| Item | Done | Where |
+|---|---|---|
+| `CLAUDE.md:89-109`: `RayTools/` on the protected list | 04 (`ef13445`) removed the entry; 12 names `raypoolkit` | `CLAUDE.md` |
+| `.claude/rules/`, 17 lines in 3 files: `ray-dispatch.md:99-106` | 04 | `ray-dispatch.md`, "Why `RayWorkPool` requires plain classes" |
+| `datastore-factories.md:23-27` and the rest, which stay true | 12 checked each against the package; pointers added | the rule files |
+| `.documents/`, 44 lines in 8 files: `FILE_MAP.md:31`, `:287` | 04 | `FILE_MAP.md` |
+| `INFRASTRUCTURE.md:351-373` and `architecture-summary.md:27-28`, `:319-344` | 04 named the package; 12 gave the package's defaults and rewrote the sections | the two documents |
+| dated records (`gradient-coupled-instanton/24-prerequisite-wallclock-safeguard.md:75`, `:78`, `:86`; `gradient-coupled-plotting/…`; `handoff-notes/2026-10-08/…`) | left: they are the record of the tree they describe | — |
+| `.prompts/`, 27 lines in 8 files | left: history | — |
+
+### 4.5 The handover to P2
+
+README §7 as P2's starting facts, with what 12 checked:
+
+- **Every SI store written before `f4da58f` is refused by the tree** (U31): the June stores
+  (`SMSR_scaling*.sqlite`, `large-grid-1500.sqlite`, `doe-run-500.sqlite`, `quad-ast-small-*.sqlite`), the July
+  `phase_a` stores (`out-gci-convergence-campaign/`), `test-gradient.sqlite`, and RH0's and RH1's. They stay on
+  disk. They are readable by `tools/compare_stores.py` at any commit after 01, and by the tree at the tag
+  `pre-datastorekit` (`0527480`, annotated, on `origin`).
+- **P2's first prompt, `[hfp-closed-form-audit-not-run]`**, reads them from a worktree at the tag that uses the
+  main checkout's venv, where both packages are installed. **The tag's import order matters.** `import
+  config.datastore` first raises `ImportError: cannot import name 'serial_batch_sizes' from partially
+  initialized module 'config.datastore'` (the tag's `Datastore/SQL/ClientPool.py:23`): that is
+  `[config-datastore-cannot-be-imported-before-the-layer]`, closed at 09 for the tree and never for the tag.
+  The layer first works, as the tag's drivers do: `from Datastore.SQL.ShardedPool import ShardedPool`, then
+  `import config.datastore` (30 factories, the tag's own file), then `from raypoolkit import RayWorkPool` (the
+  venv's package), with `ray.is_initialized()` False. 12 checked this on `git archive pre-datastorekit` extracted
+  into its scratch directory, with the main venv and `python -I` and the root put on `sys.path` in the code
+  (since `-I` ignores `PYTHONPATH`); the tree was deleted afterwards. Read only; never resumed: a June store
+  pruned after an interrupted run may hold orphans (`[inflaton-trajectory-prune-orphans-value-rows]`, closed at
+  06 for new builds only). Every driver needs `--ray-address` (`local` for a private instance, or a cluster's
+  address).
+- **P2's own builds** go through the packages into fresh stores, on SI's isolated cluster under the rehearsal
+  lock (`.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start PURPOSE`, `--ray-address 127.0.0.1:6390`,
+  `ray_cluster.sh stop`; never `ray stop`). `tools/compare_stores.py` compares P2's rebuilt grids with the June
+  ones: there a difference is the expected result, named value by value.
+- **What the package adds for P2**: `main.py --inventory` (read-only, before Ray, `read_inventory`);
+  `python -m datastorekit.tools.shard_key_audit PRIMARY`; `python -m datastorekit.tools.sharded_store copy SRC
+  DST`; `ShardedPool.closed_store_files` and `ShardedPool.delete_store`.
+- **The issues this board leaves open** (§5.30 of the board): `[plot-scripts-stale-version-label]` (P2, when it
+  bumps the label), `[redshift-registered-in-neither-table-list]` and
+  `[unified-pipeline-stores-null-instanton-labels]` (unowned), `[gci-picard-inner-fails-on-rehearsal-grid]` (P3).
+  RunRegistryKit is the next infrastructure campaign (README §7).
+- **The rehearsal stores** are under `$R` (`~/ScienceData/StochasticInstantons-rehearsals/dk-and-rpk-migration/`):
+  494,140 KiB (483 MiB) by `du -sk` at 12, each store about 24 MB with its ten shards, with the readers'
+  copies, the profile databases, `02-attempt-1-aborted/`, `02-attempt-2-reader-defect/` and `logs/`. The user may
+  remove them (README §3): RH0's, RH1's and RH2's.
+- **The decisions left to the user**: the merge of `dk-and-rpk-migration` into `main` (P15); the two G4 commits
+  in the package repositories (§4.3); removing the rehearsal stores; the plot scripts' version label and pools
+  (P9, P10); and whether to rename the `Datastore` package (P6).

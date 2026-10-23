@@ -1,6 +1,6 @@
 # Open issues — project-wide index
 
-**Last updated:** 2026-10-22 · **59 open**, 29 closed. Seeded from
+**Last updated:** 2026-10-23 · **57 open**, 31 closed. Seeded from
 [`RECONSTRUCTION.md`](handoff-notes/2026-10-08/RECONSTRUCTION.md) Parts A0–D
 and D0, the open-issue `todo`s of
 [`onion_model.tex`](../notes/onion-model/onion_model.tex) as rewritten in
@@ -12,7 +12,7 @@ the document that holds the argument, the measurements and the next step.
 Do not put issue content here. If this file and its source disagree, the
 source is right.
 
-**One campaign has a status board (`dk-and-rpk-migration`, §6a); every future campaign will.** Until a
+**One campaign has a status board (`dk-and-rpk-migration`, §6a, closed on 2026-10-23; its board stays as the record, and holds the four issues it leaves open); every future campaign will.** Until a
 campaign opens one, the source column points at the reconstruction, a tex
 `todo`, or a results note under `.documents/<campaign>/`. When a campaign
 opens an `IMPLEMENTATION_STATE.md` board and adopts a row, re-point the row at
@@ -89,7 +89,7 @@ holds the content; these rows are pointers only.
 | Issue | Source | Owner | Hook |
 |---|---|---|---|
 | `[fullinstanton-bwd-rhs-drops-leading-terms]` | R B.10, A.3; tex `sec:fullinstanton-eqs` | P2 | `bwd_rhs` in `ComputeTargets/FullInstanton.py:151` keeps only `P₂ V''/H²` and `−P₁ + (3−ε)P₂`. The omitted `∂H²/∂φ`, `∂ε/∂u` terms are leading order: for quadratic `V` the only coupling has the wrong sign, and for `V ∝ φ^p` the correct term is `−1/(p−1)` times the coded one. Present in the tree on 8 October. |
-| `[hfp-closed-form-audit-not-run]` | R B.10 ("25-00"); SCS §4.5; HSS §3 | P2, first prompt | Zero-compute check on the stored grids: `∂S/∂δN★ = −[λ φ₂(N_total) + D₁₁(N_total) λ²]` against finite differences of `S`. It measures how wrong the June numbers are before any code changes. |
+| `[hfp-closed-form-audit-not-run]` | R B.10 ("25-00"); SCS §4.5; HSS §3 | P2, first prompt | Zero-compute check on the stored grids: `∂S/∂δN★ = −[λ φ₂(N_total) + D₁₁(N_total) λ²]` against finite differences of `S`. It measures how wrong the June numbers are before any code changes. The stores are read at the tag `pre-datastorekit`: `.documents/dk-and-rpk-migration/verification.md` §4.5. |
 | `[june-smsr-results-provisional]` | R A0.3, C0; sumF §2 | P2, re-run | Every `S_MSR`-bearing June or July number was produced with the defective response sector: the `δN★^1.74 ΔN^−0.72` fit, the 1.2–1.4 exponent, `δN★_th(ΔN)`, the minimum-action locus, the `r_max ≠ r_peak` region, the no-collapse island and the Picard failures from `δN★ ≈ 7`. The kinematic mass law is expected to survive. sumF §2 classifies all 32 claims. |
 | `[n-turn-insensitivity-test-never-run]` | tex `sec:open-issues` todo; R A0.1 | P2 | Solve the 1D instanton with the terminal condition at several `N_turn > N_final` and check that the solution on `N ≤ N_final` is unchanged. Cheap; apparently never run. |
 
@@ -150,16 +150,14 @@ in-place rewrite. Phase 0 (8 October 2026) dealt with all but the one below.
 
 ## 6a. Infrastructure — DatastoreKit and RayPoolKit adoption — board: [`.prompts/dk-and-rpk-migration/IMPLEMENTATION_STATE.md`](../.prompts/dk-and-rpk-migration/IMPLEMENTATION_STATE.md)
 
-Opened at the campaign's planning, 2026-10-11, or at a review where the row says so. Owners are the campaign's prompts (`dk-NN`).
+Opened at the campaign's planning, 2026-10-11, or at a review where the row says so. Owners are the campaign's prompts (`dk-NN`), until the campaign closed at its prompt 12 on 2026-10-23; the four issues below survive it, none owned by it.
 
 | Issue | Source | Owner | Hook |
 |---|---|---|---|
 | `[plot-scripts-stale-version-label]` | board §3 | unowned; P2 | The plot scripts open read-write under `"2026.3.0"`, adding a `version` row to every store they read. |
 | `[redshift-registered-in-neither-table-list]` | board §3 | unowned | `redshift` is registered but in neither table list and unused; `IntegrationSolver` is registered and unwritten. Its `build`'s `z = 0` query has the comparison inside the `abs` (found at dk-10, not acted on). |
-| `[test-counts-stale-in-claude-md]` | board §3 | dk-12 | `CLAUDE.md` and `test-selection.md` say 464 of 571; the default run selects 631 of 761. |
 | `[unified-pipeline-stores-null-instanton-labels]` | board §3 (01's review) | unowned | The unified pipeline stores `FullInstanton` and `SlowRollInstanton` with `label` NULL, so a scalars-only store's figure footers lack it. |
 | `[gci-picard-inner-fails-on-rehearsal-grid]` | board §3 (02's first attempt, 2026-10-20) | P3 | At the rehearsal grid (`quadratic-minimal.yaml`, `n = 5`, `α = 0.01`, no budget) no `GradientCoupledInstanton` solve finished in over five hours: every inner Picard step failed and the shooting halved λ again and again. July's 315 s does not hold at today's tree. The rehearsals build no gradient branch (U11). See also `[gci-n5-n7-solutions-provisional]`. |
-| `[pool-prose-stale-after-raypoolkit-adoption]` | board §3 (04, 2026-10-20) | dk-12 | `picard.py:450-456` still calls `RayTools/RayWorkPool.py` protected infrastructure; the constructor sketches in `INFRASTRUCTURE.md` and `architecture-summary.md` give defaults of 10, 10 and 50 where the pool's are 5, 1 and 200. |
 
 ## 7. Closed
 
@@ -189,3 +187,5 @@ Opened at the campaign's planning, 2026-10-11, or at a review where the row says
 | `[config-datastore-cannot-be-imported-before-the-layer]` (dk-and-rpk-migration board §4) | 2026-10-21 | dk-09: the layer is deleted and `Datastore/__init__.py` and `Datastore/SQL/__init__.py` are empty, so nothing imports it; `import config.datastore` alone, in a fresh process, succeeds and starts no Ray (`tests/test_config_datastore.py`; its 30 entries are instances of the package's `SQLAFactoryBase`), and `test_compare_stores.py`'s fallback import is gone. |
 | `[show-all-flag-unused]` (dk-and-rpk-migration board §4) | 2026-10-21 | dk-10: `main.py --inventory` passes `verbose=args.show_all` to `tools/inventory_report.py`'s report, which otherwise truncates a list of more than 20 values to its first and last 10 and a group of more than 10 records to its first and last 5; the flag's help says so (`tests/test_inventory_report.py`, `tests/test_inventory_store.py`). |
 | `[gci-value-table-outside-the-inventory]` (dk-and-rpk-migration board §4) | 2026-10-22 | dk-10b: `GradientCoupledInstanton`'s spec declares `extra_values={"GradientCoupledInstantonValue": "instanton_serial"}` (DatastoreKit `v0.5.0`, pinned by dk-10a), so `read_inventory` counts that table per record, 0 for a row stored without full values, and names its orphans; every registered class is covered, none excluded (`tests/test_inventory_specs.py`: 24 specs, 6 read through), and the report prints the count (`tests/test_inventory_report.py`, `tests/test_inventory_store.py`). |
+| `[test-counts-stale-in-claude-md]` (dk-and-rpk-migration board §4) | 2026-10-23 | dk-12: `CLAUDE.md` and `.claude/rules/test-selection.md` give the suite as measured at the close: 868 tests, the default run 732 (731 pass, 1 skipped), 67 `integration` and 69 `slow`, disjoint; the runs are in `.documents/dk-and-rpk-migration/verification.md` §4. |
+| `[pool-prose-stale-after-raypoolkit-adoption]` (dk-and-rpk-migration board §4) | 2026-10-23 | dk-12: `picard.py`'s comment calls `RayWorkPool` the `raypoolkit` package's, with no per-task timeout or cancel hook at `v0.2.0` (`raypoolkit/RayWorkPool.py`); the constructor sketches in `INFRASTRUCTURE.md` and `architecture-summary.md` give the package's defaults, 5, 1 and 200 (`raypoolkit/RayWorkPool.py:26-29`), and mark SI's own sizes as SI's. |

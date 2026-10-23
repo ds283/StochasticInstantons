@@ -1,14 +1,17 @@
-# INFRASTRUCTURE — how `Datastore`, `ShardedPool`, and `RayWorkPool` work
+# INFRASTRUCTURE — how SI uses `datastorekit` and `raypoolkit`
 
-This document explains the non-physics infrastructure layer: persistence
-(`Datastore`) and distributed dispatch (`RayWorkPool`). It does not cover the
-compute targets themselves (`FullInstanton`, `GradientCoupledInstanton`, …) —
-see `NUMERICAL_SCHEMES.md` for those — except where needed to explain how
-they plug into this machinery.
+This document explains the non-physics infrastructure: persistence (the
+`datastorekit` package's `ShardedPool` and `Datastore` actors, with SI's
+factories) and distributed dispatch (the `raypoolkit` package's `RayWorkPool`).
+It does not cover the compute targets themselves (`FullInstanton`,
+`GradientCoupledInstanton`, …) — see `NUMERICAL_SCHEMES.md` for those — except
+where needed to explain how they plug into this machinery.
 
 ---
 
-## 1. Why this layer exists
+## 1. Why this layer exists, and whose it is
+
+*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the layer it described is in git at the tag `pre-datastorekit` (`0527480`).*
 
 Every physics compute target (`InflatonTrajectory`, `FullInstanton`,
 `SlowRollInstanton`, `CompactionFunction`, `GradientCoupledInstanton`) is
@@ -20,36 +23,82 @@ pipeline skips anything already computed and validated; (c) a uniform
 protocol (`DatastoreObject` + `ObjectFactory`) so every new compute target
 gets both of these almost for free by following the same shape.
 
+**Neither (a) nor (b) is SI's code.** Each is a package, pinned to a tag in
+`requirements.txt`, installed from it and never editable:
+
+- **`datastorekit` `v0.5.0`** (DatastoreKit): the pool, the per-shard actors,
+  the serial broker, the optional profile agent, `DatastoreObject` and
+  `SQLAFactoryBase`, the recorded replicated write and the check at open, the
+  read-only reader and `read_inventory`, `ShardedPool.copy_store` /
+  `move_store` / `closed_store_files` / `delete_store`, and two tools
+  (`python -m datastorekit.tools.shard_key_audit`, `python -m
+  datastorekit.tools.sharded_store`). What a client gives it is **the client
+  contract**, `docs/client-contract.md` at the tag (§1 the pool's constructor,
+  §2 the keys of `register()`, §3 the factory hooks, §4 the inventory's
+  declarations, §5 the layer's own tables, §6 what it reads from a stored
+  object, §7 the other entry points, §9 the changes after `v0.2.0`); its
+  `README.md`, "Using it", is the index.
+- **`raypoolkit` `v0.2.0`** (RayPoolKit): `RayWorkPool`. How it is called is
+  its `README.md` at the tag, "Using it".
+
+This document points at those two documents and does not copy them. What SI
+supplies, and what the package does with it:
+
+| | SI supplies | The package does |
+|---|---|---|
+| The registry | `config/datastore.py`: `factories` (30 factory instances, table name → factory), `drop_groups` with `tables_to_drop(groups)`, `serial_batch_sizes` | builds a table for each entry from its `register()` (contract §2) and gives the registry to every actor, the reader and the inventory (§1 row 15, §7) |
+| The pool's arguments | `config/sharding.py`: the shard-key type `delta_Nstar` and `get_shard_key_store_id`, `replicated_tables`, `sharded_tables`, `read_table_config`, `vectorized_shard_key`; `main.py` builds the pool from these and the CLI | routes each call to its shard, opens or creates the store and checks it (§1) |
+| The factories | `Datastore/SQL/ObjectFactories/*.py`: each `register()` and `build()` and, where it defines them, `store`, `validate`, `validate_on_startup`, `revalidate` and `inventory_spec` | calls each hook where §3 says; defaults the rest (§9.5) |
+| Replication | each replicated factory forwards `payload["serial"]` and sets `_new_insert` (§4 below) | makes the recorded replicated write, checks the replicas, compares and repairs at open (§6, and the comment above `_replicated_write`) |
+| The inventory | `inventory_spec()` on the factories; `tools/inventory_report.py` and `main.py --inventory` | `read_inventory(primary, factories)`: read-only, on a closed store, with no Ray (§4, §7) |
+| The work queue | the work items, `task_builder`, any handlers, and the call sites in `main.py` and the plot scripts | `RayWorkPool`: the state machine, the in-flight cap, the progress lines |
+
+SI's old layer, which these packages replaced, is in git at the tag
+`pre-datastorekit` (`0527480`): `Datastore/object.py`, `Datastore/SQL/*.py` and
+`RayTools/RayWorkPool.py` there. No store written by it is readable by the
+current tree (the package refuses it); the tag reads them.
+
 ---
 
 ## 2. `DatastoreObject` — the base persistence contract
 
-`Datastore/object.py` defines the single base class every persistable domain
-object inherits:
+*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the layer it described is in git at the tag `pre-datastorekit` (`0527480`).*
+
+`datastorekit.object.DatastoreObject` (`datastorekit/object.py:5-38`) is the
+single base class every persistable domain object inherits:
 
 ```python
 class DatastoreObject:
-    def __init__(self, store_id: Optional[int]):
+    def __init__(self, store_id: Optional[int], *, timestamp: Optional[datetime] = None):
         self._my_id = store_id
+        self._timestamp = timestamp
 
     @property
-    def store_id(self) -> Optional[int]:
-        return self._my_id
-
+    def store_id(self) -> int: ...          # raises RuntimeError until it is set
     @property
-    def available(self) -> bool:
-        return self._my_id is not None
+    def available(self) -> bool: ...        # self._my_id is not None
+    @property
+    def timestamp(self) -> Optional[datetime]: ...   # read-only; see below
 ```
 
 `available` is the single canonical test for "has this been persisted".
-`store_id is None` means "not yet in the database" — this is the signal
-`RayWorkPool` uses to decide whether a grid point needs computing at all.
-Compute targets add a second, independent flag, `failure`, for "computation
-was attempted and failed" — a failed record is still `available` (it has a
-`store_id`), which is what prevents the pipeline from re-attempting a known
-failing computation on every subsequent run. See the `available`/`failure`
-truth table in `.claude/rules/ray-dispatch.md` / the `compute-targets.md`
-rule for the four states this pair distinguishes.
+`_my_id is None` means "not yet in the database" — this is the signal
+`RayWorkPool` uses to decide whether a grid point needs computing at all (it
+reads `obj.available`: `raypoolkit/RayWorkPool.py:385`). Read `store_id` only
+after `available`: it raises on an unstored object. Compute targets add a
+second, independent flag, `failure`, for "computation was attempted and
+failed" — a failed record is still `available` (it has a `store_id`), which is
+what prevents the pipeline from re-attempting a known failing computation on
+every subsequent run. See the `available`/`failure` truth table in
+`.claude/rules/ray-dispatch.md` / the `compute-targets.md` rule for the four
+states this pair distinguishes.
+
+`timestamp` is the row's `timestamp` column as the factory that built the
+object passed it, or `None`. The layer stamps the column at insert for a class
+whose `register()` declares `"timestamp": True`, and a replicated row carries
+the one timestamp of the write on every shard; the package never sets or reads
+the attribute on an object (client contract §9.6). It is the package's `v0.3.0`
+addition, made at SI's request.
 
 ---
 
@@ -113,15 +162,29 @@ and the mirror-image multiply in `build()`.
 
 ## 4. The `ObjectFactory` pattern
 
-Every persisted type has a factory class (`Datastore/SQL/ObjectFactories/*.py`)
-inheriting `SQLAFactoryBase`, implementing four methods:
+*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the layer it described is in git at the tag `pre-datastorekit` (`0527480`).*
 
-| Method | Runs on | Purpose |
+Every persisted type has a factory (`Datastore/SQL/ObjectFactories/*.py`)
+inheriting `datastorekit.SQL.factory_base.SQLAFactoryBase`
+(`datastorekit/SQL/factory_base.py:5-80`); `config/datastore.py` registers
+**instances** of them, whose hooks take `self` (contract §9.5). The base's two
+abstract hooks are `register` and `build`; it defaults six more — `store`,
+`validate` and `validate_on_startup` (which raise `NotImplementedError` where a
+factory does not define them), `revalidate`, `owned_serials` and
+`inventory_spec`. What each hook is, when the pool calls it and what happens
+when it is wrong or absent is the client contract, §3 (with §9.5 for the
+defaults); the keys `register()` returns are §2; the inventory's declarations
+are §4.
+
+| Hook | Runs on | Purpose (and SI's use) |
 |---|---|---|
-| `register()` | startup | declares the SQLAlchemy schema (columns, `version`/`timestamp` flags, `validate_on_startup`) |
+| `register()` | startup | declares the SQLAlchemy schema (columns, `version`/`timestamp` flags, `validate_on_startup`; for a replicated class the pool must repair or prune, `owner_column` and `validated_column`) |
 | `build(payload, conn, ...)` | Datastore actor | **query only** — looks up an existing, validated row; returns an unpopulated object (`store_id=None`) if not found |
 | `store(obj, conn, ...)` | Datastore actor | inserts the row(s); sets `obj._my_id`; serialises `obj._values` (or a child value table) |
 | `validate(obj, conn, ...)` | Datastore actor | consistency check; sets `validated = TRUE` |
+| `validate_on_startup(conn, table, tables, prune)` | actor at open; the pool for a replicated class | reports the unvalidated rows and, under `prune`, deletes them with their child rows (§7) |
+| `revalidate(serial, conn, table, tables)` | the pool, at open | recomputes the validated flag after an interrupted validate; only `InflatonTrajectory` declares `validated_column`, so only it defines this |
+| `inventory_spec()` | `read_inventory` | how the inventory reads the class: `.claude/rules/datastore-factories.md`, "Every registered factory is covered by the inventory" (22 definitions serve 24 classes; the rest are read through an owner's spec) |
 
 **The critical invariant: `build()` never calls `inserter()`.** It can only
 find-or-miss. If it misses, it returns an object with `store_id=None`, which
@@ -135,6 +198,7 @@ Factories that filter on `validated == True` in `build()`'s query ensure a
 partially-written or crashed-mid-computation record from a previous run does
 not shadow a fresh compute attempt — only a fully-validated row counts as
 "done".
+
 
 ### Simple vs. multi-table factories
 
@@ -150,11 +214,19 @@ parent row — see §7 below for the two extra rules this structure requires.
 
 ### Replicated-table factories must honour a supplied `serial`
 
-When `ShardedPool` inserts a brand-new row into a **replicated** table, it
-picks one shard to insert first, then replicates the same logical row to
-every other shard **using the same serial number**, passed as
-`payload["serial"]`. Any factory whose `build()` calls `inserter()` for a
-replicated table must forward that serial when present:
+A **replicated** table's rows are written by the pool as a *recorded*
+replicated write (DatastoreKit's client contract, §6, and the comment above
+`_replicated_write`, `datastorekit/SQL/ShardedPool.py:3147-3169`;
+`.claude/rules/datastore-factories.md` has the steps). The pool commits a
+`replication_in_flight` record on the primary, picks a controlling shard and
+calls `build()` there; if the answer carries `_new_insert` (or `_updated`) it
+calls `build()` on every other shard, passing the controller's serial as
+`payload["serial"]` and one timestamp for the write; it checks every replica's
+serial against the controller's (`ReplicationMismatch` on a difference), and
+only then deletes the record. At every open, before any actor exists, the pool
+compares the replicated tables of the shards and repairs or refuses them. Any
+factory whose `build()` calls `inserter()` for a replicated table must
+therefore forward that serial when present:
 
 ```python
 if "serial" in payload:
@@ -163,73 +235,99 @@ store_id = inserter(conn, insert_data)
 setattr(obj, "_new_insert", True)   # signals ShardedPool to replicate
 ```
 
-If this is skipped, each shard assigns its own autoincrement serial and the
-same logical object ends up with *different* serials on different shards.
-Sharded tables that store a foreign key into a replicated table (e.g.
-`FullInstanton.diffusion_serial`) then only match on whichever shard happens
-to share the "lucky" first-writer's serial — silently breaking lookups on
-every other shard. (This was observed in production: a `MasslessDecoupledDiffusion`
-row with serials `1, 6, 11, 16, …` across ten shards, but every
-`FullInstanton` row pointing at serial `1`, so 90% of lookups on other shards
-returned "not found".)
+If this is skipped, a replica inserts under its own serial and the pool
+raises `ReplicationMismatch`, leaving its record set for the next open to
+repair or refuse. (SI's old layer had no such check: there, each shard
+assigned its own serial and the same logical object ended up with *different*
+serials on different shards. Sharded tables that store a foreign key into a
+replicated table, e.g. `FullInstanton.diffusion_serial`, then matched only on
+whichever shard shared the "lucky" first-writer's serial — silently breaking
+lookups on every other shard. That was observed in a production store: a
+`MasslessDecoupledDiffusion` row with serials `1, 6, 11, 16, …` across ten
+shards, but every `FullInstanton` row pointing at serial `1`, so 90% of
+lookups on other shards returned "not found".)
 
 ---
 
 ## 5. `Datastore` — the per-shard actor
 
-`Datastore/SQL/Datastore.py` defines `@ray.remote class Datastore`, wrapping
-a single SQLite connection. It owns a registry of all factories (keyed by
-class name string) and exposes `get()`, `store()`, `validate()`,
-`read_table()`, `inventory()`; each delegates to the relevant factory. One
-`Datastore` actor exists per database shard.
+*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the layer it described is in git at the tag `pre-datastorekit` (`0527480`).*
+
+`datastorekit.SQL.Datastore` defines `@ray.remote class Datastore`
+(`datastorekit/SQL/Datastore.py:37`), wrapping a single SQLite connection.
+Each actor is given the registry (`factories=`, SI's `config/datastore.py`),
+builds the tables from each factory's `register()`, and serves `object_get`,
+store, validate and `read_table` by delegating to the relevant factory; it
+prunes the unvalidated rows of its sharded classes at open under
+`prune_unvalidated`. One `Datastore` actor exists per database shard, named
+`shard{key:04d}-store`, beside one `SerialPoolBroker` per store, which leases
+serials in the batches `serial_batch_sizes` gives (contract §1 rows 11, 15 and
+16; §9.3). It has no `inventory()`: the inventory is read from a closed store
+(§6 below).
 
 ---
 
 ## 6. `ShardedPool` — the coordinator
 
-`Datastore/SQL/ShardedPool.py` is the API every driver script (`main.py`,
-`plot_InstantonSolutions.py`) and every compute target actually talks to. It
-coordinates the set of per-shard `Datastore` actors, routing each call to the
-correct shard(s) based on `config/sharding.py`.
+*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the layer it described is in git at the tag `pre-datastorekit` (`0527480`).*
+
+`datastorekit.SQL.ShardedPool.ShardedPool` is the API every driver script
+(`main.py`, `plot_InstantonSolutions.py`) and every compute target actually
+talks to. It creates or opens the store, checks it, starts the per-shard
+`Datastore` actors, and routes each call to the correct shard(s). `main.py`
+builds it with `with ShardedPool(...) as pool`, giving it 15 of the 16
+arguments of the contract's §1 (all but `read_only`), from the CLI, `config/sharding.py`
+and `config/datastore.py`; opening applies `--drop` (the tables
+`tables_to_drop` names) and `--prune-unvalidated`, and closing frees the
+actors' names.
 
 ### Sharding configuration (`config/sharding.py`)
 
 - **Shard key type:** `delta_Nstar` — each shard holds all data for one
   ΔN★ value.
-- **`replicated_tables`** (a list): small domain objects and metadata,
-  identical on every shard — `version`, `tolerance`, `efold_value`,
-  `delta_Nstar` itself, `N_init`, `N_final`, `n_collocation_points`,
-  `alpha_regularization`, `phi_value`, `pi_value`, `inflaton_mass`,
-  `quartic_coupling`, potentials, `InflatonTrajectory`/`Value`,
-  `CosmologicalParams`.
+- **`replicated_tables`** (a list; contract §1 row 5): small domain objects and
+  metadata, identical on every shard — `version`, `store_tag`, `tolerance`,
+  `efold_value`, `delta_Nstar` itself, `N_init`, `N_final`,
+  `n_collocation_points`, `alpha_regularization`, `phi_value`, `pi_value`,
+  `inflaton_mass`, `quartic_coupling`, potentials, `MasslessDecoupledDiffusion`,
+  `IntegrationSolver`, `InflatonTrajectory`/`Value`, `CosmologicalParams`.
 - **`sharded_tables`** (a **dict**, `table_name → shard_key_field_name`,
   never a list — a list causes a silent `KeyError` deep inside
-  `ShardedPool`): large per-grid-point compute results, partitioned by
-  `delta_Nstar` — `FullInstanton`/`Value`, `SlowRollInstanton`/`Value`,
-  `CompactionFunction`/`Samples`, `GradientCoupledInstanton`/`Value`/`Profile`.
+  `ShardedPool`; contract §1 row 6): large per-grid-point compute results,
+  partitioned by `delta_Nstar` — `FullInstanton`/`Value`,
+  `SlowRollInstanton`/`Value`, `CompactionFunction`/`Samples`,
+  `GradientCoupledInstanton`/`Value`/`Profile`.
+- **`read_table_config`** (contract §1 row 13): the replicated classes that
+  `read_table` serves, each with `tables_arg`.
 
-Every table name appears in **exactly one** of these two collections —
-`delta_Nstar` itself is a cautionary example: it must be in `replicated_tables`
-(it's the shard key type) and must **not** also appear in `sharded_tables`,
-because `ShardedPool.read_table()` checks raw membership in `sharded_tables`
-with no replicated-first carve-out, so a stray entry there makes it wrongly
-reject a fully-replicated table as "sharded". See
-`.claude/rules/pool-read-apis.md` for the full incident.
+Every table name appears in **exactly one** of the two collections (the one
+exception is `redshift`, registered and in neither, unused:
+`[redshift-registered-in-neither-table-list]`) — `delta_Nstar` itself is a
+cautionary example: it must be in `replicated_tables` (it's the shard key type)
+and must **not** also appear in `sharded_tables`, because
+`ShardedPool.read_table()` checks raw membership in `sharded_tables` with no
+replicated-first carve-out (`datastorekit/SQL/ShardedPool.py:3695-3731`), so a
+stray entry there makes it wrongly reject a fully-replicated table as
+"sharded". See `.claude/rules/pool-read-apis.md` for the full incident.
 
 ### Key `ShardedPool` methods
 
 | Method | Description |
 |---|---|
-| `object_get(cls_name, **payload)` | Query-or-upsert a single object; returns an `ObjectRef` resolving to it |
-| `object_get_vectorized(cls_name, shard_key, payload_data=[...])` | Vectorised query for a whole list of objects on one shard — the workhorse of Pass 1 dispatch (§10) |
+| `object_get(cls_name, **payload)` | Query-or-insert a single object; returns an `ObjectRef` resolving to it. For a replicated class this is the recorded replicated write |
+| `object_get_vectorized(cls_name, shard_key, payload_data=[...])` | Vectorised query for a whole list of objects of a **sharded** class on one shard — the workhorse of Pass 1 dispatch (§10). `shard_key` is the mapping form, `{field: key}`, which every call builds with `config.sharding.vectorized_shard_key` |
 | `object_store(obj)` | Persist a fully-populated object; routes to the right shard(s) |
 | `object_validate(obj)` | Validate a persisted object |
 | `read_table(cls_name, ...)` | Read all rows of a **replicated** table; requires an entry in `read_table_config`; raises for sharded tables (reading from one random shard would silently drop the other shards' data) |
-| `inventory(cls_name, ...)` | Human-readable, aggregated summary (counts, timestamps, label lists) — **not** a data-fetch API; do not use it to obtain objects for use in a pipeline |
 
-If `read_table()` raises "the read_table service is not available", the fix
-is adding an entry to `read_table_config` in `config/sharding.py`, not
-routing around the gap with `inventory()`.
+There is no `ShardedPool.inventory()`. The inventory is
+`datastorekit.store_inventory.read_inventory(primary, factories)`, read-only on
+a closed store with no Ray, which `main.py --inventory` runs before Ray starts
+and `tools/inventory_report.py` prints (contract §7). It is a report — counts,
+labels and named problems — and **not** a data-fetch API; do not use it to
+obtain objects for use in a pipeline. If `read_table()` raises "the read_table
+service is not available", the fix is adding an entry to `read_table_config` in
+`config/sharding.py` (with the user's go-ahead), not routing around the gap.
 
 ---
 
@@ -350,28 +448,44 @@ sample grid endpoint is known before dispatch:
 
 ## 9. `RayWorkPool` — the distributed work-queue
 
-`RayWorkPool`, from the `raypoolkit` package (pinned in `requirements.txt`), drives every compute stage through five states:
-**lookup → compute → store → persist → validate**.
+*Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the layer it described is in git at the tag `pre-datastorekit` (`0527480`).*
+
+`RayWorkPool` is `raypoolkit`'s (`from raypoolkit import RayWorkPool`, pinned in
+`requirements.txt` at `v0.2.0`). Its documentation is RayPoolKit's `README.md`
+at the tag, "Using it": the constructor, the handlers and their defaults, the
+sizes, the objects a lookup returns, which handlers a pool needs, and the
+printed lines (which are the package's interface). It drives every compute
+stage through five states: **lookup → compute → store → persist → validate**.
 
 ```python
 RayWorkPool(
-    pool,                     # ShardedPool
-    task_list,                # iterable of task descriptors
-    task_builder,              # descriptor -> ObjectRef (the lookup)
-    compute_handler=...,       # (obj, label) -> ObjectRef        [default: obj.compute()]
-    store_handler=...,         # (obj, pool) -> None               [default: obj.store()]
-    persist_handler=...,       # (obj, pool) -> ObjectRef          [default: pool.object_store(obj)]
-    available_handler=None,    # called when obj is already available
-    validation_handler=None,   # obj -> ObjectRef
-    post_handler=None,         # called after each fully processed item
-    label_builder=None,        # obj -> str, for log messages
-    create_batch_size=10,
-    process_batch_size=10,
-    max_task_queue=50,         # cap on concurrent in-flight compute tasks
+    pool,                     # the ShardedPool: any object with object_store(obj)
+    task_list,                # iterable of work items
+    task_builder,             # item -> ObjectRef (the lookup)
+    compute_handler=...,      # (obj, **kwargs) -> ObjectRef      [default: obj.compute(**kwargs)]
+    store_handler=...,        # (obj, pool) -> None               [default: obj.store()]
+    persist_handler=...,      # (obj, pool) -> ObjectRef          [default: pool.object_store(obj)]
+    available_handler=None,   # called when obj is already available
+    validation_handler=None,  # obj -> ObjectRef
+    post_handler=None,        # called after each fully processed item
+    label_builder=None,       # obj -> label, passed to the compute handler as label=
+    create_batch_size=5,      # the package's defaults: 5, 1 and 200
+    process_batch_size=1,     #   (raypoolkit/RayWorkPool.py:26-29)
+    max_task_queue=200,       # cap on in-flight tasks
     store_results=False,
     title=None,
 )
 ```
+
+The sizes above are the package's defaults, not SI's: SI's call sites give their
+own, for example `create_batch_size=20, process_batch_size=20` for the lookup
+pools and `create_batch_size=5, process_batch_size=3` with
+`max_task_queue=MAX_INFLIGHT_PIPELINE` (50, `main.py:55-65`) for the compute
+pools. A pool with no compute handler passes `compute_handler=None` (12 of SI's
+16 call sites); the constructor refuses, with `ValueError`, a store, persist,
+validation or label handler given to a pool that has no compute handler, a
+`None` store or persist handler on one that has, and a size below 1 (README,
+"Which handlers a pool needs").
 
 `run()`'s event loop enqueues lookups (batched by `create_batch_size`),
 drains completed `ObjectRef`s via `ray.wait()` (batched by
@@ -388,8 +502,9 @@ drains completed `ObjectRef`s via `ray.wait()` (batched by
 ```
 
 `max_task_queue` prevents flooding the Ray object store: new compute tasks
-are only enqueued while `len(inflight) < max_task_queue`, so no manual batch
-sizing is needed regardless of how many parameter points are queued.
+are only enqueued while `len(inflight) < max_task_queue`
+(`raypoolkit/RayWorkPool.py:290`), so no manual batch sizing is needed
+regardless of how many parameter points are queued.
 
 ---
 
@@ -495,7 +610,7 @@ RayWorkPool over compute_list:
 | Every table name appears in exactly one of `replicated_tables` / `sharded_tables` | `.claude/rules/pool-read-apis.md` |
 | `FooProxy` never exposes the raw `ObjectRef`; consumers call `.get()` | `.claude/rules/proxy-pattern.md` |
 | Factory `build()` never inserts; only queries | `.claude/rules/datastore-factories.md` |
-| `pool.inventory()` is a reporting tool, not a data-fetch API | `.claude/rules/pool-read-apis.md` |
+| There is no `pool.inventory()`; the inventory (`read_inventory`, `main.py --inventory`) is a report, not a data-fetch API | `.claude/rules/pool-read-apis.md` |
 | `available` is a `@property`, never a plain method | `.claude/rules/ray-dispatch.md` |
 | Child value/sample rows deleted before parent rows in `validate_on_startup` | `.claude/rules/validate-on-startup.md` |
 | `_populate()` on a multi-row child table always `ORDER BY`s + asserts monotonicity | `.claude/rules/populate-ordering.md` |

@@ -1,0 +1,33 @@
+........................................................................ [  9%]
+........................................................................ [ 19%]
+........................................................................ [ 29%]
+........................................................................ [ 39%]
+........................................................................ [ 49%]
+........................................................................ [ 59%]
+........................................................................ [ 68%]
+........................................................................ [ 78%]
+...........................................................s............ [ 88%]
+........................................................................ [ 98%]
+............                                                             [100%]
+=============================== warnings summary ===============================
+tests/test_gradient_coupled_instanton_end_to_end.py::test_guard_passes_for_valid_configuration
+  /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+    warnings.warn(
+
+tests/test_plot_diagnostics_figures.py::TestAcceptance_AllNineFamiliesRender::test_extraction_failure_summary
+  /Users/ds283/Documents/Code/StochasticInstantons/plotting/figures/diagnostics.py:532: RuntimeWarning: More than 20 figures have been opened. Figures created through the pyplot interface (`matplotlib.pyplot.figure`) are retained until explicitly closed and may consume too much memory. (To control this warning, see the rcParam `figure.max_open_warning`). Consider using `matplotlib.pyplot.close()`.
+    fig, ax = plt.subplots(figsize=(7, 5.5))
+
+tests/test_plot_spatial_movies.py::TestAcceptanceA_RendersGifForDenseFidelity::test_derived_movie_n_frames_caps_frame_count
+tests/test_plot_spatial_movies.py::TestAcceptanceB_Mp4Path::test_mp4_raises_clear_error_when_ffmpeg_missing
+tests/test_plot_spatial_movies.py::TestAcceptanceB_Mp4Path::test_unknown_movie_format_raises
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_field_movie_never_calls_provenance_footer
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_field_movie_data_frame_keeps_persistent_footer
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_derived_movie_opening_frame_is_title_card_with_data_hidden
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_derived_movie_frames_are_not_collapsed_by_cache_key
+tests/test_rehearsal_stage_counts.py::test_a_straight_dense_build
+  /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/matplotlib/animation.py:916: UserWarning: Animation was deleted without rendering anything. This is most likely not intended. To prevent deletion, assign the Animation to a variable, e.g. `anim`, that exists until you output the Animation using `plt.show()` or `anim.save()`.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+731 passed, 1 skipped, 136 deselected, 10 warnings in 37.98s
