@@ -2251,3 +2251,11 @@ false; nothing is opened, so `.documents/OPEN-ISSUES.md` stands at 57 open, 31 c
   touched nothing of SI's; D6's extra `measure/out/12-*` files are in the prompt's glob.
 - **Handed on.** Nothing in this repository. To the user: the two G4 commits in DatastoreKit and RayPoolKit (P14), from
   `verification.md` §4.3; the merge into `main` (P15); the rehearsal stores (483 MiB); P9, P10, P6.
+
+### 5.31 The merge into `main` (P15; 2026-10-23)
+
+- **Done at the user's instruction**, after the close: `main` is fast-forwarded from `7bb3efd` to this commit,
+  which is `dk-and-rpk-migration`'s tip. It is a fast-forward because `7bb3efd`, the commit the campaign was cut
+  from, is still `main`'s tip. Nothing is pushed.
+- Decision 2 of §5.30's "Decisions left to the user" is therefore done. Decisions 1 and 3–5 stand.
+- The next campaign, `rrk-adoption` (RunRegistryKit `v0.2.0`, README §7), is cut from `main` at this commit.
