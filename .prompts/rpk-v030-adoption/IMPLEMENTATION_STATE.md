@@ -1,7 +1,8 @@
 # rpk-v030-adoption campaign — implementation state
 
-**Last updated:** 2026-10-25 · **Status: LIVE — 01 landed, awaiting review.** The pin is
-`3d6328e`, the switch `6c60b81`; the gate **Switch** holds. No ruling is needed
+**Last updated:** 2026-10-25 · **Status: CLOSED — 1 of 1 landed and reviewed (§5.2).** The pin
+is `3d6328e`, the switch `6c60b81`; the gate **Switch** holds. The merges of README §4 wait on the
+user's instruction. No ruling is needed
 (README §6.1); C1–C10 stand as proposed (README §6.2). The branch `rpk-v030-adoption` is cut from
 `main` at `1c223e8` (C1).
 The plan is [`README.md`](README.md), written on 2026-10-25 at `7071bb8` from RayPoolKit's `v0.3.0`
@@ -56,7 +57,7 @@ serially, so that only one uses Ray at a time.
 
 | # | Prompt | Model | Status |
 |---|---|---|---|
-| 01 | [`01-switch-to-the-raypoolkit-rehearsal-lock.md`](01-switch-to-the-raypoolkit-rehearsal-lock.md) | Opus | **landed** 2026-10-25 (`3d6328e`, the pin; then the switch, `6c60b81`), awaiting review. Results: [`01-switch-to-the-raypoolkit-rehearsal-lock.md`](../../.documents/rpk-v030-adoption/01-switch-to-the-raypoolkit-rehearsal-lock.md) |
+| 01 | [`01-switch-to-the-raypoolkit-rehearsal-lock.md`](01-switch-to-the-raypoolkit-rehearsal-lock.md) | Opus | **landed** 2026-10-25 (`3d6328e`, the pin; then the switch, `6c60b81`); reviewed 2026-10-25 (§5.2). Results: [`01-switch-to-the-raypoolkit-rehearsal-lock.md`](../../.documents/rpk-v030-adoption/01-switch-to-the-raypoolkit-rehearsal-lock.md) |
 
 The review of 01 closes the campaign; the merges of README §4 follow at the user's instruction.
 
@@ -81,7 +82,7 @@ The review of 01 closes the campaign; the merges of README §4 follow at the use
 
 | Gate | Holds when | Status |
 |---|---|---|
-| **Switch** | 01's acceptance: `raypoolkit` 0.3.0 installed from the tag, not editable; the checklist's item 8 holds (0 live lines name the old lock; the script calls the module); the scratch and live checks as planned; the suites unchanged | **holds** at 01 (2026-10-25), subject to its review |
+| **Switch** | 01's acceptance: `raypoolkit` 0.3.0 installed from the tag, not editable; the checklist's item 8 holds (0 live lines name the old lock; the script calls the module); the scratch and live checks as planned; the suites unchanged | **holds** at 01 (2026-10-25), confirmed by its review (§5.2) |
 | RayPoolKit `rehearsal-lock` **G2** | all three clients switched and `switch-over.md` §3's cross-check passed; SI's part drafted by 01, recorded in RayPoolKit by the user (C9) | not yet |
 
 ## 3. Active and unresolved issues
@@ -137,3 +138,81 @@ None.
   to record in RayPoolKit. The cross-check of `switch-over.md` §3 is owed once ChamPBH has switched.
 - **Next:** the review of 01, which closes the campaign; then README §4's merges, at the user's
   instruction.
+
+### 5.2 Review and close (2026-10-25)
+
+The orchestrator's review of 01 (`3d6328e`, `6c60b81`), by the nine checks of
+[`orchestrator/prompt-01.md`](orchestrator/prompt-01.md) §3. Every check passed.
+1. **Scope.** `3d6328e` is `requirements.txt` alone, the one line. `6c60b81`'s 13 paths are
+   acceptance 8's list with `architecture-summary.md` (the note's correction 2) and
+   `out/01-gate.txt` (deviation 6). No `.py` file changed since `8baac35`; no
+   `runregistrykit.toml`; nothing pushed; both messages end with the `Co-Authored-By` line.
+2. **The venv**, measured here. `pip freeze` differs from the dispatch freeze by the `raypoolkit`
+   line alone, now `@67a75b97…`, 84 lines; `direct_url.json` is a VCS record (`v0.3.0`, no
+   `dir_info`); `pip check` clean; a dry run of `requirements.txt` installs nothing. `01-pip.txt`
+   records the dry run before the install, `Would install raypoolkit-0.3.0` alone.
+3. **The script**, read whole. The cluster half, from "the targeted stop" to "commands", is
+   byte-identical to `8baac35`'s, and so is the `ray start` line. Every module call goes through
+   `rehearsal_lock` with `$LOCK_PROJECT`, `$SI_TEMP_DIR` and `$SI_ADDRESS`. `start`: `acquire …
+   || return $?`, the stale-cluster check gone (C3), `release_after_failure` on the held port, the
+   failed `ray start`, no `gcs_server`, a refused `set-pid` and the trap, with returns 4, 1, 1, 1,
+   130 and the refusal printed. `stop`: the owner file read at `default_lock_dir()` before
+   `stop_cluster`, an empty or missing owner treated as not SI's (C4). `status`: the module's, then
+   the script's listing under its own heading, then the ports (C5). `bash -n` passes. Acceptance
+   2's grep **0**; acceptance 3's: 7 calls, `.raypoolkit` at `:54` only, in the usage text.
+4. **The scratch checks, re-run here** against a scratch `HOME` of the orchestrator's, each
+   command a shell command of its own: S-1 0 free; S-2 0, `no lock to release`; S-3 `acquire` 0
+   then `stop` 0, `released the rehearsal lock`; S-5 `start` 3 naming the old location, nothing
+   created, then `status` `old location: PRESENT`. S-5's decoy owner file named
+   `/tmp/ray-decoy`, not SI's temp dir. S-4 and S-6 read from `01-scratch.txt`, as planned.
+5. **The live check**, from `01-live.txt`. Step 1 free; `start` 0, `recorded pid 17315`; `status`
+   HELD with SI's values and `pid: 17315`, alive, 18 processes by each rule (the `gcs_server`, the
+   client server 17317, the `raylet`); `ray-processes` 1; the driver `CPU` 4.0; the second `start`
+   3; `release` 1, `the recorded pid 17315 is alive`; `stop` 0 after SIGKILL to two survivors of
+   the grace period, `released the rehearsal lock`; `status` free, none, ports free;
+   `ray-processes` 0. Here: neither lock location exists, and no `gcs_server` or `raylet` runs.
+   The live check ran on the working tree before `6c60b81`; the agent's clean copy of the script,
+   taken a minute after it for the breakages, is blob `74c3c73`, the committed one.
+6. **The breakages**, extracted here from `01-breakage.txt` and replayed in `bash` from the clean
+   tree at `6c60b81`: each `git apply --check` 0 and `-R --check` 1. B1 under a ChamPBH scratch
+   lock: `stop_cluster`'s two lines, then `release` refused, exit 1. B2 under SI's scratch lock:
+   `stop` 1, the lock left held, released by hand. B3: acceptance 3's grep gains `:332`, a line of
+   code. B4: acceptance 2's grep finds `:54`. Each reverted; the tree clean.
+7. **The documents.** `CLAUDE.md`: the pin at `v0.3.0`; one sentence naming the module, its
+   location, the other two projects, the contract and exit 3 (the old location described, not
+   spelled); the `ray stop` sentence kept. `INFRASTRUCTURE.md:41-44` and `:458`,
+   `architecture-summary.md:344` as the prompt and the note say.
+8. **The suites, re-run here** at `6c60b81`: default 732 (731 passed, 1 skipped) in 32 s;
+   integration 67 (66 passed, 1 skipped) in 51 s, load 9–51. The orchestrator's baselines at
+   `8baac35` were the same.
+9. **The records.** The results note has every section of `dk-and-rpk-migration` README §5.1's
+   template, the counts, ten classified deviations (the note's five among them) and the G2 draft.
+   The board and `INDEX.md` as prompt §6. No issue opened.
+
+**Remarks, neither a defect in the work.**
+- **Deviation 7**, S-5's set-up `printf` naming `/tmp/ray-si` in the scratch owner file, broke the
+  rule of the note's §0 in a command that ran alone, in the foreground, and listed nothing. The
+  review's own S-5 used a decoy value.
+- `INFRASTRUCTURE.md:46` still says the section "points at those two documents", where the lock's
+  contract is now a third (the results note's observation). Left: the documents are the two
+  packages' and the contract is one of RayPoolKit's.
+
+**Residue, fixed in `ea17836`:**
+- `6c60b81` for "this commit" and "the commit after it" in the results note, its G2 draft and this
+  board; `architecture-summary.md` on the board's Code line; the orchestrator's note listed;
+- README §0.3 corrected, dated: the two further pin statements, and `runregistrykit list`
+  measured on `rrk-adoption`;
+- `CLAUDE.md`'s lock sentence now also says why no `PURPOSE` names `/tmp/ray-si`, and that a lock
+  command typed by hand is the only process of its shell command, redirected, never piped (the
+  note's §0, and SGK's `CLAUDE.md` after `a04ef11`).
+
+**Handed on.**
+- **README §4's merges**, at the user's instruction: `main` fast-forwarded to this branch, then
+  `main` merged into `rrk-adoption` before its 02 (two expected conflicts, `requirements.txt` and
+  `.prompts/INDEX.md`). Until then, a checkout of `main` or `rrk-adoption` still runs the old
+  script, and README §0.2's check by hand applies there.
+- **G2:** the draft at the end of the results note is the user's to record in RayPoolKit. ChamPBH
+  alone still takes the old location; while it holds it, SGK's and SI's `acquire` exit 3. The
+  cross-check of `switch-over.md` §3 is owed once ChamPBH has switched.
+
+**The campaign is closed.** No issue was opened, so `.documents/OPEN-ISSUES.md` is unchanged.
