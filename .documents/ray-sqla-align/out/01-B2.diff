@@ -1,0 +1,11 @@
+--- a/config/ray_auth.py
++++ b/config/ray_auth.py
+@@ -40,7 +40,7 @@
+ # The token is ~/.ray/auth_token, shared by every project of this user on the machine; keep it at
+ # mode 600, and never print or copy it.
+ RAY_AUTH_MODE = "token"
+-if "RAY_AUTH_MODE" not in os.environ:
++if True:
+     os.environ["RAY_AUTH_MODE"] = RAY_AUTH_MODE
+     if "ray._raylet" in sys.modules:
+         sys.modules["ray._raylet"].Config.initialize("")

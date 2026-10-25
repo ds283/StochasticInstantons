@@ -1,8 +1,9 @@
 # ray-sqla-align campaign — implementation state
 
-**Last updated:** 2026-10-25 · **Status: READY — 0 of 1 landed.** Planned and ruled the same day
-(U1–U4); prompt 01 written. **01 is dispatched when the user says so** (C12): it takes the shared
-lock, and the projects use Ray one at a time.
+**Last updated:** 2026-10-25 · **Status: LIVE — 01 landed, awaiting review.** Planned and ruled
+the same day (U1–U4); 01 dispatched at the user's word (C12) and landed in three commits
+(`5f3219f`, `3a24ea5` and the records; §5.2). The gates **FP** and **Token** hold. The review of 01
+closes the campaign.
 The plan is [`README.md`](README.md), written on 2026-10-25 at `03110ce`.
 
 The campaign moves SI's `ray` from 2.55.1 to 2.59.0 and `SQLAlchemy` from 2.0.46 to 2.0.55,
@@ -60,28 +61,28 @@ opened)
 
 | # | Prompt | Model | Status |
 |---|---|---|---|
-| 01 | [`01-move-ray-and-sqlalchemy-with-token-mode.md`](01-move-ray-and-sqlalchemy-with-token-mode.md) | Opus | ✍️ written 2026-10-25; not dispatched |
+| 01 | [`01-move-ray-and-sqlalchemy-with-token-mode.md`](01-move-ray-and-sqlalchemy-with-token-mode.md) | Opus | ✅ landed 2026-10-25 (`5f3219f`, `3a24ea5`, the records); awaiting review. Results: [`01-move-ray-and-sqlalchemy-with-token-mode.md`](../../.documents/ray-sqla-align/01-move-ray-and-sqlalchemy-with-token-mode.md) |
 
 The review of 01 closes the campaign.
 
-**Orchestrator notes** (`orchestrator/`), written before each dispatch: none yet.
+**Orchestrator notes** (`orchestrator/`), written before each dispatch: 01's (`8c01877`).
 
 ### 1.1 Items
 
 | Item | Prompt | What | Status |
 |---|---|---|---|
-| **B1** | 01 | the baselines: the freeze (84 lines), the suites (848, 72), the token file's `ls -l` | ⬜ |
-| **P1** | 01 | `requirements.txt:58` `ray==2.59.0`, `:68` `SQLAlchemy==2.0.55`, a commit of its own; the venv upgraded, the freeze moved by those two lines alone | ⬜ |
-| **V0** | 01 | on the pins alone: SI's cluster in token mode, and a driver attaching by address refused | ⬜ |
-| **T1** | 01 | `config/ray_auth.py`, imported by `main.py`, both plot scripts and `tests/conftest.py`; the subprocess programs inherit it | ⬜ |
-| **T2** | 01 | `ray_cluster.sh` names the mode before `ray start`; its `actors:` line and usage say so | ⬜ |
-| **T3** | 01 | `tests/test_ray_auth.py`, with the breakages B1–B4 each caught | ⬜ |
-| **D1** | 01 | `CLAUDE.md` (the rule, the counts) and `test-selection.md` (the counts) | ⬜ |
-| **L1** | 01 | the launcher, 04's with its names changed | ⬜ |
-| **R1** | 01 | `reference`: `done`, fingerprint `a9f716fb…1ea7` | ⬜ |
-| **R2** | 01 | `resumed-a`: `SIGTERM`ed, `killed`/143, the store partial | ⬜ |
-| **R3** | 01 | `resumed-c`: `done`, fingerprint `a9f716fb…1ea7` | ⬜ |
-| **R4** | 01 | `compare_stores` equal; manifests `git_dirty` false, `packages` naming `ray` 2.59.0 and `SQLAlchemy` 2.0.55 | ⬜ |
+| **B1** | 01 | the baselines: the freeze (84 lines), the suites (848, 72), the token file's `ls -l` | ✅ 84 lines; 848 (847 + 1 skipped) and 72 (71 + 1 skipped); `-rw-------`, 64 bytes, 12:51 |
+| **P1** | 01 | `requirements.txt:58` `ray==2.59.0`, `:68` `SQLAlchemy==2.0.55`, a commit of its own; the venv upgraded, the freeze moved by those two lines alone | ✅ `5f3219f`; the dry run and the freeze moved by those two lines alone; `pip check` clean |
+| **V0** | 01 | on the pins alone: SI's cluster in token mode, and a driver attaching by address refused | ✅ the warning in `start`'s output; the driver refused (21 `InvalidAuthToken`, `AuthenticationError`), exit 1 |
+| **T1** | 01 | `config/ray_auth.py`, imported by `main.py`, both plot scripts and `tests/conftest.py`; the subprocess programs inherit it | ✅ `3a24ea5`; the three subprocess programs read, all inherit |
+| **T2** | 01 | `ray_cluster.sh` names the mode before `ray start`; its `actors:` line and usage say so | ✅ `3a24ea5`; `bash -n` 0 |
+| **T3** | 01 | `tests/test_ray_auth.py`, with the breakages B1–B4 each caught | ✅ `3a24ea5`; 10 tests, 2.1 s standalone; B1–B4 each caught |
+| **D1** | 01 | `CLAUDE.md` (the rule, the counts) and `test-selection.md` (the counts) | ✅ `3a24ea5`; 858 of 999, 72, 69 |
+| **L1** | 01 | the launcher, 04's with its names changed | ✅ `3a24ea5`; `bash -n` 0, the diff recorded |
+| **R1** | 01 | `reference`: `done`, fingerprint `a9f716fb…1ea7` | ✅ `done`/0; `a9f716fb…1ea7` |
+| **R2** | 01 | `resumed-a`: `SIGTERM`ed, `killed`/143, the store partial | ✅ `killed`/143, `<s>` 19 s; 3 `FullInstanton` rows stored, 7 not |
+| **R3** | 01 | `resumed-c`: `done`, fingerprint `a9f716fb…1ea7` | ✅ `done`/0, only the missing rows computed; sidecar `a9f716fb…1ea7` |
+| **R4** | 01 | `compare_stores` equal; manifests `git_dirty` false, `packages` naming `ray` 2.59.0 and `SQLAlchemy` 2.0.55 | ✅ `RESULT: equal`; `git_head` `3a24ea5`, `git_dirty` false, the four versions recorded |
 
 **Legend.** ✍️ written · ⬜ not yet · ✅ done.
 
@@ -89,8 +90,8 @@ The review of 01 closes the campaign.
 
 | Gate | Holds when | Prompt | State |
 |---|---|---|---|
-| **FP** | R's two stores, under `ray` 2.59.0 and `SQLAlchemy` 2.0.55, each fingerprint to `a9f716fb…1ea7`, and `compare_stores` finds them equal but for bookkeeping | 01 | ⬜ |
-| **Token** | no log of R holds Ray's token warning or an authentication error; the cluster's `gcs_server` and `raylet` run with `RAY_AUTH_MODE=token`; the token file unchanged at mode 600; no record holds the token | 01 | ⬜ |
+| **FP** | R's two stores, under `ray` 2.59.0 and `SQLAlchemy` 2.0.55, each fingerprint to `a9f716fb…1ea7`, and `compare_stores` finds them equal but for bookkeeping | 01 | ✅ holds (01) |
+| **Token** | no log of R holds Ray's token warning or an authentication error; the cluster's `gcs_server` and `raylet` run with `RAY_AUTH_MODE=token`; the token file unchanged at mode 600; no record holds the token | 01 | ✅ holds (01) |
 
 If FP fails, the bisection (Ray alone, or SQLAlchemy alone) is the user's call (README §2.2).
 
@@ -134,3 +135,40 @@ them: a latent drift. At the user's instruction:
 
 U4 now reads "added". Prompt 01's Gate starts after this amendment, and R4 checks that R's manifests
 name `ray` 2.59.0 and `SQLAlchemy` 2.0.55.
+
+### 5.2 After prompt 01 (2026-10-25)
+
+01 ran on `main` from the dispatch commit `8c01877`, under the orchestrator's brief (15
+corrections, each classified in the results note), 18:26–19:00 GMT. Three commits:
+- **`5f3219fb483208b5738f15d1b0e95cbcacd8d8eb`** — the pins: `ray==2.59.0`, `SQLAlchemy==2.0.55`.
+  The dry run would install those two and nothing else; the venv was upgraded in place, the freeze
+  moved by those two lines alone, `pip check` clean, the git packages unmoved. Both suites at the
+  baselines on this tree (848, 72).
+- **`3a24ea53962a3a02de412032807c0fd3e9afcb3f`** — the fix: `config/ray_auth.py` and its four
+  importers, `ray_cluster.sh` naming the mode, `tests/test_ray_auth.py` (10 tests), `CLAUDE.md`,
+  `test-selection.md` and the launcher. Suites 858 (857 passed, 1 skipped) and 72 (71 passed, 1
+  skipped).
+- **this commit** — the records: the results note, `.documents/ray-sqla-align/out/`, this board
+  and `INDEX.md`'s line.
+
+**Measured:**
+- **V0**, on the pins alone: `ray_cluster.sh start` printed Ray's `Token authentication is
+  enabled` warning, and a driver attaching by address was refused (21 `InvalidAuthToken` lines,
+  then `AuthenticationError … RAY_AUTH_MODE is currently 'disabled' (not 'token')`), exit 1 after
+  22 s. README §0.2 holds on this machine.
+- **The warning, by probe** (the suites capture logging and never show it): a local `ray.init` on
+  the pins logged it; the same with `import config.ray_auth` first, on the fix, did not.
+- **B1–B4** each caught by a named test of `tests/test_ray_auth.py`.
+- **R**, on the clean fix tree: `reference` `done`/0; `resumed-a` `killed`/143 with `<s>` = 19 s,
+  inside the narrow window (3 `FullInstanton` rows stored, 7 not); `resumed-c` `done`/0,
+  computing only what was missing. Both stores fingerprint to `a9f716fb…1ea7` and `compare_stores`
+  gives `RESULT: equal`: **FP holds.** No R log or `start` output holds a token warning or an
+  authentication error, the `gcs_server` and `raylet` ran with `RAY_AUTH_MODE=token`, the token
+  file is unchanged (64 bytes, mode 600, 12:51:17), and no record holds it: **Token holds.**
+- The manifests: `git_head` `3a24ea5`, `git_dirty` false, `ray` 2.59.0, `SQLAlchemy` 2.0.55, numpy
+  2.4.6, scipy 1.17.1 (U4).
+
+**Found:** the plot scripts call `ray.init` in their `__main__` block, not inside a function as the
+README and the prompt say; T3 checks the import against the top-level statement holding the call.
+No issue opened. The venv holds the new versions; R's two stores are in `var/datastores/` for the
+user to retire. Nothing pushed.

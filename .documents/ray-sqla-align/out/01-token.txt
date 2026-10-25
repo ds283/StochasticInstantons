@@ -1,0 +1,78 @@
+## correction 3, probe 1: the pins alone (8c01877 + requirements.txt moved, venv ray 2.59.0), RAY_AUTH_MODE unset, SI cluster down
+$ env | grep -c RAY_AUTH_MODE
+0
+$ ./venv/bin/python -c 'import ray; ray.init(address="local", include_dashboard=False); ray.shutdown()' 2> probe1.err   (18:35:09; 18:35  up 20 days, 17:20, 1 user, load averages: 25.16 54.59 47.20)
+[exit 0]
+--- stdout
+--- stderr
+2026-10-25 18:35:12,849	WARNING authentication_token_setup.py:85 -- Token authentication is enabled for this Ray cluster. Set RAY_AUTH_MODE=disabled to opt out. For more information, see https://docs.ray.io/en/latest/ray-security/token-auth.html
+2026-10-25 18:35:24,069	INFO worker.py:2033 -- Started a local Ray instance.
+$ ls -l ~/.ray/auth_token
+-rw------- 1 ds283 staff 64 Oct 25 12:51 /Users/ds283/.ray/auth_token
+
+## correction 3, probe 2: the fix tree (the content of the fix commit, before it was made), RAY_AUTH_MODE unset in the shell, SI cluster down
+$ env | grep -c RAY_AUTH_MODE
+0
+$ PYTHONPATH=. ./venv/bin/python -c 'import config.ray_auth; import ray; ray.init(address="local", include_dashboard=False); ray.shutdown()' 2> probe2.err   (18:50:02; 18:50  up 20 days, 17:35, 1 user, load averages: 8.10 11.17 23.61)
+[exit 0]
+--- stdout
+--- stderr
+2026-10-25 18:50:09,212	INFO worker.py:2033 -- Started a local Ray instance.
+$ ls -l ~/.ray/auth_token
+-rw------- 1 ds283 staff 64 Oct 25 12:51 /Users/ds283/.ray/auth_token
+
+## 2.9 Token (18:57:59)
+# the files: R s three launch logs; R s start output; 2.7 s two suite outputs; correction 3 s probe 2 stderr
+$ grep -c "Token authentication is enabled" var/ray-sqla-align-01/{reference,resumed-a,resumed-c}.log <scratch>/r-start.txt <scratch>/s27-default.txt <scratch>/s27-integration.txt <scratch>/probe2.err
+var/ray-sqla-align-01/resumed-a.log:0
+var/ray-sqla-align-01/reference.log:0
+<scratch>/r-start.txt:0
+var/ray-sqla-align-01/resumed-c.log:0
+<scratch>/s27-integration.txt:0
+<scratch>/s27-default.txt:0
+<scratch>/probe2.err:0
+$ grep -c "Generated new authentication token" var/ray-sqla-align-01/{reference,resumed-a,resumed-c}.log <scratch>/r-start.txt <scratch>/s27-default.txt <scratch>/s27-integration.txt <scratch>/probe2.err
+var/ray-sqla-align-01/reference.log:0
+<scratch>/r-start.txt:0
+var/ray-sqla-align-01/resumed-a.log:0
+<scratch>/s27-default.txt:0
+var/ray-sqla-align-01/resumed-c.log:0
+<scratch>/s27-integration.txt:0
+<scratch>/probe2.err:0
+$ grep -c "InvalidAuthToken" var/ray-sqla-align-01/{reference,resumed-a,resumed-c}.log <scratch>/r-start.txt <scratch>/s27-default.txt <scratch>/s27-integration.txt <scratch>/probe2.err
+var/ray-sqla-align-01/reference.log:0
+<scratch>/r-start.txt:0
+var/ray-sqla-align-01/resumed-c.log:0
+var/ray-sqla-align-01/resumed-a.log:0
+<scratch>/s27-default.txt:0
+<scratch>/probe2.err:0
+<scratch>/s27-integration.txt:0
+$ grep -c "AuthenticationError" var/ray-sqla-align-01/{reference,resumed-a,resumed-c}.log <scratch>/r-start.txt <scratch>/s27-default.txt <scratch>/s27-integration.txt <scratch>/probe2.err
+var/ray-sqla-align-01/reference.log:0
+<scratch>/r-start.txt:0
+var/ray-sqla-align-01/resumed-c.log:0
+var/ray-sqla-align-01/resumed-a.log:0
+<scratch>/s27-default.txt:0
+<scratch>/s27-integration.txt:0
+<scratch>/probe2.err:0
+# the weak check (correction 3): the suites capture logging, so the line is in neither suite output at any point, before or after the fix:
+$ grep -c "Token authentication is enabled" <scratch>/s21-*.txt <scratch>/s23-*.txt <scratch>/s27-*.txt
+<scratch>/s21-default.txt:0
+<scratch>/s27-default.txt:0
+<scratch>/s23-default.txt:0
+<scratch>/s21-integration.txt:0
+<scratch>/s27-integration.txt:0
+<scratch>/s23-integration.txt:0
+# the probes, for contrast:
+$ grep -c "Token authentication is enabled" <scratch>/probe1.err <scratch>/probe2.err <scratch>/v0-start.txt <scratch>/r-start.txt
+<scratch>/r-start.txt:0
+<scratch>/probe2.err:0
+<scratch>/v0-start.txt:1
+<scratch>/probe1.err:1
+$ ls -l ~/.ray/auth_token
+-rw------- 1 ds283 staff 64 Oct 25 12:51 /Users/ds283/.ray/auth_token
+$ /usr/bin/stat -f "%Sm %z %Sp" -t "%Y-%m-%d %H:%M:%S" ~/.ray/auth_token
+2026-10-25 12:51:17 64 -rw-------
+
+$ grep -r -F -l -f ~/.ray/auth_token .documents/ray-sqla-align/ .prompts/ray-sqla-align/; echo $?   (19:02:37, the records written, before the records commit)
+1

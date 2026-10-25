@@ -1,0 +1,169 @@
+## 2.1 baselines, at 8c01877 (ray 2.55.1, SQLAlchemy 2.0.46)
+
+$ ./venv/bin/python -m pytest -m "not integration and not slow" -q -p no:cacheprovider -W default
+start: 18:27:25; 18:27  up 20 days, 17:12, 1 user, load averages: 41.68 52.91 39.41
+........................................................................ [  8%]
+........................................................................ [ 16%]
+........................................................................ [ 25%]
+........................................................................ [ 33%]
+........................................................................ [ 42%]
+........................................................................ [ 50%]
+........................................................................ [ 59%]
+........................................................................ [ 67%]
+................................................................s....... [ 76%]
+........................................................................ [ 84%]
+........................................................................ [ 93%]
+........................................................                 [100%]
+=============================== warnings summary ===============================
+tests/test_gradient_coupled_instanton_end_to_end.py::test_guard_passes_for_valid_configuration
+  /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/node.py:1108: ResourceWarning: unclosed file <_io.TextIOWrapper name='/dev/null' mode='w' encoding='utf-8'>
+    process_info = ray._private.services.start_gcs_server(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_gradient_coupled_instanton_end_to_end.py::test_guard_passes_for_valid_configuration
+  /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/node.py:1254: ResourceWarning: unclosed file <_io.TextIOWrapper name='/dev/null' mode='w' encoding='utf-8'>
+    process_info = ray._private.services.start_monitor(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_gradient_coupled_instanton_end_to_end.py::test_guard_passes_for_valid_configuration
+  /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/node.py:1069: ResourceWarning: unclosed file <_io.TextIOWrapper name='/dev/null' mode='w' encoding='utf-8'>
+    self._webui_url, process_info = ray._private.services.start_api_server(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_gradient_coupled_instanton_end_to_end.py::test_guard_passes_for_valid_configuration
+  /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/node.py:1037: ResourceWarning: unclosed file <_io.TextIOWrapper name='/dev/null' mode='w' encoding='utf-8'>
+    process_info = ray._private.services.start_log_monitor(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_gradient_coupled_instanton_end_to_end.py::test_guard_passes_for_valid_configuration
+  /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/node.py:1189: ResourceWarning: unclosed file <_io.TextIOWrapper name='/dev/null' mode='w' encoding='utf-8'>
+    process_info = ray._private.services.start_raylet(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_gradient_coupled_instanton_end_to_end.py::test_guard_passes_for_valid_configuration
+  /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+    warnings.warn(
+
+tests/test_plot_diagnostics_figures.py::TestAcceptance_AllNineFamiliesRender::test_extraction_failure_summary
+  /Users/ds283/Documents/Code/StochasticInstantons/plotting/figures/diagnostics.py:532: RuntimeWarning: More than 20 figures have been opened. Figures created through the pyplot interface (`matplotlib.pyplot.figure`) are retained until explicitly closed and may consume too much memory. (To control this warning, see the rcParam `figure.max_open_warning`). Consider using `matplotlib.pyplot.close()`.
+    fig, ax = plt.subplots(figsize=(7, 5.5))
+
+tests/test_plot_spatial_movies.py::TestAcceptanceA_RendersGifForDenseFidelity::test_derived_movie_n_frames_caps_frame_count
+tests/test_plot_spatial_movies.py::TestAcceptanceB_Mp4Path::test_mp4_raises_clear_error_when_ffmpeg_missing
+tests/test_plot_spatial_movies.py::TestAcceptanceB_Mp4Path::test_unknown_movie_format_raises
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_field_movie_never_calls_provenance_footer
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_field_movie_data_frame_keeps_persistent_footer
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_derived_movie_opening_frame_is_title_card_with_data_hidden
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_derived_movie_frames_are_not_collapsed_by_cache_key
+tests/test_registered_run.py::TestRegistration::test_the_manifest_is_written_before_the_programs_first_line
+  /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/matplotlib/animation.py:916: UserWarning: Animation was deleted without rendering anything. This is most likely not intended. To prevent deletion, assign the Animation to a variable, e.g. `anim`, that exists until you output the Animation using `plt.show()` or `anim.save()`.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+847 passed, 1 skipped, 141 deselected, 15 warnings in 139.30s (0:02:19)
+[exit 0] end: 18:29:52; wall 147 s; 18:29  up 20 days, 17:14, 1 user, load averages: 18.69 40.86 36.75
+
+$ RAY_ADDRESS=local ./venv/bin/python -m pytest -m integration -q -p no:cacheprovider
+start: 18:30:03; 18:30  up 20 days, 17:15, 1 user, load averages: 23.01 40.71 36.77
+.......................................s................................ [100%]
+=============================== warnings summary ===============================
+tests/test_alpha_regularization.py::TestAlphaRegularizationSQLRoundTrip::test_small_alpha_round_trip_absolute_branch
+  /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+71 passed, 1 skipped, 917 deselected, 1 warning in 195.30s (0:03:15)
+[exit 0] end: 18:33:23; wall 199 s; 18:33  up 20 days, 17:18, 1 user, load averages: 83.52 71.78 51.57
+
+## 2.3 the pins alone (8c01877 + requirements.txt; ray 2.59.0, SQLAlchemy 2.0.55)
+
+$ ./venv/bin/python -m pytest -m "not integration and not slow" -q -p no:cacheprovider -W default
+start: 18:35:39; 18:35  up 20 days, 17:20, 1 user, load averages: 24.24 51.47 46.32
+........................................................................ [  8%]
+........................................................................ [ 16%]
+........................................................................ [ 25%]
+........................................................................ [ 33%]
+........................................................................ [ 42%]
+........................................................................ [ 50%]
+........................................................................ [ 59%]
+........................................................................ [ 67%]
+................................................................s....... [ 76%]
+........................................................................ [ 84%]
+........................................................................ [ 93%]
+........................................................                 [100%]
+=============================== warnings summary ===============================
+tests/test_plot_diagnostics_figures.py::TestAcceptance_AllNineFamiliesRender::test_extraction_failure_summary
+  /Users/ds283/Documents/Code/StochasticInstantons/plotting/figures/diagnostics.py:532: RuntimeWarning: More than 20 figures have been opened. Figures created through the pyplot interface (`matplotlib.pyplot.figure`) are retained until explicitly closed and may consume too much memory. (To control this warning, see the rcParam `figure.max_open_warning`). Consider using `matplotlib.pyplot.close()`.
+    fig, ax = plt.subplots(figsize=(7, 5.5))
+
+tests/test_plot_spatial_movies.py::TestAcceptanceA_RendersGifForDenseFidelity::test_derived_movie_n_frames_caps_frame_count
+tests/test_plot_spatial_movies.py::TestAcceptanceB_Mp4Path::test_mp4_raises_clear_error_when_ffmpeg_missing
+tests/test_plot_spatial_movies.py::TestAcceptanceB_Mp4Path::test_unknown_movie_format_raises
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_field_movie_never_calls_provenance_footer
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_field_movie_data_frame_keeps_persistent_footer
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_derived_movie_opening_frame_is_title_card_with_data_hidden
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_derived_movie_frames_are_not_collapsed_by_cache_key
+tests/test_registered_run.py::TestRegistration::test_the_manifest_is_written_before_the_programs_first_line
+  /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/matplotlib/animation.py:916: UserWarning: Animation was deleted without rendering anything. This is most likely not intended. To prevent deletion, assign the Animation to a variable, e.g. `anim`, that exists until you output the Animation using `plt.show()` or `anim.save()`.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+847 passed, 1 skipped, 141 deselected, 9 warnings in 106.55s (0:01:46)
+[exit 0] end: 18:37:33; wall 113 s; 18:37  up 20 days, 17:22, 1 user, load averages: 28.84 43.52 43.75
+
+$ RAY_ADDRESS=local ./venv/bin/python -m pytest -m integration -q -p no:cacheprovider
+start: 18:37:47; 18:37  up 20 days, 17:22, 1 user, load averages: 30.82 43.44 43.72
+.......................................s................................ [100%]
+71 passed, 1 skipped, 917 deselected in 162.08s (0:02:42)
+[exit 0] end: 18:40:33; wall 166 s; 18:40  up 20 days, 17:25, 1 user, load averages: 20.60 34.18 39.88
+$ ls -l ~/.ray/auth_token
+-rw------- 1 ds283 staff 64 Oct 25 12:51 /Users/ds283/.ray/auth_token
+
+## 2.7 the fix tree (5f3219f + the fix, uncommitted: the tree the fix commit records)
+
+$ ./venv/bin/python -m pytest -m "not integration and not slow" -q -p no:cacheprovider -W default
+start: 18:46:22; 18:46  up 20 days, 17:31, 1 user, load averages: 5.90 13.75 27.97
+........................................................................ [  8%]
+........................................................................ [ 16%]
+........................................................................ [ 25%]
+........................................................................ [ 33%]
+........................................................................ [ 41%]
+........................................................................ [ 50%]
+........................................................................ [ 58%]
+........................................................................ [ 67%]
+................................................................s....... [ 75%]
+........................................................................ [ 83%]
+........................................................................ [ 92%]
+..................................................................       [100%]
+=============================== warnings summary ===============================
+tests/test_plot_diagnostics_figures.py::TestAcceptance_AllNineFamiliesRender::test_extraction_failure_summary
+  /Users/ds283/Documents/Code/StochasticInstantons/plotting/figures/diagnostics.py:532: RuntimeWarning: More than 20 figures have been opened. Figures created through the pyplot interface (`matplotlib.pyplot.figure`) are retained until explicitly closed and may consume too much memory. (To control this warning, see the rcParam `figure.max_open_warning`). Consider using `matplotlib.pyplot.close()`.
+    fig, ax = plt.subplots(figsize=(7, 5.5))
+
+tests/test_plot_spatial_movies.py::TestAcceptanceA_RendersGifForDenseFidelity::test_derived_movie_n_frames_caps_frame_count
+tests/test_plot_spatial_movies.py::TestAcceptanceB_Mp4Path::test_mp4_raises_clear_error_when_ffmpeg_missing
+tests/test_plot_spatial_movies.py::TestAcceptanceB_Mp4Path::test_unknown_movie_format_raises
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_field_movie_never_calls_provenance_footer
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_field_movie_data_frame_keeps_persistent_footer
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_derived_movie_opening_frame_is_title_card_with_data_hidden
+tests/test_plot_spatial_movies.py::TestMovieProvenance::test_derived_movie_frames_are_not_collapsed_by_cache_key
+tests/test_ray_auth.py::test_each_driver_imports_it_before_ray_init[main.py]
+  /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/matplotlib/animation.py:916: UserWarning: Animation was deleted without rendering anything. This is most likely not intended. To prevent deletion, assign the Animation to a variable, e.g. `anim`, that exists until you output the Animation using `plt.show()` or `anim.save()`.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+857 passed, 1 skipped, 141 deselected, 9 warnings in 79.10s (0:01:19)
+[exit 0] end: 18:47:46; wall 84 s; 18:47  up 20 days, 17:32, 1 user, load averages: 6.51 12.30 26.08
+
+$ RAY_ADDRESS=local ./venv/bin/python -m pytest -m integration -q -p no:cacheprovider
+start: 18:47:54; 18:47  up 20 days, 17:32, 1 user, load averages: 5.90 11.98 25.81
+.......................................s................................ [100%]
+71 passed, 1 skipped, 927 deselected in 117.72s (0:01:57)
+[exit 0] end: 18:49:54; wall 120 s; 18:49  up 20 days, 17:34, 1 user, load averages: 8.63 11.32 23.74
+$ ls -l ~/.ray/auth_token
+-rw------- 1 ds283 staff 64 Oct 25 12:51 /Users/ds283/.ray/auth_token

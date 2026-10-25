@@ -1,0 +1,118 @@
+## 2.7 the breakages; each applied to the fix tree, the named check run, the diff kept as applied, then reverted (cmp with the saved copy)
+
+### B1  (18:45:42)
+$ ./venv/bin/python <scratch>/breakage.py B1
+B1: applied to config/ray_auth.py
+$ cat B1.diff   (git apply -R --check B1.diff: ok)
+--- a/config/ray_auth.py
++++ b/config/ray_auth.py
+@@ -42,5 +42,3 @@
+ RAY_AUTH_MODE = "token"
+ if "RAY_AUTH_MODE" not in os.environ:
+     os.environ["RAY_AUTH_MODE"] = RAY_AUTH_MODE
+-    if "ray._raylet" in sys.modules:
+-        sys.modules["ray._raylet"].Config.initialize("")
+$ ./venv/bin/python -m pytest tests/test_ray_auth.py -q -p no:cacheprovider -rf
+=========================== short test summary info ============================
+FAILED tests/test_ray_auth.py::test_ray_imported_first - AssertionError: asse...
+1 failed, 9 passed in 2.26s
+$ revert; cmp: identical; git apply --check B1.diff: ok
+
+### B2  (18:45:45)
+$ ./venv/bin/python <scratch>/breakage.py B2
+B2: applied to config/ray_auth.py
+$ cat B2.diff   (git apply -R --check B2.diff: ok)
+--- a/config/ray_auth.py
++++ b/config/ray_auth.py
+@@ -40,7 +40,7 @@
+ # The token is ~/.ray/auth_token, shared by every project of this user on the machine; keep it at
+ # mode 600, and never print or copy it.
+ RAY_AUTH_MODE = "token"
+-if "RAY_AUTH_MODE" not in os.environ:
++if True:
+     os.environ["RAY_AUTH_MODE"] = RAY_AUTH_MODE
+     if "ray._raylet" in sys.modules:
+         sys.modules["ray._raylet"].Config.initialize("")
+$ ./venv/bin/python -m pytest tests/test_ray_auth.py -q -p no:cacheprovider -rf
+=========================== short test summary info ============================
+FAILED tests/test_ray_auth.py::test_a_mode_already_set_is_left_as_it_is - Ass...
+FAILED tests/test_ray_auth.py::test_a_mode_already_set_is_what_ray_sees - Ass...
+2 failed, 8 passed in 2.33s
+$ revert; cmp: identical; git apply --check B2.diff: ok
+
+### B3  (18:45:49)
+$ ./venv/bin/python <scratch>/breakage.py B3
+B3: applied to plot_InstantonSolutions.py
+$ cat B3.diff   (git apply -R --check B3.diff: ok)
+--- a/plot_InstantonSolutions.py
++++ b/plot_InstantonSolutions.py
+@@ -23,8 +23,6 @@
+ import seaborn as sns
+ from matplotlib import pyplot as plt
+ 
+-# names Ray's token mode before ray.init (config/ray_auth.py)
+-import config.ray_auth  # noqa: F401
+ from ComputeTargets import InflatonTrajectoryProxy
+ from ComputeTargets.FullInstanton import FullInstantonProxy
+ from ComputeTargets.SlowRollInstanton import SlowRollInstantonProxy
+$ ./venv/bin/python -m pytest tests/test_ray_auth.py -q -p no:cacheprovider -rf
+=========================== short test summary info ============================
+FAILED tests/test_ray_auth.py::test_each_driver_imports_it_before_ray_init[plot_InstantonSolutions.py]
+1 failed, 9 passed in 2.26s
+$ revert; cmp: identical; git apply --check B3.diff: ok
+
+### B4  (18:45:52)
+$ ./venv/bin/python <scratch>/breakage.py B4
+B4: applied to .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
+$ cat B4.diff   (git apply -R --check B4.diff: ok)
+--- a/.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
++++ b/.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
+@@ -289,12 +289,12 @@
+     # Ray's authentication mode, named (ray-sqla-align 01). Since Ray 2.59, `ray start` infers
+     # token mode from the token file (~/.ray/auth_token) unless told; SI names it, as
+     # config/ray_auth.py does for every driver, so that the cluster and its drivers agree.
+-    export RAY_AUTH_MODE="${RAY_AUTH_MODE:-token}"
+     local t0=$SECONDS
+     "$RAY_BIN" start --head --temp-dir "$SI_TEMP_DIR" --port "$SI_GCS_PORT" \
+         --ray-client-server-port "$SI_CLIENT_PORT" --dashboard-port "$SI_DASHBOARD_PORT" \
+         --dashboard-agent-listen-port "$SI_AGENT_PORT" --num-cpus "$ncpus" --disable-usage-stats
+     local rc=$?
++    export RAY_AUTH_MODE="${RAY_AUTH_MODE:-token}"
+     if [ "$rc" -ne 0 ]; then
+         err "ray start failed (exit $rc); stopping what it started and releasing the lock"
+         stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT"
+$ bash -n ray_cluster.sh
+[exit 0]
+$ ./venv/bin/python -m pytest tests/test_ray_auth.py -q -p no:cacheprovider -rf
+=========================== short test summary info ============================
+FAILED tests/test_ray_auth.py::test_ray_cluster_sh_exports_the_mode_before_ray_start
+1 failed, 9 passed in 2.42s
+$ revert; cmp: identical; git apply --check B4.diff: ok
+
+### at the fix commit 3a24ea5, clean tree (18:50:32)
+$ git apply --check var/ray-sqla-align-01/out/01-B1.diff; echo $?
+0
+$ git apply -R --check var/ray-sqla-align-01/out/01-B1.diff; echo $?   (expected to fail: not applied)
+error: patch failed: config/ray_auth.py:42
+error: config/ray_auth.py: patch does not apply
+1
+$ git apply --check var/ray-sqla-align-01/out/01-B2.diff; echo $?
+0
+$ git apply -R --check var/ray-sqla-align-01/out/01-B2.diff; echo $?   (expected to fail: not applied)
+error: patch failed: config/ray_auth.py:40
+error: config/ray_auth.py: patch does not apply
+1
+$ git apply --check var/ray-sqla-align-01/out/01-B3.diff; echo $?
+0
+$ git apply -R --check var/ray-sqla-align-01/out/01-B3.diff; echo $?   (expected to fail: not applied)
+error: patch failed: plot_InstantonSolutions.py:23
+error: plot_InstantonSolutions.py: patch does not apply
+1
+$ git apply --check var/ray-sqla-align-01/out/01-B4.diff; echo $?
+0
+$ git apply -R --check var/ray-sqla-align-01/out/01-B4.diff; echo $?   (expected to fail: not applied)
+error: patch failed: .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh:289
+error: .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh: patch does not apply
+1
+$ git status --porcelain | wc -l
+0

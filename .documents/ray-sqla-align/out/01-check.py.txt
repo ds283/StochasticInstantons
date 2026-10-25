@@ -1,0 +1,60 @@
+"""The one check after a launch (StochasticInstanton ray-sqla-align prompt 01, after rrk-adoption prompt 04, section 1.1; the
+orchestrator's brief, correction 8). Run once per build, from the repository root, after the
+registration line has been seen:
+
+    ./venv/bin/python check.py LAUNCH        # the launch files are var/ray-sqla-align-01/LAUNCH.*
+
+It reads files and runs two read-only commands: `runregistrykit list` and `/usr/bin/stat -f %SB`
+(BSD stat; the shell's `stat` is GNU's). It prints:
+- the time of the check (local, to the ms);
+- the manifest's path from the log's ">>   manifest" line, and whether it exists;
+- the manifest's run id and created; status.json's state, pid, heartbeat (and its age against the
+  check's time), stage; the pid file's content, and whether it equals status.json's pid;
+- the log's and the manifest's birth times;
+- the log's first lines, numbered;
+- list's output.
+No pgrep, no kill, no Ray."""
+import json
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+launch = sys.argv[1]
+L = Path("var/ray-sqla-align-01")
+log = L / f"{launch}.log"
+pidfile = L / f"{launch}.pid"
+
+now = datetime.now().astimezone()
+print(f"check at {now.isoformat(timespec='milliseconds')}")
+lines = log.read_text(errors="replace").splitlines()
+manifest = None
+for line in lines:
+    if line.startswith(">>   manifest "):
+        manifest = Path(line[len(">>   manifest "):].strip())
+        break
+print(f"manifest (from the log): {manifest}; exists: {manifest is not None and manifest.exists()}")
+m = json.loads(manifest.read_text())
+status_path = manifest.parent / "status.json"
+s = json.loads(status_path.read_text())
+print(f"run id: {m.get('run_id')}; manifest created: {m.get('created')}; "
+      f"results {m.get('results')}; results_store_id {m.get('results_store_id')}")
+hb = s.get("heartbeat")
+age = (now - datetime.fromisoformat(hb)).total_seconds() if hb else None
+print(f"status: state {s.get('state')}; pid {s.get('pid')}; heartbeat {hb}; "
+      f"heartbeat age at the check {age:.1f} s; stage {s.get('stage')!r}")
+pid_text = pidfile.read_text().strip()
+print(f"pid file: {pid_text}; equals status.json's pid: {pid_text == str(s.get('pid'))}")
+for p in (log, manifest):
+    born = subprocess.run(["/usr/bin/stat", "-f", "%SB", "-t", "%Y-%m-%d %H:%M:%S", str(p)],
+                          capture_output=True, text=True).stdout.strip()
+    print(f"born {born}: {p}")
+print("--- the log's first lines")
+for i, line in enumerate(lines[:8], 1):
+    print(f"{i:3d}| {line}")
+print("--- runregistrykit list")
+r = subprocess.run(["./venv/bin/python", "-m", "runregistrykit", "list"], capture_output=True, text=True)
+print(r.stdout, end="")
+if r.stderr:
+    print("[stderr]", r.stderr, end="")
+print(f"[list exit {r.returncode}]")

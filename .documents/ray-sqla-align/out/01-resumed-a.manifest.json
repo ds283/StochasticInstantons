@@ -1,0 +1,104 @@
+{
+  "argv": [
+    "/Users/ds283/Documents/Code/StochasticInstantons/RunDrivers/registered_run.py",
+    "--campaign",
+    "ray-sqla-align",
+    "--prompt",
+    "01",
+    "--register",
+    "resumed-a",
+    "--purpose",
+    "ray-sqla-align 01 R2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2",
+    "--",
+    "--config",
+    "quadratic-minimal.yaml",
+    "--database",
+    "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-resumed.sqlite",
+    "--job-name",
+    "ray-sqla-align-01-resumed-a",
+    "--targets",
+    "homogeneous",
+    "--n-collocation-points",
+    "5",
+    "--alpha-regularization",
+    "0.01",
+    "--ray-address",
+    "127.0.0.1:6390"
+  ],
+  "campaign": "ray-sqla-align",
+  "checkpoint": null,
+  "created": "2026-10-25T18:53:38+00:00",
+  "cwd": "/Users/ds283/Documents/Code/StochasticInstantons",
+  "expected_units": null,
+  "git_dirty": false,
+  "git_head": "3a24ea53962a3a02de412032807c0fd3e9afcb3f",
+  "heartbeat_means": "Refreshed when the run writes a line to stdout, at most once per 30 s, or at once when the line changes the stage, and the line it came from is the `stage` in status.json. RayWorkPool prints a progress line only after ray.wait has returned completed work, never sooner than 60 s after its last one, and otherwise only once 300 s have passed or more than 500 queue events have completed since it (RayPoolKit's defaults, which main.py does not override), so a fresh heartbeat from it means work completed within about five minutes. Several of main.py's queues are silent (title=None). Ray also forwards the workers' own output to the driver's stdout, so a worker's line beats too, without moving the stage. It does NOT mean any Ray task or actor is progressing, and the converse does not hold: a stage that prints nothing for longer than the staleness window (900 s, `list --stale-after`), such as a queue whose items each take longer than that, is reported stale while it works, and the gradient branch's solves have run for hours each. Stale means go and look.",
+  "host": {
+    "id": "8d2b247824882486",
+    "machine": "arm64",
+    "name": "mps026088.phys.susx.ac.uk",
+    "python": "3.13.16",
+    "release": "27.0.0",
+    "system": "Darwin"
+  },
+  "packages": {
+    "SQLAlchemy": {
+      "commit": null,
+      "editable": false,
+      "requested_revision": null,
+      "url": null,
+      "version": "2.0.55"
+    },
+    "datastorekit": {
+      "commit": "f47b9a255e9ad58e0d0eaf85644f53b575884d31",
+      "editable": false,
+      "requested_revision": "v0.5.0",
+      "url": "https://github.com/ds283/DatastoreKit",
+      "version": "0.5.0"
+    },
+    "numpy": {
+      "commit": null,
+      "editable": false,
+      "requested_revision": null,
+      "url": null,
+      "version": "2.4.6"
+    },
+    "ray": {
+      "commit": null,
+      "editable": false,
+      "requested_revision": null,
+      "url": null,
+      "version": "2.59.0"
+    },
+    "raypoolkit": {
+      "commit": "67a75b97a656accb98195a4bda93f64e6a5f3fb2",
+      "editable": false,
+      "requested_revision": "v0.3.0",
+      "url": "https://github.com/ds283/RayPoolKit",
+      "version": "0.3.0"
+    },
+    "runregistrykit": {
+      "commit": "0bae3a3c501a8264ee4be5bc24f06422af38720f",
+      "editable": false,
+      "requested_revision": "v0.2.0",
+      "url": "https://github.com/ds283/RunRegistryKit",
+      "version": "0.2.0"
+    },
+    "scipy": {
+      "commit": null,
+      "editable": false,
+      "requested_revision": null,
+      "url": null,
+      "version": "1.17.1"
+    }
+  },
+  "prompt": "01",
+  "purpose": "ray-sqla-align 01 R2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2",
+  "results": "var/datastores/ray-sqla-align-01-resumed.sqlite",
+  "results_store_id": null,
+  "run_id": "ray-sqla-align-01-resumed-a-20261025T185338",
+  "scope": "config quadratic-minimal.yaml; targets homogeneous; potential Quadratic; m 1e-05 Mp; N_init 20\u201320, 1 sample; N_final 5\u20135, 1 sample; delta_Nstar 0.1\u20133, 10 samples; n_collocation_points 5; alpha_regularization 0.01; 10 shards; job ray-sqla-align-01-resumed-a",
+  "script": "main.py",
+  "script_sha256": "3c756c01a393136590538a4558071476681794cb1db8bc50eb6bf6b73fadeede",
+  "unit": null
+}

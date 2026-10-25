@@ -1,0 +1,22 @@
+## 2.5 T1: the subprocess programs, read (2026-10-25 18:43)
+
+- tests/test_inflaton_trajectory_prune.py:464 `ray.init(address="local", include_dashboard=False)`
+  is inside _POOL_SCRIPT, run by _run_pool at :513:
+      proc = subprocess.run([sys.executable, "-c", _POOL_SCRIPT, str(_ROOT), mode, str(db)],
+                            cwd=_ROOT, capture_output=True, text=True, timeout=600)
+  no env=: the child inherits this process's environment, which conftest's import of
+  config.ray_auth has updated through os.environ (putenv). Inherits RAY_AUTH_MODE.
+- tests/test_inventory_store.py:80 `ray.init(address="local", include_dashboard=False)` is inside
+  _STORE_SCRIPT, run by the `store` fixture at :247:
+      proc = subprocess.run([sys.executable, "-c", _STORE_SCRIPT, str(_ROOT), str(db)],
+                            cwd=_ROOT, capture_output=True, text=True, timeout=600)
+  no env=: inherited. The same file's _main (:282) runs main.py with
+  env=dict(os.environ, RAY_ADDRESS=_ADDRESS) (:297): built from os.environ (and main.py imports
+  config.ray_auth itself).
+- tests/registered_run_helpers.py:110 `ray.init(address=address)` is inside the stubbed program,
+  run by run_stubbed (:363) with env=subprocess_env() and by run_the_script (:380) with
+  env=subprocess_env() less PYTHONPATH; subprocess_env (:254-258) is `dict(os.environ)` less
+  RAY_ADDRESS. Built from os.environ.
+
+So all three inherit RAY_AUTH_MODE from conftest (correction 5: "no env=" counts as inherited).
+No stop.

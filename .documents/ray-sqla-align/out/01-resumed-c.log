@@ -1,0 +1,55 @@
+>> registered_run: registered as ray-sqla-align-01-resumed-c-20261025T185506
+>>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/ray-sqla-align-01-resumed-c-20261025T185506/manifest.json
+>>   list it with: ./venv/bin/python -m runregistrykit list
+>> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0); ray 2.59.0 (no recorded origin); SQLAlchemy 2.0.55 (no recorded origin); numpy 2.4.6 (no recorded origin); scipy 1.17.1 (no recorded origin)
+2026-10-25 18:55:08,254	INFO worker.py:1836 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+2026-10-25 18:55:08,306	INFO worker.py:2024 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+>> Opened existing sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-resumed.sqlite" with 10 shards
+
+** BUILDING PARAMETER SAMPLING GRIDS
+   -- using potential type "Quadratic"
+   -- N_init: 1 value = [ 20 ]
+   -- N_final: 1 value = [ 5 ]
+   -- delta_Nstar: 10 values = [ 0.1, 0.42222, 0.74444, 1.0667, 1.3889, 1.7111, 2.0333, 2.3556, 2.6778, 3 ]
+   -- n_collocation_points: 1 value = [ 5 ]
+   -- alpha_regularization: 1 value = [ 0.01 ]
+   -- Quadratic m: 1 value = [ 1e-05 Mp ]
+   -- time sampling: 100 samples per e-fold
+
+   >> 1 model and 1 x 1 x 10 N_init/N_final/delta_Nstar grid = 10 parameter combinations per model = 10 instanton combinations
+
+** COSMOLOGICAL PARAMETERS: Planck2018 68% central values TT+TE+EE+lowP+lensing+BAO (store_id=1)
+
+** DIFFUSION MODEL: MasslessDecoupledDiffusion (store_id=1)
+
+** STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES
+   -- ALL WORK ITEMS COMPLETE in time 0.0945s
+      Queue summary: 1 lookup (avg 10.58/sec), 0 compute (avg 0/day), 0 store (avg 0/day), 0 validation (avg 0/day)
+      (no compute items were evaluated - all assets read from datastore)
+
+** STAGE 2: FULL MSR INSTANTONS LOOKUP:
+   -- 3 already computed, 7 to compute
+
+** STAGE 2: FULL MSR INSTANTONS
+   -- ALL WORK ITEMS COMPLETE in time 15.1s
+      Queue summary: 7 lookup (avg 27.9/min), 7 compute (avg 27.9/min), 7 store (avg 27.9/min), 7 validation (avg 27.9/min)
+
+** STAGE 3: SLOW-ROLL INSTANTONS LOOKUP:
+   -- 0 already computed, 10 to compute
+
+** STAGE 3: SLOW-ROLL INSTANTONS
+   -- ALL WORK ITEMS COMPLETE in time 12.6s
+      Queue summary: 10 lookup (avg 47.79/min), 10 compute (avg 47.79/min), 10 store (avg 47.79/min), 10 validation (avg 47.79/min)
+
+** STAGE 4: COMPACTION FUNCTIONS
+
+** COMPACTION FUNCTIONS LOOKUP:
+   -- 0 already computed, 10 to compute
+
+** STAGE 4: COMPACTION FUNCTIONS AND MASSES
+   -- ALL WORK ITEMS COMPLETE in time 3.02s
+      Queue summary: 10 lookup (avg 198.9/min), 10 compute (avg 198.9/min), 10 store (avg 198.9/min), 10 validation (avg 198.9/min)
+
+** Skipping gradient branch (--targets excludes 'gradient')
+** driver exit status 0
+** launcher saw exit status 0

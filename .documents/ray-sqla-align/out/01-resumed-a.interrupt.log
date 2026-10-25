@@ -1,0 +1,4 @@
+[2026-10-25T18:53:38+00:00] interrupt_when: waiting for "STAGE 2: FULL MSR INSTANTONS" in /Users/ds283/Documents/Code/StochasticInstantons/var/ray-sqla-align-01/resumed-a.log; then 19 s; then SIGTERM
+[2026-10-25T18:53:38+00:00] interrupt_when: driver pid 75785 (from /Users/ds283/Documents/Code/StochasticInstantons/var/ray-sqla-align-01/resumed-a.pid)
+[2026-10-25T18:54:08+00:00] interrupt_when: saw "STAGE 2: FULL MSR INSTANTONS"; waiting 19 s
+[2026-10-25T18:54:27+00:00] interrupt_when: sent SIGTERM to pid 75785

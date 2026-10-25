@@ -1,0 +1,29 @@
+"""Apply one deliberate breakage (ray-sqla-align 01, section 2.7) to a file in place.
+    python breakage.py B1|B2|B3|B4
+Each replaces one exact text, asserted to occur once."""
+import sys
+B = {
+ "B1": ("config/ray_auth.py",
+        '    os.environ["RAY_AUTH_MODE"] = RAY_AUTH_MODE\n    if "ray._raylet" in sys.modules:\n        sys.modules["ray._raylet"].Config.initialize("")\n',
+        '    os.environ["RAY_AUTH_MODE"] = RAY_AUTH_MODE\n'),
+ "B2": ("config/ray_auth.py",
+        'if "RAY_AUTH_MODE" not in os.environ:\n',
+        'if True:\n'),
+ "B3": ("plot_InstantonSolutions.py",
+        '# names Ray\'s token mode before ray.init (config/ray_auth.py)\nimport config.ray_auth  # noqa: F401\n',
+        ''),
+ "B4": (".documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh",
+        '    export RAY_AUTH_MODE="${RAY_AUTH_MODE:-token}"\n    local t0=$SECONDS\n',
+        '    local t0=$SECONDS\n'),
+}
+name = sys.argv[1]
+path, old, new = B[name]
+s = open(path).read()
+assert s.count(old) == 1, (name, path)
+s = s.replace(old, new)
+if name == "B4":
+    anchor = '    local rc=$?\n'
+    assert s.count(anchor) == 1
+    s = s.replace(anchor, anchor + '    export RAY_AUTH_MODE="${RAY_AUTH_MODE:-token}"\n')
+open(path, "w").write(s)
+print(f"{name}: applied to {path}")

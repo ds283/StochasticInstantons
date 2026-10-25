@@ -1,0 +1,1813 @@
+## 2.6 L1: the launcher, 04s with its names changed
+$ bash -n .documents/ray-sqla-align/rehearsal/build_registered.sh; echo $?
+0
+$ diff -u .documents/rrk-adoption/rehearsal/build_registered.sh .documents/ray-sqla-align/rehearsal/build_registered.sh
+--- .documents/rrk-adoption/rehearsal/build_registered.sh	2026-10-25 17:16:04
++++ .documents/ray-sqla-align/rehearsal/build_registered.sh	2026-10-25 18:45:04
+@@ -14,8 +14,11 @@
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
+ #
+-# One registered build of the rrk-adoption rehearsal (.prompts/rrk-adoption/
+-# 04-rehearse-registered-runs.md, section 1.1, H0; campaign README P8). Written for rrk-adoption
++# One registered build of the ray-sqla-align rehearsal (.prompts/ray-sqla-align/
++# 01-move-ray-and-sqlalchemy-with-token-mode.md, section 2.8, R; item L1, campaign README C9).
++# It is rrk-adoption prompt 04's launcher, .documents/rrk-adoption/rehearsal/build_registered.sh,
++# with its campaign, prompt, store and job prefix and launch directory changed to ray-sqla-align,
++# 01, ray-sqla-align-01- and var/ray-sqla-align-01, and nothing else. Written for rrk-adoption
+ # prompt 04, after .documents/dk-and-rpk-migration/rehearsal/build.sh: the same main.py command
+ # (dk-and-rpk-migration README section 4.1's dense build, without --profile-db), given to the
+ # registered-run wrapper RunDrivers/registered_run.py after its "--".
+@@ -44,19 +47,19 @@
+ usage: build_registered.sh STORE BUILD ADDRESS PURPOSE [LAUNCH]
+ 
+   STORE     the store's slug (letters, digits and hyphens); the store is
+-            $PWD/var/datastores/rrk-adoption-04-STORE.sqlite
++            $PWD/var/datastores/ray-sqla-align-01-STORE.sqlite
+   BUILD     the build's slug (letters, digits and hyphens): the wrapper's --register, and
+-            main.py's --job-name rrk-adoption-04-BUILD
++            main.py's --job-name ray-sqla-align-01-BUILD
+   ADDRESS   the Ray cluster's address, passed to main.py as --ray-address
+   PURPOSE   the run's purpose, one line, passed to the wrapper as --purpose
+   LAUNCH    the slug of the launch files (default BUILD): the log is
+-            $PWD/var/rrk-adoption-04/LAUNCH.log and the pid file LAUNCH.pid
++            $PWD/var/ray-sqla-align-01/LAUNCH.log and the pid file LAUNCH.pid
+ 
+ Runs, from the repository root, detached (nohup), with the driver's stdout and stderr to the log:
+-  PYTHONPATH=. ./venv/bin/python -u RunDrivers/registered_run.py --campaign rrk-adoption \
+-      --prompt 04 --register BUILD --purpose PURPOSE -- \
+-      --config quadratic-minimal.yaml --database $S/rrk-adoption-04-STORE.sqlite \
+-      --job-name rrk-adoption-04-BUILD --targets homogeneous \
++  PYTHONPATH=. ./venv/bin/python -u RunDrivers/registered_run.py --campaign ray-sqla-align \
++      --prompt 01 --register BUILD --purpose PURPOSE -- \
++      --config quadratic-minimal.yaml --database $S/ray-sqla-align-01-STORE.sqlite \
++      --job-name ray-sqla-align-01-BUILD --targets homogeneous \
+       --n-collocation-points 5 --alpha-regularization 0.01 --ray-address ADDRESS
+ where S=$PWD/var/datastores. The driver's pid is written to the pid file as soon as it starts,
+ and "** launcher saw exit status N" is appended to the log when it ends. It refuses to
+@@ -94,7 +97,7 @@
+ fi
+ 
+ S="$PWD/var/datastores"
+-L="$PWD/var/rrk-adoption-04"
++L="$PWD/var/ray-sqla-align-01"
+ LOG="$L/$LAUNCH.log"
+ PIDFILE="$L/$LAUNCH.pid"
+ 
+@@ -103,10 +106,10 @@
+ mkdir -p "$L" || refuse "could not create $L"
+ 
+ CMD=(./venv/bin/python -u RunDrivers/registered_run.py
+-     --campaign rrk-adoption --prompt 04 --register "$BUILD" --purpose "$PURPOSE" --
++     --campaign ray-sqla-align --prompt 01 --register "$BUILD" --purpose "$PURPOSE" --
+      --config quadratic-minimal.yaml
+-     --database "$S/rrk-adoption-04-$STORE.sqlite"
+-     --job-name "rrk-adoption-04-$BUILD" --targets homogeneous
++     --database "$S/ray-sqla-align-01-$STORE.sqlite"
++     --job-name "ray-sqla-align-01-$BUILD" --targets homogeneous
+      --n-collocation-points 5 --alpha-regularization 0.01 --ray-address "$ADDRESS")
+ 
+ # The detached bash: launch the driver, write its pid at once, wait on it (and so reap it), then
+[diff exit 1]
+
+## 2.8 R, at the fix commit 3a24ea53962a3a02de412032807c0fd3e9afcb3f, git status --porcelain: 0 lines
+# 18:50:48 load averages: 6.14 10.24 22.63; env | grep -c RAY_AUTH_MODE: 0
+
+$ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start "ray-sqla-align 01 (R)" > <scratch>/r-start.txt 2>&1; echo $?   (alone, 18:50:5x)
+0
+acquired the rehearsal lock (/Users/ds283/.raypoolkit/rehearsal-lock) for StochasticInstantons: ray-sqla-align 01 (R)
+2026-10-25 18:50:57,293	INFO usage_lib.py:448 -- Usage stats collection is disabled.
+2026-10-25 18:50:57,293	INFO scripts.py:1043 -- Local node IP: 127.0.0.1
+2026-10-25 18:51:06,443	SUCC scripts.py:1084 -- --------------------
+2026-10-25 18:51:06,443	SUCC scripts.py:1085 -- Ray runtime started.
+2026-10-25 18:51:06,443	SUCC scripts.py:1086 -- --------------------
+2026-10-25 18:51:06,443	INFO scripts.py:1088 -- Next steps
+2026-10-25 18:51:06,447	INFO cli_output_helpers.py:16 -- Note: The following commands are intended for use on
+2026-10-25 18:51:06,447	INFO cli_output_helpers.py:17 -- the head node or within the cluster network.
+2026-10-25 18:51:06,447	INFO scripts.py:1106 -- To connect to this Ray cluster:
+2026-10-25 18:51:06,447	INFO scripts.py:1108 -- import ray
+2026-10-25 18:51:06,447	INFO scripts.py:1109 -- ray.init()
+2026-10-25 18:51:06,447	INFO scripts.py:1123 -- To submit a Ray job using the Ray Jobs CLI:
+2026-10-25 18:51:06,447	INFO scripts.py:1124 --   RAY_API_SERVER_ADDRESS='http://127.0.0.1:8266' ray job submit --working-dir . -- python my_script.py
+2026-10-25 18:51:06,447	INFO scripts.py:1133 -- See https://docs.ray.io/en/latest/cluster/running-applications/job-submission/index.html 
+2026-10-25 18:51:06,447	INFO scripts.py:1137 -- for more information on submitting Ray jobs to the Ray cluster.
+2026-10-25 18:51:06,447	INFO scripts.py:1142 -- To terminate the Ray runtime, run
+2026-10-25 18:51:06,447	INFO scripts.py:1143 --   ray stop
+2026-10-25 18:51:06,447	INFO scripts.py:1146 -- To view the status of the cluster, use
+2026-10-25 18:51:06,447	INFO scripts.py:1147 --   ray status
+2026-10-25 18:51:06,447	INFO scripts.py:1151 -- To monitor and debug Ray, view the dashboard at 
+2026-10-25 18:51:06,447	INFO scripts.py:1152 --   127.0.0.1:8266
+2026-10-25 18:51:06,447	INFO scripts.py:1159 -- If connection to the dashboard fails, check your firewall settings and network configuration.
+recorded pid 74894 in /Users/ds283/.raypoolkit/rehearsal-lock/owner
+>> ray_cluster: address 127.0.0.1:6390
+>> ray_cluster: dashboard http://127.0.0.1:8266
+>> ray_cluster: actors: RAY_AUTH_MODE=token ./venv/bin/ray list actors --address 127.0.0.1:6390
+>> ray_cluster: started in 13s; gcs_server pid 74894
+$ grep -c "Token authentication is enabled" <scratch>/r-start.txt
+0
+# 18:51:12 load averages: 6.86 10.07 22.21
+
+$ RAY_AUTH_MODE=token ./venv/bin/ray status --address 127.0.0.1:6390; echo $?
+======== Autoscaler status: 2026-10-25 18:51:20.558838 ========
+Node status
+---------------------------------------------------------------
+Active:
+ 1 node_3f912ab852e635360d47ae2b4e556286db1fa976c9a7a3c6413e7220
+Pending:
+ (no pending nodes)
+Recent failures:
+ (no failures)
+
+Resources
+---------------------------------------------------------------
+Total Usage:
+ 0.0/4.0 CPU
+ 0.0/1.0 GPU
+ 0B/7.30GiB memory
+ 0B/2.00GiB object_store_memory
+
+From request_resources:
+ (none)
+Pending Demands:
+ (no resource demands)
+0
+
+$ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh status > <scratch>/r-status-1.txt 2>&1; echo $?   (alone)
+0
+lock: HELD (/Users/ds283/.raypoolkit/rehearsal-lock)
+    project: StochasticInstantons
+    purpose: ray-sqla-align 01 (R)
+    acquired: 2026-10-25T18:50:54+00:00
+    host: mps026088
+    ray_temp_dir: /tmp/ray-si
+    ray_address: 127.0.0.1:6390
+    pid: 74894
+owner pid 74894: alive
+Ray processes of /tmp/ray-si: 19
+    74894 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/session_2026-
+    74895 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+    74896 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --address=127.0.0.1:
+    74897 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/StochasticInstanto
+    74909 74897 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resource_tracker im
+    74910 74897 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c import sys; from multiprocessing.forkser
+    74915 74910 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "import sys
+    74916 74910 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "import sys; f
+    74917 74910 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "import sys; 
+    74918 74910 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "import sys; fr
+    74919 74910 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "import sys; f
+    74920 74910 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "import sys;
+    74921 74910 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "import sys; 
+    74922 74910 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "import sys; 
+    74923 74910 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "import sys; 
+    74934 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+    74935 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tmp/ray-si/ses
+    74936 74935 ray::DashboardAgent                      
+    74937 74935 ray::RuntimeEnvAgent                
+SI cluster (/tmp/ray-si), the processes stop signals: 19
+    74894     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/s
+    74895     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    74896     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --addres
+    74897     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/Stocha
+    74909 74897 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resourc
+    74910 74897 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c import sys; from multiproces
+    74915 74910 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c
+    74916 74910 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "i
+    74917 74910 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    74918 74910 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "im
+    74919 74910 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "i
+    74920 74910 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c 
+    74921 74910 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    74922 74910 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    74923 74910 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    74934     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    74935     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tm
+    74936 74935 ray::DashboardAgent                      
+    74937 74935 ray::RuntimeEnvAgent                
+port 6390: held
+port 6391: held
+port 8266: held
+port 52366: held
+
+# the cluster environment: gcs_server 74894, raylet 74935 (from status)
+$ ps -E -ww -o command= -p 74894 | grep -o 'RAY_AUTH_MODE=[a-z]*'
+RAY_AUTH_MODE=token
+$ ps -E -ww -o command= -p 74894 | grep -c 'PATH='   (control)
+1
+$ ps -E -ww -o command= -p 74935 | grep -o 'RAY_AUTH_MODE=[a-z]*'
+RAY_AUTH_MODE=token
+$ ps -E -ww -o command= -p 74935 | grep -c 'PATH='   (control)
+1
+
+### R1 reference
+# 18:51:52.365 load averages: 5.42 9.30 21.37
+$ .documents/ray-sqla-align/rehearsal/build_registered.sh reference reference 127.0.0.1:6390 "ray-sqla-align 01 R1: the rehearsal grid straight through under ray 2.59.0 and SQLAlchemy 2.0.55, the reference store"
+>> build_registered.sh: reference launched detached (launcher pid 75383); log .../var/ray-sqla-align-01/reference.log; pid file .../var/ray-sqla-align-01/reference.pid  [exit 0]
+$ ./venv/bin/python <scratch>/wait_for_line.py var/ray-sqla-align-01/reference.log ">> registered_run: registered as" --timeout 120 --echo   [exit 0]
+[2026-10-25T18:51:57.2Z] wait_for_line: waiting for ">> registered_run: registered as" in var/ray-sqla-align-01/reference.log, timeout 120 s
+[2026-10-25T18:51:57.2Z] (present at start)    1| >> registered_run: registered as ray-sqla-align-01-reference-20261025T185152
+[2026-10-25T18:51:57.2Z] wait_for_line: after 0.0 s, line 1: >> registered_run: registered as ray-sqla-align-01-reference-20261025T185152
+$ ./venv/bin/python <scratch>/check.py reference   [exit 0]
+check at 2026-10-25T18:52:02.799+00:00
+manifest (from the log): /Users/ds283/Documents/Code/StochasticInstantons/var/runs/ray-sqla-align-01-reference-20261025T185152/manifest.json; exists: True
+run id: ray-sqla-align-01-reference-20261025T185152; manifest created: 2026-10-25T18:51:53+00:00; results var/datastores/ray-sqla-align-01-reference.sqlite; results_store_id None
+status: state running; pid 75386; heartbeat 2026-10-25T18:52:02+00:00; heartbeat age at the check 0.8 s; stage 'STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES'
+pid file: 75386; equals status.json's pid: True
+born 2026-10-25 18:51:52: var/ray-sqla-align-01/reference.log
+born 2026-10-25 18:51:53: /Users/ds283/Documents/Code/StochasticInstantons/var/runs/ray-sqla-align-01-reference-20261025T185152/manifest.json
+--- the log's first lines
+  1| >> registered_run: registered as ray-sqla-align-01-reference-20261025T185152
+  2| >>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/ray-sqla-align-01-reference-20261025T185152/manifest.json
+  3| >>   list it with: ./venv/bin/python -m runregistrykit list
+  4| >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0); ray 2.59.0 (no recorded origin); SQLAlchemy 2.0.55 (no recorded origin); numpy 2.4.6 (no recorded origin); scipy 1.17.1 (no recorded origin)
+  5| 2026-10-25 18:51:55,260	INFO worker.py:1836 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+  6| 2026-10-25 18:51:55,310	INFO worker.py:2024 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+  7| >> Created sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-reference.sqlite" with 10 shards
+  8| 
+--- runregistrykit list
+   RUN                                          STATE      PROGRESS      AGE  PURPOSE · STAGE
+   ray-sqla-align-01-reference-20261025T185152  running           -      10s  ray-sqla-align 01 R1: the rehearsal grid straight through under ray 2.59.0 and SQLAlchemy 2.0.55, the reference store  · STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES
+   rrk-adoption-04-resumed-c-20261025T161521    done              -   2h 36m  rrk-adoption 04 H4: the last resume of the resumed store, straight through  · Skipping gradient branch (--targets excludes 'gradient')
+   rrk-adoption-04-resumed-b-20261025T161352    lost              -   2h 38m  rrk-adoption 04 H3: a resume of the resumed store, killed with SIGKILL in STAGE 3  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-resumed-a-20261025T161131    killed            -   2h 40m  rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-reference-20261025T160704    done              -   2h 44m  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+
+5 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 1 alive, 4 finished; 0 with no host recorded.
+[list exit 0]
+$ ./venv/bin/python <scratch>/wait_for_line.py var/ray-sqla-align-01/reference.log "** launcher saw exit status" --timeout 420 --echo   [exit 0]
+[2026-10-25T18:52:08.9Z] wait_for_line: waiting for "** launcher saw exit status" in var/ray-sqla-align-01/reference.log, timeout 420 s
+[2026-10-25T18:52:08.9Z] (present at start)    1| >> registered_run: registered as ray-sqla-align-01-reference-20261025T185152
+[2026-10-25T18:52:08.9Z] (present at start)    2| >>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/ray-sqla-align-01-reference-20261025T185152/manifest.json
+[2026-10-25T18:52:08.9Z] (present at start)    3| >>   list it with: ./venv/bin/python -m runregistrykit list
+[2026-10-25T18:52:08.9Z] (present at start)    4| >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0); ray 2.59.0 (no recorded origin); SQLAlchemy 2.0.55 (no recorded origin); numpy 2.4.6 (no recorded origin); scipy 1.17.1 (no recorded origin)
+[2026-10-25T18:52:08.9Z] (present at start)    5| 2026-10-25 18:51:55,260	INFO worker.py:1836 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+[2026-10-25T18:52:08.9Z] (present at start)    6| 2026-10-25 18:51:55,310	INFO worker.py:2024 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+[2026-10-25T18:52:08.9Z] (present at start)    7| >> Created sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-reference.sqlite" with 10 shards
+[2026-10-25T18:52:08.9Z] (present at start)    8| 
+[2026-10-25T18:52:08.9Z] (present at start)    9| ** BUILDING PARAMETER SAMPLING GRIDS
+[2026-10-25T18:52:08.9Z] (present at start)   10|    -- using potential type "Quadratic"
+[2026-10-25T18:52:08.9Z] (present at start)   11|    -- N_init: 1 value = [ 20 ]
+[2026-10-25T18:52:08.9Z] (present at start)   12|    -- N_final: 1 value = [ 5 ]
+[2026-10-25T18:52:08.9Z] (present at start)   13|    -- delta_Nstar: 10 values = [ 0.1, 0.42222, 0.74444, 1.0667, 1.3889, 1.7111, 2.0333, 2.3556, 2.6778, 3 ]
+[2026-10-25T18:52:08.9Z] (present at start)   14|    -- n_collocation_points: 1 value = [ 5 ]
+[2026-10-25T18:52:08.9Z] (present at start)   15|    -- alpha_regularization: 1 value = [ 0.01 ]
+[2026-10-25T18:52:08.9Z] (present at start)   16|    -- Quadratic m: 1 value = [ 1e-05 Mp ]
+[2026-10-25T18:52:08.9Z] (present at start)   17|    -- time sampling: 100 samples per e-fold
+[2026-10-25T18:52:08.9Z] (present at start)   18| 
+[2026-10-25T18:52:08.9Z] (present at start)   19|    >> 1 model and 1 x 1 x 10 N_init/N_final/delta_Nstar grid = 10 parameter combinations per model = 10 instanton combinations
+[2026-10-25T18:52:08.9Z] (present at start)   20| 
+[2026-10-25T18:52:08.9Z] (present at start)   21| ** COSMOLOGICAL PARAMETERS: Planck2018 68% central values TT+TE+EE+lowP+lensing+BAO (store_id=1)
+[2026-10-25T18:52:08.9Z] (present at start)   22| 
+[2026-10-25T18:52:08.9Z] (present at start)   23| ** DIFFUSION MODEL: MasslessDecoupledDiffusion (store_id=1)
+[2026-10-25T18:52:08.9Z] (present at start)   24| 
+[2026-10-25T18:52:08.9Z] (present at start)   25| ** STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES
+[2026-10-25T18:52:08.9Z] (present at start)   26| (_compute_inflaton_trajectory pid=75471) [InflatonTrajectory] integrating background trajectory: phi0=15, pi0=0
+[2026-10-25T18:52:08.9Z] (present at start)   27| (_compute_inflaton_trajectory pid=75471) [InflatonTrajectory] N_end = 57.122
+[2026-10-25T18:52:15.2Z]   28|    -- ALL WORK ITEMS COMPLETE in time 12.4s
+[2026-10-25T18:52:15.2Z]   29|       Queue summary: 1 lookup (avg 290.2/hr), 1 compute (avg 290.2/hr), 1 store (avg 290.2/hr), 1 validation (avg 290.2/hr)
+[2026-10-25T18:52:15.2Z]   30| 
+[2026-10-25T18:52:15.2Z]   31| ** STAGE 2: FULL MSR INSTANTONS LOOKUP:
+[2026-10-25T18:52:15.2Z]   32|    -- 0 already computed, 10 to compute
+[2026-10-25T18:52:15.2Z]   33| 
+[2026-10-25T18:52:15.2Z]   34| ** STAGE 2: FULL MSR INSTANTONS
+[2026-10-25T18:52:37.0Z]   35|    -- ALL WORK ITEMS COMPLETE in time 21.7s
+[2026-10-25T18:52:37.0Z]   36|       Queue summary: 10 lookup (avg 27.67/min), 10 compute (avg 27.67/min), 10 store (avg 27.67/min), 10 validation (avg 27.67/min)
+[2026-10-25T18:52:37.0Z]   37| 
+[2026-10-25T18:52:37.0Z]   38| ** STAGE 3: SLOW-ROLL INSTANTONS LOOKUP:
+[2026-10-25T18:52:37.0Z]   39|    -- 0 already computed, 10 to compute
+[2026-10-25T18:52:37.0Z]   40| 
+[2026-10-25T18:52:37.0Z]   41| ** STAGE 3: SLOW-ROLL INSTANTONS
+[2026-10-25T18:52:49.0Z]   42|    -- ALL WORK ITEMS COMPLETE in time 12.1s
+[2026-10-25T18:52:49.0Z]   43|       Queue summary: 10 lookup (avg 49.59/min), 10 compute (avg 49.59/min), 10 store (avg 49.59/min), 10 validation (avg 49.59/min)
+[2026-10-25T18:52:49.0Z]   44| 
+[2026-10-25T18:52:49.0Z]   45| ** STAGE 4: COMPACTION FUNCTIONS
+[2026-10-25T18:52:50.7Z]   46| 
+[2026-10-25T18:52:50.7Z]   47| ** COMPACTION FUNCTIONS LOOKUP:
+[2026-10-25T18:52:50.7Z]   48|    -- 0 already computed, 10 to compute
+[2026-10-25T18:52:50.9Z]   49| 
+[2026-10-25T18:52:50.9Z]   50| ** STAGE 4: COMPACTION FUNCTIONS AND MASSES
+[2026-10-25T18:52:53.9Z]   51|    -- ALL WORK ITEMS COMPLETE in time 3s
+[2026-10-25T18:52:53.9Z]   52|       Queue summary: 10 lookup (avg 200/min), 10 compute (avg 200/min), 10 store (avg 200/min), 10 validation (avg 200/min)
+[2026-10-25T18:52:53.9Z]   53| 
+[2026-10-25T18:52:53.9Z]   54| ** Skipping gradient branch (--targets excludes 'gradient')
+[2026-10-25T18:52:57.0Z]   55| ** driver exit status 0
+[2026-10-25T18:52:57.0Z]   56| ** launcher saw exit status 0
+[2026-10-25T18:52:57.0Z] wait_for_line: after 48.1 s, line 56: ** launcher saw exit status 0
+# 18:52 load averages: 7.50 9.26 20.47
+$ ./venv/bin/python .documents/dk-and-rpk-migration/rehearsal/stage_counts.py var/ray-sqla-align-01/reference.log
+LOG var/ray-sqla-align-01/reference.log
+  >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0); ray 2.59.0 (no recorded origin); SQLAlchemy 2.0.55 (no recorded origin); numpy 2.4.6 (no recorded origin); scipy 1.17.1 (no recorded origin)
+  STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES: complete; lookup 1, compute 1, store 1, validation 1
+  STAGE 2: FULL MSR INSTANTONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 2: FULL MSR INSTANTONS: complete; lookup 10, compute 10, store 10, validation 10
+  STAGE 3: SLOW-ROLL INSTANTONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 3: SLOW-ROLL INSTANTONS: complete; lookup 10, compute 10, store 10, validation 10
+  STAGE 4: COMPACTION FUNCTIONS (section)
+  COMPACTION FUNCTIONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 4: COMPACTION FUNCTIONS AND MASSES: complete; lookup 10, compute 10, store 10, validation 10
+  Skipping gradient branch (--targets excludes 'gradient')
+  ALL WORK ITEMS COMPLETE lines: 4
+  driver exit status: 0
+[exit 0]
+$ ./venv/bin/python -m runregistrykit list
+   RUN                                          STATE      PROGRESS      AGE  PURPOSE · STAGE
+   ray-sqla-align-01-reference-20261025T185152  done              -       1m  ray-sqla-align 01 R1: the rehearsal grid straight through under ray 2.59.0 and SQLAlchemy 2.0.55, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+   rrk-adoption-04-resumed-c-20261025T161521    done              -   2h 37m  rrk-adoption 04 H4: the last resume of the resumed store, straight through  · Skipping gradient branch (--targets excludes 'gradient')
+   rrk-adoption-04-resumed-b-20261025T161352    lost              -   2h 39m  rrk-adoption 04 H3: a resume of the resumed store, killed with SIGKILL in STAGE 3  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-resumed-a-20261025T161131    killed            -   2h 41m  rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-reference-20261025T160704    done              -   2h 46m  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+
+5 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 5 finished; 0 with no host recorded.
+[exit 0]
+$ ./venv/bin/python -m runregistrykit store create var/datastores/ray-sqla-align-01-reference.sqlite --purpose "ray-sqla-align 01 R1: the reference build of the rehearsal grid under ray 2.59.0 and SQLAlchemy 2.0.55, kept for the user"   (18:53:15)
+>> create: var/datastores/ray-sqla-align-01-reference.manifest.json
+{
+  "created": "2026-10-25T18:53:15+00:00",
+  "datastore": "ray-sqla-align-01-reference.sqlite",
+  "history": [
+    {
+      "from": null,
+      "git_dirty": false,
+      "git_head": "3a24ea53962a3a02de412032807c0fd3e9afcb3f",
+      "operation": "create",
+      "to": "var/datastores/ray-sqla-align-01-reference.sqlite",
+      "when": "2026-10-25T18:53:15+00:00"
+    }
+  ],
+  "name": "ray-sqla-align-01-reference",
+  "purpose": "ray-sqla-align 01 R1: the reference build of the rehearsal grid under ray 2.59.0 and SQLAlchemy 2.0.55, kept for the user",
+  "sidecar_format": 1,
+  "store_id": "cb7b2dc3a7834ef49ed927e8b8ee7be4"
+}
+[exit 0]
+$ ./venv/bin/python -m runregistrykit store fingerprint var/datastores/ray-sqla-align-01-reference.sqlite --write
+store:    /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-reference.sqlite
+digest:   a9f716fb88cf8647327748e533e7402e6f406a59aba3826956e966b7f9081ea7
+format:   1
+classes:  (count, digest; then each tag set)
+  version                           1  e7d475b3a1b2
+                                    1  e7d475b3a1b2  []
+  store_tag                         0  e3b0c44298fc
+  redshift                          0  e3b0c44298fc
+  tolerance                         1  3de3f231f280
+                                    1  3de3f231f280  []
+  efold_value                    7521  baa3e812fd69
+                                 7521  baa3e812fd69  []
+  delta_Nstar                      10  dcce3850505d
+                                   10  dcce3850505d  []
+  N_init                            1  55d9d2c03617
+                                    1  55d9d2c03617  []
+  N_final                           1  ecfe1bb7b37b
+                                    1  ecfe1bb7b37b  []
+  n_collocation_points              1  68d163081099
+                                    1  68d163081099  []
+  alpha_regularization              1  5ca8671ce4dc
+                                    1  5ca8671ce4dc  []
+  inflaton_mass                     1  9f32dabe62d9
+                                    1  9f32dabe62d9  []
+  quartic_coupling                  0  e3b0c44298fc
+  phi_value                         1  6e04c0b5612b
+                                    1  6e04c0b5612b  []
+  pi_value                          1  237cd5e96169
+                                    1  237cd5e96169  []
+  MasslessDecoupledDiffusion        1  f2cdb0bc718f
+                                    1  f2cdb0bc718f  []
+  IntegrationSolver                 0  e3b0c44298fc
+  CosmologicalParams                1  66b0486a8db9
+                                    1  66b0486a8db9  []
+  QuadraticPotential                1  19fa0a01bc71
+                                    1  19fa0a01bc71  []
+  QuarticPotential                  0  e3b0c44298fc
+  InflatonTrajectory                1  ad1a423a846a
+                                    1  ad1a423a846a  []
+  FullInstanton                    10  7ce91c421ff1
+                                   10  7ce91c421ff1  []
+  GradientCoupledInstanton          0  e3b0c44298fc
+  SlowRollInstanton                10  7ce91c421ff1
+                                   10  7ce91c421ff1  []
+  CompactionFunction               10  5c795305351e
+                                   10  5c795305351e  []
+problems: none
+recorded: none recorded (the sidecar is registry)
+>> wrote the fingerprint into the sidecar; it replaced none
+[exit 0]
+$ ./venv/bin/python -m runregistrykit store show var/datastores/ray-sqla-align-01-reference.sqlite
+sidecar:  /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-reference.manifest.json
+kind:     registry
+problems: none
+datastore: 'ray-sqla-align-01-reference.sqlite'
+fields:
+  {
+    "created": "2026-10-25T18:53:15+00:00",
+    "datastore": "ray-sqla-align-01-reference.sqlite",
+    "fingerprint": {
+      "classes": {
+        "CompactionFunction": {
+          "count": 10,
+          "digest": "5c795305351e2203f71f4507bca83d82b3a699030b91c3f6005477fcce37be25",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "5c795305351e2203f71f4507bca83d82b3a699030b91c3f6005477fcce37be25",
+              "tags": []
+            }
+          ]
+        },
+        "CosmologicalParams": {
+          "count": 1,
+          "digest": "66b0486a8db9e5c6c6b0a11c2854eb6e7bdef122b13e60b630f237940f8198cd",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "66b0486a8db9e5c6c6b0a11c2854eb6e7bdef122b13e60b630f237940f8198cd",
+              "tags": []
+            }
+          ]
+        },
+        "FullInstanton": {
+          "count": 10,
+          "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+              "tags": []
+            }
+          ]
+        },
+        "GradientCoupledInstanton": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "InflatonTrajectory": {
+          "count": 1,
+          "digest": "ad1a423a846a786bc92765683a23644dd00e5ecda06d923ae22895487f75c30c",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "ad1a423a846a786bc92765683a23644dd00e5ecda06d923ae22895487f75c30c",
+              "tags": []
+            }
+          ]
+        },
+        "IntegrationSolver": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "MasslessDecoupledDiffusion": {
+          "count": 1,
+          "digest": "f2cdb0bc718f31721d2aeeaf150a91570d98d382369d724068b1da5cde61c33f",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "f2cdb0bc718f31721d2aeeaf150a91570d98d382369d724068b1da5cde61c33f",
+              "tags": []
+            }
+          ]
+        },
+        "N_final": {
+          "count": 1,
+          "digest": "ecfe1bb7b37b6ba08a2c28efee8a6906ce91730a2dd9c2768054893733a8c6c8",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "ecfe1bb7b37b6ba08a2c28efee8a6906ce91730a2dd9c2768054893733a8c6c8",
+              "tags": []
+            }
+          ]
+        },
+        "N_init": {
+          "count": 1,
+          "digest": "55d9d2c036176f6de6a3af328bd33cb94738aa739df48d3d7c11ec5fb9f6c274",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "55d9d2c036176f6de6a3af328bd33cb94738aa739df48d3d7c11ec5fb9f6c274",
+              "tags": []
+            }
+          ]
+        },
+        "QuadraticPotential": {
+          "count": 1,
+          "digest": "19fa0a01bc710a1e9b514b38855807d183afa08a92d02a59bc495aa4efca4747",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "19fa0a01bc710a1e9b514b38855807d183afa08a92d02a59bc495aa4efca4747",
+              "tags": []
+            }
+          ]
+        },
+        "QuarticPotential": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "SlowRollInstanton": {
+          "count": 10,
+          "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+              "tags": []
+            }
+          ]
+        },
+        "alpha_regularization": {
+          "count": 1,
+          "digest": "5ca8671ce4dc38b3f20bd8a2a72c1b484eeafaa254a38975a488bc25c0482097",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "5ca8671ce4dc38b3f20bd8a2a72c1b484eeafaa254a38975a488bc25c0482097",
+              "tags": []
+            }
+          ]
+        },
+        "delta_Nstar": {
+          "count": 10,
+          "digest": "dcce3850505db3ba8f0dd00183e0a622e88487923a985b67aa39ec26c5aece27",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "dcce3850505db3ba8f0dd00183e0a622e88487923a985b67aa39ec26c5aece27",
+              "tags": []
+            }
+          ]
+        },
+        "efold_value": {
+          "count": 7521,
+          "digest": "baa3e812fd697b9efdda1c4301bd5b3be4a92f947abbf70375639e3252e3ee8e",
+          "tag_sets": [
+            {
+              "count": 7521,
+              "digest": "baa3e812fd697b9efdda1c4301bd5b3be4a92f947abbf70375639e3252e3ee8e",
+              "tags": []
+            }
+          ]
+        },
+        "inflaton_mass": {
+          "count": 1,
+          "digest": "9f32dabe62d9316a63d0537eb7f069d343b75eef1e781f35c363f5c6d9665d44",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "9f32dabe62d9316a63d0537eb7f069d343b75eef1e781f35c363f5c6d9665d44",
+              "tags": []
+            }
+          ]
+        },
+        "n_collocation_points": {
+          "count": 1,
+          "digest": "68d163081099fa1499355d6bfb4e03bec923258d58c995731f5c5fcf45b7bda9",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "68d163081099fa1499355d6bfb4e03bec923258d58c995731f5c5fcf45b7bda9",
+              "tags": []
+            }
+          ]
+        },
+        "phi_value": {
+          "count": 1,
+          "digest": "6e04c0b5612bd587c2758a005561045c4f436e48d5f98c760a6f31a0e5f613ce",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "6e04c0b5612bd587c2758a005561045c4f436e48d5f98c760a6f31a0e5f613ce",
+              "tags": []
+            }
+          ]
+        },
+        "pi_value": {
+          "count": 1,
+          "digest": "237cd5e9616925eae2215daa8eb602f9db5e521a4415d78f11056c39f8c74cc8",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "237cd5e9616925eae2215daa8eb602f9db5e521a4415d78f11056c39f8c74cc8",
+              "tags": []
+            }
+          ]
+        },
+        "quartic_coupling": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "redshift": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "store_tag": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "tolerance": {
+          "count": 1,
+          "digest": "3de3f231f28088daa55ff7828dd40a9a6b4aa189ecf6b1c7e23d94f2f4e80fba",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "3de3f231f28088daa55ff7828dd40a9a6b4aa189ecf6b1c7e23d94f2f4e80fba",
+              "tags": []
+            }
+          ]
+        },
+        "version": {
+          "count": 1,
+          "digest": "e7d475b3a1b2af16927546f66efb5ffa6eabb66f5c30321ae55ac060a94cb792",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "e7d475b3a1b2af16927546f66efb5ffa6eabb66f5c30321ae55ac060a94cb792",
+              "tags": []
+            }
+          ]
+        }
+      },
+      "digest": "a9f716fb88cf8647327748e533e7402e6f406a59aba3826956e966b7f9081ea7",
+      "encoding_format": 1,
+      "fingerprint_format": 1,
+      "problems": {},
+      "taken": {
+        "git_dirty": false,
+        "git_head": "3a24ea53962a3a02de412032807c0fd3e9afcb3f",
+        "run_id": null,
+        "when": "2026-10-25T18:53:16+00:00"
+      }
+    },
+    "history": [
+      {
+        "from": null,
+        "git_dirty": false,
+        "git_head": "3a24ea53962a3a02de412032807c0fd3e9afcb3f",
+        "operation": "create",
+        "to": "var/datastores/ray-sqla-align-01-reference.sqlite",
+        "when": "2026-10-25T18:53:15+00:00"
+      }
+    ],
+    "name": "ray-sqla-align-01-reference",
+    "purpose": "ray-sqla-align 01 R1: the reference build of the rehearsal grid under ray 2.59.0 and SQLAlchemy 2.0.55, kept for the user",
+    "sidecar_format": 1,
+    "store_id": "cb7b2dc3a7834ef49ed927e8b8ee7be4"
+  }
+runs naming this store, under /Users/ds283/Documents/Code/StochasticInstantons/var/runs:
+  ray-sqla-align-01-reference-20261025T185152  done      finished  by results
+[exit 0]
+$ ./venv/bin/python <scratch>/rows.py var/datastores/ray-sqla-align-01-reference   [exit 0]
+2026-10-25 18:52:13.761443  InflatonTrajectory   shard0000 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:52:13.761443  InflatonTrajectory   shard0001 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:52:13.761443  InflatonTrajectory   shard0002 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:52:13.761443  InflatonTrajectory   shard0003 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:52:13.761443  InflatonTrajectory   shard0004 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:52:13.761443  InflatonTrajectory   shard0005 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:52:13.761443  InflatonTrajectory   shard0006 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:52:13.761443  InflatonTrajectory   shard0007 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:52:13.761443  InflatonTrajectory   shard0008 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:52:13.761443  InflatonTrajectory   shard0009 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:52:30.777791  FullInstanton        shard0001 serial=1 validated=1 dNstar=0.7444444444444444 children=1576
+2026-10-25 18:52:30.846572  FullInstanton        shard0009 serial=21 validated=1 dNstar=0.1 children=1511
+2026-10-25 18:52:30.973631  FullInstanton        shard0002 serial=41 validated=1 dNstar=1.0666666666666667 children=1608
+2026-10-25 18:52:33.602376  FullInstanton        shard0003 serial=61 validated=1 dNstar=1.3888888888888888 children=1640
+2026-10-25 18:52:33.621647  FullInstanton        shard0006 serial=81 validated=1 dNstar=2.3555555555555556 children=1737
+2026-10-25 18:52:34.279549  FullInstanton        shard0004 serial=101 validated=1 dNstar=1.711111111111111 children=1673
+2026-10-25 18:52:35.198277  FullInstanton        shard0007 serial=128 validated=1 dNstar=2.6777777777777776 children=1769
+2026-10-25 18:52:35.214558  FullInstanton        shard0000 serial=141 validated=1 dNstar=0.42222222222222217 children=1544
+2026-10-25 18:52:35.501004  FullInstanton        shard0005 serial=161 validated=1 dNstar=2.033333333333333 children=1705
+2026-10-25 18:52:36.823650  FullInstanton        shard0008 serial=181 validated=1 dNstar=3.0 children=1801
+2026-10-25 18:52:48.476729  SlowRollInstanton    shard0001 serial=1 validated=1 dNstar=0.7444444444444444 children=1576
+2026-10-25 18:52:48.514039  SlowRollInstanton    shard0000 serial=21 validated=1 dNstar=0.42222222222222217 children=1544
+2026-10-25 18:52:48.540260  SlowRollInstanton    shard0002 serial=41 validated=1 dNstar=1.0666666666666667 children=1608
+2026-10-25 18:52:48.606466  SlowRollInstanton    shard0009 serial=61 validated=1 dNstar=0.1 children=1511
+2026-10-25 18:52:48.688322  SlowRollInstanton    shard0003 serial=81 validated=1 dNstar=1.3888888888888888 children=1640
+2026-10-25 18:52:48.704468  SlowRollInstanton    shard0008 serial=101 validated=1 dNstar=3.0 children=1801
+2026-10-25 18:52:48.720455  SlowRollInstanton    shard0004 serial=128 validated=1 dNstar=1.711111111111111 children=1673
+2026-10-25 18:52:48.737414  SlowRollInstanton    shard0006 serial=141 validated=1 dNstar=2.3555555555555556 children=1737
+2026-10-25 18:52:48.755434  SlowRollInstanton    shard0007 serial=161 validated=1 dNstar=2.6777777777777776 children=1769
+2026-10-25 18:52:48.795109  SlowRollInstanton    shard0005 serial=181 validated=1 dNstar=2.033333333333333 children=1705
+2026-10-25 18:52:51.636763  CompactionFunction   shard0009 serial=1 validated=1 dNstar=0.1 children=3022
+2026-10-25 18:52:51.650391  CompactionFunction   shard0000 serial=21 validated=1 dNstar=0.42222222222222217 children=3088
+2026-10-25 18:52:51.849523  CompactionFunction   shard0002 serial=41 validated=1 dNstar=1.0666666666666667 children=3216
+2026-10-25 18:52:51.872336  CompactionFunction   shard0001 serial=61 validated=1 dNstar=0.7444444444444444 children=3152
+2026-10-25 18:52:52.675863  CompactionFunction   shard0003 serial=81 validated=1 dNstar=1.3888888888888888 children=3280
+2026-10-25 18:52:52.692214  CompactionFunction   shard0006 serial=101 validated=1 dNstar=2.3555555555555556 children=3474
+2026-10-25 18:52:52.888051  CompactionFunction   shard0004 serial=128 validated=1 dNstar=1.711111111111111 children=3346
+2026-10-25 18:52:52.901240  CompactionFunction   shard0005 serial=141 validated=1 dNstar=2.033333333333333 children=3410
+2026-10-25 18:52:53.606058  CompactionFunction   shard0007 serial=161 validated=1 dNstar=2.6777777777777776 children=3538
+2026-10-25 18:52:53.618317  CompactionFunction   shard0008 serial=181 validated=1 dNstar=3.0 children=3602
+--- by table, validated: (rows, child rows)
+('CompactionFunction', True) [10, 33128]
+('FullInstanton', True) [10, 16564]
+('InflatonTrajectory', True) [10, 57130]
+('SlowRollInstanton', True) [10, 16564]
+--- efold_value rows per shard: {'0000': 7521, '0001': 7521, '0002': 7521, '0003': 7521, '0004': 7521, '0005': 7521, '0006': 7521, '0007': 7521, '0008': 7521, '0009': 7521}
+--- newest efold_value timestamp per shard: {'0000': '2026-10-25 18:52:29.426793', '0001': '2026-10-25 18:52:29.426793', '0002': '2026-10-25 18:52:29.426793', '0003': '2026-10-25 18:52:29.426793', '0004': '2026-10-25 18:52:29.426793', '0005': '2026-10-25 18:52:29.426793', '0006': '2026-10-25 18:52:29.426793', '0007': '2026-10-25 18:52:29.426793', '0008': '2026-10-25 18:52:29.426793', '0009': '2026-10-25 18:52:29.426793'}
+--- primary tables: ['shards', 'shard_key_config', 'shard_keys', 'replicated_tables', 'sharded_tables', 'replication_in_flight']
+--- replication_in_flight: 0 row(s); columns ['operation', 'class_name', 'controller_shard', 'store_id', 'started']
+
+### R2 resumed-a  (<s> = 19 s; see the results note)
+# 18:53:38.118 load averages: 5.66 8.52 19.68
+$ .documents/ray-sqla-align/rehearsal/build_registered.sh resumed resumed-a 127.0.0.1:6390 "ray-sqla-align 01 R2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2" && L=$PWD/var/ray-sqla-align-01 && nohup ./venv/bin/python .documents/dk-and-rpk-migration/rehearsal/interrupt_when.py $L/resumed-a.log $L/resumed-a.pid --banner "STAGE 2: FULL MSR INSTANTONS" --after 19 --poll 0.2 > $L/resumed-a.interrupt.log 2>&1 < /dev/null & disown
+>> build_registered.sh: resumed-a launched detached (launcher pid 75779); ...
+$ ./venv/bin/python <scratch>/wait_for_line.py var/ray-sqla-align-01/resumed-a.log ">> registered_run: registered as" --timeout 120 --echo   [exit 0]
+[2026-10-25T18:53:50.6Z] wait_for_line: waiting for ">> registered_run: registered as" in var/ray-sqla-align-01/resumed-a.log, timeout 120 s
+[2026-10-25T18:53:50.6Z] (present at start)    1| >> registered_run: registered as ray-sqla-align-01-resumed-a-20261025T185338
+[2026-10-25T18:53:50.6Z] wait_for_line: after 0.0 s, line 1: >> registered_run: registered as ray-sqla-align-01-resumed-a-20261025T185338
+$ ./venv/bin/python <scratch>/check.py resumed-a   [exit 0]
+check at 2026-10-25T18:53:51.645+00:00
+manifest (from the log): /Users/ds283/Documents/Code/StochasticInstantons/var/runs/ray-sqla-align-01-resumed-a-20261025T185338/manifest.json; exists: True
+run id: ray-sqla-align-01-resumed-a-20261025T185338; manifest created: 2026-10-25T18:53:38+00:00; results var/datastores/ray-sqla-align-01-resumed.sqlite; results_store_id None
+status: state running; pid 75785; heartbeat 2026-10-25T18:53:38+00:00; heartbeat age at the check 13.6 s; stage None
+pid file: 75785; equals status.json's pid: True
+born 2026-10-25 18:53:38: var/ray-sqla-align-01/resumed-a.log
+born 2026-10-25 18:53:38: /Users/ds283/Documents/Code/StochasticInstantons/var/runs/ray-sqla-align-01-resumed-a-20261025T185338/manifest.json
+--- the log's first lines
+  1| >> registered_run: registered as ray-sqla-align-01-resumed-a-20261025T185338
+  2| >>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/ray-sqla-align-01-resumed-a-20261025T185338/manifest.json
+  3| >>   list it with: ./venv/bin/python -m runregistrykit list
+  4| >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0); ray 2.59.0 (no recorded origin); SQLAlchemy 2.0.55 (no recorded origin); numpy 2.4.6 (no recorded origin); scipy 1.17.1 (no recorded origin)
+  5| 2026-10-25 18:53:41,580	INFO worker.py:1836 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+  6| 2026-10-25 18:53:41,723	INFO worker.py:2024 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+  7| >> Created sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-resumed.sqlite" with 10 shards
+--- runregistrykit list
+   RUN                                          STATE      PROGRESS      AGE  PURPOSE · STAGE
+   ray-sqla-align-01-resumed-a-20261025T185338  running           -      14s  ray-sqla-align 01 R2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2
+   ray-sqla-align-01-reference-20261025T185152  done              -       2m  ray-sqla-align 01 R1: the rehearsal grid straight through under ray 2.59.0 and SQLAlchemy 2.0.55, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+   rrk-adoption-04-resumed-c-20261025T161521    done              -   2h 38m  rrk-adoption 04 H4: the last resume of the resumed store, straight through  · Skipping gradient branch (--targets excludes 'gradient')
+   rrk-adoption-04-resumed-b-20261025T161352    lost              -   2h 40m  rrk-adoption 04 H3: a resume of the resumed store, killed with SIGKILL in STAGE 3  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-resumed-a-20261025T161131    killed            -   2h 42m  rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-reference-20261025T160704    done              -   2h 46m  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+
+6 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 1 alive, 5 finished; 0 with no host recorded.
+[list exit 0]
+$ ./venv/bin/python <scratch>/wait_for_line.py var/ray-sqla-align-01/resumed-a.log "** launcher saw exit status" --timeout 420 --echo   [exit 0]
+[2026-10-25T18:53:52.7Z] wait_for_line: waiting for "** launcher saw exit status" in var/ray-sqla-align-01/resumed-a.log, timeout 420 s
+[2026-10-25T18:53:52.7Z] (present at start)    1| >> registered_run: registered as ray-sqla-align-01-resumed-a-20261025T185338
+[2026-10-25T18:53:52.7Z] (present at start)    2| >>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/ray-sqla-align-01-resumed-a-20261025T185338/manifest.json
+[2026-10-25T18:53:52.7Z] (present at start)    3| >>   list it with: ./venv/bin/python -m runregistrykit list
+[2026-10-25T18:53:52.7Z] (present at start)    4| >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0); ray 2.59.0 (no recorded origin); SQLAlchemy 2.0.55 (no recorded origin); numpy 2.4.6 (no recorded origin); scipy 1.17.1 (no recorded origin)
+[2026-10-25T18:53:52.7Z] (present at start)    5| 2026-10-25 18:53:41,580	INFO worker.py:1836 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+[2026-10-25T18:53:52.7Z] (present at start)    6| 2026-10-25 18:53:41,723	INFO worker.py:2024 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+[2026-10-25T18:53:52.7Z] (present at start)    7| >> Created sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-resumed.sqlite" with 10 shards
+[2026-10-25T18:53:54.1Z]    8| 
+[2026-10-25T18:53:54.1Z]    9| ** BUILDING PARAMETER SAMPLING GRIDS
+[2026-10-25T18:53:54.1Z]   10|    -- using potential type "Quadratic"
+[2026-10-25T18:53:54.1Z]   11|    -- N_init: 1 value = [ 20 ]
+[2026-10-25T18:53:54.1Z]   12|    -- N_final: 1 value = [ 5 ]
+[2026-10-25T18:53:54.1Z]   13|    -- delta_Nstar: 10 values = [ 0.1, 0.42222, 0.74444, 1.0667, 1.3889, 1.7111, 2.0333, 2.3556, 2.6778, 3 ]
+[2026-10-25T18:53:54.1Z]   14|    -- n_collocation_points: 1 value = [ 5 ]
+[2026-10-25T18:53:54.1Z]   15|    -- alpha_regularization: 1 value = [ 0.01 ]
+[2026-10-25T18:53:54.5Z]   16|    -- Quadratic m: 1 value = [ 1e-05 Mp ]
+[2026-10-25T18:53:54.5Z]   17|    -- time sampling: 100 samples per e-fold
+[2026-10-25T18:53:54.5Z]   18| 
+[2026-10-25T18:53:54.5Z]   19|    >> 1 model and 1 x 1 x 10 N_init/N_final/delta_Nstar grid = 10 parameter combinations per model = 10 instanton combinations
+[2026-10-25T18:53:54.7Z]   20| 
+[2026-10-25T18:53:54.7Z]   21| ** COSMOLOGICAL PARAMETERS: Planck2018 68% central values TT+TE+EE+lowP+lensing+BAO (store_id=1)
+[2026-10-25T18:53:54.7Z]   22| 
+[2026-10-25T18:53:54.7Z]   23| ** DIFFUSION MODEL: MasslessDecoupledDiffusion (store_id=1)
+[2026-10-25T18:53:54.7Z]   24| 
+[2026-10-25T18:53:54.7Z]   25| ** STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES
+[2026-10-25T18:53:57.2Z]   26| (_compute_inflaton_trajectory pid=75916) [InflatonTrajectory] integrating background trajectory: phi0=15, pi0=0
+[2026-10-25T18:53:58.4Z]   27| (_compute_inflaton_trajectory pid=75916) [InflatonTrajectory] N_end = 57.122
+[2026-10-25T18:54:08.7Z]   28|    -- ALL WORK ITEMS COMPLETE in time 14s
+[2026-10-25T18:54:08.7Z]   29|       Queue summary: 1 lookup (avg 256.7/hr), 1 compute (avg 256.7/hr), 1 store (avg 256.7/hr), 1 validation (avg 256.7/hr)
+[2026-10-25T18:54:08.9Z]   30| 
+[2026-10-25T18:54:08.9Z]   31| ** STAGE 2: FULL MSR INSTANTONS LOOKUP:
+[2026-10-25T18:54:08.9Z]   32|    -- 0 already computed, 10 to compute
+[2026-10-25T18:54:08.9Z]   33| 
+[2026-10-25T18:54:08.9Z]   34| ** STAGE 2: FULL MSR INSTANTONS
+[2026-10-25T18:54:28.7Z]   35| ** SIGTERM at 2026-10-25 18:54:28 +0000: recorded killed, exit code 143; stopping main.py; the process will exit with status 143
+[2026-10-25T18:54:28.7Z]   36| ** SIGTERM: main.py ended with SystemExit(1); recording killed, exit code 143
+[2026-10-25T18:54:33.6Z]   37| ** driver exit status 143
+[2026-10-25T18:54:33.8Z]   38| ** launcher saw exit status 143
+[2026-10-25T18:54:33.8Z] wait_for_line: after 41.1 s, line 38: ** launcher saw exit status 143
+# 18:54 load averages: 20.48 12.51 20.48
+$ cat var/ray-sqla-align-01/resumed-a.interrupt.log
+[2026-10-25T18:53:38+00:00] interrupt_when: waiting for "STAGE 2: FULL MSR INSTANTONS" in /Users/ds283/Documents/Code/StochasticInstantons/var/ray-sqla-align-01/resumed-a.log; then 19 s; then SIGTERM
+[2026-10-25T18:53:38+00:00] interrupt_when: driver pid 75785 (from /Users/ds283/Documents/Code/StochasticInstantons/var/ray-sqla-align-01/resumed-a.pid)
+[2026-10-25T18:54:08+00:00] interrupt_when: saw "STAGE 2: FULL MSR INSTANTONS"; waiting 19 s
+[2026-10-25T18:54:27+00:00] interrupt_when: sent SIGTERM to pid 75785
+$ ./venv/bin/python .documents/dk-and-rpk-migration/rehearsal/stage_counts.py var/ray-sqla-align-01/resumed-a.log
+LOG var/ray-sqla-align-01/resumed-a.log
+  >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0); ray 2.59.0 (no recorded origin); SQLAlchemy 2.0.55 (no recorded origin); numpy 2.4.6 (no recorded origin); scipy 1.17.1 (no recorded origin)
+  STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES: complete; lookup 1, compute 1, store 1, validation 1
+  STAGE 2: FULL MSR INSTANTONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 2: FULL MSR INSTANTONS: INCOMPLETE; no queue summary
+  ALL WORK ITEMS COMPLETE lines: 1
+  driver exit status: 143
+[exit 0]
+$ ./venv/bin/python -m runregistrykit list
+   RUN                                          STATE      PROGRESS      AGE  PURPOSE · STAGE
+   ray-sqla-align-01-resumed-a-20261025T185338  killed            -       1m  ray-sqla-align 01 R2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 2: FULL MSR INSTANTONS
+   ray-sqla-align-01-reference-20261025T185152  done              -       3m  ray-sqla-align 01 R1: the rehearsal grid straight through under ray 2.59.0 and SQLAlchemy 2.0.55, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+   rrk-adoption-04-resumed-c-20261025T161521    done              -   2h 39m  rrk-adoption 04 H4: the last resume of the resumed store, straight through  · Skipping gradient branch (--targets excludes 'gradient')
+   rrk-adoption-04-resumed-b-20261025T161352    lost              -   2h 40m  rrk-adoption 04 H3: a resume of the resumed store, killed with SIGKILL in STAGE 3  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-resumed-a-20261025T161131    killed            -   2h 43m  rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-reference-20261025T160704    done              -   2h 47m  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+
+6 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 6 finished; 0 with no host recorded.
+[exit 0]
+$ ./venv/bin/python <scratch>/rows.py var/datastores/ray-sqla-align-01-resumed   [exit 0]
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0000 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0001 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0002 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0003 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0004 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0005 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0006 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0007 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0008 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0009 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:26.331850  FullInstanton        shard0000 serial=1 validated=1 dNstar=0.42222222222222217 children=1544
+2026-10-25 18:54:26.343995  FullInstanton        shard0001 serial=21 validated=1 dNstar=0.7444444444444444 children=1576
+2026-10-25 18:54:26.483671  FullInstanton        shard0009 serial=41 validated=1 dNstar=0.1 children=1511
+--- by table, validated: (rows, child rows)
+('FullInstanton', True) [3, 4631]
+('InflatonTrajectory', True) [10, 57130]
+--- efold_value rows per shard: {'0000': 7521, '0001': 7521, '0002': 7521, '0003': 7521, '0004': 7521, '0005': 7521, '0006': 7521, '0007': 7521, '0008': 7521, '0009': 7521}
+--- newest efold_value timestamp per shard: {'0000': '2026-10-25 18:54:24.794312', '0001': '2026-10-25 18:54:24.794312', '0002': '2026-10-25 18:54:24.794312', '0003': '2026-10-25 18:54:24.794312', '0004': '2026-10-25 18:54:24.794312', '0005': '2026-10-25 18:54:24.794312', '0006': '2026-10-25 18:54:24.794312', '0007': '2026-10-25 18:54:24.794312', '0008': '2026-10-25 18:54:24.794312', '0009': '2026-10-25 18:54:24.794312'}
+--- primary tables: ['shards', 'shard_key_config', 'shard_keys', 'replicated_tables', 'sharded_tables', 'replication_in_flight']
+--- replication_in_flight: 0 row(s); columns ['operation', 'class_name', 'controller_shard', 'store_id', 'started']
+$ ./venv/bin/python -m runregistrykit store create var/datastores/ray-sqla-align-01-resumed.sqlite --purpose "ray-sqla-align 01 R2-R3: the rehearsal grid built by a resume after SIGTERM, under ray 2.59.0 and SQLAlchemy 2.0.55, kept for the user"   (18:54:52)
+>> create: var/datastores/ray-sqla-align-01-resumed.manifest.json
+{
+  "created": "2026-10-25T18:54:52+00:00",
+  "datastore": "ray-sqla-align-01-resumed.sqlite",
+  "history": [
+    {
+      "from": null,
+      "git_dirty": false,
+      "git_head": "3a24ea53962a3a02de412032807c0fd3e9afcb3f",
+      "operation": "create",
+      "to": "var/datastores/ray-sqla-align-01-resumed.sqlite",
+      "when": "2026-10-25T18:54:52+00:00"
+    }
+  ],
+  "name": "ray-sqla-align-01-resumed",
+  "purpose": "ray-sqla-align 01 R2-R3: the rehearsal grid built by a resume after SIGTERM, under ray 2.59.0 and SQLAlchemy 2.0.55, kept for the user",
+  "sidecar_format": 1,
+  "store_id": "c5ea19ff19154612862eaaa647a7bd03"
+}
+[exit 0]
+$ ./venv/bin/python -m runregistrykit store show var/datastores/ray-sqla-align-01-resumed.sqlite
+sidecar:  /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-resumed.manifest.json
+kind:     registry
+problems: none
+datastore: 'ray-sqla-align-01-resumed.sqlite'
+fields:
+  {
+    "created": "2026-10-25T18:54:52+00:00",
+    "datastore": "ray-sqla-align-01-resumed.sqlite",
+    "history": [
+      {
+        "from": null,
+        "git_dirty": false,
+        "git_head": "3a24ea53962a3a02de412032807c0fd3e9afcb3f",
+        "operation": "create",
+        "to": "var/datastores/ray-sqla-align-01-resumed.sqlite",
+        "when": "2026-10-25T18:54:52+00:00"
+      }
+    ],
+    "name": "ray-sqla-align-01-resumed",
+    "purpose": "ray-sqla-align 01 R2-R3: the rehearsal grid built by a resume after SIGTERM, under ray 2.59.0 and SQLAlchemy 2.0.55, kept for the user",
+    "sidecar_format": 1,
+    "store_id": "c5ea19ff19154612862eaaa647a7bd03"
+  }
+runs naming this store, under /Users/ds283/Documents/Code/StochasticInstantons/var/runs:
+  ray-sqla-align-01-resumed-a-20261025T185338  killed    finished  by results
+[exit 0]
+
+### R3 resumed-c
+# 18:55:05.656 load averages: 14.50 11.90 19.94
+$ .documents/ray-sqla-align/rehearsal/build_registered.sh resumed resumed-c 127.0.0.1:6390 "ray-sqla-align 01 R3: the resume of the resumed store, straight through"
+>> build_registered.sh: resumed-c launched detached (launcher pid 76185); ...  [exit 0]
+$ ./venv/bin/python <scratch>/wait_for_line.py var/ray-sqla-align-01/resumed-c.log ">> registered_run: registered as" --timeout 120 --echo   [exit 0]
+[2026-10-25T18:55:06.0Z] wait_for_line: waiting for ">> registered_run: registered as" in var/ray-sqla-align-01/resumed-c.log, timeout 120 s
+[2026-10-25T18:55:06.2Z]    1| >> registered_run: registered as ray-sqla-align-01-resumed-c-20261025T185506
+[2026-10-25T18:55:06.2Z] wait_for_line: after 0.2 s, line 1: >> registered_run: registered as ray-sqla-align-01-resumed-c-20261025T185506
+$ ./venv/bin/python <scratch>/check.py resumed-c   [exit 0]
+check at 2026-10-25T18:55:06.503+00:00
+manifest (from the log): /Users/ds283/Documents/Code/StochasticInstantons/var/runs/ray-sqla-align-01-resumed-c-20261025T185506/manifest.json; exists: True
+run id: ray-sqla-align-01-resumed-c-20261025T185506; manifest created: 2026-10-25T18:55:06+00:00; results var/datastores/ray-sqla-align-01-resumed.sqlite; results_store_id c5ea19ff19154612862eaaa647a7bd03
+status: state running; pid 76188; heartbeat 2026-10-25T18:55:06+00:00; heartbeat age at the check 0.5 s; stage None
+pid file: 76188; equals status.json's pid: True
+born 2026-10-25 18:55:05: var/ray-sqla-align-01/resumed-c.log
+born 2026-10-25 18:55:06: /Users/ds283/Documents/Code/StochasticInstantons/var/runs/ray-sqla-align-01-resumed-c-20261025T185506/manifest.json
+--- the log's first lines
+  1| >> registered_run: registered as ray-sqla-align-01-resumed-c-20261025T185506
+  2| >>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/ray-sqla-align-01-resumed-c-20261025T185506/manifest.json
+  3| >>   list it with: ./venv/bin/python -m runregistrykit list
+--- runregistrykit list
+   RUN                                          STATE      PROGRESS      AGE  PURPOSE · STAGE
+   ray-sqla-align-01-resumed-c-20261025T185506  running           -       1s  ray-sqla-align 01 R3: the resume of the resumed store, straight through
+   ray-sqla-align-01-resumed-a-20261025T185338  killed            -       1m  ray-sqla-align 01 R2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 2: FULL MSR INSTANTONS
+   ray-sqla-align-01-reference-20261025T185152  done              -       3m  ray-sqla-align 01 R1: the rehearsal grid straight through under ray 2.59.0 and SQLAlchemy 2.0.55, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+   rrk-adoption-04-resumed-c-20261025T161521    done              -   2h 39m  rrk-adoption 04 H4: the last resume of the resumed store, straight through  · Skipping gradient branch (--targets excludes 'gradient')
+   rrk-adoption-04-resumed-b-20261025T161352    lost              -   2h 41m  rrk-adoption 04 H3: a resume of the resumed store, killed with SIGKILL in STAGE 3  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-resumed-a-20261025T161131    killed            -   2h 43m  rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-reference-20261025T160704    done              -   2h 48m  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+
+7 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 1 alive, 6 finished; 0 with no host recorded.
+[list exit 0]
+$ ./venv/bin/python <scratch>/wait_for_line.py var/ray-sqla-align-01/resumed-c.log "** launcher saw exit status" --timeout 420 --echo   [exit 0]
+[2026-10-25T18:55:07.0Z] wait_for_line: waiting for "** launcher saw exit status" in var/ray-sqla-align-01/resumed-c.log, timeout 420 s
+[2026-10-25T18:55:07.0Z] (present at start)    1| >> registered_run: registered as ray-sqla-align-01-resumed-c-20261025T185506
+[2026-10-25T18:55:07.0Z] (present at start)    2| >>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/ray-sqla-align-01-resumed-c-20261025T185506/manifest.json
+[2026-10-25T18:55:07.0Z] (present at start)    3| >>   list it with: ./venv/bin/python -m runregistrykit list
+[2026-10-25T18:55:08.2Z]    4| >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0); ray 2.59.0 (no recorded origin); SQLAlchemy 2.0.55 (no recorded origin); numpy 2.4.6 (no recorded origin); scipy 1.17.1 (no recorded origin)
+[2026-10-25T18:55:08.2Z]    5| 2026-10-25 18:55:08,254	INFO worker.py:1836 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+[2026-10-25T18:55:08.4Z]    6| 2026-10-25 18:55:08,306	INFO worker.py:2024 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+[2026-10-25T18:55:08.8Z]    7| >> Opened existing sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-resumed.sqlite" with 10 shards
+[2026-10-25T18:55:14.8Z]    8| 
+[2026-10-25T18:55:14.8Z]    9| ** BUILDING PARAMETER SAMPLING GRIDS
+[2026-10-25T18:55:14.8Z]   10|    -- using potential type "Quadratic"
+[2026-10-25T18:55:14.8Z]   11|    -- N_init: 1 value = [ 20 ]
+[2026-10-25T18:55:14.8Z]   12|    -- N_final: 1 value = [ 5 ]
+[2026-10-25T18:55:14.8Z]   13|    -- delta_Nstar: 10 values = [ 0.1, 0.42222, 0.74444, 1.0667, 1.3889, 1.7111, 2.0333, 2.3556, 2.6778, 3 ]
+[2026-10-25T18:55:14.8Z]   14|    -- n_collocation_points: 1 value = [ 5 ]
+[2026-10-25T18:55:14.8Z]   15|    -- alpha_regularization: 1 value = [ 0.01 ]
+[2026-10-25T18:55:15.0Z]   16|    -- Quadratic m: 1 value = [ 1e-05 Mp ]
+[2026-10-25T18:55:15.0Z]   17|    -- time sampling: 100 samples per e-fold
+[2026-10-25T18:55:15.0Z]   18| 
+[2026-10-25T18:55:15.0Z]   19|    >> 1 model and 1 x 1 x 10 N_init/N_final/delta_Nstar grid = 10 parameter combinations per model = 10 instanton combinations
+[2026-10-25T18:55:15.0Z]   20| 
+[2026-10-25T18:55:15.0Z]   21| ** COSMOLOGICAL PARAMETERS: Planck2018 68% central values TT+TE+EE+lowP+lensing+BAO (store_id=1)
+[2026-10-25T18:55:15.0Z]   22| 
+[2026-10-25T18:55:15.0Z]   23| ** DIFFUSION MODEL: MasslessDecoupledDiffusion (store_id=1)
+[2026-10-25T18:55:15.0Z]   24| 
+[2026-10-25T18:55:15.0Z]   25| ** STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES
+[2026-10-25T18:55:15.0Z]   26|    -- ALL WORK ITEMS COMPLETE in time 0.0945s
+[2026-10-25T18:55:15.0Z]   27|       Queue summary: 1 lookup (avg 10.58/sec), 0 compute (avg 0/day), 0 store (avg 0/day), 0 validation (avg 0/day)
+[2026-10-25T18:55:15.0Z]   28|       (no compute items were evaluated - all assets read from datastore)
+[2026-10-25T18:55:15.0Z]   29| 
+[2026-10-25T18:55:15.0Z]   30| ** STAGE 2: FULL MSR INSTANTONS LOOKUP:
+[2026-10-25T18:55:15.0Z]   31|    -- 3 already computed, 7 to compute
+[2026-10-25T18:55:15.0Z]   32| 
+[2026-10-25T18:55:15.0Z]   33| ** STAGE 2: FULL MSR INSTANTONS
+[2026-10-25T18:55:30.0Z]   34|    -- ALL WORK ITEMS COMPLETE in time 15.1s
+[2026-10-25T18:55:30.0Z]   35|       Queue summary: 7 lookup (avg 27.9/min), 7 compute (avg 27.9/min), 7 store (avg 27.9/min), 7 validation (avg 27.9/min)
+[2026-10-25T18:55:30.0Z]   36| 
+[2026-10-25T18:55:30.0Z]   37| ** STAGE 3: SLOW-ROLL INSTANTONS LOOKUP:
+[2026-10-25T18:55:30.0Z]   38|    -- 0 already computed, 10 to compute
+[2026-10-25T18:55:30.0Z]   39| 
+[2026-10-25T18:55:30.0Z]   40| ** STAGE 3: SLOW-ROLL INSTANTONS
+[2026-10-25T18:55:42.7Z]   41|    -- ALL WORK ITEMS COMPLETE in time 12.6s
+[2026-10-25T18:55:42.7Z]   42|       Queue summary: 10 lookup (avg 47.79/min), 10 compute (avg 47.79/min), 10 store (avg 47.79/min), 10 validation (avg 47.79/min)
+[2026-10-25T18:55:42.7Z]   43| 
+[2026-10-25T18:55:42.7Z]   44| ** STAGE 4: COMPACTION FUNCTIONS
+[2026-10-25T18:55:44.3Z]   45| 
+[2026-10-25T18:55:44.3Z]   46| ** COMPACTION FUNCTIONS LOOKUP:
+[2026-10-25T18:55:44.3Z]   47|    -- 0 already computed, 10 to compute
+[2026-10-25T18:55:44.5Z]   48| 
+[2026-10-25T18:55:44.5Z]   49| ** STAGE 4: COMPACTION FUNCTIONS AND MASSES
+[2026-10-25T18:55:47.6Z]   50|    -- ALL WORK ITEMS COMPLETE in time 3.02s
+[2026-10-25T18:55:47.6Z]   51|       Queue summary: 10 lookup (avg 198.9/min), 10 compute (avg 198.9/min), 10 store (avg 198.9/min), 10 validation (avg 198.9/min)
+[2026-10-25T18:55:47.6Z]   52| 
+[2026-10-25T18:55:47.6Z]   53| ** Skipping gradient branch (--targets excludes 'gradient')
+[2026-10-25T18:55:50.2Z]   54| ** driver exit status 0
+[2026-10-25T18:55:50.4Z]   55| ** launcher saw exit status 0
+[2026-10-25T18:55:50.4Z] wait_for_line: after 43.4 s, line 55: ** launcher saw exit status 0
+# 18:55 load averages: 9.92 11.07 19.22
+$ ./venv/bin/python .documents/dk-and-rpk-migration/rehearsal/stage_counts.py var/ray-sqla-align-01/resumed-c.log
+LOG var/ray-sqla-align-01/resumed-c.log
+  >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0); ray 2.59.0 (no recorded origin); SQLAlchemy 2.0.55 (no recorded origin); numpy 2.4.6 (no recorded origin); scipy 1.17.1 (no recorded origin)
+  STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES: complete; lookup 1, compute 0, store 0, validation 0; no compute items evaluated
+  STAGE 2: FULL MSR INSTANTONS LOOKUP: 3 already computed, 7 to compute, 0 skipped
+  STAGE 2: FULL MSR INSTANTONS: complete; lookup 7, compute 7, store 7, validation 7
+  STAGE 3: SLOW-ROLL INSTANTONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 3: SLOW-ROLL INSTANTONS: complete; lookup 10, compute 10, store 10, validation 10
+  STAGE 4: COMPACTION FUNCTIONS (section)
+  COMPACTION FUNCTIONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 4: COMPACTION FUNCTIONS AND MASSES: complete; lookup 10, compute 10, store 10, validation 10
+  Skipping gradient branch (--targets excludes 'gradient')
+  ALL WORK ITEMS COMPLETE lines: 4
+  driver exit status: 0
+[exit 0]
+$ ./venv/bin/python -m runregistrykit list
+   RUN                                          STATE      PROGRESS      AGE  PURPOSE · STAGE
+   ray-sqla-align-01-resumed-c-20261025T185506  done              -      53s  ray-sqla-align 01 R3: the resume of the resumed store, straight through  · Skipping gradient branch (--targets excludes 'gradient')
+   ray-sqla-align-01-resumed-a-20261025T185338  killed            -       2m  ray-sqla-align 01 R2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 2: FULL MSR INSTANTONS
+   ray-sqla-align-01-reference-20261025T185152  done              -       4m  ray-sqla-align 01 R1: the rehearsal grid straight through under ray 2.59.0 and SQLAlchemy 2.0.55, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+   rrk-adoption-04-resumed-c-20261025T161521    done              -   2h 40m  rrk-adoption 04 H4: the last resume of the resumed store, straight through  · Skipping gradient branch (--targets excludes 'gradient')
+   rrk-adoption-04-resumed-b-20261025T161352    lost              -   2h 42m  rrk-adoption 04 H3: a resume of the resumed store, killed with SIGKILL in STAGE 3  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-resumed-a-20261025T161131    killed            -   2h 44m  rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-reference-20261025T160704    done              -   2h 48m  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+
+7 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 7 finished; 0 with no host recorded.
+[exit 0]
+
+### R4
+$ PYTHONPATH=. ./venv/bin/python tools/compare_stores.py --json <scratch>/compare-reference-resumed.json var/datastores/ray-sqla-align-01-reference.sqlite var/datastores/ray-sqla-align-01-resumed.sqlite   (18:56:05)
+compare_stores: A = /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-reference.sqlite (10 shards)
+                B = /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-resumed.sqlite (10 shards)
+
+tables:
+  CompactionFunction               sharded     matched       10  A only      0  B only      0
+  CompactionFunctionSamples        sharded     matched    33128  A only      0  B only      0
+  CosmologicalParams               replicated  matched        1  A only      0  B only      0
+  FullInstanton                    sharded     matched       10  A only      0  B only      0
+  FullInstantonValue               sharded     matched    16564  A only      0  B only      0
+  GradientCoupledInstanton         sharded     matched        0  A only      0  B only      0
+  GradientCoupledInstantonProfile  sharded     matched        0  A only      0  B only      0
+  GradientCoupledInstantonValue    sharded     matched        0  A only      0  B only      0
+  InflatonTrajectory               replicated  matched        1  A only      0  B only      0
+  InflatonTrajectoryValue          replicated  matched     5713  A only      0  B only      0
+  IntegrationSolver                replicated  matched        0  A only      0  B only      0
+  MasslessDecoupledDiffusion       replicated  matched        1  A only      0  B only      0
+  N_final                          replicated  matched        1  A only      0  B only      0
+  N_init                           replicated  matched        1  A only      0  B only      0
+  QuadraticPotential               replicated  matched        1  A only      0  B only      0
+  QuarticPotential                 replicated  matched        0  A only      0  B only      0
+  SlowRollInstanton                sharded     matched       10  A only      0  B only      0
+  SlowRollInstantonValue           sharded     matched    16564  A only      0  B only      0
+  alpha_regularization             replicated  matched        1  A only      0  B only      0
+  delta_Nstar                      replicated  matched       10  A only      0  B only      0
+  efold_value                      replicated  matched     7521  A only      0  B only      0
+  inflaton_mass                    replicated  matched        1  A only      0  B only      0
+  n_collocation_points             replicated  matched        1  A only      0  B only      0
+  phi_value                        replicated  matched        1  A only      0  B only      0
+  pi_value                         replicated  matched        1  A only      0  B only      0
+  quartic_coupling                 replicated  matched        0  A only      0  B only      0
+  redshift                         sharded     matched        0  A only      0  B only      0
+  store_tag                        replicated  matched        0  A only      0  B only      0
+  tolerance                        replicated  matched        1  A only      0  B only      0
+  version                          replicated  matched        1  A only      0  B only      0
+
+bookkeeping that differs between matched rows (not compared):
+  CompactionFunction.metadata["compute_time"]: 10 matched row(s)
+  CompactionFunction.metadata["full"]["compute_time"]: 10 matched row(s)
+  CompactionFunction.metadata["slow_roll"]["compute_time"]: 10 matched row(s)
+  CompactionFunction.timestamp: 10 matched row(s)
+  CosmologicalParams.timestamp: 1 matched row(s)
+  FullInstanton.diagnostics_json["compute_time"]: 10 matched row(s)
+  FullInstanton.diagnostics_json["mean_time_per_picard_iteration"]: 10 matched row(s)
+  FullInstanton.timestamp: 10 matched row(s)
+  InflatonTrajectory.diagnostics_json["compute_time"]: 1 matched row(s)
+  InflatonTrajectory.timestamp: 1 matched row(s)
+  MasslessDecoupledDiffusion.timestamp: 1 matched row(s)
+  N_final.timestamp: 1 matched row(s)
+  N_init.timestamp: 1 matched row(s)
+  QuadraticPotential.timestamp: 1 matched row(s)
+  SlowRollInstanton.diagnostics_json["compute_time"]: 10 matched row(s)
+  SlowRollInstanton.timestamp: 10 matched row(s)
+  alpha_regularization.timestamp: 1 matched row(s)
+  delta_Nstar.timestamp: 10 matched row(s)
+  efold_value.timestamp: 7521 matched row(s)
+  inflaton_mass.timestamp: 1 matched row(s)
+  n_collocation_points.timestamp: 1 matched row(s)
+  phi_value.timestamp: 1 matched row(s)
+  pi_value.timestamp: 1 matched row(s)
+  tolerance.timestamp: 1 matched row(s)
+
+notes:
+  - A: redshift is on the shards but in neither of the primary's table lists; compared as sharded (its rows taken from every shard)
+  - B: redshift is on the shards but in neither of the primary's table lists; compared as sharded (its rows taken from every shard)
+
+problems:
+  none
+
+RESULT: equal
+[exit 0]
+$ ./venv/bin/python -m runregistrykit store fingerprint var/datastores/ray-sqla-align-01-reference.sqlite   (18:56:19)
+store:    /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-reference.sqlite
+digest:   a9f716fb88cf8647327748e533e7402e6f406a59aba3826956e966b7f9081ea7
+format:   1
+classes:  (count, digest; then each tag set)
+  version                           1  e7d475b3a1b2
+                                    1  e7d475b3a1b2  []
+  store_tag                         0  e3b0c44298fc
+  redshift                          0  e3b0c44298fc
+  tolerance                         1  3de3f231f280
+                                    1  3de3f231f280  []
+  efold_value                    7521  baa3e812fd69
+                                 7521  baa3e812fd69  []
+  delta_Nstar                      10  dcce3850505d
+                                   10  dcce3850505d  []
+  N_init                            1  55d9d2c03617
+                                    1  55d9d2c03617  []
+  N_final                           1  ecfe1bb7b37b
+                                    1  ecfe1bb7b37b  []
+  n_collocation_points              1  68d163081099
+                                    1  68d163081099  []
+  alpha_regularization              1  5ca8671ce4dc
+                                    1  5ca8671ce4dc  []
+  inflaton_mass                     1  9f32dabe62d9
+                                    1  9f32dabe62d9  []
+  quartic_coupling                  0  e3b0c44298fc
+  phi_value                         1  6e04c0b5612b
+                                    1  6e04c0b5612b  []
+  pi_value                          1  237cd5e96169
+                                    1  237cd5e96169  []
+  MasslessDecoupledDiffusion        1  f2cdb0bc718f
+                                    1  f2cdb0bc718f  []
+  IntegrationSolver                 0  e3b0c44298fc
+  CosmologicalParams                1  66b0486a8db9
+                                    1  66b0486a8db9  []
+  QuadraticPotential                1  19fa0a01bc71
+                                    1  19fa0a01bc71  []
+  QuarticPotential                  0  e3b0c44298fc
+  InflatonTrajectory                1  ad1a423a846a
+                                    1  ad1a423a846a  []
+  FullInstanton                    10  7ce91c421ff1
+                                   10  7ce91c421ff1  []
+  GradientCoupledInstanton          0  e3b0c44298fc
+  SlowRollInstanton                10  7ce91c421ff1
+                                   10  7ce91c421ff1  []
+  CompactionFunction               10  5c795305351e
+                                   10  5c795305351e  []
+problems: none
+recorded: matches the fingerprint taken 2026-10-25T18:53:16+00:00 by a person, at 3a24ea53962a3a02de412032807c0fd3e9afcb3f
+[exit 0]
+$ ./venv/bin/python -m runregistrykit store fingerprint var/datastores/ray-sqla-align-01-resumed.sqlite   (18:56:23)
+store:    /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-resumed.sqlite
+digest:   a9f716fb88cf8647327748e533e7402e6f406a59aba3826956e966b7f9081ea7
+format:   1
+classes:  (count, digest; then each tag set)
+  version                           1  e7d475b3a1b2
+                                    1  e7d475b3a1b2  []
+  store_tag                         0  e3b0c44298fc
+  redshift                          0  e3b0c44298fc
+  tolerance                         1  3de3f231f280
+                                    1  3de3f231f280  []
+  efold_value                    7521  baa3e812fd69
+                                 7521  baa3e812fd69  []
+  delta_Nstar                      10  dcce3850505d
+                                   10  dcce3850505d  []
+  N_init                            1  55d9d2c03617
+                                    1  55d9d2c03617  []
+  N_final                           1  ecfe1bb7b37b
+                                    1  ecfe1bb7b37b  []
+  n_collocation_points              1  68d163081099
+                                    1  68d163081099  []
+  alpha_regularization              1  5ca8671ce4dc
+                                    1  5ca8671ce4dc  []
+  inflaton_mass                     1  9f32dabe62d9
+                                    1  9f32dabe62d9  []
+  quartic_coupling                  0  e3b0c44298fc
+  phi_value                         1  6e04c0b5612b
+                                    1  6e04c0b5612b  []
+  pi_value                          1  237cd5e96169
+                                    1  237cd5e96169  []
+  MasslessDecoupledDiffusion        1  f2cdb0bc718f
+                                    1  f2cdb0bc718f  []
+  IntegrationSolver                 0  e3b0c44298fc
+  CosmologicalParams                1  66b0486a8db9
+                                    1  66b0486a8db9  []
+  QuadraticPotential                1  19fa0a01bc71
+                                    1  19fa0a01bc71  []
+  QuarticPotential                  0  e3b0c44298fc
+  InflatonTrajectory                1  ad1a423a846a
+                                    1  ad1a423a846a  []
+  FullInstanton                    10  7ce91c421ff1
+                                   10  7ce91c421ff1  []
+  GradientCoupledInstanton          0  e3b0c44298fc
+  SlowRollInstanton                10  7ce91c421ff1
+                                   10  7ce91c421ff1  []
+  CompactionFunction               10  5c795305351e
+                                   10  5c795305351e  []
+problems: none
+recorded: matches the fingerprint taken 2026-10-25T18:55:47+00:00 by run ray-sqla-align-01-resumed-c-20261025T185506, at 3a24ea53962a3a02de412032807c0fd3e9afcb3f
+[exit 0]
+$ ./venv/bin/python -m runregistrykit store show var/datastores/ray-sqla-align-01-reference.sqlite
+sidecar:  /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-reference.manifest.json
+kind:     registry
+problems: none
+datastore: 'ray-sqla-align-01-reference.sqlite'
+fields:
+  {
+    "created": "2026-10-25T18:53:15+00:00",
+    "datastore": "ray-sqla-align-01-reference.sqlite",
+    "fingerprint": {
+      "classes": {
+        "CompactionFunction": {
+          "count": 10,
+          "digest": "5c795305351e2203f71f4507bca83d82b3a699030b91c3f6005477fcce37be25",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "5c795305351e2203f71f4507bca83d82b3a699030b91c3f6005477fcce37be25",
+              "tags": []
+            }
+          ]
+        },
+        "CosmologicalParams": {
+          "count": 1,
+          "digest": "66b0486a8db9e5c6c6b0a11c2854eb6e7bdef122b13e60b630f237940f8198cd",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "66b0486a8db9e5c6c6b0a11c2854eb6e7bdef122b13e60b630f237940f8198cd",
+              "tags": []
+            }
+          ]
+        },
+        "FullInstanton": {
+          "count": 10,
+          "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+              "tags": []
+            }
+          ]
+        },
+        "GradientCoupledInstanton": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "InflatonTrajectory": {
+          "count": 1,
+          "digest": "ad1a423a846a786bc92765683a23644dd00e5ecda06d923ae22895487f75c30c",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "ad1a423a846a786bc92765683a23644dd00e5ecda06d923ae22895487f75c30c",
+              "tags": []
+            }
+          ]
+        },
+        "IntegrationSolver": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "MasslessDecoupledDiffusion": {
+          "count": 1,
+          "digest": "f2cdb0bc718f31721d2aeeaf150a91570d98d382369d724068b1da5cde61c33f",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "f2cdb0bc718f31721d2aeeaf150a91570d98d382369d724068b1da5cde61c33f",
+              "tags": []
+            }
+          ]
+        },
+        "N_final": {
+          "count": 1,
+          "digest": "ecfe1bb7b37b6ba08a2c28efee8a6906ce91730a2dd9c2768054893733a8c6c8",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "ecfe1bb7b37b6ba08a2c28efee8a6906ce91730a2dd9c2768054893733a8c6c8",
+              "tags": []
+            }
+          ]
+        },
+        "N_init": {
+          "count": 1,
+          "digest": "55d9d2c036176f6de6a3af328bd33cb94738aa739df48d3d7c11ec5fb9f6c274",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "55d9d2c036176f6de6a3af328bd33cb94738aa739df48d3d7c11ec5fb9f6c274",
+              "tags": []
+            }
+          ]
+        },
+        "QuadraticPotential": {
+          "count": 1,
+          "digest": "19fa0a01bc710a1e9b514b38855807d183afa08a92d02a59bc495aa4efca4747",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "19fa0a01bc710a1e9b514b38855807d183afa08a92d02a59bc495aa4efca4747",
+              "tags": []
+            }
+          ]
+        },
+        "QuarticPotential": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "SlowRollInstanton": {
+          "count": 10,
+          "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+              "tags": []
+            }
+          ]
+        },
+        "alpha_regularization": {
+          "count": 1,
+          "digest": "5ca8671ce4dc38b3f20bd8a2a72c1b484eeafaa254a38975a488bc25c0482097",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "5ca8671ce4dc38b3f20bd8a2a72c1b484eeafaa254a38975a488bc25c0482097",
+              "tags": []
+            }
+          ]
+        },
+        "delta_Nstar": {
+          "count": 10,
+          "digest": "dcce3850505db3ba8f0dd00183e0a622e88487923a985b67aa39ec26c5aece27",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "dcce3850505db3ba8f0dd00183e0a622e88487923a985b67aa39ec26c5aece27",
+              "tags": []
+            }
+          ]
+        },
+        "efold_value": {
+          "count": 7521,
+          "digest": "baa3e812fd697b9efdda1c4301bd5b3be4a92f947abbf70375639e3252e3ee8e",
+          "tag_sets": [
+            {
+              "count": 7521,
+              "digest": "baa3e812fd697b9efdda1c4301bd5b3be4a92f947abbf70375639e3252e3ee8e",
+              "tags": []
+            }
+          ]
+        },
+        "inflaton_mass": {
+          "count": 1,
+          "digest": "9f32dabe62d9316a63d0537eb7f069d343b75eef1e781f35c363f5c6d9665d44",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "9f32dabe62d9316a63d0537eb7f069d343b75eef1e781f35c363f5c6d9665d44",
+              "tags": []
+            }
+          ]
+        },
+        "n_collocation_points": {
+          "count": 1,
+          "digest": "68d163081099fa1499355d6bfb4e03bec923258d58c995731f5c5fcf45b7bda9",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "68d163081099fa1499355d6bfb4e03bec923258d58c995731f5c5fcf45b7bda9",
+              "tags": []
+            }
+          ]
+        },
+        "phi_value": {
+          "count": 1,
+          "digest": "6e04c0b5612bd587c2758a005561045c4f436e48d5f98c760a6f31a0e5f613ce",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "6e04c0b5612bd587c2758a005561045c4f436e48d5f98c760a6f31a0e5f613ce",
+              "tags": []
+            }
+          ]
+        },
+        "pi_value": {
+          "count": 1,
+          "digest": "237cd5e9616925eae2215daa8eb602f9db5e521a4415d78f11056c39f8c74cc8",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "237cd5e9616925eae2215daa8eb602f9db5e521a4415d78f11056c39f8c74cc8",
+              "tags": []
+            }
+          ]
+        },
+        "quartic_coupling": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "redshift": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "store_tag": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "tolerance": {
+          "count": 1,
+          "digest": "3de3f231f28088daa55ff7828dd40a9a6b4aa189ecf6b1c7e23d94f2f4e80fba",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "3de3f231f28088daa55ff7828dd40a9a6b4aa189ecf6b1c7e23d94f2f4e80fba",
+              "tags": []
+            }
+          ]
+        },
+        "version": {
+          "count": 1,
+          "digest": "e7d475b3a1b2af16927546f66efb5ffa6eabb66f5c30321ae55ac060a94cb792",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "e7d475b3a1b2af16927546f66efb5ffa6eabb66f5c30321ae55ac060a94cb792",
+              "tags": []
+            }
+          ]
+        }
+      },
+      "digest": "a9f716fb88cf8647327748e533e7402e6f406a59aba3826956e966b7f9081ea7",
+      "encoding_format": 1,
+      "fingerprint_format": 1,
+      "problems": {},
+      "taken": {
+        "git_dirty": false,
+        "git_head": "3a24ea53962a3a02de412032807c0fd3e9afcb3f",
+        "run_id": null,
+        "when": "2026-10-25T18:53:16+00:00"
+      }
+    },
+    "history": [
+      {
+        "from": null,
+        "git_dirty": false,
+        "git_head": "3a24ea53962a3a02de412032807c0fd3e9afcb3f",
+        "operation": "create",
+        "to": "var/datastores/ray-sqla-align-01-reference.sqlite",
+        "when": "2026-10-25T18:53:15+00:00"
+      }
+    ],
+    "name": "ray-sqla-align-01-reference",
+    "purpose": "ray-sqla-align 01 R1: the reference build of the rehearsal grid under ray 2.59.0 and SQLAlchemy 2.0.55, kept for the user",
+    "sidecar_format": 1,
+    "store_id": "cb7b2dc3a7834ef49ed927e8b8ee7be4"
+  }
+runs naming this store, under /Users/ds283/Documents/Code/StochasticInstantons/var/runs:
+  ray-sqla-align-01-reference-20261025T185152  done      finished  by results
+[exit 0]
+$ ./venv/bin/python -m runregistrykit store show var/datastores/ray-sqla-align-01-resumed.sqlite
+sidecar:  /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/ray-sqla-align-01-resumed.manifest.json
+kind:     registry
+problems: none
+datastore: 'ray-sqla-align-01-resumed.sqlite'
+fields:
+  {
+    "created": "2026-10-25T18:54:52+00:00",
+    "datastore": "ray-sqla-align-01-resumed.sqlite",
+    "fingerprint": {
+      "classes": {
+        "CompactionFunction": {
+          "count": 10,
+          "digest": "5c795305351e2203f71f4507bca83d82b3a699030b91c3f6005477fcce37be25",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "5c795305351e2203f71f4507bca83d82b3a699030b91c3f6005477fcce37be25",
+              "tags": []
+            }
+          ]
+        },
+        "CosmologicalParams": {
+          "count": 1,
+          "digest": "66b0486a8db9e5c6c6b0a11c2854eb6e7bdef122b13e60b630f237940f8198cd",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "66b0486a8db9e5c6c6b0a11c2854eb6e7bdef122b13e60b630f237940f8198cd",
+              "tags": []
+            }
+          ]
+        },
+        "FullInstanton": {
+          "count": 10,
+          "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+              "tags": []
+            }
+          ]
+        },
+        "GradientCoupledInstanton": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "InflatonTrajectory": {
+          "count": 1,
+          "digest": "ad1a423a846a786bc92765683a23644dd00e5ecda06d923ae22895487f75c30c",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "ad1a423a846a786bc92765683a23644dd00e5ecda06d923ae22895487f75c30c",
+              "tags": []
+            }
+          ]
+        },
+        "IntegrationSolver": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "MasslessDecoupledDiffusion": {
+          "count": 1,
+          "digest": "f2cdb0bc718f31721d2aeeaf150a91570d98d382369d724068b1da5cde61c33f",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "f2cdb0bc718f31721d2aeeaf150a91570d98d382369d724068b1da5cde61c33f",
+              "tags": []
+            }
+          ]
+        },
+        "N_final": {
+          "count": 1,
+          "digest": "ecfe1bb7b37b6ba08a2c28efee8a6906ce91730a2dd9c2768054893733a8c6c8",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "ecfe1bb7b37b6ba08a2c28efee8a6906ce91730a2dd9c2768054893733a8c6c8",
+              "tags": []
+            }
+          ]
+        },
+        "N_init": {
+          "count": 1,
+          "digest": "55d9d2c036176f6de6a3af328bd33cb94738aa739df48d3d7c11ec5fb9f6c274",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "55d9d2c036176f6de6a3af328bd33cb94738aa739df48d3d7c11ec5fb9f6c274",
+              "tags": []
+            }
+          ]
+        },
+        "QuadraticPotential": {
+          "count": 1,
+          "digest": "19fa0a01bc710a1e9b514b38855807d183afa08a92d02a59bc495aa4efca4747",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "19fa0a01bc710a1e9b514b38855807d183afa08a92d02a59bc495aa4efca4747",
+              "tags": []
+            }
+          ]
+        },
+        "QuarticPotential": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "SlowRollInstanton": {
+          "count": 10,
+          "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+              "tags": []
+            }
+          ]
+        },
+        "alpha_regularization": {
+          "count": 1,
+          "digest": "5ca8671ce4dc38b3f20bd8a2a72c1b484eeafaa254a38975a488bc25c0482097",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "5ca8671ce4dc38b3f20bd8a2a72c1b484eeafaa254a38975a488bc25c0482097",
+              "tags": []
+            }
+          ]
+        },
+        "delta_Nstar": {
+          "count": 10,
+          "digest": "dcce3850505db3ba8f0dd00183e0a622e88487923a985b67aa39ec26c5aece27",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "dcce3850505db3ba8f0dd00183e0a622e88487923a985b67aa39ec26c5aece27",
+              "tags": []
+            }
+          ]
+        },
+        "efold_value": {
+          "count": 7521,
+          "digest": "baa3e812fd697b9efdda1c4301bd5b3be4a92f947abbf70375639e3252e3ee8e",
+          "tag_sets": [
+            {
+              "count": 7521,
+              "digest": "baa3e812fd697b9efdda1c4301bd5b3be4a92f947abbf70375639e3252e3ee8e",
+              "tags": []
+            }
+          ]
+        },
+        "inflaton_mass": {
+          "count": 1,
+          "digest": "9f32dabe62d9316a63d0537eb7f069d343b75eef1e781f35c363f5c6d9665d44",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "9f32dabe62d9316a63d0537eb7f069d343b75eef1e781f35c363f5c6d9665d44",
+              "tags": []
+            }
+          ]
+        },
+        "n_collocation_points": {
+          "count": 1,
+          "digest": "68d163081099fa1499355d6bfb4e03bec923258d58c995731f5c5fcf45b7bda9",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "68d163081099fa1499355d6bfb4e03bec923258d58c995731f5c5fcf45b7bda9",
+              "tags": []
+            }
+          ]
+        },
+        "phi_value": {
+          "count": 1,
+          "digest": "6e04c0b5612bd587c2758a005561045c4f436e48d5f98c760a6f31a0e5f613ce",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "6e04c0b5612bd587c2758a005561045c4f436e48d5f98c760a6f31a0e5f613ce",
+              "tags": []
+            }
+          ]
+        },
+        "pi_value": {
+          "count": 1,
+          "digest": "237cd5e9616925eae2215daa8eb602f9db5e521a4415d78f11056c39f8c74cc8",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "237cd5e9616925eae2215daa8eb602f9db5e521a4415d78f11056c39f8c74cc8",
+              "tags": []
+            }
+          ]
+        },
+        "quartic_coupling": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "redshift": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "store_tag": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "tolerance": {
+          "count": 1,
+          "digest": "3de3f231f28088daa55ff7828dd40a9a6b4aa189ecf6b1c7e23d94f2f4e80fba",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "3de3f231f28088daa55ff7828dd40a9a6b4aa189ecf6b1c7e23d94f2f4e80fba",
+              "tags": []
+            }
+          ]
+        },
+        "version": {
+          "count": 1,
+          "digest": "e7d475b3a1b2af16927546f66efb5ffa6eabb66f5c30321ae55ac060a94cb792",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "e7d475b3a1b2af16927546f66efb5ffa6eabb66f5c30321ae55ac060a94cb792",
+              "tags": []
+            }
+          ]
+        }
+      },
+      "digest": "a9f716fb88cf8647327748e533e7402e6f406a59aba3826956e966b7f9081ea7",
+      "encoding_format": 1,
+      "fingerprint_format": 1,
+      "problems": {},
+      "taken": {
+        "git_dirty": false,
+        "git_head": "3a24ea53962a3a02de412032807c0fd3e9afcb3f",
+        "run_id": "ray-sqla-align-01-resumed-c-20261025T185506",
+        "when": "2026-10-25T18:55:47+00:00"
+      }
+    },
+    "history": [
+      {
+        "from": null,
+        "git_dirty": false,
+        "git_head": "3a24ea53962a3a02de412032807c0fd3e9afcb3f",
+        "operation": "create",
+        "to": "var/datastores/ray-sqla-align-01-resumed.sqlite",
+        "when": "2026-10-25T18:54:52+00:00"
+      }
+    ],
+    "name": "ray-sqla-align-01-resumed",
+    "purpose": "ray-sqla-align 01 R2-R3: the rehearsal grid built by a resume after SIGTERM, under ray 2.59.0 and SQLAlchemy 2.0.55, kept for the user",
+    "sidecar_format": 1,
+    "store_id": "c5ea19ff19154612862eaaa647a7bd03"
+  }
+runs naming this store, under /Users/ds283/Documents/Code/StochasticInstantons/var/runs:
+  ray-sqla-align-01-resumed-c-20261025T185506  done      finished  by results and results_store_id
+  ray-sqla-align-01-resumed-a-20261025T185338  killed    finished  by results
+[exit 0]
+$ ./venv/bin/python <scratch>/rows.py var/datastores/ray-sqla-align-01-resumed   [exit 0]
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0000 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0001 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0002 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0003 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0004 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0005 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0006 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0007 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0008 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:07.242660  InflatonTrajectory   shard0009 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 18:54:26.331850  FullInstanton        shard0000 serial=1 validated=1 dNstar=0.42222222222222217 children=1544
+2026-10-25 18:54:26.343995  FullInstanton        shard0001 serial=21 validated=1 dNstar=0.7444444444444444 children=1576
+2026-10-25 18:54:26.483671  FullInstanton        shard0009 serial=41 validated=1 dNstar=0.1 children=1511
+2026-10-25 18:55:26.392915  FullInstanton        shard0003 serial=42 validated=1 dNstar=1.3888888888888888 children=1640
+2026-10-25 18:55:26.408572  FullInstanton        shard0004 serial=62 validated=1 dNstar=1.711111111111111 children=1673
+2026-10-25 18:55:26.574104  FullInstanton        shard0005 serial=82 validated=1 dNstar=2.033333333333333 children=1705
+2026-10-25 18:55:29.086157  FullInstanton        shard0002 serial=102 validated=1 dNstar=1.0666666666666667 children=1608
+2026-10-25 18:55:29.101300  FullInstanton        shard0006 serial=128 validated=1 dNstar=2.3555555555555556 children=1737
+2026-10-25 18:55:29.582456  FullInstanton        shard0007 serial=142 validated=1 dNstar=2.6777777777777776 children=1769
+2026-10-25 18:55:29.924686  FullInstanton        shard0008 serial=162 validated=1 dNstar=3.0 children=1801
+2026-10-25 18:55:42.107245  SlowRollInstanton    shard0009 serial=1 validated=1 dNstar=0.1 children=1511
+2026-10-25 18:55:42.112985  SlowRollInstanton    shard0001 serial=21 validated=1 dNstar=0.7444444444444444 children=1576
+2026-10-25 18:55:42.230166  SlowRollInstanton    shard0000 serial=41 validated=1 dNstar=0.42222222222222217 children=1544
+2026-10-25 18:55:42.241623  SlowRollInstanton    shard0006 serial=61 validated=1 dNstar=2.3555555555555556 children=1737
+2026-10-25 18:55:42.255300  SlowRollInstanton    shard0005 serial=81 validated=1 dNstar=2.033333333333333 children=1705
+2026-10-25 18:55:42.269608  SlowRollInstanton    shard0007 serial=101 validated=1 dNstar=2.6777777777777776 children=1769
+2026-10-25 18:55:42.283007  SlowRollInstanton    shard0002 serial=128 validated=1 dNstar=1.0666666666666667 children=1608
+2026-10-25 18:55:42.299854  SlowRollInstanton    shard0003 serial=141 validated=1 dNstar=1.3888888888888888 children=1640
+2026-10-25 18:55:42.343656  SlowRollInstanton    shard0008 serial=161 validated=1 dNstar=3.0 children=1801
+2026-10-25 18:55:42.365295  SlowRollInstanton    shard0004 serial=181 validated=1 dNstar=1.711111111111111 children=1673
+2026-10-25 18:55:45.430727  CompactionFunction   shard0009 serial=1 validated=1 dNstar=0.1 children=3022
+2026-10-25 18:55:45.449974  CompactionFunction   shard0000 serial=21 validated=1 dNstar=0.42222222222222217 children=3088
+2026-10-25 18:55:45.676105  CompactionFunction   shard0001 serial=41 validated=1 dNstar=0.7444444444444444 children=3152
+2026-10-25 18:55:45.810767  CompactionFunction   shard0002 serial=61 validated=1 dNstar=1.0666666666666667 children=3216
+2026-10-25 18:55:46.458052  CompactionFunction   shard0003 serial=81 validated=1 dNstar=1.3888888888888888 children=3280
+2026-10-25 18:55:46.475701  CompactionFunction   shard0004 serial=101 validated=1 dNstar=1.711111111111111 children=3346
+2026-10-25 18:55:46.683171  CompactionFunction   shard0005 serial=128 validated=1 dNstar=2.033333333333333 children=3410
+2026-10-25 18:55:46.697080  CompactionFunction   shard0006 serial=141 validated=1 dNstar=2.3555555555555556 children=3474
+2026-10-25 18:55:47.333826  CompactionFunction   shard0007 serial=161 validated=1 dNstar=2.6777777777777776 children=3538
+2026-10-25 18:55:47.345360  CompactionFunction   shard0008 serial=181 validated=1 dNstar=3.0 children=3602
+--- by table, validated: (rows, child rows)
+('CompactionFunction', True) [10, 33128]
+('FullInstanton', True) [10, 16564]
+('InflatonTrajectory', True) [10, 57130]
+('SlowRollInstanton', True) [10, 16564]
+--- efold_value rows per shard: {'0000': 7521, '0001': 7521, '0002': 7521, '0003': 7521, '0004': 7521, '0005': 7521, '0006': 7521, '0007': 7521, '0008': 7521, '0009': 7521}
+--- newest efold_value timestamp per shard: {'0000': '2026-10-25 18:54:24.794312', '0001': '2026-10-25 18:54:24.794312', '0002': '2026-10-25 18:54:24.794312', '0003': '2026-10-25 18:54:24.794312', '0004': '2026-10-25 18:54:24.794312', '0005': '2026-10-25 18:54:24.794312', '0006': '2026-10-25 18:54:24.794312', '0007': '2026-10-25 18:54:24.794312', '0008': '2026-10-25 18:54:24.794312', '0009': '2026-10-25 18:54:24.794312'}
+--- primary tables: ['shards', 'shard_key_config', 'shard_keys', 'replicated_tables', 'sharded_tables', 'replication_in_flight']
+--- replication_in_flight: 0 row(s); columns ['operation', 'class_name', 'controller_shard', 'store_id', 'started']
+$ shasum -a 256 main.py
+3c756c01a393136590538a4558071476681794cb1db8bc50eb6bf6b73fadeede  main.py
+# each launch log s >> packages: line
+$ grep '^>> packages:' var/ray-sqla-align-01/reference.log
+>> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0); ray 2.59.0 (no recorded origin); SQLAlchemy 2.0.55 (no recorded origin); numpy 2.4.6 (no recorded origin); scipy 1.17.1 (no recorded origin)
+$ grep '^>> packages:' var/ray-sqla-align-01/resumed-a.log
+>> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0); ray 2.59.0 (no recorded origin); SQLAlchemy 2.0.55 (no recorded origin); numpy 2.4.6 (no recorded origin); scipy 1.17.1 (no recorded origin)
+$ grep '^>> packages:' var/ray-sqla-align-01/resumed-c.log
+>> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0); ray 2.59.0 (no recorded origin); SQLAlchemy 2.0.55 (no recorded origin); numpy 2.4.6 (no recorded origin); scipy 1.17.1 (no recorded origin)
+
+### the stop
+# the three drivers pid files: kill -0 75386, 75785, 76188: no such process; interrupt_when.py returns after its "sent SIGTERM" line
+$ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh stop > <scratch>/r-stop.txt 2>&1; echo $?   (alone, 18:56:5x)
+0
+>> ray_cluster: SIGTERM to 19 process(es) naming /tmp/ray-si, and their descendants: 74894 74895 74896 74897 74909 74910 74915 74916 74917 74918 74919 74920 74921 74922 74923 74934 74935 74936 74937
+    74894     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/s
+    74895     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    74896     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --addres
+    74897     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/Stocha
+    74909 74897 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resourc
+    74910 74897 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c import sys; from multiproces
+    74915 74910 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c
+    74916 74910 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "i
+    74917 74910 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    74918 74910 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "im
+    74919 74910 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "i
+    74920 74910 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c 
+    74921 74910 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    74922 74910 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    74923 74910 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    74934     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    74935     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tm
+    74936 74935 ray::DashboardAgent                      
+    74937 74935 ray::RuntimeEnvAgent                
+>> ray_cluster: grace period of 15s over; SIGKILL to: 74894 74895
+>> ray_cluster: no process names /tmp/ray-si; ports 6390 6391 8266 52366 are free
+released the rehearsal lock (/Users/ds283/.raypoolkit/rehearsal-lock)
+>> ray_cluster: stopped in 19s
+$ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh status > <scratch>/r-status-2.txt 2>&1; echo $?   (alone, 18:57)
+0
+lock: free (/Users/ds283/.raypoolkit/rehearsal-lock does not exist)
+Ray processes of /tmp/ray-si: none
+SI cluster (/tmp/ray-si), the processes stop signals: none
+port 6390: free
+port 6391: free
+port 8266: free
+port 52366: free
+$ ps -axo comm= | grep -cE "gcs_server|raylet"
+0

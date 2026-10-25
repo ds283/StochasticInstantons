@@ -1,0 +1,22 @@
+--- .documents/rrk-adoption/out/04-check.py.txt	2026-10-25 17:16:04
++++ /private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/36d2f5c1-bddb-4d57-b35b-cf64f3d4a638/scratchpad/agent01/check.py	2026-10-25 18:50:44
+@@ -1,8 +1,8 @@
+-"""The one check after a launch (StochasticInstanton rrk-adoption prompt 04, section 1.1; the
++"""The one check after a launch (StochasticInstanton ray-sqla-align prompt 01, after rrk-adoption prompt 04, section 1.1; the
+ orchestrator's brief, correction 8). Run once per build, from the repository root, after the
+ registration line has been seen:
+ 
+-    ./venv/bin/python check.py LAUNCH        # the launch files are var/rrk-adoption-04/LAUNCH.*
++    ./venv/bin/python check.py LAUNCH        # the launch files are var/ray-sqla-align-01/LAUNCH.*
+ 
+ It reads files and runs two read-only commands: `runregistrykit list` and `/usr/bin/stat -f %SB`
+ (BSD stat; the shell's `stat` is GNU's). It prints:
+@@ -21,7 +21,7 @@
+ from pathlib import Path
+ 
+ launch = sys.argv[1]
+-L = Path("var/rrk-adoption-04")
++L = Path("var/ray-sqla-align-01")
+ log = L / f"{launch}.log"
+ pidfile = L / f"{launch}.pid"
+ 

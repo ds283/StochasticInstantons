@@ -1,0 +1,16 @@
+--- a/.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
++++ b/.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
+@@ -289,12 +289,12 @@
+     # Ray's authentication mode, named (ray-sqla-align 01). Since Ray 2.59, `ray start` infers
+     # token mode from the token file (~/.ray/auth_token) unless told; SI names it, as
+     # config/ray_auth.py does for every driver, so that the cluster and its drivers agree.
+-    export RAY_AUTH_MODE="${RAY_AUTH_MODE:-token}"
+     local t0=$SECONDS
+     "$RAY_BIN" start --head --temp-dir "$SI_TEMP_DIR" --port "$SI_GCS_PORT" \
+         --ray-client-server-port "$SI_CLIENT_PORT" --dashboard-port "$SI_DASHBOARD_PORT" \
+         --dashboard-agent-listen-port "$SI_AGENT_PORT" --num-cpus "$ncpus" --disable-usage-stats
+     local rc=$?
++    export RAY_AUTH_MODE="${RAY_AUTH_MODE:-token}"
+     if [ "$rc" -ne 0 ]; then
+         err "ray start failed (exit $rc); stopping what it started and releasing the lock"
+         stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT"

@@ -1,0 +1,31 @@
+# the Gate, 2026-10-25 18:26 GMT, at HEAD 8c01877ee4714c92ae7d29b3c58e5b354ba421ee (main), git status --porcelain: 0 lines, stash: 0, worktrees: the main checkout alone
+$ ./venv/bin/python -m runregistrykit list
+   RUN                                        STATE      PROGRESS      AGE  PURPOSE · STAGE
+   rrk-adoption-04-resumed-c-20261025T161521  done              -   2h 11m  rrk-adoption 04 H4: the last resume of the resumed store, straight through  · Skipping gradient branch (--targets excludes 'gradient')
+   rrk-adoption-04-resumed-b-20261025T161352  lost              -   2h 13m  rrk-adoption 04 H3: a resume of the resumed store, killed with SIGKILL in STAGE 3  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-resumed-a-20261025T161131  killed            -   2h 15m  rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-reference-20261025T160704  done              -   2h 20m  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+
+4 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 4 finished; 0 with no host recorded.
+$ env | grep -c RAY_AUTH_MODE
+0
+$ ls -l ~/.ray/auth_token
+-rw------- 1 ds283 staff 64 Oct 25 12:51 /Users/ds283/.ray/auth_token
+$ /usr/bin/stat -f "%Sm %z %Sp" ~/.ray/auth_token
+2026-10-25 12:51:17 64 -rw-------
+$ ./venv/bin/python -m raypoolkit.rehearsal_lock status   (exit 0)
+lock: free (/Users/ds283/.raypoolkit/rehearsal-lock does not exist)
+Ray processes: no temp dir given
+$ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh status   (exit 0)
+lock: free (/Users/ds283/.raypoolkit/rehearsal-lock does not exist)
+Ray processes of /tmp/ray-si: none
+SI cluster (/tmp/ray-si), the processes stop signals: none
+port 6390: free
+port 6391: free
+port 8266: free
+port 52366: free
+$ ls var/datastores/
+rrk-adoption-04-reference.manifest.json
+rrk-adoption-04-resumed.manifest.json
+$ uptime
+18:27  up 20 days, 17:12, 1 user, load averages: 47.18 54.32 39.74
