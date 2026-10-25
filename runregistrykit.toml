@@ -1,0 +1,8 @@
+# rrk-adoption: the run registry's configuration (RunRegistryKit v0.2.0; its README, "The client's root").
+# Runs are recorded under var/runs/ and registered stores live under var/datastores/ (both ignored by git).
+runs_root = "var/runs"
+stores_root = "var/datastores"
+distributions = ["datastorekit", "raypoolkit"]
+
+[stores]
+fingerprinter = "config.fingerprint:fingerprinter"

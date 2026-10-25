@@ -1,0 +1,22 @@
+17c17
+< Send SIGTERM to a rehearsal driver once its log shows a stage banner and a stated delay has
+---
+> Send SIGKILL to a rehearsal driver once its log shows a stage banner and a stated delay has
+25c25
+< line containing TEXT, then SECONDS more, then sends SIGTERM to the pid in PIDFILE, and prints
+---
+> line containing TEXT, then SECONDS more, then sends SIGKILL to the pid in PIDFILE, and prints
+84c84
+<         description="Send SIGTERM to the pid in PIDFILE once LOG holds a line containing "
+---
+>         description="Send SIGKILL to the pid in PIDFILE once LOG holds a line containing "
+108c108
+<         f'waiting for "{args.banner}" in {args.log}; then {args.after:g} s; then SIGTERM'
+---
+>         f'waiting for "{args.banner}" in {args.log}; then {args.after:g} s; then SIGKILL'
+147,148c147,148
+<     os.kill(pid, signal.SIGTERM)
+<     _say(f"sent SIGTERM to pid {pid}")
+---
+>     os.kill(pid, signal.SIGKILL)
+>     _say(f"sent SIGKILL to pid {pid}")

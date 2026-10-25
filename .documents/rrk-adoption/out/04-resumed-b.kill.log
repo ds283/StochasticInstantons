@@ -1,0 +1,4 @@
+[2026-10-25T16:13:52+00:00] interrupt_when: waiting for "STAGE 3: SLOW-ROLL INSTANTONS" in /Users/ds283/Documents/Code/StochasticInstantons/var/rrk-adoption-04/resumed-b.log; then 10 s; then SIGKILL
+[2026-10-25T16:13:52+00:00] interrupt_when: driver pid 26796 (from /Users/ds283/Documents/Code/StochasticInstantons/var/rrk-adoption-04/resumed-b.pid)
+[2026-10-25T16:14:02+00:00] interrupt_when: saw "STAGE 3: SLOW-ROLL INSTANTONS"; waiting 10 s
+[2026-10-25T16:14:12+00:00] interrupt_when: sent SIGKILL to pid 26796

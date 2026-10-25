@@ -1,0 +1,21 @@
+16:06:45
+2026-10-25 16:06:46,949	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+2026-10-25 16:06:47,066	INFO worker.py:2003 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+/Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+before 0
+after <function init.<locals>.sigterm_handler at 0x109e760c0> ray._private.worker init.<locals>.sigterm_handler
+[exit 0]
+
+======== List: 2026-10-25 16:06:51.628573 ========
+Stats:
+------------------------------
+Total: 1
+
+Table:
+------------------------------
+      JOB_ID  SUBMISSION_ID    ENTRYPOINT                                                                                                                                                                                                                                                                                                                                                                          TYPE            STATUS     MESSAGE    ERROR_TYPE    DRIVER_INFO
+ 0  01000000                   /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -c "import signal, ray; a = signal.getsignal(signal.SIGTERM); ray.init(address=\"127.0.0.1:6390\"); b = signal.getsignal(signal.SIGTERM); print(\"before\", a); print(\"after\", b, getattr(b, \"__module__\", None), getattr(b, \"__qualname__\", None)); ray.shutdown()"  JobType.DRIVER  SUCCEEDED                           id: '01000000'
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                       node_ip_address: 127.0.0.1
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                       pid: '24927'
+

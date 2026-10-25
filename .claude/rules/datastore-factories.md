@@ -237,7 +237,7 @@ full trajectory would be wasteful; neither package reads it.
 `main.py --inventory` is `datastorekit.store_inventory.read_inventory` over the
 factories' `inventory_spec()` hooks (client contract, §3 and §4). A
 fingerprint of a store (`datastorekit.store_fingerprint`, §9.7), which
-RunRegistryKit will take for SI in the next infrastructure campaign, is made of
+RunRegistryKit takes for SI (`rrk-adoption`, `config/fingerprint.py`), is made of
 an inventory, so it reads only the classes that declare a spec; a class that no
 spec covers is passed over without a word (the module docstring of
 `tests/test_inventory_specs.py`). So a new factory registered in

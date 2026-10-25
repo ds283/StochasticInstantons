@@ -30,10 +30,10 @@ ones ``datastorekit.SQL.schema.build_schema`` builds from them, in memory.
   ``version`` is no parent (no lookup matches it);
 - **coverage** (U8, the user's ruling, README §6.1): every registered class declares a spec, or is
   a value table read through an owner's spec, named here with its owner and slot, or is excluded
-  here by name with a reason. RunRegistryKit's fingerprint, which SI adopts after this campaign,
-  reads only the classes that declare a spec and passes over the rest silently, so a class in none
-  of the three would go unfingerprinted. The three places are written out below; nothing here
-  reads the specs to decide where a class belongs.
+  here by name with a reason. RunRegistryKit's fingerprint, which SI adopted in `rrk-adoption`
+  (`config/fingerprint.py`), reads only the classes that declare a spec and passes over the rest
+  silently, so a class in none of the three would go unfingerprinted. The three places are written
+  out below; nothing here reads the specs to decide where a class belongs.
 """
 
 from typing import Dict, List, Mapping, Tuple

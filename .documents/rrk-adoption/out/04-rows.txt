@@ -1,0 +1,161 @@
+===== $ ./venv/bin/python <scratch>/rows.py var/datastores/rrk-adoption-04-reference   (after H1, its store create and fingerprint --write)
+2026-10-25 16:07:50.460803  InflatonTrajectory   shard0000 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:07:50.460803  InflatonTrajectory   shard0001 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:07:50.460803  InflatonTrajectory   shard0002 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:07:50.460803  InflatonTrajectory   shard0003 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:07:50.460803  InflatonTrajectory   shard0004 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:07:50.460803  InflatonTrajectory   shard0005 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:07:50.460803  InflatonTrajectory   shard0006 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:07:50.460803  InflatonTrajectory   shard0007 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:07:50.460803  InflatonTrajectory   shard0008 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:07:50.460803  InflatonTrajectory   shard0009 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:08:27.685554  FullInstanton        shard0000 serial=1 validated=1 dNstar=0.42222222222222217 children=1544
+2026-10-25 16:08:27.955241  FullInstanton        shard0002 serial=21 validated=1 dNstar=1.0666666666666667 children=1608
+2026-10-25 16:08:28.595500  FullInstanton        shard0001 serial=41 validated=1 dNstar=0.7444444444444444 children=1576
+2026-10-25 16:08:31.270720  FullInstanton        shard0009 serial=61 validated=1 dNstar=0.1 children=1511
+2026-10-25 16:08:33.924087  FullInstanton        shard0005 serial=81 validated=1 dNstar=2.033333333333333 children=1705
+2026-10-25 16:08:35.676844  FullInstanton        shard0006 serial=101 validated=1 dNstar=2.3555555555555556 children=1737
+2026-10-25 16:08:35.924895  FullInstanton        shard0004 serial=128 validated=1 dNstar=1.711111111111111 children=1673
+2026-10-25 16:08:36.127462  FullInstanton        shard0007 serial=141 validated=1 dNstar=2.6777777777777776 children=1769
+2026-10-25 16:08:38.106091  FullInstanton        shard0008 serial=161 validated=1 dNstar=3.0 children=1801
+2026-10-25 16:08:38.134429  FullInstanton        shard0003 serial=181 validated=1 dNstar=1.3888888888888888 children=1640
+2026-10-25 16:08:59.355575  SlowRollInstanton    shard0009 serial=1 validated=1 dNstar=0.1 children=1511
+2026-10-25 16:08:59.445402  SlowRollInstanton    shard0002 serial=21 validated=1 dNstar=1.0666666666666667 children=1608
+2026-10-25 16:08:59.732512  SlowRollInstanton    shard0003 serial=41 validated=1 dNstar=1.3888888888888888 children=1640
+2026-10-25 16:08:59.831185  SlowRollInstanton    shard0000 serial=61 validated=1 dNstar=0.42222222222222217 children=1544
+2026-10-25 16:08:59.887218  SlowRollInstanton    shard0001 serial=81 validated=1 dNstar=0.7444444444444444 children=1576
+2026-10-25 16:09:00.007016  SlowRollInstanton    shard0008 serial=101 validated=1 dNstar=3.0 children=1801
+2026-10-25 16:09:00.573015  SlowRollInstanton    shard0006 serial=128 validated=1 dNstar=2.3555555555555556 children=1737
+2026-10-25 16:09:00.657137  SlowRollInstanton    shard0005 serial=141 validated=1 dNstar=2.033333333333333 children=1705
+2026-10-25 16:09:00.804317  SlowRollInstanton    shard0004 serial=161 validated=1 dNstar=1.711111111111111 children=1673
+2026-10-25 16:09:00.868630  SlowRollInstanton    shard0007 serial=181 validated=1 dNstar=2.6777777777777776 children=1769
+2026-10-25 16:09:07.318656  CompactionFunction   shard0009 serial=1 validated=1 dNstar=0.1 children=3022
+2026-10-25 16:09:07.426374  CompactionFunction   shard0000 serial=21 validated=1 dNstar=0.42222222222222217 children=3088
+2026-10-25 16:09:08.656333  CompactionFunction   shard0001 serial=41 validated=1 dNstar=0.7444444444444444 children=3152
+2026-10-25 16:09:09.671842  CompactionFunction   shard0004 serial=61 validated=1 dNstar=1.711111111111111 children=3346
+2026-10-25 16:09:10.020687  CompactionFunction   shard0005 serial=81 validated=1 dNstar=2.033333333333333 children=3410
+2026-10-25 16:09:10.257634  CompactionFunction   shard0006 serial=101 validated=1 dNstar=2.3555555555555556 children=3474
+2026-10-25 16:09:10.743409  CompactionFunction   shard0002 serial=128 validated=1 dNstar=1.0666666666666667 children=3216
+2026-10-25 16:09:10.846958  CompactionFunction   shard0003 serial=141 validated=1 dNstar=1.3888888888888888 children=3280
+2026-10-25 16:09:11.365247  CompactionFunction   shard0007 serial=161 validated=1 dNstar=2.6777777777777776 children=3538
+2026-10-25 16:09:12.464578  CompactionFunction   shard0008 serial=181 validated=1 dNstar=3.0 children=3602
+--- by table, validated: (rows, child rows)
+('CompactionFunction', True) [10, 33128]
+('FullInstanton', True) [10, 16564]
+('InflatonTrajectory', True) [10, 57130]
+('SlowRollInstanton', True) [10, 16564]
+--- efold_value rows per shard: {'0000': 7521, '0001': 7521, '0002': 7521, '0003': 7521, '0004': 7521, '0005': 7521, '0006': 7521, '0007': 7521, '0008': 7521, '0009': 7521}
+--- newest efold_value timestamp per shard: {'0000': '2026-10-25 16:08:24.841419', '0001': '2026-10-25 16:08:24.841419', '0002': '2026-10-25 16:08:24.841419', '0003': '2026-10-25 16:08:24.841419', '0004': '2026-10-25 16:08:24.841419', '0005': '2026-10-25 16:08:24.841419', '0006': '2026-10-25 16:08:24.841419', '0007': '2026-10-25 16:08:24.841419', '0008': '2026-10-25 16:08:24.841419', '0009': '2026-10-25 16:08:24.841419'}
+--- primary tables: ['shards', 'shard_key_config', 'shard_keys', 'replicated_tables', 'sharded_tables', 'replication_in_flight']
+--- replication_in_flight: 0 row(s); columns ['operation', 'class_name', 'controller_shard', 'store_id', 'started']
+
+===== $ ./venv/bin/python <scratch>/rows.py var/datastores/rrk-adoption-04-resumed   (after resumed-a)
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0000 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0001 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0002 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0003 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0004 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0005 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0006 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0007 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0008 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0009 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:12:22.730826  FullInstanton        shard0001 serial=1 validated=1 dNstar=0.7444444444444444 children=1576
+2026-10-25 16:12:22.772697  FullInstanton        shard0000 serial=21 validated=1 dNstar=0.42222222222222217 children=1544
+2026-10-25 16:12:23.151607  FullInstanton        shard0009 serial=41 validated=1 dNstar=0.1 children=1511
+2026-10-25 16:12:25.497784  FullInstanton        shard0002 serial=61 validated=1 dNstar=1.0666666666666667 children=1608
+2026-10-25 16:12:25.552764  FullInstanton        shard0003 serial=81 validated=1 dNstar=1.3888888888888888 children=1640
+2026-10-25 16:12:28.046145  FullInstanton        shard0004 serial=101 validated=1 dNstar=1.711111111111111 children=1673
+2026-10-25 16:12:28.536529  FullInstanton        shard0007 serial=128 validated=1 dNstar=2.6777777777777776 children=1769
+2026-10-25 16:12:28.600606  FullInstanton        shard0005 serial=141 validated=1 dNstar=2.033333333333333 children=1705
+2026-10-25 16:12:28.771164  FullInstanton        shard0008 serial=161 validated=1 dNstar=3.0 children=1801
+2026-10-25 16:12:31.150778  FullInstanton        shard0006 serial=181 validated=1 dNstar=2.3555555555555556 children=1737
+--- by table, validated: (rows, child rows)
+('FullInstanton', True) [10, 16564]
+('InflatonTrajectory', True) [10, 57130]
+--- efold_value rows per shard: {'0000': 7521, '0001': 7521, '0002': 7521, '0003': 7521, '0004': 7521, '0005': 7521, '0006': 7521, '0007': 7521, '0008': 7521, '0009': 7521}
+--- newest efold_value timestamp per shard: {'0000': '2026-10-25 16:12:20.634052', '0001': '2026-10-25 16:12:20.634052', '0002': '2026-10-25 16:12:20.634052', '0003': '2026-10-25 16:12:20.634052', '0004': '2026-10-25 16:12:20.634052', '0005': '2026-10-25 16:12:20.634052', '0006': '2026-10-25 16:12:20.634052', '0007': '2026-10-25 16:12:20.634052', '0008': '2026-10-25 16:12:20.634052', '0009': '2026-10-25 16:12:20.634052'}
+--- primary tables: ['shards', 'shard_key_config', 'shard_keys', 'replicated_tables', 'sharded_tables', 'replication_in_flight']
+--- replication_in_flight: 1 row(s); columns ['operation', 'class_name', 'controller_shard', 'store_id', 'started']
+    ('get', 'efold_value', 6, None, '2026-10-25 16:12:32.963602')
+
+===== $ ./venv/bin/python <scratch>/rows.py var/datastores/rrk-adoption-04-resumed   (after resumed-b's SIGKILL, before end)
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0000 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0001 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0002 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0003 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0004 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0005 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0006 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0007 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0008 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0009 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:12:22.730826  FullInstanton        shard0001 serial=1 validated=1 dNstar=0.7444444444444444 children=1576
+2026-10-25 16:12:22.772697  FullInstanton        shard0000 serial=21 validated=1 dNstar=0.42222222222222217 children=1544
+2026-10-25 16:12:23.151607  FullInstanton        shard0009 serial=41 validated=1 dNstar=0.1 children=1511
+2026-10-25 16:12:25.497784  FullInstanton        shard0002 serial=61 validated=1 dNstar=1.0666666666666667 children=1608
+2026-10-25 16:12:25.552764  FullInstanton        shard0003 serial=81 validated=1 dNstar=1.3888888888888888 children=1640
+2026-10-25 16:12:28.046145  FullInstanton        shard0004 serial=101 validated=1 dNstar=1.711111111111111 children=1673
+2026-10-25 16:12:28.536529  FullInstanton        shard0007 serial=128 validated=1 dNstar=2.6777777777777776 children=1769
+2026-10-25 16:12:28.600606  FullInstanton        shard0005 serial=141 validated=1 dNstar=2.033333333333333 children=1705
+2026-10-25 16:12:28.771164  FullInstanton        shard0008 serial=161 validated=1 dNstar=3.0 children=1801
+2026-10-25 16:12:31.150778  FullInstanton        shard0006 serial=181 validated=1 dNstar=2.3555555555555556 children=1737
+--- by table, validated: (rows, child rows)
+('FullInstanton', True) [10, 16564]
+('InflatonTrajectory', True) [10, 57130]
+--- efold_value rows per shard: {'0000': 7521, '0001': 7521, '0002': 7521, '0003': 7521, '0004': 7521, '0005': 7521, '0006': 7521, '0007': 7521, '0008': 7521, '0009': 7521}
+--- newest efold_value timestamp per shard: {'0000': '2026-10-25 16:12:20.634052', '0001': '2026-10-25 16:12:20.634052', '0002': '2026-10-25 16:12:20.634052', '0003': '2026-10-25 16:12:20.634052', '0004': '2026-10-25 16:12:20.634052', '0005': '2026-10-25 16:12:20.634052', '0006': '2026-10-25 16:12:20.634052', '0007': '2026-10-25 16:12:20.634052', '0008': '2026-10-25 16:12:20.634052', '0009': '2026-10-25 16:12:20.634052'}
+--- primary tables: ['shards', 'shard_key_config', 'shard_keys', 'replicated_tables', 'sharded_tables', 'replication_in_flight']
+--- replication_in_flight: 1 row(s); columns ['operation', 'class_name', 'controller_shard', 'store_id', 'started']
+    ('get', 'efold_value', 5, None, '2026-10-25 16:14:10.522558')
+
+===== $ ./venv/bin/python <scratch>/rows.py var/datastores/rrk-adoption-04-resumed   (after resumed-c)
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0000 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0001 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0002 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0003 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0004 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0005 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0006 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0007 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0008 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:11:56.816832  InflatonTrajectory   shard0009 serial=1 validated=1 dNstar=None children=5713
+2026-10-25 16:12:22.730826  FullInstanton        shard0001 serial=1 validated=1 dNstar=0.7444444444444444 children=1576
+2026-10-25 16:12:22.772697  FullInstanton        shard0000 serial=21 validated=1 dNstar=0.42222222222222217 children=1544
+2026-10-25 16:12:23.151607  FullInstanton        shard0009 serial=41 validated=1 dNstar=0.1 children=1511
+2026-10-25 16:12:25.497784  FullInstanton        shard0002 serial=61 validated=1 dNstar=1.0666666666666667 children=1608
+2026-10-25 16:12:25.552764  FullInstanton        shard0003 serial=81 validated=1 dNstar=1.3888888888888888 children=1640
+2026-10-25 16:12:28.046145  FullInstanton        shard0004 serial=101 validated=1 dNstar=1.711111111111111 children=1673
+2026-10-25 16:12:28.536529  FullInstanton        shard0007 serial=128 validated=1 dNstar=2.6777777777777776 children=1769
+2026-10-25 16:12:28.600606  FullInstanton        shard0005 serial=141 validated=1 dNstar=2.033333333333333 children=1705
+2026-10-25 16:12:28.771164  FullInstanton        shard0008 serial=161 validated=1 dNstar=3.0 children=1801
+2026-10-25 16:12:31.150778  FullInstanton        shard0006 serial=181 validated=1 dNstar=2.3555555555555556 children=1737
+2026-10-25 16:15:48.546090  SlowRollInstanton    shard0009 serial=1 validated=1 dNstar=0.1 children=1511
+2026-10-25 16:15:48.557129  SlowRollInstanton    shard0000 serial=21 validated=1 dNstar=0.42222222222222217 children=1544
+2026-10-25 16:15:48.686175  SlowRollInstanton    shard0001 serial=41 validated=1 dNstar=0.7444444444444444 children=1576
+2026-10-25 16:15:48.752366  SlowRollInstanton    shard0006 serial=61 validated=1 dNstar=2.3555555555555556 children=1737
+2026-10-25 16:15:48.812800  SlowRollInstanton    shard0002 serial=81 validated=1 dNstar=1.0666666666666667 children=1608
+2026-10-25 16:15:48.847485  SlowRollInstanton    shard0007 serial=101 validated=1 dNstar=2.6777777777777776 children=1769
+2026-10-25 16:15:49.020301  SlowRollInstanton    shard0008 serial=128 validated=1 dNstar=3.0 children=1801
+2026-10-25 16:15:49.091025  SlowRollInstanton    shard0005 serial=141 validated=1 dNstar=2.033333333333333 children=1705
+2026-10-25 16:15:49.251353  SlowRollInstanton    shard0004 serial=161 validated=1 dNstar=1.711111111111111 children=1673
+2026-10-25 16:15:49.956434  SlowRollInstanton    shard0003 serial=181 validated=1 dNstar=1.3888888888888888 children=1640
+2026-10-25 16:15:54.363983  CompactionFunction   shard0009 serial=1 validated=1 dNstar=0.1 children=3022
+2026-10-25 16:15:54.554039  CompactionFunction   shard0000 serial=21 validated=1 dNstar=0.42222222222222217 children=3088
+2026-10-25 16:15:55.563162  CompactionFunction   shard0002 serial=41 validated=1 dNstar=1.0666666666666667 children=3216
+2026-10-25 16:15:55.894528  CompactionFunction   shard0001 serial=61 validated=1 dNstar=0.7444444444444444 children=3152
+2026-10-25 16:15:56.061289  CompactionFunction   shard0003 serial=81 validated=1 dNstar=1.3888888888888888 children=3280
+2026-10-25 16:15:56.404641  CompactionFunction   shard0006 serial=101 validated=1 dNstar=2.3555555555555556 children=3474
+2026-10-25 16:15:56.761089  CompactionFunction   shard0007 serial=128 validated=1 dNstar=2.6777777777777776 children=3538
+2026-10-25 16:15:56.963138  CompactionFunction   shard0004 serial=141 validated=1 dNstar=1.711111111111111 children=3346
+2026-10-25 16:15:57.090390  CompactionFunction   shard0008 serial=161 validated=1 dNstar=3.0 children=3602
+2026-10-25 16:15:57.343384  CompactionFunction   shard0005 serial=181 validated=1 dNstar=2.033333333333333 children=3410
+--- by table, validated: (rows, child rows)
+('CompactionFunction', True) [10, 33128]
+('FullInstanton', True) [10, 16564]
+('InflatonTrajectory', True) [10, 57130]
+('SlowRollInstanton', True) [10, 16564]
+--- efold_value rows per shard: {'0000': 7521, '0001': 7521, '0002': 7521, '0003': 7521, '0004': 7521, '0005': 7521, '0006': 7521, '0007': 7521, '0008': 7521, '0009': 7521}
+--- newest efold_value timestamp per shard: {'0000': '2026-10-25 16:12:20.634052', '0001': '2026-10-25 16:12:20.634052', '0002': '2026-10-25 16:12:20.634052', '0003': '2026-10-25 16:12:20.634052', '0004': '2026-10-25 16:12:20.634052', '0005': '2026-10-25 16:12:20.634052', '0006': '2026-10-25 16:12:20.634052', '0007': '2026-10-25 16:12:20.634052', '0008': '2026-10-25 16:12:20.634052', '0009': '2026-10-25 16:12:20.634052'}
+--- primary tables: ['shards', 'shard_key_config', 'shard_keys', 'replicated_tables', 'sharded_tables', 'replication_in_flight']
+--- replication_in_flight: 0 row(s); columns ['operation', 'class_name', 'controller_shard', 'store_id', 'started']

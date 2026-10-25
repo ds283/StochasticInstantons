@@ -1,0 +1,3 @@
+!! Cannot begin run rrk-adoption-04-resumed-c-20261025T161459 with results "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.sqlite": run rrk-adoption-04-resumed-b-20261025T161352 is running (stale, pid 26796) and names this store by its results and results_store_id. A stale run is ended by a person, with `python -m runregistrykit end RUN_ID --reason TEXT`, before another run is begun on its store; the registry does not decide that a run is dead. No run directory was created
+** driver exit status 2
+** launcher saw exit status 2

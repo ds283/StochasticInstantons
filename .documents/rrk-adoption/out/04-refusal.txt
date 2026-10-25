@@ -1,0 +1,44 @@
+===== the refusal: find var/runs | sort before, the launch, the whole log, find after, the diff
+$ find var/runs | sort  (before)
+var/runs
+var/runs/rrk-adoption-04-reference-20261025T160704
+var/runs/rrk-adoption-04-reference-20261025T160704/manifest.json
+var/runs/rrk-adoption-04-reference-20261025T160704/status.json
+var/runs/rrk-adoption-04-reference-20261025T160704/stderr.log
+var/runs/rrk-adoption-04-reference-20261025T160704/stdout.log
+var/runs/rrk-adoption-04-resumed-a-20261025T161131
+var/runs/rrk-adoption-04-resumed-a-20261025T161131/manifest.json
+var/runs/rrk-adoption-04-resumed-a-20261025T161131/status.json
+var/runs/rrk-adoption-04-resumed-a-20261025T161131/stderr.log
+var/runs/rrk-adoption-04-resumed-a-20261025T161131/stdout.log
+var/runs/rrk-adoption-04-resumed-b-20261025T161352
+var/runs/rrk-adoption-04-resumed-b-20261025T161352/manifest.json
+var/runs/rrk-adoption-04-resumed-b-20261025T161352/status.json
+var/runs/rrk-adoption-04-resumed-b-20261025T161352/stderr.log
+var/runs/rrk-adoption-04-resumed-b-20261025T161352/stdout.log
+$ .documents/rrk-adoption/rehearsal/build_registered.sh resumed resumed-c 127.0.0.1:6390 "rrk-adoption 04 H4: the last resume of the resumed store, straight through" resumed-c-refused
+>> build_registered.sh: resumed-c-refused launched detached (launcher pid 27295); log /Users/ds283/Documents/Code/StochasticInstantons/var/rrk-adoption-04/resumed-c-refused.log; pid file /Users/ds283/Documents/Code/StochasticInstantons/var/rrk-adoption-04/resumed-c-refused.pid
+--- var/rrk-adoption-04/resumed-c-refused.log, whole:
+!! Cannot begin run rrk-adoption-04-resumed-c-20261025T161459 with results "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.sqlite": run rrk-adoption-04-resumed-b-20261025T161352 is running (stale, pid 26796) and names this store by its results and results_store_id. A stale run is ended by a person, with `python -m runregistrykit end RUN_ID --reason TEXT`, before another run is begun on its store; the registry does not decide that a run is dead. No run directory was created
+** driver exit status 2
+** launcher saw exit status 2
+--- pid file: 27298
+$ find var/runs | sort  (after)
+var/runs
+var/runs/rrk-adoption-04-reference-20261025T160704
+var/runs/rrk-adoption-04-reference-20261025T160704/manifest.json
+var/runs/rrk-adoption-04-reference-20261025T160704/status.json
+var/runs/rrk-adoption-04-reference-20261025T160704/stderr.log
+var/runs/rrk-adoption-04-reference-20261025T160704/stdout.log
+var/runs/rrk-adoption-04-resumed-a-20261025T161131
+var/runs/rrk-adoption-04-resumed-a-20261025T161131/manifest.json
+var/runs/rrk-adoption-04-resumed-a-20261025T161131/status.json
+var/runs/rrk-adoption-04-resumed-a-20261025T161131/stderr.log
+var/runs/rrk-adoption-04-resumed-a-20261025T161131/stdout.log
+var/runs/rrk-adoption-04-resumed-b-20261025T161352
+var/runs/rrk-adoption-04-resumed-b-20261025T161352/manifest.json
+var/runs/rrk-adoption-04-resumed-b-20261025T161352/status.json
+var/runs/rrk-adoption-04-resumed-b-20261025T161352/stderr.log
+var/runs/rrk-adoption-04-resumed-b-20261025T161352/stdout.log
+$ diff before after: (empty)
+var/datastores before and after: unchanged (diff empty); Ray jobs: 4 before and after

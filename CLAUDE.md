@@ -32,9 +32,9 @@ The physics notes for the onion model live in `notes/onion-model/onion_model.tex
 reference for how the calculation should be performed and carry no
 implementation details.
 
-Default test run: `pytest -m "not integration and not slow"` (732 of 868
-tests; 731 pass and 1 is skipped; well under a minute). The other 136 are the
-67 `integration`-marked tests, which need a live Ray instance and a SQLite
+Default test run: `pytest -m "not integration and not slow"` (848 of 989
+tests; 847 pass and 1 is skipped; well under a minute). The other 141 are the
+72 `integration`-marked tests, which need a live Ray instance and a SQLite
 store (`RAY_ADDRESS=local pytest -m integration`), and the 69 `slow`-marked
 ones. The `slow`-marked block of the suite runs real
 ODE/spectral solves that take minutes each and is only worth including when
@@ -42,6 +42,23 @@ the change touches `ComputeTargets/`, `Numerics/`, `Interpolation/`, or
 `tools/diagnostics/GradientCoupledInstanton/spectrum.py`. See
 `.claude/rules/test-selection.md` for the full decision rule and the current
 list of `slow`-marked files.
+
+## Long-running jobs — the run registry
+
+RunRegistryKit (`runregistrykit`, pinned at `v0.2.0` with its store layer) records each registered
+run in `var/runs/`; `runregistrykit.toml` at the repository root configures it. It records; it does
+not schedule, supervise, restart or lock. The detail is `.claude/rules/run-registry.md`.
+
+- **Discovery.** Run `./venv/bin/python -m runregistrykit list` at the start of a session (the
+  `SessionStart` hook in `.claude/settings.json` runs it) and before launching anything long, and
+  report anything `running`, stale or unknown.
+- **Launching.** A registered run goes through the wrapper `RunDrivers/registered_run.py`, from
+  the root: `PYTHONPATH=. ./venv/bin/python RunDrivers/registered_run.py --campaign C --prompt N
+  --register SLUG --purpose "one line" -- <main.py's arguments>`. `main.py` stays launchable on
+  its own, without the registry, and a run launched that way is recorded nowhere. The plot
+  scripts and `main.py --inventory` are never registered.
+- **Stores** of registered runs live under `var/datastores/`. Since `var/` is ignored, **never run
+  `git clean` with `-x` or `-X`**, which deletes ignored files, the stores among them.
 
 ## Critical rules — read before touching any file
 

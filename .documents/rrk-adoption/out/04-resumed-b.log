@@ -1,0 +1,42 @@
+>> registered_run: registered as rrk-adoption-04-resumed-b-20261025T161352
+>>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-resumed-b-20261025T161352/manifest.json
+>>   list it with: ./venv/bin/python -m runregistrykit list
+>> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0)
+2026-10-25 16:13:53,894	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+2026-10-25 16:13:53,940	INFO worker.py:2003 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+/Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+>> Sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.sqlite" was opened with a replicated write in flight (operation="get", class="efold_value", controlling shard=6, store_id=None, started=2026-10-25 16:12:32.963602)
+>>   every shard already holds what the controlling shard holds: nothing was repaired
+>>   the replication_in_flight record was cleared
+>> Opened existing sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.sqlite" with 10 shards
+
+** BUILDING PARAMETER SAMPLING GRIDS
+   -- using potential type "Quadratic"
+   -- N_init: 1 value = [ 20 ]
+   -- N_final: 1 value = [ 5 ]
+   -- delta_Nstar: 10 values = [ 0.1, 0.42222, 0.74444, 1.0667, 1.3889, 1.7111, 2.0333, 2.3556, 2.6778, 3 ]
+   -- n_collocation_points: 1 value = [ 5 ]
+   -- alpha_regularization: 1 value = [ 0.01 ]
+   -- Quadratic m: 1 value = [ 1e-05 Mp ]
+   -- time sampling: 100 samples per e-fold
+
+   >> 1 model and 1 x 1 x 10 N_init/N_final/delta_Nstar grid = 10 parameter combinations per model = 10 instanton combinations
+
+** COSMOLOGICAL PARAMETERS: Planck2018 68% central values TT+TE+EE+lowP+lensing+BAO (store_id=1)
+
+** DIFFUSION MODEL: MasslessDecoupledDiffusion (store_id=1)
+
+** STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES
+   -- ALL WORK ITEMS COMPLETE in time 0.19s
+      Queue summary: 1 lookup (avg 315.1/min), 0 compute (avg 0/day), 0 store (avg 0/day), 0 validation (avg 0/day)
+      (no compute items were evaluated - all assets read from datastore)
+
+** STAGE 2: FULL MSR INSTANTONS LOOKUP:
+   -- 10 already computed, 0 to compute
+
+** STAGE 3: SLOW-ROLL INSTANTONS LOOKUP:
+   -- 0 already computed, 10 to compute
+
+** STAGE 3: SLOW-ROLL INSTANTONS
+** launcher saw exit status 137

@@ -1,4 +1,4 @@
-# INFRASTRUCTURE — how SI uses `datastorekit` and `raypoolkit`
+# INFRASTRUCTURE — how SI uses `datastorekit`, `raypoolkit` and `runregistrykit`
 
 This document explains the non-physics infrastructure: persistence (the
 `datastorekit` package's `ShardedPool` and `Datastore` actors, with SI's
@@ -6,6 +6,8 @@ factories) and distributed dispatch (the `raypoolkit` package's `RayWorkPool`).
 It does not cover the compute targets themselves (`FullInstanton`,
 `GradientCoupledInstanton`, …) — see `NUMERICAL_SCHEMES.md` for those — except
 where needed to explain how they plug into this machinery.
+The run registry, `runregistrykit`, which records a long run and the stores it
+makes and is not part of how a pipeline computes, is §13.
 
 ---
 
@@ -619,3 +621,98 @@ RayWorkPool over compute_list:
 | Child value/sample rows deleted before parent rows in `validate_on_startup` | `.claude/rules/validate-on-startup.md` |
 | `_populate()` on a multi-row child table always `ORDER BY`s + asserts monotonicity | `.claude/rules/populate-ordering.md` |
 | All physics values in reduced Planck units (Mₚ = 1); divide by the storage unit on write, multiply back on read | CLAUDE.md, `Units/`, §3 above |
+
+---
+
+## 13. The run registry — `runregistrykit`
+
+*Written 2026-10-25 by rrk-adoption prompt 05; the campaign's plan is `.prompts/rrk-adoption/README.md`, its record `.documents/rrk-adoption/verification.md` §1.*
+
+`runregistrykit` `v0.2.0` (RunRegistryKit) is a third package, pinned in
+`requirements.txt`, installed from its tag and never editable. It is neither
+(a) nor (b) of §1: nothing in the compute pipeline calls it. It **records** a
+run; it does not schedule, supervise, restart or lock one. How it is called is
+its `README.md` at the tag, "Using it" and "The rules"; the rules SI works under
+are `.claude/rules/run-registry.md`. This section points at both and does not
+copy them.
+
+**What it records, and where.** `runregistrykit.toml` at the repository root
+sets `runs_root = "var/runs"`, `stores_root = "var/datastores"` and
+`distributions = ["datastorekit", "raypoolkit"]`, and `.gitignore` ignores
+`var/`. For each registered run:
+- `var/runs/<run id>/manifest.json`, written before the job starts: the
+  arguments, the hash of the program (`main.py`), the store it makes
+  (`results`), the git commit and whether the tree was dirty, the installed
+  packages (`runregistrykit` and the config's `distributions`, each with its
+  tag, commit and whether it is editable), the host, the run's `scope` and the
+  text of `heartbeat_means`;
+- `status.json` beside it: the state (`running`, `done`, `failed`, `killed` or
+  `lost`), the exit code, the pid, the heartbeat, the stage and, at the end, the
+  store's fingerprint;
+- `stdout.log` and `stderr.log`, copies of what the run wrote.
+
+A store's own record, its **sidecar**, is `var/datastores/<stem>.manifest.json`.
+`./venv/bin/python -m runregistrykit list` reads the runs; `store show` reads a
+sidecar and the runs that name its store. A `SessionStart` hook in
+`.claude/settings.json` runs `list` at the start of every session in this
+repository, so that a job's existence does not depend on anyone remembering it.
+
+**How a run is registered, and why `main.py` is not changed.** A registered run
+is launched through the wrapper, from the repository root:
+
+```
+PYTHONPATH=. ./venv/bin/python RunDrivers/registered_run.py --campaign C --prompt N \
+    --register SLUG --purpose "one line" -- <main.py's arguments>
+```
+
+The wrapper registers the run, runs `main.py` unchanged (with `runpy`, as
+`__main__`), and records how it ended (`done`, `failed` or `killed`), with the
+store's fingerprint, whatever `main.py` does. **`main.py` stays launchable by
+hand, without it**, and imports nothing of `runregistrykit`; a run launched that
+way is recorded nowhere. The plot scripts and `main.py --inventory` are never
+registered, and the wrapper refuses `--inventory` and a missing or empty
+database before it registers anything (exit 2, one `!! ` line). SI's own
+`utilities.installed_package_provenance` is kept for the same reason: the
+package's helper would make `main.py` and the plot scripts import
+`runregistrykit`. Every manifest's `packages` records the same fields. A wrapper
+is a client's code, so it lives here, in `RunDrivers/`, as it does in ChamPBH
+and SecondaryGWKit.
+
+**What the heartbeat means.** The wrapper refreshes `status.json`'s heartbeat
+when the run writes a line to stdout, at most once every 30 s, and at once when
+a line changes the stage (a `** ` banner, or a progress or completion line of
+`RayWorkPool`); the line is the `stage`. It means that this driver process wrote
+a line, nothing more: the work is in Ray tasks and actors, and a beat cannot say
+that any of them is progressing. `RayWorkPool` prints a progress line only after
+completed work, so a beat from it means work completed within about five
+minutes, and several of `main.py`'s queues print nothing. The registry calls a
+run `stale` when its heartbeat is older than 900 s (`list --stale-after`
+changes the reader's window, not the package's). **A queue whose items each
+take longer than that is therefore shown stale while it works, and the gradient
+branch is such a queue**: its solves have run for hours. Stale means go and
+look, never kill. The exact text is `HEARTBEAT_MEANS` in
+`RunDrivers/registered_run.py`, copied into every manifest.
+
+**The fingerprint, its format and its guard.** A store's fingerprint is made of
+what the factories' `inventory_spec()` hooks describe (§4), so what goes into it
+is SI's, how it is encoded and digested is DatastoreKit's
+(`datastorekit.store_fingerprint`), and when it is taken and where it is
+recorded is RunRegistryKit's. SI's part is `config/fingerprint.py`:
+`FINGERPRINT_FORMAT` (1), `SPEC_DIGESTS` (the digest of every spec, 24 pairs, 18
+distinct) and `fingerprinter`, which `runregistrykit.toml`'s `[stores]` names.
+- **The guard** is `tests/test_fingerprint_format_guard.py`. A change to any
+  factory's `inventory_spec()`, or to the registry's classes, fails it, naming
+  the class. The change is made with a new format number, a new pin in
+  `SPEC_DIGESTS`, and a new golden file.
+- **The golden file** is `tests/data/store_fingerprint_rrk-adoption-02.json`,
+  checked by `tests/test_store_fingerprint_golden.py` against a store built
+  through the pool. It was written once and is never overwritten; a later
+  format adds a file beside it.
+
+**The sidecar is made by a person.** After a store's first close, a person runs
+`./venv/bin/python -m runregistrykit store create PRIMARY --purpose TEXT`.
+Nothing in SI's code creates a sidecar, `main.py` included. Until one exists a
+run's `status.json` records the fingerprint but says the sidecar was not
+written; once it exists the wrapper writes the fingerprint into it at the end of
+each run on the store, and `store fingerprint PRIMARY` reads a closed store and
+compares it with the recorded one.

@@ -1,0 +1,246 @@
+===== reference: the registration wait
+[2026-10-25T16:07:13.0Z] wait_for_line: waiting for ">> registered_run: registered as" in var/rrk-adoption-04/reference.log, timeout 120 s
+[2026-10-25T16:07:13.0Z] (present at start)    1| >> registered_run: registered as rrk-adoption-04-reference-20261025T160704
+[2026-10-25T16:07:13.0Z] wait_for_line: after 0.0 s, line 1: >> registered_run: registered as rrk-adoption-04-reference-20261025T160704
+reg wait exit 0
+===== reference: the end wait (each line with the time the waiter first saw it, UTC)
+[2026-10-25T16:07:15.8Z] wait_for_line: waiting for "** launcher saw exit status" in var/rrk-adoption-04/reference.log, timeout 420 s
+[2026-10-25T16:07:15.8Z] (present at start)    1| >> registered_run: registered as rrk-adoption-04-reference-20261025T160704
+[2026-10-25T16:07:15.8Z] (present at start)    2| >>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-reference-20261025T160704/manifest.json
+[2026-10-25T16:07:15.8Z] (present at start)    3| >>   list it with: ./venv/bin/python -m runregistrykit list
+[2026-10-25T16:07:15.8Z] (present at start)    4| >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0)
+[2026-10-25T16:07:15.8Z] (present at start)    5| 2026-10-25 16:07:07,649	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+[2026-10-25T16:07:15.8Z] (present at start)    6| 2026-10-25 16:07:07,732	INFO worker.py:2003 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+[2026-10-25T16:07:15.8Z] (present at start)    7| /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+[2026-10-25T16:07:15.8Z] (present at start)    8|   warnings.warn(
+[2026-10-25T16:07:15.8Z] (present at start)    9| >> Created sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-reference.sqlite" with 10 shards
+[2026-10-25T16:07:18.5Z]   10| 
+[2026-10-25T16:07:18.5Z]   11| ** BUILDING PARAMETER SAMPLING GRIDS
+[2026-10-25T16:07:18.5Z]   12|    -- using potential type "Quadratic"
+[2026-10-25T16:07:18.5Z]   13|    -- N_init: 1 value = [ 20 ]
+[2026-10-25T16:07:18.5Z]   14|    -- N_final: 1 value = [ 5 ]
+[2026-10-25T16:07:18.5Z]   15|    -- delta_Nstar: 10 values = [ 0.1, 0.42222, 0.74444, 1.0667, 1.3889, 1.7111, 2.0333, 2.3556, 2.6778, 3 ]
+[2026-10-25T16:07:18.5Z]   16|    -- n_collocation_points: 1 value = [ 5 ]
+[2026-10-25T16:07:18.5Z]   17|    -- alpha_regularization: 1 value = [ 0.01 ]
+[2026-10-25T16:07:19.7Z]   18|    -- Quadratic m: 1 value = [ 1e-05 Mp ]
+[2026-10-25T16:07:20.1Z]   19|    -- time sampling: 100 samples per e-fold
+[2026-10-25T16:07:20.1Z]   20| 
+[2026-10-25T16:07:20.1Z]   21|    >> 1 model and 1 x 1 x 10 N_init/N_final/delta_Nstar grid = 10 parameter combinations per model = 10 instanton combinations
+[2026-10-25T16:07:20.4Z]   22| 
+[2026-10-25T16:07:20.4Z]   23| ** COSMOLOGICAL PARAMETERS: Planck2018 68% central values TT+TE+EE+lowP+lensing+BAO (store_id=1)
+[2026-10-25T16:07:20.6Z]   24| 
+[2026-10-25T16:07:20.6Z]   25| ** DIFFUSION MODEL: MasslessDecoupledDiffusion (store_id=1)
+[2026-10-25T16:07:20.6Z]   26| 
+[2026-10-25T16:07:20.6Z]   27| ** STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES
+[2026-10-25T16:07:26.1Z]   28| (_compute_inflaton_trajectory pid=25040) [InflatonTrajectory] integrating background trajectory: phi0=15, pi0=0
+[2026-10-25T16:07:27.4Z]   29| (_compute_inflaton_trajectory pid=25040) [InflatonTrajectory] N_end = 57.122
+[2026-10-25T16:07:55.3Z]   30|    -- ALL WORK ITEMS COMPLETE in time 34.8s
+[2026-10-25T16:07:55.3Z]   31|       Queue summary: 1 lookup (avg 103.5/hr), 1 compute (avg 103.5/hr), 1 store (avg 103.5/hr), 1 validation (avg 103.5/hr)
+[2026-10-25T16:07:55.5Z]   32| 
+[2026-10-25T16:07:55.5Z]   33| ** STAGE 2: FULL MSR INSTANTONS LOOKUP:
+[2026-10-25T16:07:55.5Z]   34|    -- 0 already computed, 10 to compute
+[2026-10-25T16:07:55.5Z]   35| 
+[2026-10-25T16:07:55.5Z]   36| ** STAGE 2: FULL MSR INSTANTONS
+[2026-10-25T16:08:38.4Z]   37|    -- ALL WORK ITEMS COMPLETE in time 42.9s
+[2026-10-25T16:08:38.4Z]   38|       Queue summary: 10 lookup (avg 13.98/min), 10 compute (avg 13.98/min), 10 store (avg 13.98/min), 10 validation (avg 13.98/min)
+[2026-10-25T16:08:38.4Z]   39| 
+[2026-10-25T16:08:38.4Z]   40| ** STAGE 3: SLOW-ROLL INSTANTONS LOOKUP:
+[2026-10-25T16:08:38.4Z]   41|    -- 0 already computed, 10 to compute
+[2026-10-25T16:08:38.4Z]   42| 
+[2026-10-25T16:08:38.4Z]   43| ** STAGE 3: SLOW-ROLL INSTANTONS
+[2026-10-25T16:09:01.4Z]   44|    -- ALL WORK ITEMS COMPLETE in time 23s
+[2026-10-25T16:09:01.4Z]   45|       Queue summary: 10 lookup (avg 26.13/min), 10 compute (avg 26.13/min), 10 store (avg 26.13/min), 10 validation (avg 26.13/min)
+[2026-10-25T16:09:01.4Z]   46| 
+[2026-10-25T16:09:01.4Z]   47| ** STAGE 4: COMPACTION FUNCTIONS
+[2026-10-25T16:09:04.6Z]   48| 
+[2026-10-25T16:09:04.6Z]   49| ** COMPACTION FUNCTIONS LOOKUP:
+[2026-10-25T16:09:04.6Z]   50|    -- 0 already computed, 10 to compute
+[2026-10-25T16:09:05.7Z]   51| 
+[2026-10-25T16:09:05.7Z]   52| ** STAGE 4: COMPACTION FUNCTIONS AND MASSES
+[2026-10-25T16:09:13.2Z]   53|    -- ALL WORK ITEMS COMPLETE in time 7.46s
+[2026-10-25T16:09:13.2Z]   54|       Queue summary: 10 lookup (avg 80.46/min), 10 compute (avg 80.46/min), 10 store (avg 80.46/min), 10 validation (avg 80.46/min)
+[2026-10-25T16:09:13.2Z]   55| 
+[2026-10-25T16:09:13.2Z]   56| ** Skipping gradient branch (--targets excludes 'gradient')
+[2026-10-25T16:09:19.5Z]   57| ** driver exit status 0
+[2026-10-25T16:09:19.7Z]   58| ** launcher saw exit status 0
+[2026-10-25T16:09:19.7Z] wait_for_line: after 123.9 s, line 58: ** launcher saw exit status 0
+end wait exit 0
+
+===== resumed-a: the registration wait
+[2026-10-25T16:11:39.7Z] wait_for_line: waiting for ">> registered_run: registered as" in var/rrk-adoption-04/resumed-a.log, timeout 120 s
+[2026-10-25T16:11:39.7Z] (present at start)    1| >> registered_run: registered as rrk-adoption-04-resumed-a-20261025T161131
+[2026-10-25T16:11:39.7Z] wait_for_line: after 0.0 s, line 1: >> registered_run: registered as rrk-adoption-04-resumed-a-20261025T161131
+reg wait exit 0
+===== resumed-a: the end wait (each line with the time the waiter first saw it, UTC)
+[2026-10-25T16:11:40.7Z] wait_for_line: waiting for "** launcher saw exit status" in var/rrk-adoption-04/resumed-a.log, timeout 420 s
+[2026-10-25T16:11:40.7Z] (present at start)    1| >> registered_run: registered as rrk-adoption-04-resumed-a-20261025T161131
+[2026-10-25T16:11:40.7Z] (present at start)    2| >>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-resumed-a-20261025T161131/manifest.json
+[2026-10-25T16:11:40.7Z] (present at start)    3| >>   list it with: ./venv/bin/python -m runregistrykit list
+[2026-10-25T16:11:40.7Z] (present at start)    4| >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0)
+[2026-10-25T16:11:40.7Z] (present at start)    5| 2026-10-25 16:11:33,493	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+[2026-10-25T16:11:40.7Z] (present at start)    6| 2026-10-25 16:11:33,625	INFO worker.py:2003 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+[2026-10-25T16:11:40.7Z] (present at start)    7| /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+[2026-10-25T16:11:40.7Z] (present at start)    8|   warnings.warn(
+[2026-10-25T16:11:40.7Z] (present at start)    9| >> Created sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.sqlite" with 10 shards
+[2026-10-25T16:11:42.6Z]   10| 
+[2026-10-25T16:11:42.6Z]   11| ** BUILDING PARAMETER SAMPLING GRIDS
+[2026-10-25T16:11:42.6Z]   12|    -- using potential type "Quadratic"
+[2026-10-25T16:11:42.6Z]   13|    -- N_init: 1 value = [ 20 ]
+[2026-10-25T16:11:42.6Z]   14|    -- N_final: 1 value = [ 5 ]
+[2026-10-25T16:11:42.6Z]   15|    -- delta_Nstar: 10 values = [ 0.1, 0.42222, 0.74444, 1.0667, 1.3889, 1.7111, 2.0333, 2.3556, 2.6778, 3 ]
+[2026-10-25T16:11:42.6Z]   16|    -- n_collocation_points: 1 value = [ 5 ]
+[2026-10-25T16:11:42.6Z]   17|    -- alpha_regularization: 1 value = [ 0.01 ]
+[2026-10-25T16:11:43.4Z]   18|    -- Quadratic m: 1 value = [ 1e-05 Mp ]
+[2026-10-25T16:11:43.6Z]   19|    -- time sampling: 100 samples per e-fold
+[2026-10-25T16:11:43.6Z]   20| 
+[2026-10-25T16:11:43.6Z]   21|    >> 1 model and 1 x 1 x 10 N_init/N_final/delta_Nstar grid = 10 parameter combinations per model = 10 instanton combinations
+[2026-10-25T16:11:43.6Z]   22| 
+[2026-10-25T16:11:43.6Z]   23| ** COSMOLOGICAL PARAMETERS: Planck2018 68% central values TT+TE+EE+lowP+lensing+BAO (store_id=1)
+[2026-10-25T16:11:43.8Z]   24| 
+[2026-10-25T16:11:43.8Z]   25| ** DIFFUSION MODEL: MasslessDecoupledDiffusion (store_id=1)
+[2026-10-25T16:11:43.8Z]   26| 
+[2026-10-25T16:11:43.8Z]   27| ** STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES
+[2026-10-25T16:11:45.9Z]   28| (_compute_inflaton_trajectory pid=26135) [InflatonTrajectory] integrating background trajectory: phi0=15, pi0=0
+[2026-10-25T16:11:46.7Z]   29| (_compute_inflaton_trajectory pid=26135) [InflatonTrajectory] N_end = 57.122
+[2026-10-25T16:12:00.0Z]   30|    -- ALL WORK ITEMS COMPLETE in time 16.2s
+[2026-10-25T16:12:00.0Z]   31|       Queue summary: 1 lookup (avg 222.2/hr), 1 compute (avg 222.2/hr), 1 store (avg 222.2/hr), 1 validation (avg 222.2/hr)
+[2026-10-25T16:12:00.0Z]   32| 
+[2026-10-25T16:12:00.0Z]   33| ** STAGE 2: FULL MSR INSTANTONS LOOKUP:
+[2026-10-25T16:12:00.0Z]   34|    -- 0 already computed, 10 to compute
+[2026-10-25T16:12:00.0Z]   35| 
+[2026-10-25T16:12:00.0Z]   36| ** STAGE 2: FULL MSR INSTANTONS
+[2026-10-25T16:12:31.5Z]   37|    -- ALL WORK ITEMS COMPLETE in time 31.3s
+[2026-10-25T16:12:31.5Z]   38|       Queue summary: 10 lookup (avg 19.14/min), 10 compute (avg 19.14/min), 10 store (avg 19.14/min), 10 validation (avg 19.14/min)
+[2026-10-25T16:12:31.5Z]   39| 
+[2026-10-25T16:12:31.5Z]   40| ** STAGE 3: SLOW-ROLL INSTANTONS LOOKUP:
+[2026-10-25T16:12:31.5Z]   41|    -- 0 already computed, 10 to compute
+[2026-10-25T16:12:31.5Z]   42| 
+[2026-10-25T16:12:31.5Z]   43| ** STAGE 3: SLOW-ROLL INSTANTONS
+[2026-10-25T16:12:34.1Z]   44| ** SIGTERM at 2026-10-25 16:12:33 +0000: recorded killed, exit code 143; stopping main.py; the process will exit with status 143
+[2026-10-25T16:12:34.5Z]   45| ** SIGTERM: main.py ended with SystemExit(1); recording killed, exit code 143
+[2026-10-25T16:12:38.8Z]   46| ** driver exit status 143
+[2026-10-25T16:12:38.8Z]   47| ** launcher saw exit status 143
+[2026-10-25T16:12:38.8Z] wait_for_line: after 58.1 s, line 47: ** launcher saw exit status 143
+end wait exit 0
+
+===== resumed-b: the registration wait
+[2026-10-25T16:14:00.2Z] wait_for_line: waiting for ">> registered_run: registered as" in var/rrk-adoption-04/resumed-b.log, timeout 120 s
+[2026-10-25T16:14:00.2Z] (present at start)    1| >> registered_run: registered as rrk-adoption-04-resumed-b-20261025T161352
+[2026-10-25T16:14:00.2Z] wait_for_line: after 0.0 s, line 1: >> registered_run: registered as rrk-adoption-04-resumed-b-20261025T161352
+reg wait exit 0
+===== resumed-b: the end wait (each line with the time the waiter first saw it, UTC)
+[2026-10-25T16:14:01.3Z] wait_for_line: waiting for "** launcher saw exit status" in var/rrk-adoption-04/resumed-b.log, timeout 420 s
+[2026-10-25T16:14:01.3Z] (present at start)    1| >> registered_run: registered as rrk-adoption-04-resumed-b-20261025T161352
+[2026-10-25T16:14:01.3Z] (present at start)    2| >>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-resumed-b-20261025T161352/manifest.json
+[2026-10-25T16:14:01.3Z] (present at start)    3| >>   list it with: ./venv/bin/python -m runregistrykit list
+[2026-10-25T16:14:01.3Z] (present at start)    4| >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0)
+[2026-10-25T16:14:01.3Z] (present at start)    5| 2026-10-25 16:13:53,894	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+[2026-10-25T16:14:01.3Z] (present at start)    6| 2026-10-25 16:13:53,940	INFO worker.py:2003 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+[2026-10-25T16:14:01.3Z] (present at start)    7| /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+[2026-10-25T16:14:01.3Z] (present at start)    8|   warnings.warn(
+[2026-10-25T16:14:01.3Z] (present at start)    9| >> Sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.sqlite" was opened with a replicated write in flight (operation="get", class="efold_value", controlling shard=6, store_id=None, started=2026-10-25 16:12:32.963602)
+[2026-10-25T16:14:01.3Z] (present at start)   10| >>   every shard already holds what the controlling shard holds: nothing was repaired
+[2026-10-25T16:14:01.3Z] (present at start)   11| >>   the replication_in_flight record was cleared
+[2026-10-25T16:14:01.3Z] (present at start)   12| >> Opened existing sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.sqlite" with 10 shards
+[2026-10-25T16:14:01.9Z]   13| 
+[2026-10-25T16:14:01.9Z]   14| ** BUILDING PARAMETER SAMPLING GRIDS
+[2026-10-25T16:14:01.9Z]   15|    -- using potential type "Quadratic"
+[2026-10-25T16:14:01.9Z]   16|    -- N_init: 1 value = [ 20 ]
+[2026-10-25T16:14:01.9Z]   17|    -- N_final: 1 value = [ 5 ]
+[2026-10-25T16:14:01.9Z]   18|    -- delta_Nstar: 10 values = [ 0.1, 0.42222, 0.74444, 1.0667, 1.3889, 1.7111, 2.0333, 2.3556, 2.6778, 3 ]
+[2026-10-25T16:14:01.9Z]   19|    -- n_collocation_points: 1 value = [ 5 ]
+[2026-10-25T16:14:01.9Z]   20|    -- alpha_regularization: 1 value = [ 0.01 ]
+[2026-10-25T16:14:02.1Z]   21|    -- Quadratic m: 1 value = [ 1e-05 Mp ]
+[2026-10-25T16:14:02.1Z]   22|    -- time sampling: 100 samples per e-fold
+[2026-10-25T16:14:02.1Z]   23| 
+[2026-10-25T16:14:02.1Z]   24|    >> 1 model and 1 x 1 x 10 N_init/N_final/delta_Nstar grid = 10 parameter combinations per model = 10 instanton combinations
+[2026-10-25T16:14:02.1Z]   25| 
+[2026-10-25T16:14:02.1Z]   26| ** COSMOLOGICAL PARAMETERS: Planck2018 68% central values TT+TE+EE+lowP+lensing+BAO (store_id=1)
+[2026-10-25T16:14:02.1Z]   27| 
+[2026-10-25T16:14:02.1Z]   28| ** DIFFUSION MODEL: MasslessDecoupledDiffusion (store_id=1)
+[2026-10-25T16:14:02.1Z]   29| 
+[2026-10-25T16:14:02.1Z]   30| ** STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES
+[2026-10-25T16:14:02.3Z]   31|    -- ALL WORK ITEMS COMPLETE in time 0.19s
+[2026-10-25T16:14:02.3Z]   32|       Queue summary: 1 lookup (avg 315.1/min), 0 compute (avg 0/day), 0 store (avg 0/day), 0 validation (avg 0/day)
+[2026-10-25T16:14:02.3Z]   33|       (no compute items were evaluated - all assets read from datastore)
+[2026-10-25T16:14:02.5Z]   34| 
+[2026-10-25T16:14:02.5Z]   35| ** STAGE 2: FULL MSR INSTANTONS LOOKUP:
+[2026-10-25T16:14:02.5Z]   36|    -- 10 already computed, 0 to compute
+[2026-10-25T16:14:02.5Z]   37| 
+[2026-10-25T16:14:02.5Z]   38| ** STAGE 3: SLOW-ROLL INSTANTONS LOOKUP:
+[2026-10-25T16:14:02.5Z]   39|    -- 0 already computed, 10 to compute
+[2026-10-25T16:14:02.5Z]   40| 
+[2026-10-25T16:14:02.5Z]   41| ** STAGE 3: SLOW-ROLL INSTANTONS
+[2026-10-25T16:14:12.8Z]   42| ** launcher saw exit status 137
+[2026-10-25T16:14:12.8Z] wait_for_line: after 11.5 s, line 42: ** launcher saw exit status 137
+end wait exit 0
+
+===== resumed-c: the registration wait
+[2026-10-25T16:15:32.1Z] wait_for_line: waiting for ">> registered_run: registered as" in var/rrk-adoption-04/resumed-c.log, timeout 120 s
+[2026-10-25T16:15:32.1Z] (present at start)    1| >> registered_run: registered as rrk-adoption-04-resumed-c-20261025T161521
+[2026-10-25T16:15:32.1Z] wait_for_line: after 0.0 s, line 1: >> registered_run: registered as rrk-adoption-04-resumed-c-20261025T161521
+reg wait exit 0
+===== resumed-c: the end wait (each line with the time the waiter first saw it, UTC)
+[2026-10-25T16:15:33.2Z] wait_for_line: waiting for "** launcher saw exit status" in var/rrk-adoption-04/resumed-c.log, timeout 420 s
+[2026-10-25T16:15:33.2Z] (present at start)    1| >> registered_run: registered as rrk-adoption-04-resumed-c-20261025T161521
+[2026-10-25T16:15:33.2Z] (present at start)    2| >>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-resumed-c-20261025T161521/manifest.json
+[2026-10-25T16:15:33.2Z] (present at start)    3| >>   list it with: ./venv/bin/python -m runregistrykit list
+[2026-10-25T16:15:33.2Z] (present at start)    4| >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0)
+[2026-10-25T16:15:33.2Z] (present at start)    5| 2026-10-25 16:15:23,178	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+[2026-10-25T16:15:33.2Z] (present at start)    6| 2026-10-25 16:15:23,243	INFO worker.py:2003 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+[2026-10-25T16:15:33.2Z] (present at start)    7| /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+[2026-10-25T16:15:33.2Z] (present at start)    8|   warnings.warn(
+[2026-10-25T16:15:33.2Z] (present at start)    9| >> Sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.sqlite" was opened with a replicated write in flight (operation="get", class="efold_value", controlling shard=5, store_id=None, started=2026-10-25 16:14:10.522558)
+[2026-10-25T16:15:33.2Z] (present at start)   10| >>   every shard already holds what the controlling shard holds: nothing was repaired
+[2026-10-25T16:15:33.2Z] (present at start)   11| >>   the replication_in_flight record was cleared
+[2026-10-25T16:15:33.2Z] (present at start)   12| >> Opened existing sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.sqlite" with 10 shards
+[2026-10-25T16:15:33.2Z] (present at start)   13| 
+[2026-10-25T16:15:33.2Z] (present at start)   14| ** BUILDING PARAMETER SAMPLING GRIDS
+[2026-10-25T16:15:33.2Z] (present at start)   15|    -- using potential type "Quadratic"
+[2026-10-25T16:15:33.2Z] (present at start)   16|    -- N_init: 1 value = [ 20 ]
+[2026-10-25T16:15:33.2Z] (present at start)   17|    -- N_final: 1 value = [ 5 ]
+[2026-10-25T16:15:33.2Z] (present at start)   18|    -- delta_Nstar: 10 values = [ 0.1, 0.42222, 0.74444, 1.0667, 1.3889, 1.7111, 2.0333, 2.3556, 2.6778, 3 ]
+[2026-10-25T16:15:33.2Z] (present at start)   19|    -- n_collocation_points: 1 value = [ 5 ]
+[2026-10-25T16:15:33.2Z] (present at start)   20|    -- alpha_regularization: 1 value = [ 0.01 ]
+[2026-10-25T16:15:33.2Z] (present at start)   21|    -- Quadratic m: 1 value = [ 1e-05 Mp ]
+[2026-10-25T16:15:33.2Z] (present at start)   22|    -- time sampling: 100 samples per e-fold
+[2026-10-25T16:15:33.2Z] (present at start)   23| 
+[2026-10-25T16:15:33.2Z] (present at start)   24|    >> 1 model and 1 x 1 x 10 N_init/N_final/delta_Nstar grid = 10 parameter combinations per model = 10 instanton combinations
+[2026-10-25T16:15:33.2Z] (present at start)   25| 
+[2026-10-25T16:15:33.2Z] (present at start)   26| ** COSMOLOGICAL PARAMETERS: Planck2018 68% central values TT+TE+EE+lowP+lensing+BAO (store_id=1)
+[2026-10-25T16:15:33.2Z] (present at start)   27| 
+[2026-10-25T16:15:33.2Z] (present at start)   28| ** DIFFUSION MODEL: MasslessDecoupledDiffusion (store_id=1)
+[2026-10-25T16:15:33.2Z] (present at start)   29| 
+[2026-10-25T16:15:33.2Z] (present at start)   30| ** STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES
+[2026-10-25T16:15:33.2Z] (present at start)   31|    -- ALL WORK ITEMS COMPLETE in time 0.176s
+[2026-10-25T16:15:33.2Z] (present at start)   32|       Queue summary: 1 lookup (avg 341.3/min), 0 compute (avg 0/day), 0 store (avg 0/day), 0 validation (avg 0/day)
+[2026-10-25T16:15:33.2Z] (present at start)   33|       (no compute items were evaluated - all assets read from datastore)
+[2026-10-25T16:15:33.2Z] (present at start)   34| 
+[2026-10-25T16:15:33.2Z] (present at start)   35| ** STAGE 2: FULL MSR INSTANTONS LOOKUP:
+[2026-10-25T16:15:33.2Z] (present at start)   36|    -- 10 already computed, 0 to compute
+[2026-10-25T16:15:33.2Z] (present at start)   37| 
+[2026-10-25T16:15:33.2Z] (present at start)   38| ** STAGE 3: SLOW-ROLL INSTANTONS LOOKUP:
+[2026-10-25T16:15:33.2Z] (present at start)   39|    -- 0 already computed, 10 to compute
+[2026-10-25T16:15:33.2Z] (present at start)   40| 
+[2026-10-25T16:15:33.2Z] (present at start)   41| ** STAGE 3: SLOW-ROLL INSTANTONS
+[2026-10-25T16:15:50.2Z]   42|    -- ALL WORK ITEMS COMPLETE in time 17.5s
+[2026-10-25T16:15:50.2Z]   43|       Queue summary: 10 lookup (avg 34.28/min), 10 compute (avg 34.28/min), 10 store (avg 34.28/min), 10 validation (avg 34.28/min)
+[2026-10-25T16:15:50.2Z]   44| 
+[2026-10-25T16:15:50.2Z]   45| ** STAGE 4: COMPACTION FUNCTIONS
+[2026-10-25T16:15:52.7Z]   46| 
+[2026-10-25T16:15:52.7Z]   47| ** COMPACTION FUNCTIONS LOOKUP:
+[2026-10-25T16:15:52.7Z]   48|    -- 0 already computed, 10 to compute
+[2026-10-25T16:15:53.1Z]   49| 
+[2026-10-25T16:15:53.1Z]   50| ** STAGE 4: COMPACTION FUNCTIONS AND MASSES
+[2026-10-25T16:15:57.7Z]   51|    -- ALL WORK ITEMS COMPLETE in time 4.85s
+[2026-10-25T16:15:57.7Z]   52|       Queue summary: 10 lookup (avg 123.7/min), 10 compute (avg 123.7/min), 10 store (avg 123.7/min), 10 validation (avg 123.7/min)
+[2026-10-25T16:15:58.0Z]   53| 
+[2026-10-25T16:15:58.0Z]   54| ** Skipping gradient branch (--targets excludes 'gradient')
+[2026-10-25T16:16:03.3Z]   55| ** driver exit status 0
+[2026-10-25T16:16:03.5Z]   56| ** launcher saw exit status 0
+[2026-10-25T16:16:03.5Z] wait_for_line: after 30.3 s, line 56: ** launcher saw exit status 0
+end wait exit 0
+
+===== resumed-c-refused: the end wait
+[2026-10-25T16:15:07.0Z] wait_for_line: waiting for "** launcher saw exit status" in var/rrk-adoption-04/resumed-c-refused.log, timeout 120 s
+[2026-10-25T16:15:07.0Z] wait_for_line: after 0.0 s, line 3: ** launcher saw exit status 2
