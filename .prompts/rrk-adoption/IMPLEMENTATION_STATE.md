@@ -61,7 +61,7 @@ any of them.
 | 02 | [`02-the-fingerprinter.md`](02-the-fingerprinter.md) | Sonnet | **landed** 2026-10-25 (`0fcaf7c`), reviewed |
 | 03 | [`03-the-wrapper.md`](03-the-wrapper.md) | Opus | **landed** 2026-10-25 (`16e1cc1`), reviewed |
 | 04 | [`04-rehearse-registered-runs.md`](04-rehearse-registered-runs.md) | Opus | **landed** 2026-10-25 (`29705f2`), reviewed |
-| 05 | [`05-close.md`](05-close.md) | Sonnet | **landed** 2026-10-25 (this commit) |
+| 05 | [`05-close.md`](05-close.md) | Sonnet | **landed** 2026-10-25 (`5bd486d`), reviewed |
 
 01 comes first; 02 and 03 each need only 01; 04 needs 02 and 03; 05 needs 04 (README §2.1).
 
@@ -444,7 +444,7 @@ that reads the log) are corrections 1, 2, 3 and 6 of the note.
 
 ### 5.7 After prompt 05 (2026-10-25)
 
-- **Landed** in one commit on `rrk-adoption`, this commit. Results:
+- **Landed** in one commit on `rrk-adoption`, `5bd486d`. Results:
   [`.documents/rrk-adoption/05-close.md`](../../.documents/rrk-adoption/05-close.md); the drafts and the
   handover, [`.documents/rrk-adoption/verification.md`](../../.documents/rrk-adoption/verification.md) §2
   and §3.
@@ -475,3 +475,53 @@ that reads the log) are corrections 1, 2, 3 and 6 of the note.
 - **`end` stamps `heartbeat`.** RunRegistryKit's `end` stamps the lost status's `heartbeat` with its own
   time, keeping the last real beat in `ended.evidence.heartbeat` (04's observation 3, documented
   behaviour of the package); the user may raise it there.
+
+**Orchestrator review of prompt 05** (2026-10-25, at `5bd486d`, by its note
+[`orchestrator/prompt-05.md`](orchestrator/prompt-05.md) §3). It passes; nothing is opened.
+1. **Scope.** The commit is the prompt's §5 list, 13 files. The `.py` files changed since `39fc819`
+   are `utilities.py` and `tests/test_inventory_specs.py`; `main.py` and the plot scripts are
+   unchanged since `1c223e8`. The tree is clean, nothing is pushed, and `main` is not moved by 05.
+2. **`ast`.** By the orchestrator's own script, both `.py` files are `ast`-equal at `39fc819` and
+   `5bd486d` with docstrings removed. `utilities.py`'s diff is the prompt's sentence and its
+   paragraph's reflow.
+3. **Dated records.** The italic dated lines of the three Z1 documents at `39fc819` and after differ
+   by the two new ones alone. The board's §5.0–§5.6 and decisions and `verification.md` §1 show
+   additions only.
+4. **Z1**, by reading: INFRASTRUCTURE §13 covers the five points, true to 03's `HEARTBEAT_MEANS` and
+   to the run directories (`manifest.json`, `status.json`, `stdout.log`, `stderr.log`); the tree and
+   both file lists have the entries with comments, and point at §13.
+5. **Z2.** Collection at `5bd486d`: 989; 848, 72 and 69. `CLAUDE.md:35-37` and
+   `test-selection.md:10`, `:26`, `:60-61` carry them; nothing else in either moved.
+6. **Z3.** The three texts are present tense, naming `rrk-adoption`; the `utilities.py` sentence is
+   verbatim.
+7. **Z4.** Each clause of both drafts checked against the tree, `var/runs/` and 04's committed
+   outputs: the lines `requirements.txt:16`, `:59`, `:63` and `.gitignore:23`; the manifests'
+   `packages`; the only non-test imports of the package (`config/fingerprint.py:44`,
+   `RunDrivers/registered_run.py:811`); `tests/test_registered_run_outcomes.py:228`, `:238`; the
+   refusal and `end` lines quoted from `out/04-refusal.txt` and `out/04-checks.txt`. The rows the
+   drafts replace are at RunRegistryKit `main` `70ee1e8`, `:1130` and `:1182`, as stated. Every SI
+   commit named exists, 05's own not among them. §3 adds to `dk-and-rpk-migration/verification.md`
+   §4.5, which is unchanged.
+8. **Citations.** A sample (every RunRegistryKit path and line, the four run ids, ten others)
+   resolves.
+9. **Z5.** The board: header COMPLETE with the final suites, §1 rows landed and done, §2's
+   RunRegistryKit gates drafted, §3 and §4 as they stood, `### 5.7`. The prompt's "✅" is written in
+   the board's existing words ("landed", "done"), accepted. `INDEX.md`: 8 campaigns, 0 live, 7
+   complete; the row; "Planned" past tense. `OPEN-ISSUES.md`: 58 open by counting, §6b's sentence.
+10. **The note** in §5.1's form with its 16 deviations classed and §2's verification with output.
+    The message ends with the `Co-Authored-By` line.
+11. **Suites** at `5bd486d`, serially, no cluster, load 15–24: default 848 (847 passed, 1 skipped,
+    141 deselected), 88 s; `integration` 72 (71 passed, 1 skipped), 117 s. `runregistrykit list`:
+    the four runs of 04 and nothing new; `var/` unchanged; `pip freeze` equal to the dispatch copy;
+    `ray_cluster.sh status` exit 0, the lock free.
+
+**For the merge into `main` (R7).** `main` is at `c00a8ec` (2026-10-25 08:50, "Record the merges of
+rpk-v030-adoption's README section 4"), one commit past `bb2d953`, which this branch merged at §5.3.
+It touches `.prompts/INDEX.md` and `rpk-v030-adoption`'s board, so the merge will meet `INDEX.md`
+on both sides. The merge is the user's.
+
+**Residue** (this follow-up commit): "this commit" becomes `5bd486d` here, in the note and in
+`INDEX.md`; one sentence of the note's handover that called 05's commit the branch's last is
+corrected. Prompt 05 is left as it ran: its board section (§5.6, now §5.7), the boards read at
+RunRegistryKit `main`, the pin added rather than moved, and the `v0.2.0` checks that apply are
+corrections 1, 2, 3 and 4 of the note.

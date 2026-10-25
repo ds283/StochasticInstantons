@@ -1,7 +1,7 @@
 # 05 — close
 
 **Subject:** Close `rrk-adoption`: the descriptive documents, `CLAUDE.md` and the rules, the stale prose, RunRegistryKit's two gate records drafted, the handover to Phase 2, and the records
-**Commit:** this commit, on branch `rrk-adoption`, on top of `085f45f`
+**Commit:** `5bd486d`, on branch `rrk-adoption`, on top of `085f45f`
 **Date:** 2026-10-25, by Claude Sonnet 5.5
 **Result:** **COMPLETE.** Z1–Z5 done; the campaign closes. 05 adds no code and no test: two docstrings change (`utilities.py`, `tests/test_inventory_specs.py`), each `ast`-equal without docstrings. Suites before and after, serially: default 848 (847 passed, 1 skipped, 141 deselected) and `integration` 72 (71 passed, 1 skipped), the baselines. `slow` was not run: no prompt touched its paths, and no file became `slow`. Counts by collection: 848 + 72 + 69 = 989, disjoint. `.documents/OPEN-ISSUES.md` stays at 58 open; no issue is opened or closed. No §4 stop condition was met.
 
@@ -218,16 +218,16 @@ None: 05 adds no code and no test (acceptance 2).
 - `.documents/OPEN-ISSUES.md`'s header paragraph "One campaign has a status board …" is stale: three campaigns have one now (`dk-and-rpk-migration`, `rpk-v030-adoption`, `rrk-adoption`).
 - `INFRASTRUCTURE.md` §1's list is still "(a) and (b)" and says "Neither (a) nor (b) is SI's code", true of the two packages it names; §13 says the registry is neither.
 - `FILE_MAP.md` describes a flat `claude-context/` bundle that no file of this repository holds; the new rows follow the form of the existing ones.
-- The drafts' `G4` says "datastorekit at `:16`, `raypoolkit` at `:59`": these are the line numbers at this commit's parent, and a later edit of `requirements.txt` moves them.
+- The drafts' `G4` says "datastorekit at `:16`, `raypoolkit` at `:59`": these are the line numbers at `5bd486d`'s parent, and a later edit of `requirements.txt` moves them.
 
 ## State handed to the next prompt
 
 `rrk-adoption` is complete and has no next prompt. For the user:
-- **The merge of `rrk-adoption` into `main`** (R7). Nothing is pushed; this commit is the branch's last.
+- **The merge of `rrk-adoption` into `main`** (R7). Nothing is pushed; the branch ends with the commit recording 05's review.
 - **RunRegistryKit's two gate records**, to be committed there: `verification.md` §2.1 for `prompts/extraction/IMPLEMENTATION_STATE.md` §2 row `G4` (`:1130` at `70ee1e8`) and §2.2 for `prompts/interrupted-runs/IMPLEMENTATION_STATE.md` §2 row `G3` (`:1182`). Each replaces the row's second column. Bring "not merged into `main`" up to date, add a "Read here" clause, and re-check the line numbers.
 - **04's stores, runs and launch logs** under `var/` (two stores with their sidecars, four run directories, `var/rrk-adoption-04/`), kept until the user removes them. Never `git clean -x` or `-X`.
 - **The observation of README §7**: SI's wrapper is the third copy of SGK's; its generic part could be a module of RunRegistryKit. Whether to raise it there is the user's. And that RunRegistryKit's `end` stamps the lost status's `heartbeat` with its own time (04's observation 3, documented behaviour), which the user may raise there.
 - **Phase 2's builds** launch through the wrapper: `verification.md` §3 (the four flags, the slug matching `--job-name`, detached, into `var/datastores/`; `store create --purpose …` after a store's first close; the route after a hard kill; the plot scripts and `--inventory` unregistered; a gradient-branch build may show `stale` while it works). It adds to `.documents/dk-and-rpk-migration/verification.md` §4.5 by statement and does not edit it.
 - **Suites at the close:** default 848 (847 passed, 1 skipped), `integration` 72 (71 passed, 1 skipped), `slow` 69 (not run); 848 + 72 + 69 = 989.
-- **No SI cluster is running and the lock is free** (nothing was started). The venv, RunRegistryKit, DatastoreKit, RayPoolKit, ChamPBH and SGK are untouched. `git revert` of this commit alone undoes 05 (records and two docstrings).
+- **No SI cluster is running and the lock is free** (nothing was started). The venv, RunRegistryKit, DatastoreKit, RayPoolKit, ChamPBH and SGK are untouched. `git revert` of `5bd486d` alone undoes 05 (records and two docstrings).
 - **No issue opened;** `.documents/OPEN-ISSUES.md` is at 58 open.
