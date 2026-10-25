@@ -3,8 +3,8 @@
 **Last updated:** 2026-10-25 · **Status: COMPLETE — 5 of 5 prompts landed (§5.7); `main` merged in
 with `rpk-v030-adoption` (§5.3). R1–R7,
 U1 and U2 ruled by the user; P1–P14 stand as proposed (README §6). The branch `rrk-adoption` is cut
-from `main` at `1c223e8`, after `dk-and-rpk-migration` was merged into `main` (R7); its merge back
-into `main` is the user's. Final suites: default 848 (847 passed, 1 skipped), `integration` 72 (71
+from `main` at `1c223e8`, after `dk-and-rpk-migration` was merged into `main` (R7); merged back
+into `main` at `89a9d79` (§5.8). Final suites: default 848 (847 passed, 1 skipped), `integration` 72 (71
 passed, 1 skipped); `slow` 69, not run.**
 The plan is [`README.md`](README.md), written on 2026-10-23 at `8b4f615`. Prompts 01–05 were written
 once the user had ruled (README §2.1).
@@ -525,3 +525,25 @@ on both sides. The merge is the user's.
 corrected. Prompt 05 is left as it ran: its board section (§5.6, now §5.7), the boards read at
 RunRegistryKit `main`, the pin added rather than moved, and the `v0.2.0` checks that apply are
 corrections 1, 2, 3 and 4 of the note.
+
+### 5.8 Merged into `main`, and 04's stores retired (2026-10-25)
+
+At the user's instruction, after 05's review.
+- **04's stores retired.** `./venv/bin/python -m runregistrykit store retire PRIMARY --reason …`
+  on `var/datastores/rrk-adoption-04-reference.sqlite` and `…-resumed.sqlite`, each after a
+  `--dry-run`, each exit 0: every run naming the store had finished (`done`; `done`, `lost`,
+  `killed`), and a fresh read-only fingerprint matched the recorded `a9f716fb…1ea7`. Each store's
+  primary and ten shards are deleted; each sidecar stays as its tombstone (`state` `retired`,
+  `completed` 17:15:47 and 17:15:49 UTC, at `59faad6`). The four run directories under `var/runs/`
+  and the launch logs under `var/rrk-adoption-04/` are kept: no command deletes a run record. RH2's
+  stores under `~/ScienceData/` are not 04's and were not touched.
+- **The merge (R7).** `main` was at `c00a8ec`, one commit past the `bb2d953` this branch merged at
+  §5.3. `git merge --no-ff rrk-adoption` made `89a9d79`, with one conflict, in `.prompts/INDEX.md`'s
+  campaign table: the branch's rows were kept (its `rrk-adoption` row, and its `dk-and-rpk-migration`
+  row, which records P15); the `rpk-v030-adoption` row, `c00a8ec`'s, the branch already held. The
+  merged tree equals the reviewed branch's, so 05's review suites stand for it.
+- **The branch deleted** (`git branch -d rrk-adoption`; it was never pushed), and **`main` pushed**
+  to `origin` with this record. `origin/main` was at `00d254e`, so the push also publishes the
+  unpushed commits of `dk-and-rpk-migration` and `rpk-v030-adoption`.
+- **Still the user's:** the two RunRegistryKit records (§5.7, `verification.md` §2), whose phrase
+  "not merged into `main` when this was drafted" is now out of date.
