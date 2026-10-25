@@ -1,0 +1,136 @@
+# 2.7 The deliberate breakages. Each diff is as applied to the script at the second commit (git apply from the repository root replays it); each check runs against a fresh scratch HOME (mktemp -d under the agent's scratch directory, written <H>), with the real status showing no SI process; each breakage is reverted (cmp with the clean script) before the next.
+
+## B1 — cmd_stop's owner check removed. Check: S-4's stop (ChamPBH holds the scratch lock)
+$ diff (as applied)
+--- a/.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
++++ b/.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
+@@ -329,21 +329,6 @@
+     # Whose lock is it? The module has no command for that, so the owner file is read at the
+     # location the package gives (contract sections 3 and 4). If the lock is another project's,
+     # or has no owner file, nothing is touched: not even SI's own cluster is stopped.
+-    d="$(lock_dir)"
+-    if [ -z "$d" ]; then
+-        err "could not ask raypoolkit.rehearsal_lock where the lock is; touching nothing"
+-        return 1
+-    fi
+-    if [ -d "$d" ]; then
+-        local proj tdir
+-        proj="$(owner_field "$d/owner" project)"
+-        tdir="$(owner_field "$d/owner" ray_temp_dir)"
+-        if [ "$proj" != "$LOCK_PROJECT" ] || [ "$tdir" != "$SI_TEMP_DIR" ]; then
+-            err "the rehearsal lock is another project's (project='$proj' ray_temp_dir='$tdir'); touching nothing. Its owner file:"
+-            print_owner "$d/owner" >&2
+-            return 1
+-        fi
+-    fi
+     stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT" || return 1
+     rehearsal_lock release --project "$LOCK_PROJECT" --ray-temp-dir "$SI_TEMP_DIR" || return 1
+     say "stopped in $((SECONDS - t0))s"
+bash -n exit 0
+$ HOME=<H> ./venv/bin/python -m raypoolkit.rehearsal_lock acquire --project ChamPBH --purpose "rpk-v030-adoption 01 B1" --ray-temp-dir /tmp/ray-cpbh --ray-address 127.0.0.1:6380
+acquired the rehearsal lock (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/homeB1.uj7xpQ/.raypoolkit/rehearsal-lock) for ChamPBH: rpk-v030-adoption 01 B1
+exit 0
+$ HOME=<H> .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh stop
+>> ray_cluster: no process names /tmp/ray-si
+>> ray_cluster: no process names /tmp/ray-si; ports 6390 6391 8266 52366 are free
+release: the lock is not the caller's (project is 'ChamPBH', not 'StochasticInstantons'; ray_temp_dir is '/tmp/ray-cpbh', not '/tmp/ray-si'); not touching it
+    owner:
+    project: ChamPBH
+    purpose: rpk-v030-adoption 01 B1
+    acquired: 2026-10-25T08:32:53+00:00
+    host: mps026088
+    ray_temp_dir: /tmp/ray-cpbh
+    ray_address: 127.0.0.1:6380
+    pid: -
+    caller: project: StochasticInstantons, ray_temp_dir: /tmp/ray-si
+exit 1
+$ HOME=<H> ./venv/bin/python -m raypoolkit.rehearsal_lock release --project ChamPBH --ray-temp-dir /tmp/ray-cpbh
+released the rehearsal lock (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/homeB1.uj7xpQ/.raypoolkit/rehearsal-lock)
+exit 0
+$ revert (the clean script copied back); cmp; rm -r <H>
+cmp exit 0
+Caught: S-4's stop expectation (exit 1, ChamPBH's owner file printed, no line of stop_cluster's) fails. stop_cluster ran first (its two lines: 'no process names /tmp/ray-si', '... ports ... are free'), and only then did the module's release refuse ('the lock is not the caller's'). With SI's cluster up, it would have been stopped while ChamPBH held the lock.
+
+## B2 — cmd_stop's release given --project StochasticInstanton. Check: S-3's stop (SI holds the scratch lock)
+$ diff (as applied)
+--- a/.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
++++ b/.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
+@@ -345,7 +345,7 @@
+         fi
+     fi
+     stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT" || return 1
+-    rehearsal_lock release --project "$LOCK_PROJECT" --ray-temp-dir "$SI_TEMP_DIR" || return 1
++    rehearsal_lock release --project StochasticInstanton --ray-temp-dir "$SI_TEMP_DIR" || return 1
+     say "stopped in $((SECONDS - t0))s"
+     return 0
+ }
+bash -n exit 0
+$ HOME=<H> ./venv/bin/python -m raypoolkit.rehearsal_lock acquire --project StochasticInstantons --purpose "rpk-v030-adoption 01 B2" --ray-temp-dir /tmp/ray-si --ray-address 127.0.0.1:6390
+acquired the rehearsal lock (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/homeB2.4J8jTX/.raypoolkit/rehearsal-lock) for StochasticInstantons: rpk-v030-adoption 01 B2
+exit 0
+$ HOME=<H> .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh stop
+>> ray_cluster: no process names /tmp/ray-si
+>> ray_cluster: no process names /tmp/ray-si; ports 6390 6391 8266 52366 are free
+release: the lock is not the caller's (project is 'StochasticInstantons', not 'StochasticInstanton'); not touching it
+    owner:
+    project: StochasticInstantons
+    purpose: rpk-v030-adoption 01 B2
+    acquired: 2026-10-25T08:33:20+00:00
+    host: mps026088
+    ray_temp_dir: /tmp/ray-si
+    ray_address: 127.0.0.1:6390
+    pid: -
+    caller: project: StochasticInstanton, ray_temp_dir: /tmp/ray-si
+exit 1
+$ ls -A <H>/.raypoolkit/rehearsal-lock   (the lock left held)
+owner
+exit 0
+$ HOME=<H> ./venv/bin/python -m raypoolkit.rehearsal_lock release --project StochasticInstantons --ray-temp-dir /tmp/ray-si
+released the rehearsal lock (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/homeB2.4J8jTX/.raypoolkit/rehearsal-lock)
+exit 0
+$ revert (the clean script copied back); cmp; rm -r <H>
+cmp exit 0
+Caught: S-3's stop expectation (exit 0, 'released the rehearsal lock (…)', then status free) fails. stop exits 1 with the module's refusal 'the lock is not the caller's (project is 'StochasticInstantons', not 'StochasticInstanton')', and the lock is left held (ls shows its owner file). Released by hand with SI's values, exit 0.
+
+## B3 — cmd_stop spells the location as "$HOME/.raypoolkit/rehearsal-lock" in place of asking the package. Check: acceptance 3's grep (a grep: no HOME involved)
+$ diff (as applied)
+--- a/.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
++++ b/.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
+@@ -329,7 +329,7 @@
+     # Whose lock is it? The module has no command for that, so the owner file is read at the
+     # location the package gives (contract sections 3 and 4). If the lock is another project's,
+     # or has no owner file, nothing is touched: not even SI's own cluster is stopped.
+-    d="$(lock_dir)"
++    d="$HOME/.raypoolkit/rehearsal-lock"
+     if [ -z "$d" ]; then
+         err "could not ask raypoolkit.rehearsal_lock where the lock is; touching nothing"
+         return 1
+bash -n exit 0
+$ git grep -n -E 'raypoolkit/rehearsal-lock|\.raypoolkit' -- .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
+.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh:54:                  (~/.raypoolkit/rehearsal-lock), then start SI's Ray head on /tmp/ray-si: GCS
+.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh:332:    d="$HOME/.raypoolkit/rehearsal-lock"
+exit 0
+$ revert (the clean script copied back); cmp
+cmp exit 0
+Caught: acceptance 3's grep finds a second line, :332, a line of code (d="$HOME/.raypoolkit/rehearsal-lock"), not a comment or the usage text; with the clean script it finds only the usage text's :54.
+
+## B4 — the usage text's start line names the old location again. Check: acceptance 2's grep (a grep: no HOME involved)
+$ diff (as applied)
+--- a/.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
++++ b/.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
+@@ -51,7 +51,7 @@
+ Run from the repository root.
+ 
+   start PURPOSE   take the rehearsal lock through raypoolkit.rehearsal_lock
+-                  (~/.raypoolkit/rehearsal-lock), then start SI's Ray head on /tmp/ray-si: GCS
++                  (~/ScienceData/.rehearsal-lock), then start SI's Ray head on /tmp/ray-si: GCS
+                   6390, client 6391, dashboard 8266, dashboard agent 52366, N CPUs (default 4),
+                   and record the gcs_server's pid in the lock's owner file. PURPOSE is written to
+                   the owner file, e.g. "dk-and-rpk-migration 02 (RH0)", and never names
+bash -n exit 0
+$ P='ScienceData|\.rehearsal-lock|rehearsal-lock-brief\.md, section 2|section 2 \(the lock\)'; { git grep -n -E "$P" -- . ':!.documents' ':!.prompts' ':!prompts' ':!science-runs'; git grep -n -E "$P" -- .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh; }   (then | wc -l)
+.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh:54:                  (~/ScienceData/.rehearsal-lock), then start SI's Ray head on /tmp/ray-si: GCS
+1
+$ revert (the clean script copied back); cmp
+cmp exit 0
+Caught: acceptance 2's grep finds one line (:54, the usage text), where the clean tree gives 0.

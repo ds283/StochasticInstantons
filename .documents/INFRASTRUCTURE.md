@@ -38,8 +38,10 @@ gets both of these almost for free by following the same shape.
   declarations, §5 the layer's own tables, §6 what it reads from a stored
   object, §7 the other entry points, §9 the changes after `v0.2.0`); its
   `README.md`, "Using it", is the index.
-- **`raypoolkit` `v0.2.0`** (RayPoolKit): `RayWorkPool`. How it is called is
-  its `README.md` at the tag, "Using it".
+- **`raypoolkit` `v0.3.0`** (RayPoolKit): `RayWorkPool`, and the shared
+  rehearsal lock `raypoolkit.rehearsal_lock`. How each is called is its
+  `README.md` at the tag, "Using it" and "The rehearsal lock"; the lock's
+  contract is its `docs/rehearsal-lock.md` at the tag.
 
 This document points at those two documents and does not copy them. What SI
 supplies, and what the package does with it:
@@ -453,7 +455,7 @@ sample grid endpoint is known before dispatch:
 *Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the copy of `RayWorkPool` it once described, `RayTools/RayWorkPool.py`, was deleted by prompt 04 (`ef13445`) and is in git at that commit's parent.*
 
 `RayWorkPool` is `raypoolkit`'s (`from raypoolkit import RayWorkPool`, pinned in
-`requirements.txt` at `v0.2.0`). Its documentation is RayPoolKit's `README.md`
+`requirements.txt` at `v0.3.0`). Its documentation is RayPoolKit's `README.md`
 at the tag, "Using it": the constructor, the handlers and their defaults, the
 sizes, the objects a lookup returns, which handlers a pool needs, and the
 printed lines (which are the package's interface). It drives every compute

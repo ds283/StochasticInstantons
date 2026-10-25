@@ -341,7 +341,7 @@ proxy to touch `proxy._ref` directly.
 *Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the copy of `RayWorkPool` it once described, `RayTools/RayWorkPool.py`, was deleted by prompt 04 (`ef13445`) and is in git at that commit's parent.*
 
 `RayWorkPool` is the `raypoolkit` package's (`from raypoolkit import
-RayWorkPool`, pinned in `requirements.txt` at `v0.2.0`, never editable); SI has
+RayWorkPool`, pinned in `requirements.txt` at `v0.3.0`, never editable); SI has
 no copy of it. Its documentation is RayPoolKit's `README.md` at the tag, "Using
 it". It provides the main distributed work-queue abstraction and manages the
 full lifecycle of a set of compute targets through the stages: **lookup →

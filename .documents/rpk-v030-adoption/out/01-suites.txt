@@ -1,0 +1,32 @@
+# 2.1 Baseline suites, at 0f190c8
+$ uptime
+ 8:23  up 20 days,  7:08, 2 users, load averages: 7.22 10.83 10.08
+$ ./venv/bin/python -m pytest -m "not integration and not slow" -q -p no:cacheprovider   (tail)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+731 passed, 1 skipped, 136 deselected, 10 warnings in 32.36s
+exit 0
+$ uptime
+ 8:24  up 20 days,  7:09, 2 users, load averages: 8.06 10.52 10.00
+$ RAY_ADDRESS=local ./venv/bin/python -m pytest -m integration -q -p no:cacheprovider   (tail)
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+66 passed, 1 skipped, 801 deselected, 1 warning in 46.55s
+exit 0
+$ uptime
+ 8:25  up 20 days,  7:10, 2 users, load averages: 26.74 15.07 11.70
+
+# 2.8 Suites after (the pin at 3d6328e, the script and documents changed in the working tree)
+$ uptime
+ 8:33  up 20 days,  7:18, 2 users, load averages: 15.97 12.23 11.22
+$ ./venv/bin/python -m pytest -m "not integration and not slow" -q -p no:cacheprovider   (tail)
+731 passed, 1 skipped, 136 deselected, 10 warnings in 41.67s
+exit 0
+$ uptime
+ 8:34  up 20 days,  7:19, 2 users, load averages: 44.97 20.70 14.41
+$ RAY_ADDRESS=local ./venv/bin/python -m pytest -m integration -q -p no:cacheprovider   (tail)
+66 passed, 1 skipped, 801 deselected, 1 warning in 51.35s
+exit 0
+$ uptime
+ 8:35  up 20 days,  7:20, 2 users, load averages: 51.26 26.66 17.05
+$ git diff --name-only 3d6328e -- '*.py'
+(empty above: no .py file changed)

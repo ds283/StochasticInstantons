@@ -15,9 +15,17 @@
 # limitations under the License.
 #
 # StochasticInstanton's rehearsal cluster, and the rehearsal lock it shares with ChamPBH and
-# SecondaryGWKit. Written for dk-and-rpk-migration prompt 01a, which implements
-# .prompts/dk-and-rpk-migration/rehearsal-lock-brief.md: section 2 (the lock) and section 3 (the
-# cluster) are followed exactly, because the contract is shared with the other projects.
+# SecondaryGWKit. Written for dk-and-rpk-migration prompt 01a, which implemented
+# .prompts/dk-and-rpk-migration/rehearsal-lock-brief.md; the brief's section 3 (the cluster) still
+# governs the cluster half, and is followed exactly.
+#
+# Since rpk-v030-adoption prompt 01 the lock is the pinned raypoolkit package's, taken through
+# `python -m raypoolkit.rehearsal_lock`, whose contract is RayPoolKit's docs/rehearsal-lock.md at
+# the pinned tag. This script keeps no lock code of its own and never spells the lock's location:
+# where it needs the location (stop's owner check) it asks the package. The values reach the
+# module from this script's variables, so that no command line of the script's own names SI's temp
+# dir: one that did would seed the module's process rule (contract section 6). For the same
+# reason, a PURPOSE never names the temp dir.
 #
 # This script NEVER runs `ray stop`, which stops every Ray process on the machine. It stops SI's
 # cluster by signalling the processes whose command line names SI's temp dir, and their
@@ -42,19 +50,25 @@ usage: ray_cluster.sh start PURPOSE [--num-cpus N]
 
 Run from the repository root.
 
-  start PURPOSE   take the rehearsal lock (~/ScienceData/.rehearsal-lock), then start SI's Ray
-                  head on /tmp/ray-si: GCS 6390, client 6391, dashboard 8266, dashboard agent
-                  52366, N CPUs (default 4). PURPOSE is written to the lock's owner file, e.g.
-                  "dk-and-rpk-migration 02 (RH0)". If the lock is held, prints its owner file and
-                  exits 3, starting nothing. If any of the four ports is already held, releases
-                  the lock and exits 4, starting nothing. Prints the cluster's address and the
-                  command that lists its actors.
+  start PURPOSE   take the rehearsal lock through raypoolkit.rehearsal_lock
+                  (~/.raypoolkit/rehearsal-lock), then start SI's Ray head on /tmp/ray-si: GCS
+                  6390, client 6391, dashboard 8266, dashboard agent 52366, N CPUs (default 4),
+                  and record the gcs_server's pid in the lock's owner file. PURPOSE is written to
+                  the owner file, e.g. "dk-and-rpk-migration 02 (RH0)", and never names
+                  /tmp/ray-si. If the lock is held, or the old location still exists, prints its
+                  owner file and exits 3, starting nothing. If any of the four ports is already
+                  held, or a process of the cluster is alive, exits 4 with the lock released
+                  again, starting nothing. A failed start stops what it started and releases the
+                  lock, which stays held if anything of the cluster is still alive. Prints the
+                  cluster's address and the command that lists its actors.
   stop            stop SI's processes (SIGTERM to every process naming /tmp/ray-si, to the Ray
                   client server whose address is 127.0.0.1:6390, and to their descendants; a grace
                   period of $RAY_CLUSTER_GRACE seconds, default 15; then SIGKILL), confirm none is
                   left and all four ports (6390, 6391, 8266, 52366) are free, then release the
                   lock if its owner is SI's. Touches nothing if the lock is another project's.
-  status          the lock, its owner file, whether the owner's pid is alive, SI's processes and
+  status          the lock, its owner file, whether the owner's pid is alive, the old location if
+                  it exists, and the cluster's processes by the module's rule (those release
+                  refuses on); then SI's processes by this script's rule (those stop signals), and
                   its four ports.
 
 Never runs `ray stop`. Never waits on a held lock.
@@ -72,78 +86,48 @@ SI_ADDRESS="127.0.0.1:${SI_GCS_PORT}"
 SI_DASHBOARD="http://127.0.0.1:${SI_DASHBOARD_PORT}"
 RAY_BIN="./venv/bin/ray"
 
-# ---- the shared lock (rehearsal-lock-brief.md, section 2) ----
-LOCK_PARENT="$HOME/ScienceData"
-LOCK_DIR="$LOCK_PARENT/.rehearsal-lock"
-OWNER_FILE="$LOCK_DIR/owner"
+# ---- the shared lock (raypoolkit.rehearsal_lock; RayPoolKit's docs/rehearsal-lock.md) ----
+PYTHON_BIN="./venv/bin/python"
 
 GRACE="${RAY_CLUSTER_GRACE:-15}"
 
 say() { echo ">> ray_cluster: $*"; }
 err() { echo ">> ray_cluster: $*" >&2; }
 
-iso_now() {
-    # ISO 8601, local time with its offset as +HH:MM (macOS date gives +HHMM).
-    date +%Y-%m-%dT%H:%M:%S%z | sed -E 's/([+-][0-9]{2})([0-9]{2})$/\1:\2/'
+rehearsal_lock() {
+    # rehearsal_lock COMMAND [OPTIONS]: the pinned package's lock, run as a process of its own and
+    # never piped. Its exit codes are the contract's (section 7); its refusals go to stderr.
+    "$PYTHON_BIN" -m raypoolkit.rehearsal_lock "$@"
+}
+
+release_after_failure() {
+    # A failed or interrupted start releases SI's lock. The module's refusal is printed, not
+    # hidden: it leaves the lock held while anything of the cluster is still alive (contract
+    # section 7). The caller's exit stays the failure's, whatever release returned.
+    rehearsal_lock release --project "$LOCK_PROJECT" --ray-temp-dir "$SI_TEMP_DIR" ||
+        err "the rehearsal lock stays held: something of SI's cluster may still be alive; run 'status', then 'stop', or ask the user"
+}
+
+lock_dir() {
+    # The lock's location, asked of the pinned package (contract sections 2 and 3), so that this
+    # script never spells it.
+    "$PYTHON_BIN" -c 'from raypoolkit.rehearsal_lock import default_lock_dir; print(default_lock_dir())'
 }
 
 owner_field() {
-    # owner_field KEY: the value of KEY in the owner file ("" if absent or no file).
-    [ -f "$OWNER_FILE" ] || return 0
-    sed -n "s/^$1: //p" "$OWNER_FILE" | head -n 1
-}
-
-write_owner() {
-    # write_owner PURPOSE PID: the seven keys, in the brief's order; written to owner.tmp, renamed.
-    {
-        echo "project: $LOCK_PROJECT"
-        echo "purpose: $1"
-        echo "acquired: $(iso_now)"
-        echo "host: $(hostname -s)"
-        echo "ray_temp_dir: $SI_TEMP_DIR"
-        echo "ray_address: $SI_ADDRESS"
-        echo "pid: $2"
-    } > "$LOCK_DIR/owner.tmp" && mv "$LOCK_DIR/owner.tmp" "$OWNER_FILE"
+    # owner_field FILE KEY: the value of KEY in the owner file FILE ("" if absent or no file). Each
+    # line is "key: value", split at its first ": " (contract section 4).
+    [ -f "$1" ] || return 0
+    sed -n "s/^$2: //p" "$1" | head -n 1
 }
 
 print_owner() {
-    if [ -f "$OWNER_FILE" ]; then
-        sed 's/^/    /' "$OWNER_FILE"
+    # print_owner FILE: the owner file, indented, or "(no owner file)".
+    if [ -f "$1" ]; then
+        sed 's/^/    /' "$1"
     else
         echo "    (no owner file)"
     fi
-}
-
-acquire_lock() {
-    # acquire_lock PURPOSE. mkdir WITHOUT -p: the atomic step. Returns 3 when the lock is held.
-    mkdir -p "$LOCK_PARENT" || return 1
-    if mkdir "$LOCK_DIR" 2>/dev/null; then
-        write_owner "$1" "-"
-        return 0
-    fi
-    err "the rehearsal lock is held ($LOCK_DIR); its owner file:"
-    print_owner >&2
-    err "stop and ask the user; this script never waits on, or breaks, the lock"
-    return 3
-}
-
-release_lock() {
-    # Release only if the owner's project and ray_temp_dir are SI's (brief section 2).
-    if [ ! -d "$LOCK_DIR" ]; then
-        say "no lock to release"
-        return 0
-    fi
-    local proj tdir
-    proj="$(owner_field project)"
-    tdir="$(owner_field ray_temp_dir)"
-    if [ "$proj" != "$LOCK_PROJECT" ] || [ "$tdir" != "$SI_TEMP_DIR" ]; then
-        err "the lock is not SI's; not releasing it. owner has project='$proj' ray_temp_dir='$tdir'; SI is project='$LOCK_PROJECT' ray_temp_dir='$SI_TEMP_DIR'"
-        return 1
-    fi
-    rm -f "$OWNER_FILE" "$LOCK_DIR/owner.tmp"
-    rmdir "$LOCK_DIR" || { err "could not rmdir $LOCK_DIR"; return 1; }
-    say "released the rehearsal lock"
-    return 0
 }
 
 # ---- the targeted stop (brief section 3) ----
@@ -275,15 +259,12 @@ cmd_start() {
     case "$ncpus" in ''|*[!0-9]*) err "--num-cpus must be a positive integer"; return 2 ;; esac
     [ -x "$RAY_BIN" ] || { err "$RAY_BIN not found: run from the repository root"; return 2; }
 
-    acquire_lock "$purpose" || return $?
-
-    # The lock is free but SI's temp dir is named by a live process: a stale cluster. Not ours to
-    # guess about; release the lock and say so.
-    if [ -n "$(list_cluster_pids "$SI_TEMP_DIR" "$SI_GCS_PORT")" ]; then
-        err "processes naming $SI_TEMP_DIR are already running (a stale cluster?); not starting. Run 'stop' first."
-        release_lock
-        return 4
-    fi
+    # The module's exit is passed through: 3 the lock held, or the old location exists (nothing
+    # created); 4 a process of the cluster alive, or ps unreadable (the lock released again; this
+    # is the stale-cluster check, by the rule release will apply); 1 the owner file not written;
+    # 2 a usage error.
+    rehearsal_lock acquire --project "$LOCK_PROJECT" --purpose "$purpose" \
+        --ray-temp-dir "$SI_TEMP_DIR" --ray-address "$SI_ADDRESS" || return $?
 
     # A held port is not ours to take. Without this, a ray start that fails on a foreign listener
     # leaves a stop whose port check cannot pass, and the lock held.
@@ -296,11 +277,11 @@ cmd_start() {
         fi
     done
     if [ -n "$held" ]; then
-        release_lock
+        release_after_failure
         return 4
     fi
 
-    trap 'err "interrupted; stopping what was started"; stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT"; release_lock; exit 130' INT TERM
+    trap 'err "interrupted; stopping what was started"; stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT"; release_after_failure; exit 130' INT TERM
 
     local t0=$SECONDS
     "$RAY_BIN" start --head --temp-dir "$SI_TEMP_DIR" --port "$SI_GCS_PORT" \
@@ -310,7 +291,7 @@ cmd_start() {
     if [ "$rc" -ne 0 ]; then
         err "ray start failed (exit $rc); stopping what it started and releasing the lock"
         stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT"
-        release_lock
+        release_after_failure
         trap - INT TERM
         return 1
     fi
@@ -322,11 +303,19 @@ cmd_start() {
     if [ -z "$gcs" ]; then
         err "ray start succeeded but no gcs_server names $SI_TEMP_DIR; stopping"
         stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT"
-        release_lock
+        release_after_failure
         trap - INT TERM
         return 1
     fi
-    write_owner "$purpose" "$gcs"
+    # The gcs_server's pid in the owner file: release refuses while it is alive (contract section
+    # 6, "What it asks of a caller"). A refusal is treated as no gcs_server.
+    if ! rehearsal_lock set-pid --project "$LOCK_PROJECT" --ray-temp-dir "$SI_TEMP_DIR" "$gcs"; then
+        err "set-pid refused the gcs_server's pid $gcs; stopping"
+        stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT"
+        release_after_failure
+        trap - INT TERM
+        return 1
+    fi
     trap - INT TERM
     say "address $SI_ADDRESS"
     say "dashboard $SI_DASHBOARD"
@@ -336,42 +325,44 @@ cmd_start() {
 }
 
 cmd_stop() {
-    local t0=$SECONDS
-    if [ -d "$LOCK_DIR" ]; then
+    local t0=$SECONDS d
+    # Whose lock is it? The module has no command for that, so the owner file is read at the
+    # location the package gives (contract sections 3 and 4). If the lock is another project's,
+    # or has no owner file, nothing is touched: not even SI's own cluster is stopped.
+    d="$(lock_dir)"
+    if [ -z "$d" ]; then
+        err "could not ask raypoolkit.rehearsal_lock where the lock is; touching nothing"
+        return 1
+    fi
+    if [ -d "$d" ]; then
         local proj tdir
-        proj="$(owner_field project)"
-        tdir="$(owner_field ray_temp_dir)"
+        proj="$(owner_field "$d/owner" project)"
+        tdir="$(owner_field "$d/owner" ray_temp_dir)"
         if [ "$proj" != "$LOCK_PROJECT" ] || [ "$tdir" != "$SI_TEMP_DIR" ]; then
             err "the rehearsal lock is another project's (project='$proj' ray_temp_dir='$tdir'); touching nothing. Its owner file:"
-            print_owner >&2
+            print_owner "$d/owner" >&2
             return 1
         fi
     fi
     stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT" || return 1
-    release_lock || return 1
+    rehearsal_lock release --project "$LOCK_PROJECT" --ray-temp-dir "$SI_TEMP_DIR" || return 1
     say "stopped in $((SECONDS - t0))s"
     return 0
 }
 
 cmd_status() {
-    if [ -d "$LOCK_DIR" ]; then
-        echo "lock: HELD ($LOCK_DIR)"
-        print_owner
-        local pid
-        pid="$(owner_field pid)"
-        case "$pid" in
-            ''|-) echo "owner pid: ${pid:--} (no cluster pid recorded yet)" ;;
-            *) if alive "$pid"; then echo "owner pid $pid: alive"; else echo "owner pid $pid: NOT alive"; fi ;;
-        esac
-    else
-        echo "lock: free ($LOCK_DIR does not exist)"
-    fi
+    # The lock, its owner file, the old location and the processes by the module's rule: those
+    # release refuses on (contract section 8).
+    rehearsal_lock status --ray-temp-dir "$SI_TEMP_DIR" --ray-address "$SI_ADDRESS" ||
+        err "raypoolkit.rehearsal_lock status failed"
+    # Then the processes stop signals, by this script's rule. Where the two listings differ, stop
+    # leaves something that release then refuses on.
     local pids
     pids="$(list_cluster_pids "$SI_TEMP_DIR" "$SI_GCS_PORT")"
     if [ -z "$pids" ]; then
-        echo "SI cluster ($SI_TEMP_DIR): no processes"
+        echo "SI cluster ($SI_TEMP_DIR), the processes stop signals: none"
     else
-        echo "SI cluster ($SI_TEMP_DIR): $(echo "$pids" | wc -l | tr -d ' ') process(es)"
+        echo "SI cluster ($SI_TEMP_DIR), the processes stop signals: $(echo "$pids" | wc -l | tr -d ' ')"
         local p
         for p in $pids; do describe_pid "$p" | sed 's/^/    /'; done
     fi

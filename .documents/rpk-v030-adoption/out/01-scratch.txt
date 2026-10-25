@@ -1,0 +1,143 @@
+# 2.5 The scratch checks. Scratch HOME (mktemp -d): /private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM, written <H> below. Script at the working tree (3d6328e + the edits).
+## Precondition: the real status (real HOME) shows no SI process
+$ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh status
+lock: free (/Users/ds283/.raypoolkit/rehearsal-lock does not exist)
+Ray processes of /tmp/ray-si: none
+SI cluster (/tmp/ray-si), the processes stop signals: none
+port 6390: free
+port 6391: free
+port 8266: free
+port 52366: free
+exit 0
+## S-1 (set-up: nothing)
+$ HOME=<H> .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh status
+lock: free (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM/.raypoolkit/rehearsal-lock does not exist)
+Ray processes of /tmp/ray-si: none
+SI cluster (/tmp/ray-si), the processes stop signals: none
+port 6390: free
+port 6391: free
+port 8266: free
+port 52366: free
+exit 0
+## S-2 (set-up: nothing)
+$ HOME=<H> .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh stop
+>> ray_cluster: no process names /tmp/ray-si
+>> ray_cluster: no process names /tmp/ray-si; ports 6390 6391 8266 52366 are free
+no lock to release (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM/.raypoolkit/rehearsal-lock)
+>> ray_cluster: stopped in 1s
+exit 0
+## S-3 (set-up: acquire by hand with SI values)
+$ HOME=<H> ./venv/bin/python -m raypoolkit.rehearsal_lock acquire --project StochasticInstantons --purpose "rpk-v030-adoption 01 S-3" --ray-temp-dir /tmp/ray-si --ray-address 127.0.0.1:6390
+acquired the rehearsal lock (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM/.raypoolkit/rehearsal-lock) for StochasticInstantons: rpk-v030-adoption 01 S-3
+exit 0
+$ ls -A <H>/.raypoolkit/rehearsal-lock; cat <H>/.raypoolkit/rehearsal-lock/owner
+owner
+project: StochasticInstantons
+purpose: rpk-v030-adoption 01 S-3
+acquired: 2026-10-25T08:28:25+00:00
+host: mps026088
+ray_temp_dir: /tmp/ray-si
+ray_address: 127.0.0.1:6390
+pid: -
+$ HOME=<H> .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh stop
+>> ray_cluster: no process names /tmp/ray-si
+>> ray_cluster: no process names /tmp/ray-si; ports 6390 6391 8266 52366 are free
+released the rehearsal lock (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM/.raypoolkit/rehearsal-lock)
+>> ray_cluster: stopped in 2s
+exit 0
+$ HOME=<H> .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh status
+lock: free (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM/.raypoolkit/rehearsal-lock does not exist)
+Ray processes of /tmp/ray-si: none
+SI cluster (/tmp/ray-si), the processes stop signals: none
+port 6390: free
+port 6391: free
+port 8266: free
+port 52366: free
+exit 0
+## S-4 (set-up: acquire by hand as ChamPBH)
+$ HOME=<H> ./venv/bin/python -m raypoolkit.rehearsal_lock acquire --project ChamPBH --purpose "rpk-v030-adoption 01 S-4" --ray-temp-dir /tmp/ray-cpbh --ray-address 127.0.0.1:6380
+acquired the rehearsal lock (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM/.raypoolkit/rehearsal-lock) for ChamPBH: rpk-v030-adoption 01 S-4
+exit 0
+$ HOME=<H> .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh stop
+>> ray_cluster: the rehearsal lock is another project's (project='ChamPBH' ray_temp_dir='/tmp/ray-cpbh'); touching nothing. Its owner file:
+    project: ChamPBH
+    purpose: rpk-v030-adoption 01 S-4
+    acquired: 2026-10-25T08:28:47+00:00
+    host: mps026088
+    ray_temp_dir: /tmp/ray-cpbh
+    ray_address: 127.0.0.1:6380
+    pid: -
+exit 1
+$ HOME=<H> .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start "rpk-v030-adoption 01 S-4"
+the rehearsal lock is held (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM/.raypoolkit/rehearsal-lock); its owner file:
+    project: ChamPBH
+    purpose: rpk-v030-adoption 01 S-4
+    acquired: 2026-10-25T08:28:47+00:00
+    host: mps026088
+    ray_temp_dir: /tmp/ray-cpbh
+    ray_address: 127.0.0.1:6380
+    pid: -
+stop and ask the user; nothing here waits on, retries or breaks the lock
+exit 3
+$ HOME=<H> ./venv/bin/python -m raypoolkit.rehearsal_lock release --project ChamPBH --ray-temp-dir /tmp/ray-cpbh
+released the rehearsal lock (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM/.raypoolkit/rehearsal-lock)
+exit 0
+## S-5 (set-up: the old location in <H>, an owner file of the seven keys)
+$ mkdir -p <H>/<the old location>; write its owner file; cat it
+project: StochasticInstantons
+purpose: rpk-v030-adoption 01 S-5
+acquired: 2026-10-25T08:29:05+00:00
+host: mps026088
+ray_temp_dir: /tmp/ray-si
+ray_address: 127.0.0.1:6390
+pid: -
+$ HOME=<H> .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start "rpk-v030-adoption 01 S-5"
+the old location of the rehearsal lock exists (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM/ScienceData/.rehearsal-lock); its owner file:
+    project: StochasticInstantons
+    purpose: rpk-v030-adoption 01 S-5
+    acquired: 2026-10-25T08:29:05+00:00
+    host: mps026088
+    ray_temp_dir: /tmp/ray-si
+    ray_address: 127.0.0.1:6390
+    pid: -
+it is the old location: stop and ask the user, who removes it by hand once nothing holds it; nothing was created
+exit 3
+$ HOME=<H> .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh status
+lock: free (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM/.raypoolkit/rehearsal-lock does not exist)
+old location: PRESENT (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM/ScienceData/.rehearsal-lock)
+Ray processes of /tmp/ray-si: none
+SI cluster (/tmp/ray-si), the processes stop signals: none
+port 6390: free
+port 6391: free
+port 8266: free
+port 52366: free
+exit 0
+$ ls -A <H>/.raypoolkit   (the new lock not created)
+exit 0
+$ rm -r <H>/ScienceData   (the scratch old location removed)
+exit 0
+## S-6 (set-up: a listener on 127.0.0.1:6391, started in the background with nohup; pid 17090)
+$ ./venv/bin/python -c 'import socket, time; s = socket.socket(); s.bind(("127.0.0.1", 6391)); s.listen(); time.sleep(900)' &   -> pid 17090
+$ lsof -nP -iTCP:6391 -sTCP:LISTEN
+COMMAND   PID  USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+Python  17090 ds283    3u  IPv4 0x8ee91c17f8077d67      0t0  TCP 127.0.0.1:6391 (LISTEN)
+$ HOME=<H> .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start "rpk-v030-adoption 01 S-6"
+acquired the rehearsal lock (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM/.raypoolkit/rehearsal-lock) for StochasticInstantons: rpk-v030-adoption 01 S-6
+>> ray_cluster: port 6391 is already held; not starting:
+Python  17090 ds283    3u  IPv4 0x8ee91c17f8077d67      0t0  TCP 127.0.0.1:6391 (LISTEN)
+released the rehearsal lock (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM/.raypoolkit/rehearsal-lock)
+exit 4
+$ HOME=<H> .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh status
+lock: free (/private/tmp/claude-35086/-Users-ds283-Documents-Code-StochasticInstantons/1a0109ed-8a92-4aaa-8617-eb730e99a0ef/scratchpad/agent01/home.R47loM/.raypoolkit/rehearsal-lock does not exist)
+Ray processes of /tmp/ray-si: none
+SI cluster (/tmp/ray-si), the processes stop signals: none
+port 6390: free
+port 6391: held
+port 8266: free
+port 52366: free
+exit 0
+$ kill 17090; lsof -nP -iTCP:6391 -sTCP:LISTEN
+kill exit 0
+lsof exit 1 (1: nothing listening)
+$ rm -r <H>   (the scratch HOME removed)
+exit 0
