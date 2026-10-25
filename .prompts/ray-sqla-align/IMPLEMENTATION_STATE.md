@@ -234,3 +234,16 @@ named token mode. No issue was opened. R's two stores, `ray-sqla-align-01-refere
 `ray-sqla-align-01-resumed`, stay under `var/datastores/` for the user to retire (README §3), with
 their run records under `var/runs/`. Nothing is pushed. README §7 hands the token-mode fix to
 ChamPBH, still on `ray` 2.53.0.
+
+### 5.4 R's stores retired, and `main` pushed (2026-10-25)
+
+At the user's instruction, after the close.
+- **R's stores retired.** `./venv/bin/python -m runregistrykit store retire PRIMARY --reason …`
+  on `var/datastores/ray-sqla-align-01-reference.sqlite` and `…-resumed.sqlite`, each after a
+  `--dry-run`: every run naming the store had finished (`done`; `done`, `killed`), and a fresh
+  read-only fingerprint matched the recorded `a9f716fb…1ea7`. Each store's primary and ten shards
+  are deleted; each sidecar stays as its tombstone (`state` `retired`, `completed` 19:20:31 and
+  19:20:33 UTC, at `57ad360`). The three run directories under `var/runs/` and the launch logs and
+  outputs under `var/ray-sqla-align-01/` are kept: no command deletes a run record.
+  `var/datastores/` now holds only the four tombstones of `rrk-adoption` 04 and this campaign.
+- **`main` pushed** to `origin` with this record.
