@@ -98,10 +98,15 @@ makes). Without the refresh the driver keeps `disabled` while the processes it s
     `ray.init(ignore_reinit_error=True)` under `RAY_ADDRESS=local` or with no address;
   - in the tests, in subprocesses: the programs at `tests/test_inflaton_trajectory_prune.py:464`,
     `tests/test_inventory_store.py:80` and `tests/registered_run_helpers.py:110`.
-- **Recorded distributions.** `runregistrykit.toml`'s `distributions` is `["datastorekit",
-  "raypoolkit"]`, which `tests/test_registry_config.py:53` holds equal to
-  `utilities.RECORDED_DISTRIBUTIONS` (`utilities.py:174`, a protected file) and which `main.py`
-  prints as its `>> packages:` line. It stays (U4).
+- **Recorded distributions.** At `03110ce`, `runregistrykit.toml`'s `distributions` (what a
+  registered run's manifest records) and `utilities.RECORDED_DISTRIBUTIONS` (what each driver
+  prints on its `>> packages:` line, `utilities.py:174`, a protected file) were both
+  `datastorekit` and `raypoolkit`, each pinned by its own test, with nothing comparing the two.
+  *Amended 2026-10-25, after the planning commit (U4 revised):* `c5af555` makes
+  `tests/test_registry_config.py` hold the two lists equal, and `900d3f7` adds `ray`,
+  `SQLAlchemy`, `numpy` and `scipy` to both, at the user's request. Neither list names a version,
+  so the move itself needs neither change; with them, R's logs and manifests name the venv that
+  ran.
 
 ### 0.4 Baselines
 
@@ -128,7 +133,8 @@ comparison SGK's FP6 used.
 
 **Out of scope:**
 - **Every other pin**, and the interpreter.
-- **`runregistrykit.toml`'s `distributions`** and `utilities.py` (U4).
+- **`runregistrykit.toml`'s `distributions`** and `utilities.py`: changed before 01, by
+  `c5af555` and `900d3f7` (U4).
 - **The `slow` block**, and anything a build computes: no file under `ComputeTargets/`,
   `Numerics/`, `Interpolation/` or `Datastore/` changes.
 - **The hard-kill route.** `rrk-adoption` 04 rehearsed it on Ray 2.55.1, and nothing of SI's
@@ -219,7 +225,7 @@ And:
 | **U1** — versions | `ray` 2.59.0 and `SQLAlchemy` 2.0.55, SGK's; every other pin unchanged |
 | **U2** — token authentication | kept, and named: `RAY_AUTH_MODE=token` set by SI, as SGK does |
 | **U3** — the shape | a campaign with a board and one prompt, as proposed |
-| **U4** — recorded distributions | unchanged (`datastorekit`, `raypoolkit`): recording `ray` and the rest in manifests would mean changing the protected `utilities.py:174` and `main.py`'s `>> packages:` line. The versions are recorded in 01's results note instead |
+| **U4** — recorded distributions | *revised the same day:* `ray`, `SQLAlchemy`, `numpy` and `scipy` added to both lists, outside 01 (`900d3f7`), after a test holding the two lists equal (`c5af555`). First ruled "unchanged", on the planner's statement that the change was forced on `utilities.py`; the user then saw that neither list names a version, and asked for the four to be recorded |
 
 ### 6.2 Choices of method made in writing this plan
 

@@ -5,7 +5,8 @@
 **Written:** 2026-10-25, with the plan, measured at `03110ce`. Your own measurement governs.
 **Where it runs:** on the laptop, in the main checkout, on `main` (C1).
 **Gate:**
-- on `main`, at the planning commit, with `git status --porcelain` empty;
+- on `main`, at the commit that amended this prompt for U4 (after `900d3f7`) or later, with
+  `git status --porcelain` empty. Call that `HEAD` the dispatch commit;
 - `./venv/bin/python -m runregistrykit list`: nothing `running`, stale or unknown;
 - the venv holds `ray` 2.55.1 and `SQLAlchemy` 2.0.46, and `datastorekit`, `raypoolkit` and
   `runregistrykit` at `f47b9a2…`, `67a75b9…` and `0bae3a3…`, none editable;
@@ -203,7 +204,9 @@ with the pid, `list`), then a `Monitor` on the log's `** launcher saw exit statu
    fingerprint is **`a9f716fb…1ea7`**.
 5. **R4 — the comparison.** `PYTHONPATH=. ./venv/bin/python tools/compare_stores.py` on the two
    stores: equal but for bookkeeping. `store fingerprint` (without `--write`) on each: `a9f716fb…1ea7`.
-   Each manifest of R: `git_dirty` false, `git_head` the fix commit.
+   Each manifest of R: `git_dirty` false, `git_head` the fix commit, and `packages` naming `ray`
+   2.59.0, `SQLAlchemy` 2.0.55, numpy 2.4.6 and scipy 1.17.1 beside the three git packages (U4).
+   Each launch log's `>> packages:` line names the same six.
 6. `ray_cluster.sh stop`, a command on its own; then `status`: the lock free, no SI process, the
    four ports free.
 
@@ -230,9 +233,10 @@ with the pid, `list`), then a `Monitor` on the log's `** launcher saw exit statu
    token warning; `CLAUDE.md` and `test-selection.md` stating the new counts. No file under
    `ComputeTargets/`, `Numerics/`, `Interpolation/` or `Datastore/` changed, so `slow` is not run.
 5. **The gates** of README §2.2: **FP** and **Token**.
-6. **Nothing else moved**: `git diff 03110ce --name-only` after the third commit is the two commits'
-   paths, the results note, `.documents/ray-sqla-align/out/`, the board and `.prompts/INDEX.md`.
-   `utilities.py`, `runregistrykit.toml` and `RunDrivers/` are untouched (U4).
+6. **Nothing else moved**: `git diff <the dispatch commit> --name-only` after the third commit is
+   the two commits' paths, the results note, `.documents/ray-sqla-align/out/`, the board and
+   `.prompts/INDEX.md`. `utilities.py`, `runregistrykit.toml` and `RunDrivers/` are untouched: U4's
+   change was made before dispatch.
 
 ## 4. Stop conditions: stop and ask
 
@@ -264,8 +268,8 @@ failed. **If you stop after the install**, say that the venv holds the new versi
 ## 6. The results note and the board
 
 **The results note**, `.documents/ray-sqla-align/01-move-ray-and-sqlalchemy-with-token-mode.md`,
-in the template of `dk-and-rpk-migration` README §5.1: the versions as installed (in place of U4's
-manifest entries); every count; V0 as measured; the fix and its breakages; R as a table (run id,
+in the template of `dk-and-rpk-migration` README §5.1: the versions as installed, and as R's manifests
+and `>> packages:` lines record them (U4); every count; V0 as measured; the fix and its breakages; R as a table (run id,
 slug, store, state, exit code, wall time, fingerprint), with the stage times beside 04's and the
 choice of `<s>`; the token checks; the commands verbatim. Name SGK's two issues where the fix
 follows them.

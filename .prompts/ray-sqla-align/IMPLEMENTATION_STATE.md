@@ -35,7 +35,7 @@ opened)
 | **U1** — versions | `ray` 2.59.0 and `SQLAlchemy` 2.0.55, SGK's; every other pin unchanged |
 | **U2** — token authentication | kept, and named (`RAY_AUTH_MODE=token`), as SGK does |
 | **U3** — the shape | a campaign with this board and one prompt |
-| **U4** — recorded distributions | unchanged; no change to the protected `utilities.py` |
+| **U4** — recorded distributions | *revised:* `ray`, `SQLAlchemy`, `numpy`, `scipy` added to both lists before 01 (`c5af555`, `900d3f7`; §5.1) |
 
 **Proposed by the planner (README §6.2):** C1–C12, standing unless the user rules otherwise.
 
@@ -81,7 +81,7 @@ The review of 01 closes the campaign.
 | **R1** | 01 | `reference`: `done`, fingerprint `a9f716fb…1ea7` | ⬜ |
 | **R2** | 01 | `resumed-a`: `SIGTERM`ed, `killed`/143, the store partial | ⬜ |
 | **R3** | 01 | `resumed-c`: `done`, fingerprint `a9f716fb…1ea7` | ⬜ |
-| **R4** | 01 | `compare_stores` equal; manifests `git_dirty` false | ⬜ |
+| **R4** | 01 | `compare_stores` equal; manifests `git_dirty` false, `packages` naming `ray` 2.59.0 and `SQLAlchemy` 2.0.55 | ⬜ |
 
 **Legend.** ✍️ written · ⬜ not yet · ✅ done.
 
@@ -114,6 +114,23 @@ Proposed in conversation on 2026-10-25, after SGK's `py313-venv` closed. Measure
   file exists, an attach by address never does. The token file exists (SGK's, 12:51, mode 600);
 - Ray 2.55.1, SI's current, has no default token mode, so no SI run has used authentication yet.
 
-The user ruled U1–U4 the same day; U4 drops the planner's first proposal (the four distributions
-added to the manifests, as SGK's G1), because in SI that list is the protected
-`utilities.RECORDED_DISTRIBUTIONS`.
+The user ruled U1–U4 the same day. U4 first dropped the planner's proposal to add the four
+distributions to the manifests, as SGK's G1, because the planner said the change was forced on the
+protected `utilities.RECORDED_DISTRIBUTIONS`. That overstated it (§5.1).
+
+### 5.1 U4 revised, before dispatch (2026-10-25)
+
+Asked by the user, the planner explained the two lists: `runregistrykit.toml`'s `distributions`
+(a registered run's manifest) and `utilities.RECORDED_DISTRIBUTIONS` (each driver's `>> packages:`
+line). Neither names a version, so the move needs neither change. They were meant to agree
+(`rrk-adoption` R3), but each was pinned by its own test to the same literal and nothing compared
+them: a latent drift. At the user's instruction:
+- **`c5af555`**: `tests/test_registry_config.py` holds the toml's list equal to
+  `utilities.RECORDED_DISTRIBUTIONS`. Adding `ray` to the toml alone fails it.
+- **`900d3f7`**: `ray`, `SQLAlchemy`, `numpy` and `scipy` added to both lists, the user naming
+  `utilities.py` for the change; `test_default_names` and `INFRASTRUCTURE.md` follow. The four
+  PyPI installs print `(no recorded origin)`. Default suite 848 (847 passed, 1 skipped);
+  `integration` 72 (71 passed, 1 skipped).
+
+U4 now reads "added". Prompt 01's Gate starts after this amendment, and R4 checks that R's manifests
+name `ray` 2.59.0 and `SQLAlchemy` 2.0.55.
