@@ -3,3 +3,6 @@
 runs_root = "var/runs"
 stores_root = "var/datastores"
 distributions = ["datastorekit", "raypoolkit"]
+
+[stores]
+fingerprinter = "config.fingerprint:fingerprinter"

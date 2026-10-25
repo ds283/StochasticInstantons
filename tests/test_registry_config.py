@@ -42,8 +42,7 @@ import runregistrykit
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
-# Prompt 02 adds "stores" here, with the [stores] table.
-EXPECTED_KEYS = {"runs_root", "stores_root", "distributions"}
+EXPECTED_KEYS = {"runs_root", "stores_root", "distributions", "stores"}
 
 
 def test_client_root_gives_the_roots_and_distributions():

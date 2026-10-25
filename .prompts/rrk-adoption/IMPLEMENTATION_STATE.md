@@ -1,6 +1,6 @@
 # rrk-adoption campaign — implementation state
 
-**Last updated:** 2026-10-25 · **Status: READY — 1 of 5 prompts landed; 01–05 written (§5.1); `main` merged in
+**Last updated:** 2026-10-25 · **Status: READY — 2 of 5 prompts landed; 01–05 written (§5.1); `main` merged in
 with `rpk-v030-adoption` (§5.3). R1–R7,
 U1 and U2 ruled by the user; P1–P14 stand as proposed (README §6). The branch `rrk-adoption` is cut
 from `main` at `1c223e8`, after `dk-and-rpk-migration` was merged into `main` (R7).**
@@ -52,7 +52,7 @@ any of them.
 | # | Prompt | Model | Status |
 |---|---|---|---|
 | 01 | [`01-pin-config-and-rules.md`](01-pin-config-and-rules.md) | Sonnet | **landed** 2026-10-23 (`60687f0` and this commit) |
-| 02 | [`02-the-fingerprinter.md`](02-the-fingerprinter.md) | Sonnet | written |
+| 02 | [`02-the-fingerprinter.md`](02-the-fingerprinter.md) | Sonnet | **landed** 2026-10-25 (this commit) |
 | 03 | [`03-the-wrapper.md`](03-the-wrapper.md) | Opus | written |
 | 04 | [`04-rehearse-registered-runs.md`](04-rehearse-registered-runs.md) | Opus | written |
 | 05 | [`05-close.md`](05-close.md) | Sonnet | written |
@@ -68,10 +68,10 @@ any of them.
 | **C3** | 01 | `CLAUDE.md`'s section and `.claude/rules/run-registry.md` | done |
 | **C4** | 01 | the `SessionStart` discovery hook (U1) | done |
 | **C5** | 01 | `tests/test_registry_config.py` | done |
-| **F1** | 02 | `config/fingerprint.py`: format 1, `SPEC_DIGESTS`, the fingerprinter | — |
-| **F2** | 02 | `[stores]` in the config | — |
-| **F3** | 02 | `tests/test_fingerprint_format_guard.py`, with the `v0.5.0` amendment (P5) | — |
-| **F4** | 02 | `tests/test_store_fingerprint_golden.py` and its golden file (P6) | — |
+| **F1** | 02 | `config/fingerprint.py`: format 1, `SPEC_DIGESTS`, the fingerprinter | done |
+| **F2** | 02 | `[stores]` in the config | done |
+| **F3** | 02 | `tests/test_fingerprint_format_guard.py`, with the `v0.5.0` amendment (P5) | done |
+| **F4** | 02 | `tests/test_store_fingerprint_golden.py` and its golden file (P6) | done |
 | **W1** | 03 | `RunDrivers/registered_run.py` | — |
 | **W2** | 03 | its arguments and refusals | — |
 | **W3** | 03 | registration, the streams and the heartbeat (P7) | — |
@@ -93,7 +93,7 @@ any of them.
 | Gate | Holds when | Status |
 |---|---|---|
 | **Pin** | 01's acceptance: `runregistrykit` 0.2.0 installed from the tag, not editable; the package's suite passes on it; the config, `var/`, the rules and the hook in place | **held** 2026-10-23 |
-| **Fingerprint** | 02's acceptance: `SPEC_DIGESTS[1]` pinned and guarded; the golden fingerprint reproduced | not yet |
+| **Fingerprint** | 02's acceptance: `SPEC_DIGESTS[1]` pinned and guarded; the golden fingerprint reproduced | **held** 2026-10-25 |
 | **Wrapper** | 03's acceptance: the wrapper's tests pass; `main.py` unchanged and importing nothing of the package | not yet |
 | **R** | 04's acceptance: the four registered builds recorded as planned; the resumed store and RH2's reference equal to `reference` | not yet |
 | RunRegistryKit `extraction` **G4**, `interrupted-runs` **G3** | drafted by 05, committed in RunRegistryKit by the user (P13) | not yet |
@@ -180,3 +180,11 @@ item 3), before 02 is dispatched. Nothing pushed.
   point the agent at the contract for the lock, and at `CLAUDE.md`'s rule that no `PURPOSE` names
   `/tmp/ray-si` and that a lock command typed by hand is the only process of its shell command.
   A held lock is still exit 3 from `start`, and `status` still reads `lock: free (…)` when free.
+
+### 5.4 After prompt 02 (2026-10-25)
+
+- **Landed** in one commit on `rrk-adoption`, this commit. Results: [`.documents/rrk-adoption/02-the-fingerprinter.md`](../../.documents/rrk-adoption/02-the-fingerprinter.md).
+- **Gate Fingerprint holds.** `SPEC_DIGESTS[1]` pins 24 pairs (18 distinct); the guard names the class that changes. The golden file `tests/data/store_fingerprint_rrk-adoption-02.json` (SHA-256 `3ed2303e…0fa9`, digest `e3437a9b2f16415f5635ee121fa7f09d07ac74c30400d5973a3afaeec8fc7c78`) was written once, after two builds in two processes gave the same file and the digest the orchestrator had measured. `store fingerprint` on the store exits 0, ending `recorded: none recorded (the sidecar is absent)`.
+- **Suites:** default 743 (742 passed, 1 skipped); `integration` 70 (69 passed, 1 skipped).
+- **Deviations:** the addendum is read at RunRegistryKit `main`, not the tag; this section is 5.4 not 5.3; the import list is stated as measured (10 modules, none of `ray`, `sqlalchemy`, `datastorekit`); 24 pairs (classes), 18 distinct; `take` returns a pair; the command line exits 0; B5 changes `log10_tol` in `test_inventory_store.py` (which still passes); `TestGolden` asserts the three empty classes of the harness's store. No issue opened; `OPEN-ISSUES.md` needs no change.
+- **Next:** 03 (needs only 01); 04 needs 02 and 03.
