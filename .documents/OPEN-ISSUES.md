@@ -161,7 +161,7 @@ Opened at the campaign's planning, 2026-10-11, or at a review where the row says
 
 ## 6b. Infrastructure — RunRegistryKit adoption — board: [`.prompts/rrk-adoption/IMPLEMENTATION_STATE.md`](../.prompts/rrk-adoption/IMPLEMENTATION_STATE.md)
 
-Opened at a review of the campaign, where the row says so. The campaign owns none (its P14).
+Opened at a review of the campaign, where the row says so. The campaign owns none (its P14). It closed at its prompt 05 on 2026-10-25; its board stays as the record, and holds the one issue below, which the campaign leaves open and unowned.
 
 | Issue | Source | Owner | Hook |
 |---|---|---|---|

@@ -1,9 +1,11 @@
 # rrk-adoption campaign — implementation state
 
-**Last updated:** 2026-10-25 · **Status: READY — 4 of 5 prompts landed; 01–05 written (§5.1); `main` merged in
+**Last updated:** 2026-10-25 · **Status: COMPLETE — 5 of 5 prompts landed (§5.7); `main` merged in
 with `rpk-v030-adoption` (§5.3). R1–R7,
 U1 and U2 ruled by the user; P1–P14 stand as proposed (README §6). The branch `rrk-adoption` is cut
-from `main` at `1c223e8`, after `dk-and-rpk-migration` was merged into `main` (R7).**
+from `main` at `1c223e8`, after `dk-and-rpk-migration` was merged into `main` (R7); its merge back
+into `main` is the user's. Final suites: default 848 (847 passed, 1 skipped), `integration` 72 (71
+passed, 1 skipped); `slow` 69, not run.**
 The plan is [`README.md`](README.md), written on 2026-10-23 at `8b4f615`. Prompts 01–05 were written
 once the user had ruled (README §2.1).
 
@@ -15,7 +17,8 @@ hard-killed builds. Its RunRegistryKit gates are drafted for that repository whe
 **Campaign:** [`README.md`](README.md) ·
 **Orchestrator notes:** [`orchestrator/prompt-02.md`](orchestrator/prompt-02.md) (used for 02; 01 had none),
 [`orchestrator/prompt-03.md`](orchestrator/prompt-03.md) (used for 03),
-[`orchestrator/prompt-04.md`](orchestrator/prompt-04.md) (used for 04) ·
+[`orchestrator/prompt-04.md`](orchestrator/prompt-04.md) (used for 04),
+[`orchestrator/prompt-05.md`](orchestrator/prompt-05.md) (used for 05) ·
 **Checklist:** RunRegistryKit's `docs/adoption/stochasticinstantons.md` and
 `docs/adoption/v0.2.0/stochasticinstantons.md` (read, never edited) ·
 **Code:** `requirements.txt`, `runregistrykit.toml`, `.gitignore`, `.claude/settings.json`,
@@ -58,7 +61,7 @@ any of them.
 | 02 | [`02-the-fingerprinter.md`](02-the-fingerprinter.md) | Sonnet | **landed** 2026-10-25 (`0fcaf7c`), reviewed |
 | 03 | [`03-the-wrapper.md`](03-the-wrapper.md) | Opus | **landed** 2026-10-25 (`16e1cc1`), reviewed |
 | 04 | [`04-rehearse-registered-runs.md`](04-rehearse-registered-runs.md) | Opus | **landed** 2026-10-25 (`29705f2`), reviewed |
-| 05 | [`05-close.md`](05-close.md) | Sonnet | written |
+| 05 | [`05-close.md`](05-close.md) | Sonnet | **landed** 2026-10-25 (this commit) |
 
 01 comes first; 02 and 03 each need only 01; 04 needs 02 and 03; 05 needs 04 (README §2.1).
 
@@ -85,11 +88,11 @@ any of them.
 | **H1**–**H4** | 04 | `reference`; `resumed-a` (`SIGTERM`); `resumed-b` (`SIGKILL`, `end`); `resumed-c` | done |
 | **H5** | 04 | the stores compared, with each other and with RH2's `11-reference` (P10) | done |
 | **H6** | 04 | `.documents/rrk-adoption/verification.md` §1 | done |
-| **Z1** | 05 | the descriptive documents | — |
-| **Z2** | 05 | `CLAUDE.md`, the rules, the test counts | — |
-| **Z3** | 05 | the stale prose (P12), `utilities.py`'s docstring among it | — |
-| **Z4** | 05 | RunRegistryKit's G4 and G3 drafted; the handover to Phase 2 | — |
-| **Z5** | 05 | the board closed; the indexes | — |
+| **Z1** | 05 | the descriptive documents | done |
+| **Z2** | 05 | `CLAUDE.md`, the rules, the test counts | done |
+| **Z3** | 05 | the stale prose (P12), `utilities.py`'s docstring among it | done |
+| **Z4** | 05 | RunRegistryKit's G4 and G3 drafted; the handover to Phase 2 | done |
+| **Z5** | 05 | the board closed; the indexes | done |
 
 ## 2. The gates
 
@@ -99,7 +102,7 @@ any of them.
 | **Fingerprint** | 02's acceptance: `SPEC_DIGESTS[1]` pinned and guarded; the golden fingerprint reproduced | **held** 2026-10-25 |
 | **Wrapper** | 03's acceptance: the wrapper's tests pass; `main.py` unchanged and importing nothing of the package | **held** 2026-10-25 |
 | **R** | 04's acceptance: the four registered builds recorded as planned; the resumed store and RH2's reference equal to `reference` | **held** 2026-10-25 |
-| RunRegistryKit `extraction` **G4**, `interrupted-runs` **G3** | drafted by 05, committed in RunRegistryKit by the user (P13) | not yet |
+| RunRegistryKit `extraction` **G4**, `interrupted-runs` **G3** | drafted by 05, committed in RunRegistryKit by the user (P13) | **drafted** 2026-10-25 (`.documents/rrk-adoption/verification.md` §2); the user's to commit there |
 
 ## 3. Active and unresolved issues
 
@@ -438,3 +441,37 @@ location `~/ScienceData/.rehearsal-lock` was not restored, so `start` had no rea
 `INDEX.md`; the board lists this note. Prompt 04 is left as it ran: its board section (§5.5, now
 §5.6), its file list (the board and `INDEX.md`), its 134 (RH2's 15) and its `Monitor` (a waiter
 that reads the log) are corrections 1, 2, 3 and 6 of the note.
+
+### 5.7 After prompt 05 (2026-10-25)
+
+- **Landed** in one commit on `rrk-adoption`, this commit. Results:
+  [`.documents/rrk-adoption/05-close.md`](../../.documents/rrk-adoption/05-close.md); the drafts and the
+  handover, [`.documents/rrk-adoption/verification.md`](../../.documents/rrk-adoption/verification.md) §2
+  and §3.
+- **The campaign is complete.** Z1–Z5 are done and no §3 issue is closed or opened by 05.
+  - **Z1.** `INFRASTRUCTURE.md` holds the dated note, as a new §13 and its title; `architecture-summary.md`
+    and `FILE_MAP.md` gain the entries of the run registry and point at it. Every dated note of the
+    three documents is kept byte for byte.
+  - **Z2.** `CLAUDE.md` and `.claude/rules/test-selection.md` carry the counts below; no sentence of the
+    registry section or of `run-registry.md` was found wrong. No file became `slow`.
+  - **Z3.** The three stale sentences are present tense, and `utilities.py`'s docstring has the one
+    sentence of the prompt; both `.py` files are `ast`-equal without docstrings.
+  - **Z4.** RunRegistryKit's `extraction` `G4` and `interrupted-runs` `G3` are drafted (§2.1, §2.2); the
+    handover is §3.
+  - **Z5.** This board, `.prompts/INDEX.md` and `.documents/OPEN-ISSUES.md` (58 open, unchanged).
+- **Suites** before and after 05's edits, serially: default 848 (847 passed, 1 skipped, 141 deselected) and
+  `integration` 72 (71 passed, 1 skipped), the baselines of 04's close. Collection: 848 + 72 + 69 = 989,
+  disjoint.
+
+**What is left to the user.**
+- **The merge of `rrk-adoption` into `main`** (R7). Nothing is pushed.
+- **The two gate records**, in RunRegistryKit (`prompts/extraction/IMPLEMENTATION_STATE.md` §2, row `G4`;
+  `prompts/interrupted-runs/IMPLEMENTATION_STATE.md` §2, row `G3`), from `verification.md` §2.1 and §2.2.
+- **04's stores, runs and launch logs** under `var/`, which stay until the user removes them.
+- **The observation of README §7** on the wrapper's generic part (the stream proxies, the stage tracker,
+  the signal latch and the finish after the program unwinds), which could be a module of RunRegistryKit
+  with each client supplying its parser, scope and stage patterns: whether to raise it there is the
+  user's.
+- **`end` stamps `heartbeat`.** RunRegistryKit's `end` stamps the lost status's `heartbeat` with its own
+  time, keeping the last real beat in `ended.evidence.heartbeat` (04's observation 3, documented
+  behaviour of the package); the user may raise it there.

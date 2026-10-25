@@ -15,14 +15,26 @@ pipeline skips work that is already stored and validated).
 
 *Rewritten 2026-10-23 by dk-and-rpk-migration prompt 12; the layer it described is in git at the tag `pre-datastorekit` (`0527480`).*
 
+*Extended 2026-10-25 by rrk-adoption prompt 05 (the run registry's entries); what the registry records is `INFRASTRUCTURE.md` §13.*
+
 ```
 main.py                        — orchestrator / CLI entry-point
+RunDrivers/
+  registered_run.py            — the wrapper that registers a main.py run with the run registry and
+                                 runs it unchanged; main.py stays launchable without it
+runregistrykit.toml            — the run registry's configuration: runs_root, stores_root,
+                                 distributions and the store fingerprinter
+.claude/settings.json          — the SessionStart hook that runs `runregistrykit list` (discovery)
+var/                           — ignored by git: var/runs/ (a run's records), var/datastores/ (the
+                                 stores of registered runs and their sidecars)
 config/
   argument_parser.py           — CLI + YAML argument parsing
   defaults.py                  — string/float precision constants
   model_list.py                — builds the list of inflationary models
   sharding.py                  — the ShardedPool's table lists, shard key, read_table_config
   datastore.py                 — what SI hands to datastorekit: the factory registry, --drop groups, serial batch sizes
+  fingerprint.py               — what SI hands to runregistrykit: the store fingerprint's format, the
+                                 pin of every inventory spec's digest, and the fingerprinter
 ComputeTargets/
   InflatonTrajectory.py        — background ODE integration
   FullInstanton.py             — full MSR instanton BVP
@@ -31,6 +43,8 @@ ComputeTargets/
   raypoolkit                   — RayWorkPool, the distributed work queue
   datastorekit                 — ShardedPool, the Datastore actors, SerialPoolBroker, ProfileAgent,
                                  DatastoreObject, SQLAFactoryBase, read_inventory, two tools
+  runregistrykit               — the run registry: begin/finish, list, end, the store sidecar and
+                                 fingerprint (INFRASTRUCTURE.md §13)
 Datastore/                     — SI's factories only (both __init__.py are empty)
   SQL/
     ObjectFactories/           — one factory per persisted type, subclassing SQLAFactoryBase
@@ -425,7 +439,9 @@ only the steps that need non-default behaviour. A pool with no compute handler
 
 `main.py` is the single CLI entry point. It parses arguments, initialises Ray
 and the ShardedPool, and then runs either the compute pipeline or an inventory
-report.
+report. A run that is to be recorded in the run registry is launched through
+`RunDrivers/registered_run.py`, which runs `main.py` unchanged; `main.py` stays
+launchable by hand without it (`INFRASTRUCTURE.md` §13).
 
 ### Top-level flow
 

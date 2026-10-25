@@ -774,3 +774,201 @@ RAY_ADDRESS=local ./venv/bin/python -m pytest -m integration -q -p no:cacheprovi
 ./venv/bin/pip freeze > <scratch>/pip-freeze-after.txt
 cmp <scratch>/pip-freeze-before.txt <scratch>/pip-freeze-after.txt
 ```
+
+---
+
+## 2. RunRegistryKit's two gate records, drafted (prompt 05, 2026-10-25)
+
+Added by `rrk-adoption` prompt 05. Nothing above this heading has been changed.
+
+The campaign's plan (README P13) has RunRegistryKit's two gates for SI recorded there, by the user,
+from drafts made here, as `dk-and-rpk-migration` did for its packages' boards
+(`.documents/dk-and-rpk-migration/verification.md` §4.3), and as ChamPBH drafted its two
+(`.documents/rrk-adoption-verification.md` §2 there, at ChamPBH `58c1c93`). **Neither cell is
+committed in RunRegistryKit. Nothing was written in that repository, and the user makes those
+commits, or has a session there make them.** Each draft below is the text of **the second column**
+of one board row, ready to paste, in the form of the rows those boards already hold for
+SecondaryGWKit (`| **G<n>** | **holds** <date>: … |`, one line each). The rows are read at
+RunRegistryKit's `main`, `70ee1e8` (`v0.2.0` is `0bae3a3`), through `git show` only:
+
+- **`prompts/extraction/IMPLEMENTATION_STATE.md` §2, row `G4`**, at `:1130`, which reads `| **G4** |
+  not yet (SI adopts, after its `dk-and-rpk-migration`); its checklist is
+  [`docs/adoption/stochasticinstantons.md`](../../docs/adoption/stochasticinstantons.md) (07,
+  `aaab408`) |`. Its first column, `**G4**`, stays. The form is `G2` (SGK) at `:1128`. The draft takes
+  the checklist's item 9 (`docs/adoption/stochasticinstantons.md` at `v0.2.0`), point by point, and
+  keeps the checklist link of the row's old text at its end.
+- **`prompts/interrupted-runs/IMPLEMENTATION_STATE.md` §2, row `G3`**, at `:1182`, which reads `|
+  **G3** | not yet (SI adopts) |`. Its first column stays. The form is `G1` (SGK) at `:1180`. The
+  draft goes through the six checks of the `v0.2.0` adoption note, `docs/adoption/v0.2.0/README.md`
+  §3 (the SI note, `docs/adoption/v0.2.0/stochasticinstantons.md` §1, says each "applies to what it
+  writes when it adopts"), then its §2 and the route after a hard kill (its §4).
+
+**Where the rows differ from the prompt's reading.** The two boards were read at `main`, not at the
+tag: at `v0.2.0` the `interrupted-runs` board's `G1` reads "not yet", and SGK's record is on `main`
+only. The checklist, the `v0.2.0` note and `docs/adoption/v0.2.0/README.md` are at `v0.2.0` (they are
+the same at `main`: since the tag, `docs/adoption/` changed only in its top-level `README.md`). The
+rows for ChamPBH, `G3` at `:1129` and `G2` at `:1181`, still read "not yet": the user has not yet
+committed ChamPBH's drafts.
+
+**What the drafts leave out, and what is the user's to bring up to date when recording them.**
+- **No "Read here" clause.** In SGK's rows that clause is the reading the recording session made in
+  RunRegistryKit. The session that records these adds its own.
+- **The date is the campaign's close**, 2026-10-25.
+- **Both say the branch `rrk-adoption` is not merged into `main`.** If the merge has been made by
+  the time of recording (README R7), say so, with its commit.
+- **The pin was added, not moved.** SI never pinned `v0.1.0`, so the move of the `v0.2.0` note's §1
+  (`v0.1.0` to `v0.2.0`) did not arise: `git log -S runregistrykit -- requirements.txt` gives one
+  commit, `60687f0`, which changes `requirements.txt` alone, by one inserted line. The `G3` draft
+  says "added at `v0.2.0`, in a commit of its own".
+- **The checklist's item 9 has six points.** Point 4 (the helper) does not apply, by R3, and point
+  6 is the record itself.
+- **No SI commit of prompt 05 is named.** 05's own commit adds the documents and one docstring
+  sentence in `utilities.py` (point 4 below says what is true of the file at `39fc819`).
+
+**Checks made for the drafts**, from the repository root, with RunRegistryKit and ChamPBH read only
+(`git show`, `git log`, `git grep`), at `HEAD` `085f45f` plus this prompt's documents:
+
+```text
+$ git log --format=%h -S runregistrykit -- requirements.txt         # the commits that add or remove the name
+60687f0
+$ git show 60687f0 --stat --format=%h | tail -2; git show 60687f0 -- requirements.txt | grep '^[+-]'
+ requirements.txt | 1 +
+ 1 file changed, 1 insertion(+)
++runregistrykit[stores] @ git+https://github.com/ds283/RunRegistryKit@v0.2.0
+$ sed -n 63p requirements.txt
+runregistrykit[stores] @ git+https://github.com/ds283/RunRegistryKit@v0.2.0
+$ git diff 1c223e8 39fc819 -- main.py plot_InstantonSolutions.py plot_GradientCoupledSolutions.py utilities.py | wc -l
+0
+$ cat venv/lib/python3.13/site-packages/runregistrykit-0.2.0.dist-info/direct_url.json
+{"url": "https://github.com/ds283/RunRegistryKit", "vcs_info": {"commit_id": "0bae3a3c501a8264ee4be5bc24f06422af38720f", "requested_revision": "v0.2.0", "vcs": "git"}}
+```
+
+The six checks of the `G3` draft are `git grep` over SI's tracked tree, excluding `.prompts/` and
+`.documents/`:
+
+```text
+## 1. a comparison with liveness's values
+$ git grep -n -i -E 'liveness|"foreign"|'foreign'|"stale"' -- . :!.prompts :!.documents
+.claude/rules/run-registry.md:19:2. **Liveness.** A run is alive iff its pid answers `kill -0` **and** its heartbeat is inside the
+.claude/rules/run-registry.md:61:- `pgrep -f` (or any command-line match) as a liveness test.
+tests/test_inventory_specs.py:455:    excluded = dict(EXCLUDED, FullInstantonValue="stale")
+## 2. TERMINAL_STATES, and its fourth value
+$ git grep -n -E 'TERMINAL_STATES' -- . :!.prompts :!.documents
+$ git grep -n -w -E 'lost' -- . :!.prompts :!.documents (hits that name a run's state only)
+.claude/rules/run-registry.md:39:   recorded `lost`.
+notes/onion-model/onion_model.tex:1919:the response fields is lost, together with the one-multiply reinstatement
+tests/test_registered_run_outcomes.py:238:        assert read_json(dead / "status.json")["state"] == "lost"
+## 3. a store refusal's text
+$ git grep -n -E 'Run\.finish|names this store|is running|runregistrykit end' -- . :!.prompts :!.documents
+.claude/rules/run-registry.md:38:   `./venv/bin/python -m runregistrykit end RUN_ID --reason TEXT` on the host it ran on. The run is
+.claude/rules/run-registry.md:43:A run stopped by `SIGTERM` needs no `end`: the wrapper records it `killed`. `Run.finish` is never
+RunDrivers/registered_run.py:88:with `python -m runregistrykit end` (`.claude/rules/run-registry.md`, the route after a hard kill).
+RunDrivers/registered_run.py:98:refused by `begin`, whose text names `python -m runregistrykit end`; nothing is created.
+tests/test_registered_run_outcomes.py:170:    one `!! ` line naming `python -m runregistrykit end`, and nothing created. Once that run is
+tests/test_registered_run_outcomes.py:228:        assert_one_refusal_line(refused, "python -m runregistrykit end")
+## 4. a test that begins two unfinished runs on one store
+$ git grep -n -E 'runregistrykit\.begin\(' -- '*.py' ':!.prompts' ':!.documents'
+RunDrivers/registered_run.py:819:        run = runregistrykit.begin(
+tests/test_registered_run_outcomes.py:68:run = runregistrykit.begin(
+tests/test_registered_run_signals.py:85:        return runregistrykit.begin(
+tests/test_registered_run_streams.py:158:        self.run = runregistrykit.begin(
+## 5. a caller of pid_alive
+$ git grep -n pid_alive -- . :!.prompts :!.documents
+## 6. a test that pins a record's key set
+$ git grep -n -E '(set|sorted|list)\(.*(manifest|status)|(manifest|status)[a-z_]*\.keys\(\)|"host"|"ended"|EXPECTED_KEYS' -- tests RunDrivers config
+tests/registered_run_helpers.py:82:MANIFESTS_AT_START = sorted(_glob.glob({manifests!r}))
+tests/test_registry_config.py:23:  deliberate one, so the test holds the exact set of keys: prompt 02 extends `EXPECTED_KEYS` with
+tests/test_registry_config.py:45:EXPECTED_KEYS = {"runs_root", "stores_root", "distributions", "stores"}
+tests/test_registry_config.py:59:    assert set(config) == EXPECTED_KEYS
+```
+
+Only `.claude/rules/run-registry.md` (prose), `RunDrivers/registered_run.py` (two comment lines in its
+docstring) and the campaign's own tests name any of it, and each was written for `v0.2.0`.
+
+### 2.1 `extraction` board, row `G4`
+
+```text
+| **G4** | **holds** 2026-10-25: SI adopted `v0.2.0` directly, with the store layer, in a campaign of its own, `rrk-adoption` (branch `rrk-adoption`, cut from `main` at `1c223e8`; **not merged into `main` when this was drafted**), and the checklist's item 9 has six points, of which four hold, one does not apply and one is this record. (1) **The pin and the venv**, SI `60687f0`: `requirements.txt:63` holds `runregistrykit[stores] @ git+https://github.com/ds283/RunRegistryKit@v0.2.0`, the one line the commit adds (`datastorekit` at `:16`, `v0.5.0`, and `raypoolkit` at `:59`, `v0.3.0`, are not touched by it); the venv was installed from the file, `pip show runregistrykit` gives 0.2.0, and its `direct_url.json` names `0bae3a3c501a8264ee4be5bc24f06422af38720f` with `requested_revision` `v0.2.0` and no `dir_info`, so it is not editable (the venv's `pip freeze` changed by that one line and `pip check` was clean, SI's 01 results note). (2) **The config and `var/`**, SI `7071bb8`: `runregistrykit.toml` at SI's root holds `runs_root = "var/runs"`, `stores_root = "var/datastores"` and `distributions = ["datastorekit", "raypoolkit"]`, with `[stores] fingerprinter = "config.fingerprint:fingerprinter"` added by `0fcaf7c`; `.gitignore:23` is `var/`, and `git check-ignore` matches `var/runs/x` (`var/datastores/x.sqlite` is also ignored by the older `*.sqlite` rule, so the test's first path carries the check). (3) **A run is listed, with its `packages`**, SI `29705f2` (a rehearsal on SI's isolated Ray cluster, 2026-10-25): `python -m runregistrykit list` lists four runs, begun and finished through SI's wrapper `RunDrivers/registered_run.py` (`16e1cc1`): `rrk-adoption-04-reference-20261025T160704` `done`/0, `rrk-adoption-04-resumed-a-20261025T161131` `killed`/143, `rrk-adoption-04-resumed-b-20261025T161352` `lost` and `rrk-adoption-04-resumed-c-20261025T161521` `done`/0, none `running` or stale; each manifest, committed under `.documents/rrk-adoption/out/04-<slug>.manifest.json`, has `packages` naming `runregistrykit` 0.2.0 (`0bae3a3c…`), `datastorekit` 0.5.0 (`f47b9a25…`) and `raypoolkit` 0.3.0 (`67a75b97…`), each `editable: false`, the config's `distributions` beside the registry itself. (4) **The helper is not substituted, so this point does not apply**: SI kept `utilities.installed_package_provenance` (ruled by the user, R3, 2026-10-23: substituting it would make `main.py` and both plot scripts import `runregistrykit`, against the ruling that they stay launchable without it), so `measure_client_registry.py` was not run; `main.py`, `plot_InstantonSolutions.py`, `plot_GradientCoupledSolutions.py` and `utilities.py` are byte-identical to `1c223e8`, where the branch was cut, at `39fc819` (`git diff 1c223e8 39fc819 -- <the four>` is empty), and the only code outside the tests that imports the package is `RunDrivers/registered_run.py` (inside its `register`) and `config/fingerprint.py` (which the registry loads from the config, and which neither `main.py` nor a plot script imports); the wrapper runs `main.py` unchanged, by `runpy`. (5) **The store layer**: the config's fingerprinter loads (SI `0fcaf7c`: `tests/test_store_fingerprint_golden.py`, `TestConfigFingerprint`, in the default selection, beside the Q5 guard `tests/test_fingerprint_format_guard.py`, 5 tests, which pins the 24 `(class, spec digest)` pairs of format 1 and names the class that changes, and a golden fingerprint `tests/data/store_fingerprint_rrk-adoption-02.json`, digest `e3437a9b2f16415f5635ee121fa7f09d07ac74c30400d5973a3afaeec8fc7c78`, written once from two identical builds and never overwritten), and `python -m runregistrykit store fingerprint` reads a closed store (`0fcaf7c`, `TestCommandLine`, on the harness's store, exit 0; and `29705f2`, `.documents/rrk-adoption/out/04-store.txt`: the reference store `rrk-adoption-04-reference.sqlite` and the resumed store `rrk-adoption-04-resumed.sqlite` each give the digest `a9f716fb88cf8647327748e533e7402e6f406a59aba3826956e966b7f9081ea7`, format 1, and each "matches" the fingerprint its sidecar records; the resumed store's was written into its sidecar by the run `resumed-c` itself, `fingerprint_sidecar` `written`). (6) **This record.** Beyond the checklist: the wrapper that registers a `main.py` run and leaves `main.py` unchanged (SI `16e1cc1`, 106 tests, 104 in the default selection and 2 `integration`), the hard-kill route rehearsed (`29705f2`; the `interrupted-runs` board's `G3`), and the resumed store and SI's earlier `dk-and-rpk-migration` reference `11-reference` each equal to `reference` in every stored science column, by `tools/compare_stores.py` (`RESULT: equal`, timestamps and JSON timing keys aside). SI's suites at the close of 04: default 848 (847 passed, 1 skipped) and `integration` 72 (71 passed, 1 skipped), unmoved from before the rehearsal. **No defect of the package was met.** SI's record is `.documents/rrk-adoption/verification.md` §1 to §3 and the results notes 01 to 05 (campaign `rrk-adoption`), and its handover to the user is §3 there. Its checklist is [`docs/adoption/stochasticinstantons.md`](../../docs/adoption/stochasticinstantons.md) (07, `aaab408`) |
+```
+
+### 2.2 `interrupted-runs` board, row `G3`
+
+```text
+| **G3** | **holds** 2026-10-25: SI adopted `v0.2.0` directly, with the store layer, in a campaign of its own, `rrk-adoption` (branch `rrk-adoption`, cut from `main` at `1c223e8`; **not merged into `main` when this was drafted**). **The pin was added at `v0.2.0`, in a commit of its own:** SI `60687f0` (2026-10-23) changes `requirements.txt` alone, by one inserted line (`:63`, `runregistrykit[stores] @ git+https://github.com/ds283/RunRegistryKit@v0.2.0`; `git log --format=%h -S runregistrykit -- requirements.txt` gives `60687f0` alone, and it is the one commit of the campaign to touch the file). SI never pinned `v0.1.0`, so the `v0.1.0` to `v0.2.0` move of the `v0.2.0` note's §1 did not arise. The venv then held `runregistrykit` 0.2.0 at `0bae3a3c…`, `requested_revision` `v0.2.0`, not editable, and `datastorekit` 0.5.0 and `raypoolkit` 0.3.0 unmoved. **The six checks of [`docs/adoption/v0.2.0/README.md`](../../docs/adoption/v0.2.0/README.md) §3** apply to what SI wrote when it adopted, since none of its code predates the adoption (`git grep` over SI's tracked tree at its close, excluding `.prompts/` and `.documents/`): (1) a comparison with `liveness`'s values: none; `liveness` is named in SI's code and rules only in prose (`.claude/rules/run-registry.md`), nothing compares a run's liveness with `foreign` or `stale` (the one string `"stale"`, `tests/test_inventory_specs.py:455`, is a fixture's reason for an excluded class); (2) `TERMINAL_STATES`: named nowhere; the wrapper names the states it records, `done`, `failed` and `killed`, as arguments of `finish`, keeps no list of terminal states, and the one test that names the fourth, `lost`, asserts that `end` records it (`tests/test_registered_run_outcomes.py:238`); (3) a store refusal's text: `Run.finish`, `names this store` and `is running` are matched nowhere (`Run.finish` appears once, in `.claude/rules/run-registry.md`, in a sentence saying it is never called by hand), and the one test that matches a refusal, `tests/test_registered_run_outcomes.py` `TestBeginsRefusal.test_refused_then_accepted_after_end`, was written for `v0.2.0`: it asserts the fragment `python -m runregistrykit end`, the dead run's name and `No run directory was created`; (4) a test that begins two unfinished runs on one store: none: `runregistrykit.begin(` is called in the wrapper and in three test modules, each test beginning one run in a fresh temporary runs root, except `TestBeginsRefusal`, which begins a second on a store an unfinished run names precisely to assert the refusal, then `end`, then the acceptance; all 106 tests of `tests/test_registered_run*.py` pass under `v0.2.0` (SI `16e1cc1`), run three times in a row; (5) a caller of `pid_alive`: none (`git grep pid_alive` finds nothing); (6) a test that pins a record's key set: none pins a manifest's or a status's keys (`tests/test_registry_config.py` pins the config's four keys, `EXPECTED_KEYS`; the wrapper's tests read named fields). **§2 of that README holds trivially**: SI has one checkout, and `git worktree list` shows it alone, so no checkout shares a runs root with another. **§4, the route for a hard-killed run, was rehearsed** on SI's isolated Ray cluster (SI `29705f2`, H3, 2026-10-25): `rrk-adoption-04-resumed-b-20261025T161352` was `SIGKILL`ed 10 s into `STAGE 3: SLOW-ROLL INSTANTONS` (16:14:12) and `list` showed it `stale` with `!!`, with nothing left in Ray; the next registration on its store (a launch of `resumed-c`) was refused, exit 2, with one `!! ` line saying that run `rrk-adoption-04-resumed-b-20261025T161352` "is running (stale, pid 26796) and names this store", naming `python -m runregistrykit end RUN_ID --reason TEXT` and ending `No run directory was created` (`find var/runs` unchanged by `diff`); `end … --reason …` was accepted, "now lost, verified: its pid 26796 does not answer kill -0 on this host", and `list` showed it `lost`; then `rrk-adoption-04-resumed-c-20261025T161521`, begun on the same store, ran to `done` (exit 0), computed only the 20 rows missing, wrote its fingerprint into the sidecar (`fingerprint_sidecar` `written`, digest `a9f716fb…1ea7`), and its store compares equal to the reference's by `tools/compare_stores.py` (`RESULT: equal`). SI's wrapper's own `TestBeginsRefusal` shows the same refusal and `end` on a `SIGKILL`ed child. **No defect of the package was met**; neither `[04-a-killed-process-not-yet-reaped-answers-kill-0]` nor `[03-a-run-whose-manifest-cannot-be-read-names-no-store]` was: SI's launcher waits on the driver (`bash` reaps it), so `end` was not refused by an unreaped process, and every run's `status.json` was readable. SI's record is `.documents/rrk-adoption/verification.md` §1 (the rehearsal, §1.7 the route) to §3, and the results notes 01 to 05 (campaign `rrk-adoption`) |
+```
+
+### 2.3 What the drafts do not claim
+
+- **Nothing about RunRegistryKit's own tests or CI.** The package's suite on SI's venv was run once, at
+  01, and is in 01's results note; it is not a clause of either draft.
+- **Nothing about a production run.** Those are the user's. The rehearsal's grid is
+  `quadratic-minimal.yaml` with `--targets homogeneous`: it builds no gradient branch (U11 of
+  `dk-and-rpk-migration`), so no `GradientCoupledInstanton` row was written under the registry, and a
+  gradient-branch run that outlives the staleness window while it works is described in §3 and not
+  rehearsed.
+- **The hard-kill route is rehearsed with the launcher's `bash` as the driver's parent**, which reaps
+  the driver, so `end` was not refused by an unreaped process. A launch that does not reap it is read,
+  not rehearsed.
+- **The `SIGTERM` handling is measured on Ray 2.55.1 attached to SI's external cluster** (P9), not on a
+  Ray the driver started itself.
+- **The store layer's golden fingerprint is of the test harness's store**, which has no row of
+  `store_tag`, `redshift` or `IntegrationSolver` (02, deviation 8); the two `var/` stores are of the
+  rehearsal grid, whose gradient tables are empty.
+- **`git_dirty` is `true` in every manifest of 04** (§1.9): an untracked directory of the prompt's own
+  counted as dirty.
+
+---
+
+## 3. The handover to Phase 2 (prompt 05, 2026-10-25)
+
+This section adds to `.documents/dk-and-rpk-migration/verification.md` §4.5, Phase 2's handover, by
+statement. It does not edit it: everything §4.5 says stands, and what follows is what a build now
+also does.
+
+- **A build is launched through the wrapper**, from the repository root, never a bare `main.py` when
+  its record matters (`CLAUDE.md`, "Long-running jobs — the run registry"):
+  ```bash
+  PYTHONPATH=. ./venv/bin/python RunDrivers/registered_run.py --campaign C --prompt N \
+      --register SLUG --purpose "one line" -- <main.py's arguments>
+  ```
+  - **The four flags** are all required. `--campaign` names the work (for Phase 2, for example
+    `fullinstanton-hamiltonian`); `--prompt` the prompt of the launch, and the resuming launch of an
+    interrupted build gets its own; `--register SLUG` names the run and **matches `--job-name`**
+    (04's launcher used `rrk-adoption-04-<slug>`); `--purpose` is one line. `main.py`'s arguments
+    follow the bare `--`, verbatim.
+  - **Detached**: `nohup` and `disown` (`setsid` is not on macOS), with the launching shell's own
+    output redirected to a log under `var/`, and the pid written at once. 04's launcher,
+    `.documents/rrk-adoption/rehearsal/build_registered.sh`, is a working example of the whole
+    (§1.10); it is 04's, with its own fixed arguments, and a Phase 2 build writes its own.
+  - **The database goes under `var/datastores/`** (R6). The wrapper records it, made absolute, as
+    the run's `results`.
+  - **A cluster** is `ray_cluster.sh start PURPOSE` under the shared rehearsal lock, then
+    `--ray-address 127.0.0.1:6390` (`CLAUDE.md`); never `ray stop`. The registry does not start or
+    stop one.
+  - **Do not babysit.** Launch, check once that it started, end the turn (`.claude/rules/run-registry.md`,
+    rule 4). The wrapper's last stdout line is `** driver exit status N`.
+- **After a store's first close**, a person makes its sidecar: `./venv/bin/python -m runregistrykit
+  store create var/datastores/<store>.sqlite --purpose "…"`. Nothing in the code does (R4). Do it
+  before the next run on the store: a run begun after that carries the store's `store_id`
+  (`results_store_id`), and the wrapper then writes the fingerprint into the sidecar at the end of
+  the run. `store fingerprint PRIMARY` reads a closed store; `--write` records it.
+- **After a hard kill** (`SIGKILL`, a power loss, the OOM killer), the run is `stale`, `!!` in
+  `list`, and any launch on its store is refused with nothing created. A person checks the run is
+  over, then `./venv/bin/python -m runregistrykit end RUN_ID --reason TEXT`, on the host it ran on;
+  the run is `lost`. Then the same build again, with the `--prompt` of the resuming launch: the open
+  prunes unvalidated rows by default, so it needs no flag. A run stopped by `SIGTERM` or `SIGINT`
+  needs no `end`; the wrapper records `killed`/143 or 130. Rehearsed in 04, §1.7.
+- **The plot scripts and `main.py --inventory` stay unregistered** (R5). The wrapper refuses
+  `--inventory`.
+- **A gradient-branch build may show `stale` while it works** (P7). A queue whose items each print
+  nothing for longer than 900 s is reported stale, and the branch's solves have run for hours. That
+  means go and look (`list --stale-after SECONDS` widens the reader's window), never kill, and never
+  `end` a run whose pid still answers.
+- **04's stores and runs are kept under `var/`**, ignored by git, until the user removes them: the
+  stores `var/datastores/rrk-adoption-04-reference.sqlite` and `…-resumed.sqlite` (10 shards each)
+  with their sidecars; the four run directories under `var/runs/`; and the launch logs, pid files and
+  signallers' logs under `var/rrk-adoption-04/`. `list` shows the four runs. Never `git clean -x` or
+  `-X`, which would delete them.
+- **What Phase 2 needs from the registry**: nothing is required of a prompt but the habit
+  (`./venv/bin/python -m runregistrykit list` at the start of a session and before launching
+  anything long). A store a Phase 2 build makes is new, and gets a sidecar after its first close.

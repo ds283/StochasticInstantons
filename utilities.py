@@ -189,11 +189,13 @@ def installed_package_provenance(names=RECORDED_DISTRIBUTIONS) -> dict:
 
     These are the fields, with the same meaning, of SecondaryGWKit's
     `RunRegistry.package_provenance()` and of ChamPBH's helper of this name, so that a later move
-    to a shared registry is a substitution (README P5). Only the standard library is used, and no
-    package being described is imported. An absent, unreadable or malformed `direct_url.json` (one
-    that is not a JSON object), or a `vcs_info` or `dir_info` that is not an object, gives `None`
-    for the three fields it would have supplied and `False` for `editable`. It never raises on odd
-    metadata, and it never refuses an install: an editable one is recorded as such.
+    to a shared registry is a substitution (README P5). `rrk-adoption` declined the substitution
+    (its README §6.0, R3): `main.py` and the plot scripts would then import `runregistrykit`, and
+    they stay launchable without it. Only the standard library is used, and no package being
+    described is imported. An absent, unreadable or malformed `direct_url.json` (one that is not a
+    JSON object), or a `vcs_info` or `dir_info` that is not an object, gives `None` for the three
+    fields it would have supplied and `False` for `editable`. It never raises on odd metadata, and
+    it never refuses an install: an editable one is recorded as such.
     """
     packages = {}
     for name in names:
