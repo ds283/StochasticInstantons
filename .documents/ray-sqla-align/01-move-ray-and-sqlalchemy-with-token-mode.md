@@ -3,7 +3,7 @@
 **Subject:** SI moved to `ray` 2.59.0 and `SQLAlchemy` 2.0.55; the refusal of SI's cluster shown
 on the pins alone; Ray's token mode named for every Ray start; a registered rehearsal on the fix
 **Commits:** `5f3219fb483208b5738f15d1b0e95cbcacd8d8eb` (the pins),
-`3a24ea53962a3a02de412032807c0fd3e9afcb3f` (the fix) and this commit (the records), on `main`, on
+`3a24ea53962a3a02de412032807c0fd3e9afcb3f` (the fix) and `dfb957ba1a9b16f937f4c349a56e776c6dbdb25b` (the records), on `main`, on
 top of the dispatch commit `8c01877`. Nothing pushed.
 **Date:** 2026-10-25, 18:26–19:00 GMT, by Claude Opus 5.5
 **Result:** **COMPLETE.** B1, P1, V0, T1–T3, D1, L1 and R1–R4 done; the gates **FP** and
@@ -201,7 +201,7 @@ Ten paths, exactly §2.7's list.
     never printed.
 13. **`NOTED`** (correction 13). The final `grep -r -F -l -f ~/.ray/auth_token
     .documents/ray-sqla-align/ .prompts/ray-sqla-align/` printed nothing, exit 1, run on the tree
-    this commit records.
+    `dfb957b` records.
 14. **`NOTED`** (correction 14). The one-minute load: 65.83 at the Gate (18:26), 16.99 before V0's
     `start` (18:40:49), 6.14 before R's (18:50:48); every launch's is in R's table. None over 50 at
     a `start`.
@@ -300,6 +300,11 @@ start → end. [`out/01-suites.txt`](out/01-suites.txt).
    71579 (`gcs_server`), "no process names [SI's temp dir]; ports 6390 6391 8266 52366 are free",
    "released the rehearsal lock", "stopped in 20s". Then `status`, **exit 0**: `lock: free`, no
    process, the four ports free.
+
+SGK met the same default first as its issue
+`[01-ray-2.59-enables-token-auth-and-writes-a-token-into-home]`, by the local route: its
+instances came up in token mode and the token file was written. V0 measures the other two
+routes of README §0.2 on SI's cluster; the fix follows SGK's for both issues.
 
 ### The breakages (B1–B4), [`out/01-breakage.txt`](out/01-breakage.txt)
 
@@ -475,11 +480,11 @@ exist)`, no process, the four ports free; no `gcs_server` or `raylet` on the mac
   - `ls -l ~/.ray/auth_token`: `-rw------- 1 ds283 staff 64 Oct 25 12:51`; `/usr/bin/stat`:
     `2026-10-25 12:51:17 64 -rw-------`, as at the Gate;
   - `grep -r -F -l -f ~/.ray/auth_token .documents/ray-sqla-align/ .prompts/ray-sqla-align/`:
-    nothing, **exit 1** (correction 13), on the tree this commit records.
+    nothing, **exit 1** (correction 13), on the tree `dfb957b` records.
 
 ### Nothing else moved
 
-`git diff 8c01877 --name-only` after this commit: `requirements.txt`; the fix's ten paths; this
+`git diff 8c01877 --name-only` after `dfb957b`: `requirements.txt`; the fix's ten paths; this
 note, `.documents/ray-sqla-align/out/`, the board and `.prompts/INDEX.md`. `utilities.py`,
 `runregistrykit.toml`, `RunDrivers/` and every file under `ComputeTargets/`, `Numerics/`,
 `Interpolation/` and `Datastore/` are untouched. `.documents/OPEN-ISSUES.md` is unchanged: no issue
@@ -517,7 +522,7 @@ fails (exit 1, "patch does not apply") for all four. Never committed to the code
 
 ## State handed to the review
 
-- `main` at this commit, three commits ahead of `8c01877`, **not pushed**.
+- `main` at `dfb957b`, three commits ahead of `8c01877`, **not pushed**.
 - **The venv holds `ray` 2.59.0 and `SQLAlchemy` 2.0.55.** Going back is `pip install ray==2.55.1
   SQLAlchemy==2.0.46`, the user's call; the freeze before is in [`out/01-pip.txt`](out/01-pip.txt).
 - R's two stores, `var/datastores/ray-sqla-align-01-reference.sqlite` (`store_id`

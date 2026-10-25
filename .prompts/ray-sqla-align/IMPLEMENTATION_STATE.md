@@ -61,11 +61,11 @@ opened)
 
 | # | Prompt | Model | Status |
 |---|---|---|---|
-| 01 | [`01-move-ray-and-sqlalchemy-with-token-mode.md`](01-move-ray-and-sqlalchemy-with-token-mode.md) | Opus | ✅ landed 2026-10-25 (`5f3219f`, `3a24ea5`, the records); awaiting review. Results: [`01-move-ray-and-sqlalchemy-with-token-mode.md`](../../.documents/ray-sqla-align/01-move-ray-and-sqlalchemy-with-token-mode.md) |
+| 01 | [`01-move-ray-and-sqlalchemy-with-token-mode.md`](01-move-ray-and-sqlalchemy-with-token-mode.md) | Opus | ✅ landed 2026-10-25 (`5f3219f`, `3a24ea5`, `dfb957b` the records); awaiting review. Results: [`01-move-ray-and-sqlalchemy-with-token-mode.md`](../../.documents/ray-sqla-align/01-move-ray-and-sqlalchemy-with-token-mode.md) |
 
 The review of 01 closes the campaign.
 
-**Orchestrator notes** (`orchestrator/`), written before each dispatch: 01's (`8c01877`).
+**Orchestrator notes** (`orchestrator/`), written before each dispatch: [`prompt-01.md`](orchestrator/prompt-01.md) (`8c01877`), used for 01.
 
 ### 1.1 Items
 
@@ -148,7 +148,7 @@ corrections, each classified in the results note), 18:26–19:00 GMT. Three comm
   importers, `ray_cluster.sh` naming the mode, `tests/test_ray_auth.py` (10 tests), `CLAUDE.md`,
   `test-selection.md` and the launcher. Suites 858 (857 passed, 1 skipped) and 72 (71 passed, 1
   skipped).
-- **this commit** — the records: the results note, `.documents/ray-sqla-align/out/`, this board
+- **`dfb957ba1a9b16f937f4c349a56e776c6dbdb25b`** — the records: the results note, `.documents/ray-sqla-align/out/`, this board
   and `INDEX.md`'s line.
 
 **Measured:**
