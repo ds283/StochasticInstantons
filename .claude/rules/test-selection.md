@@ -7,7 +7,7 @@ expensive for no benefit on most changes.
 
 ## The problem
 
-`tests/` has 989 tests. A block of them are not unit tests but real numerical
+`tests/` has 999 tests. A block of them are not unit tests but real numerical
 solves — Picard shooting iterations, `solve_ivp` backward integrations, dense
 spectral eigendecompositions swept across `n_max` up to 192 — each costing
 tens of seconds to minutes. Run together, un-filtered, the suite takes far
@@ -23,7 +23,7 @@ None of this is needed for a change that doesn't touch the numerics.
 pytest -m "not integration and not slow"
 ```
 
-This currently selects 848 of 989 tests (847 pass, 1 is skipped) and completes in well under a
+This currently selects 858 of 999 tests (857 pass, 1 is skipped) and completes in well under a
 minute. Use this after any change unless the diff below says otherwise.
 
 **Broaden to include `-m "not integration"` (dropping the `slow` exclusion,
@@ -56,9 +56,9 @@ task specifically calls for it** — e.g. verifying a `Datastore/`,
 `integration` marker's own purpose (needs a live Ray cluster + SQLite
 database; see `pyproject.toml`'s marker description). Don't combine
 `integration` and `slow` in one run just because both are "the exhaustive
-option" — pick the marker(s) that match what actually changed. At the close of
-rrk-adoption the markers selected 72 `integration` tests (71 pass, 1 is
-skipped) and 69 `slow` tests, disjoint, so 848 + 72 + 69 = 989. Run the
+option" — pick the marker(s) that match what actually changed. As ray-sqla-align
+01 measured them, the markers select 72 `integration` tests (71 pass, 1 is
+skipped) and 69 `slow` tests, disjoint, so 858 + 72 + 69 = 999. Run the
 integration block as `RAY_ADDRESS=local pytest -m integration`, so that its
 `live_pool` starts a private Ray instance and cannot attach to another
 project's cluster; never `ray stop` (`CLAUDE.md`).

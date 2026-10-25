@@ -24,6 +24,9 @@ Design constraints:
 import ray
 import pytest
 
+# names Ray's token mode for every Ray start of the suite, its subprocesses included
+# (config/ray_auth.py)
+import config.ray_auth  # noqa: F401
 from datastorekit.SQL.ShardedPool import ShardedPool
 from config.datastore import factories, serial_batch_sizes
 from config.sharding import (

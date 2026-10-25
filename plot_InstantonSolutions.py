@@ -23,6 +23,8 @@ import ray
 import seaborn as sns
 from matplotlib import pyplot as plt
 
+# names Ray's token mode before ray.init (config/ray_auth.py)
+import config.ray_auth  # noqa: F401
 from ComputeTargets import InflatonTrajectoryProxy
 from ComputeTargets.FullInstanton import FullInstantonProxy
 from ComputeTargets.SlowRollInstanton import SlowRollInstantonProxy

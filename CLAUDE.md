@@ -23,7 +23,11 @@ old location exists), means stop and ask, never wait. The lock lists every
 process whose command line names `/tmp/ray-si`, and that process's other
 descendants: so no `PURPOSE` names it, and a lock command typed by hand is the
 only process of its shell command, its output redirected, never piped (the
-contract, §6). Never run `ray stop`: it
+contract, §6). Every Ray start runs in Ray's token mode, named by
+`config/ray_auth.py` (and by `ray_cluster.sh` for the cluster) and guarded by
+`tests/test_ray_auth.py`: a Ray CLI command against SI's cluster needs
+`RAY_AUTH_MODE=token`, and the token is `~/.ray/auth_token`, kept at mode 600.
+Never run `ray stop`: it
 stops every Ray process on the machine, other projects' clusters included (see
 `.prompts/dk-and-rpk-migration/rehearsal-lock-brief.md`).
 
@@ -32,8 +36,8 @@ The physics notes for the onion model live in `notes/onion-model/onion_model.tex
 reference for how the calculation should be performed and carry no
 implementation details.
 
-Default test run: `pytest -m "not integration and not slow"` (848 of 989
-tests; 847 pass and 1 is skipped; well under a minute). The other 141 are the
+Default test run: `pytest -m "not integration and not slow"` (858 of 999
+tests; 857 pass and 1 is skipped; well under a minute). The other 141 are the
 72 `integration`-marked tests, which need a live Ray instance and a SQLite
 store (`RAY_ADDRESS=local pytest -m integration`), and the 69 `slow`-marked
 ones. The `slow`-marked block of the suite runs real

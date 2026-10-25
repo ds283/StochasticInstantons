@@ -71,6 +71,9 @@ Run from the repository root.
                   refuses on); then SI's processes by this script's rule (those stop signals), and
                   its four ports.
 
+The cluster runs in Ray's token mode (RAY_AUTH_MODE=token, set by start unless the environment
+holds a value), so a Ray CLI command against it needs RAY_AUTH_MODE=token in its environment.
+
 Never runs `ray stop`. Never waits on a held lock.
 EOF2
 }
@@ -283,6 +286,10 @@ cmd_start() {
 
     trap 'err "interrupted; stopping what was started"; stop_cluster "$SI_TEMP_DIR" "$SI_GCS_PORT" "$SI_CLIENT_PORT" "$SI_DASHBOARD_PORT" "$SI_AGENT_PORT"; release_after_failure; exit 130' INT TERM
 
+    # Ray's authentication mode, named (ray-sqla-align 01). Since Ray 2.59, `ray start` infers
+    # token mode from the token file (~/.ray/auth_token) unless told; SI names it, as
+    # config/ray_auth.py does for every driver, so that the cluster and its drivers agree.
+    export RAY_AUTH_MODE="${RAY_AUTH_MODE:-token}"
     local t0=$SECONDS
     "$RAY_BIN" start --head --temp-dir "$SI_TEMP_DIR" --port "$SI_GCS_PORT" \
         --ray-client-server-port "$SI_CLIENT_PORT" --dashboard-port "$SI_DASHBOARD_PORT" \
@@ -319,7 +326,7 @@ cmd_start() {
     trap - INT TERM
     say "address $SI_ADDRESS"
     say "dashboard $SI_DASHBOARD"
-    say "actors: $RAY_BIN list actors --address $SI_ADDRESS"
+    say "actors: RAY_AUTH_MODE=token $RAY_BIN list actors --address $SI_ADDRESS"
     say "started in $((SECONDS - t0))s; gcs_server pid $gcs"
     return 0
 }
