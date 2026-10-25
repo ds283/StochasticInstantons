@@ -1,6 +1,6 @@
 # rrk-adoption campaign — implementation state
 
-**Last updated:** 2026-10-25 · **Status: READY — 2 of 5 prompts landed; 01–05 written (§5.1); `main` merged in
+**Last updated:** 2026-10-25 · **Status: READY — 3 of 5 prompts landed; 01–05 written (§5.1); `main` merged in
 with `rpk-v030-adoption` (§5.3). R1–R7,
 U1 and U2 ruled by the user; P1–P14 stand as proposed (README §6). The branch `rrk-adoption` is cut
 from `main` at `1c223e8`, after `dk-and-rpk-migration` was merged into `main` (R7).**
@@ -54,7 +54,7 @@ any of them.
 |---|---|---|---|
 | 01 | [`01-pin-config-and-rules.md`](01-pin-config-and-rules.md) | Sonnet | **landed** 2026-10-23 (`60687f0` and `7071bb8`) |
 | 02 | [`02-the-fingerprinter.md`](02-the-fingerprinter.md) | Sonnet | **landed** 2026-10-25 (`0fcaf7c`), reviewed |
-| 03 | [`03-the-wrapper.md`](03-the-wrapper.md) | Opus | written |
+| 03 | [`03-the-wrapper.md`](03-the-wrapper.md) | Opus | **landed** 2026-10-25 (this commit) |
 | 04 | [`04-rehearse-registered-runs.md`](04-rehearse-registered-runs.md) | Opus | written |
 | 05 | [`05-close.md`](05-close.md) | Sonnet | written |
 
@@ -73,12 +73,12 @@ any of them.
 | **F2** | 02 | `[stores]` in the config | done |
 | **F3** | 02 | `tests/test_fingerprint_format_guard.py`, with the `v0.5.0` amendment (P5) | done |
 | **F4** | 02 | `tests/test_store_fingerprint_golden.py` and its golden file (P6) | done |
-| **W1** | 03 | `RunDrivers/registered_run.py` | — |
-| **W2** | 03 | its arguments and refusals | — |
-| **W3** | 03 | registration, the streams and the heartbeat (P7) | — |
-| **W4** | 03 | Ray and the signals (P9) | — |
-| **W5** | 03 | running `main.py`, finishing with the fingerprint, the exit marker | — |
-| **W6** | 03 | `tests/test_registered_run*.py` | — |
+| **W1** | 03 | `RunDrivers/registered_run.py` | done |
+| **W2** | 03 | its arguments and refusals | done |
+| **W3** | 03 | registration, the streams and the heartbeat (P7) | done |
+| **W4** | 03 | Ray and the signals (P9) | done |
+| **W5** | 03 | running `main.py`, finishing with the fingerprint, the exit marker | done |
+| **W6** | 03 | `tests/test_registered_run*.py` | done |
 | **H0** | 04 | the launcher `build_registered.sh` (P8) | — |
 | **H1**–**H4** | 04 | `reference`; `resumed-a` (`SIGTERM`); `resumed-b` (`SIGKILL`, `end`); `resumed-c` | — |
 | **H5** | 04 | the stores compared, with each other and with RH2's `11-reference` (P10) | — |
@@ -95,7 +95,7 @@ any of them.
 |---|---|---|
 | **Pin** | 01's acceptance: `runregistrykit` 0.2.0 installed from the tag, not editable; the package's suite passes on it; the config, `var/`, the rules and the hook in place | **held** 2026-10-23 |
 | **Fingerprint** | 02's acceptance: `SPEC_DIGESTS[1]` pinned and guarded; the golden fingerprint reproduced | **held** 2026-10-25 |
-| **Wrapper** | 03's acceptance: the wrapper's tests pass; `main.py` unchanged and importing nothing of the package | not yet |
+| **Wrapper** | 03's acceptance: the wrapper's tests pass; `main.py` unchanged and importing nothing of the package | **held** 2026-10-25 |
 | **R** | 04's acceptance: the four registered builds recorded as planned; the resumed store and RH2's reference equal to `reference` | not yet |
 | RunRegistryKit `extraction` **G4**, `interrupted-runs` **G3** | drafted by 05, committed in RunRegistryKit by the user (P13) | not yet |
 
@@ -249,3 +249,13 @@ the same class digest (`346bc1fe9ad3`), though their spec digests differ. The tw
 in the name of the value table. The harness gives both classes three rows on the same parents, with
 the same value rows, so the same content digest is expected. It is said here so that it is not
 mistaken for a collision.
+
+### 5.5 After prompt 03 (2026-10-25)
+
+- **Landed** in one commit on `rrk-adoption`, this commit. Results: [`.documents/rrk-adoption/03-the-wrapper.md`](../../.documents/rrk-adoption/03-the-wrapper.md).
+- **Gate Wrapper holds.** `RunDrivers/registered_run.py` (W1–W5), ChamPBH's wrapper at `807f175` carried over and adapted to SI's parser, scope, banners and notify defaults; 106 tests in six modules `tests/test_registered_run*.py` and one helper, `tests/registered_run_helpers.py` (W6), run three times in a row, 106 passed each time; all six deliberate breakages caught. `main.py`, the plot scripts and `utilities.py` are unchanged since `1c223e8` and import nothing of the package (by `ast`). `CLAUDE.md`'s "Launching" sentence is definite, with the usage line.
+- **Suites:** default 848 (847 passed, 1 skipped; +104); `integration` 72 (71 passed, 1 skipped; +2, the fingerprint at finish on copies of 02's golden store). `runregistrykit list`: no runs; `var/runs/` and `var/datastores/` empty.
+- **Scope of 04's reference** (a tested literal): `config quadratic-minimal.yaml; targets homogeneous; potential Quadratic; m 1e-05 Mp; N_init 20–20, 1 sample; N_final 5–5, 1 sample; delta_Nstar 0.1–3, 10 samples; n_collocation_points 5; alpha_regularization 0.01; 10 shards; job rrk-adoption-04-reference`.
+- **The beat on paper** (§2.3): a healthy rehearsal prints no RayWorkPool progress line (every stage under 60 s); its longest silence is `STAGE 2`, about 13 s at RH2's load, so the heartbeat's age stays under about 45 s.
+- **Deviations:** 26, classified in the note: the orchestrator's twelve corrections (5.5 not 5.4; the 60 s floor with 300 s or 500 events; `** ` banners only; the registration lines as `>> `; no address check; the licence header; only `CLAUDE.md`'s sentence; the store copied per test; and four noted), ChamPBH's rulings 2 and 4–8 with the note's two breakage tests, test 8's count and the scope, and four of mine. One is structural and worth the reviewer's eye: two default-selection modules (`test_plot_extraction_golden.py`, `test_plot_adapters_golden.py`) start a local Ray in the test process and leave it up, so the new modules' "Ray not initialised at the end" check asserts "as it found it" (the note's deviation 22 and observation 1). No issue opened; `OPEN-ISSUES.md` needs no change.
+- **Next:** 04 (needs 02 and 03).
