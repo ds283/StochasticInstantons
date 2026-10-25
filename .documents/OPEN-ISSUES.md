@@ -1,6 +1,6 @@
 # Open issues — project-wide index
 
-**Last updated:** 2026-10-23 · **57 open**, 31 closed. Seeded from
+**Last updated:** 2026-10-25 · **58 open**, 31 closed. Seeded from
 [`RECONSTRUCTION.md`](handoff-notes/2026-10-08/RECONSTRUCTION.md) Parts A0–D
 and D0, the open-issue `todo`s of
 [`onion_model.tex`](../notes/onion-model/onion_model.tex) as rewritten in
@@ -158,6 +158,14 @@ Opened at the campaign's planning, 2026-10-11, or at a review where the row says
 | `[redshift-registered-in-neither-table-list]` | board §3 | unowned | `redshift` is registered but in neither table list and unused; `IntegrationSolver` is registered and unwritten. Its `build`'s `z = 0` query has the comparison inside the `abs` (found at dk-10, not acted on). |
 | `[unified-pipeline-stores-null-instanton-labels]` | board §3 (01's review) | unowned | The unified pipeline stores `FullInstanton` and `SlowRollInstanton` with `label` NULL, so a scalars-only store's figure footers lack it. |
 | `[gci-picard-inner-fails-on-rehearsal-grid]` | board §3 (02's first attempt, 2026-10-20) | P3 | At the rehearsal grid (`quadratic-minimal.yaml`, `n = 5`, `α = 0.01`, no budget) no `GradientCoupledInstanton` solve finished in over five hours: every inner Picard step failed and the shooting halved λ again and again. July's 315 s does not hold at today's tree. The rehearsals build no gradient branch (U11). See also `[gci-n5-n7-solutions-provisional]`. |
+
+## 6b. Infrastructure — RunRegistryKit adoption — board: [`.prompts/rrk-adoption/IMPLEMENTATION_STATE.md`](../.prompts/rrk-adoption/IMPLEMENTATION_STATE.md)
+
+Opened at a review of the campaign, where the row says so. The campaign owns none (its P14).
+
+| Issue | Source | Owner | Hook |
+|---|---|---|---|
+| `[default-suite-starts-ray-in-process]` | board §3 (03's review, 2026-10-25) | unowned | Two default-selection test modules `ray.init()` in the pytest process with no address and no shutdown, so the default suite starts a local Ray, or attaches to whatever cluster `RAY_ADDRESS` names. |
 
 ## 7. Closed
 

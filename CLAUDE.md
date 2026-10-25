@@ -55,8 +55,8 @@ not schedule, supervise, restart or lock. The detail is `.claude/rules/run-regis
 - **Launching.** A registered run goes through the wrapper `RunDrivers/registered_run.py`, from
   the root: `PYTHONPATH=. ./venv/bin/python RunDrivers/registered_run.py --campaign C --prompt N
   --register SLUG --purpose "one line" -- <main.py's arguments>`. `main.py` stays launchable on
-  its own, without the registry, and a run launched that way is recorded nowhere. The plot scripts and `main.py --inventory` are
-  never registered.
+  its own, without the registry, and a run launched that way is recorded nowhere. The plot
+  scripts and `main.py --inventory` are never registered.
 - **Stores** of registered runs live under `var/datastores/`. Since `var/` is ignored, **never run
   `git clean` with `-x` or `-X`**, which deletes ignored files, the stores among them.
 

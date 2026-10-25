@@ -1,7 +1,7 @@
 # 03 — the wrapper
 
 **Subject:** Add the registered-run wrapper for main.py and its tests
-**Commit:** this commit, on branch `rrk-adoption`, on top of `622c66f`
+**Commit:** `16e1cc1`, on branch `rrk-adoption`, on top of `622c66f`
 **Date:** 2026-10-25, by Claude Opus 5.5
 **Result:** **COMPLETE.** W1–W6 shipped. 106 new tests in six modules and one helper: default
 selection 744 → **848** (847 passed, 1 skipped; +104), `integration` 70 → **72** (71 passed, 1
@@ -472,7 +472,7 @@ From `raypoolkit/RayWorkPool.py` at `v0.3.0` (`:30-32`, `:206`, `:356`, `:563-61
 
 ## The deliberate-breakage record
 
-Each diff is replayable with `git apply` from a clean tree at this commit. Before the commit each
+Each diff is replayable with `git apply` from a clean tree at `16e1cc1`. Before the commit each
 was checked with `git apply --check`, applied, checked with `git apply -R --check`, its tests run,
 and reversed, by `replay.sh` in `bash`, running the five default-selection modules of
 `tests/test_registered_run*.py` (104 tests); the wrapper was then byte-identical to its committed

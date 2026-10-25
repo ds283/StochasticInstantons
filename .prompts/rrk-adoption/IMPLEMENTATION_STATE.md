@@ -13,14 +13,15 @@ discovery hook, a fingerprinter at format 1 with its guard, a wrapper driver tha
 hard-killed builds. Its RunRegistryKit gates are drafted for that repository when they hold (P13).
 
 **Campaign:** [`README.md`](README.md) ·
-**Orchestrator notes:** [`orchestrator/prompt-02.md`](orchestrator/prompt-02.md) (used for 02; 01 had none) ·
+**Orchestrator notes:** [`orchestrator/prompt-02.md`](orchestrator/prompt-02.md) (used for 02; 01 had none),
+[`orchestrator/prompt-03.md`](orchestrator/prompt-03.md) (used for 03) ·
 **Checklist:** RunRegistryKit's `docs/adoption/stochasticinstantons.md` and
 `docs/adoption/v0.2.0/stochasticinstantons.md` (read, never edited) ·
 **Code:** `requirements.txt`, `runregistrykit.toml`, `.gitignore`, `.claude/settings.json`,
 `config/fingerprint.py`, `RunDrivers/`, `tests/`, `CLAUDE.md`, `.claude/rules/run-registry.md` ·
 **Results:** `.documents/rrk-adoption/` (results notes; `verification.md`, created by 04) ·
-**Index:** [`.documents/OPEN-ISSUES.md`](../../.documents/OPEN-ISSUES.md) (no section yet: no issue
-opened)
+**Index:** [`.documents/OPEN-ISSUES.md`](../../.documents/OPEN-ISSUES.md) §6b (one issue, opened at
+03's review)
 
 > **Maintenance rule.** Whenever an entry is added to, narrowed in, or closed out of §3 or §4
 > below, [`.documents/OPEN-ISSUES.md`](../../.documents/OPEN-ISSUES.md) is updated **in the same
@@ -54,7 +55,7 @@ any of them.
 |---|---|---|---|
 | 01 | [`01-pin-config-and-rules.md`](01-pin-config-and-rules.md) | Sonnet | **landed** 2026-10-23 (`60687f0` and `7071bb8`) |
 | 02 | [`02-the-fingerprinter.md`](02-the-fingerprinter.md) | Sonnet | **landed** 2026-10-25 (`0fcaf7c`), reviewed |
-| 03 | [`03-the-wrapper.md`](03-the-wrapper.md) | Opus | **landed** 2026-10-25 (this commit) |
+| 03 | [`03-the-wrapper.md`](03-the-wrapper.md) | Opus | **landed** 2026-10-25 (`16e1cc1`), reviewed |
 | 04 | [`04-rehearse-registered-runs.md`](04-rehearse-registered-runs.md) | Opus | written |
 | 05 | [`05-close.md`](05-close.md) | Sonnet | written |
 
@@ -101,7 +102,9 @@ any of them.
 
 ## 3. Active and unresolved issues
 
-None.
+| Issue | Opened | Owner | What |
+|---|---|---|---|
+| `[default-suite-starts-ray-in-process]` | 2026-10-25, at 03's review (§5.5) | unowned; not this campaign's (P14) | Two modules of the default selection, `tests/test_plot_extraction_golden.py:67-78` and `tests/test_plot_adapters_golden.py:62-71`, call `ray.init(ignore_reinit_error=True)` in the pytest process from a module-scoped autouse fixture, with no address and no shutdown (each leaves the shutdown to `conftest.py`'s `live_pool`, which the default selection never builds). So the default suite starts a local Ray and leaves it up for every later module, against README §5's "no test needs Ray outside the `integration` marker" (`dk-and-rpk-migration`'s rule). And `ray.init()` with no address takes `RAY_ADDRESS` from the environment (`ray/_private/worker.py:1669-1671` at 2.55.1), so a default run in a shell where `RAY_ADDRESS` names a cluster (SI's rehearsal cluster, or another project's) attaches to it. Found by 03's agent, whose `no_ray_at_the_end` fixture therefore checks "as it found it" (03's results note, deviation 22 and observation 1). The fix is outside 03's file list: mark both modules `integration`, or init with `address="local"` and shut down at module teardown. |
 
 ### 3.1 Assigned to this campaign
 
@@ -252,10 +255,73 @@ mistaken for a collision.
 
 ### 5.5 After prompt 03 (2026-10-25)
 
-- **Landed** in one commit on `rrk-adoption`, this commit. Results: [`.documents/rrk-adoption/03-the-wrapper.md`](../../.documents/rrk-adoption/03-the-wrapper.md).
+- **Landed** in one commit on `rrk-adoption`, `16e1cc1`. Results: [`.documents/rrk-adoption/03-the-wrapper.md`](../../.documents/rrk-adoption/03-the-wrapper.md).
 - **Gate Wrapper holds.** `RunDrivers/registered_run.py` (W1–W5), ChamPBH's wrapper at `807f175` carried over and adapted to SI's parser, scope, banners and notify defaults; 106 tests in six modules `tests/test_registered_run*.py` and one helper, `tests/registered_run_helpers.py` (W6), run three times in a row, 106 passed each time; all six deliberate breakages caught. `main.py`, the plot scripts and `utilities.py` are unchanged since `1c223e8` and import nothing of the package (by `ast`). `CLAUDE.md`'s "Launching" sentence is definite, with the usage line.
 - **Suites:** default 848 (847 passed, 1 skipped; +104); `integration` 72 (71 passed, 1 skipped; +2, the fingerprint at finish on copies of 02's golden store). `runregistrykit list`: no runs; `var/runs/` and `var/datastores/` empty.
 - **Scope of 04's reference** (a tested literal): `config quadratic-minimal.yaml; targets homogeneous; potential Quadratic; m 1e-05 Mp; N_init 20–20, 1 sample; N_final 5–5, 1 sample; delta_Nstar 0.1–3, 10 samples; n_collocation_points 5; alpha_regularization 0.01; 10 shards; job rrk-adoption-04-reference`.
 - **The beat on paper** (§2.3): a healthy rehearsal prints no RayWorkPool progress line (every stage under 60 s); its longest silence is `STAGE 2`, about 13 s at RH2's load, so the heartbeat's age stays under about 45 s.
 - **Deviations:** 26, classified in the note: the orchestrator's twelve corrections (5.5 not 5.4; the 60 s floor with 300 s or 500 events; `** ` banners only; the registration lines as `>> `; no address check; the licence header; only `CLAUDE.md`'s sentence; the store copied per test; and four noted), ChamPBH's rulings 2 and 4–8 with the note's two breakage tests, test 8's count and the scope, and four of mine. One is structural and worth the reviewer's eye: two default-selection modules (`test_plot_extraction_golden.py`, `test_plot_adapters_golden.py`) start a local Ray in the test process and leave it up, so the new modules' "Ray not initialised at the end" check asserts "as it found it" (the note's deviation 22 and observation 1). No issue opened; `OPEN-ISSUES.md` needs no change.
 - **Next:** 04 (needs 02 and 03).
+
+**Orchestrator review of prompt 03** (2026-10-25, at `16e1cc1`, by its note
+[`orchestrator/prompt-03.md`](orchestrator/prompt-03.md) §3). It passes; one issue is opened.
+1. **Scope.** The commit is §0's list: the two `RunDrivers/` files, six test modules and one helper,
+   `CLAUDE.md`, the note, the board and `INDEX.md`. The `.py` files changed since `ff3ddd6` are the
+   nine new ones. `main.py`, the plot scripts and `utilities.py` are unchanged since `1c223e8`;
+   `.claude/rules/` and every existing test are unchanged. `var/` is empty and nothing is pushed.
+2. **`CLAUDE.md`.** The one sentence, made definite with the usage line. One line ran past the
+   wrap; rewrapped in the residue commit.
+3. **The module against ChamPBH's**, by `diff`. `RegisteredStream`, `terminal_state`,
+   `SignalLatch`, `make_killed_handler`, `install_killed_handler`, `finish_after_exec` and `main`'s
+   body are ChamPBH's but for comments and line references. The differences are §0's: `** `-only
+   banners, `>> ` registration lines, the three notify constants and the sentence, no
+   `ray_address_problem`, SI's scope (with `defaulted` from configargparse's
+   `get_source_to_settings_dict`), the database refusal's reason, and one `!! ` however the text
+   begins. The header is whole.
+4. **Refusals and seam**, by reading: as ruled; nothing is taken over before `begin` returns.
+5. **Registration.** `begin`'s arguments as ruled. `HEARTBEAT_MEANS` says correction 2's things and
+   no "every minute".
+6. **The run and the finish**, by reading: as ruled; no code reads `main.py`'s text.
+7. **By probe** (`orch03/probe7/`): the helper's runner, with `Run.heartbeat` counted, on a stand-in
+   of the orchestrator's printing `>> packages:`, a `** STAGE 1` banner, a `>> Opened existing
+   sharded datastore` line, 50 progress lines, 20 plain lines and a `>> gradient branch` count, then
+   `sys.exit(3)`. Exit 3, `failed`/3, the marker last in stdout and `stdout.log`, the stage the 100 %
+   progress sentence under `STAGE 1`. 52 beats: one at registration with no stage, one for the
+   banner and one for each progress line; the `>>` and plain lines gave none. The fingerprint of the
+   absent store is a `fingerprint_error`, and the record stands. The real script on `-- --database x
+   --inventory --ray-address 127.0.0.1:6390`: exit 2, one `!! ` line, the marker, `var/` unchanged.
+   `--help` exits 0.
+8. **The tests**, by reading: in-process takeovers restored by finalizers registered first; the two
+   `Popen` children reaped by a finalizer registered before the first read; the other subprocesses
+   time out at 300 s; test 7 by `ast` over the four files; test 8 asserts (4, 2); the fingerprint
+   module `integration`, copying the store per test, and nothing else marked.
+9. **Breakages.** The six diffs, extracted from the note, each replayed with `git apply` in `bash`
+   from the clean tree and the five default-selection modules run. Each failed exactly the tests the
+   note names (3, 10, 3, 2, 2 and 2); `git status` clean after each revert.
+10. **Records.** The note in §5.1's form, with the 26 deviations classed, the diffs and §2.3 on
+    paper. The board's row, items, gate and §5.5, and `INDEX.md`'s line, are in place. The message
+    ends with the `Co-Authored-By` line.
+11. **Suites**, re-run at `16e1cc1`, serially, load 4–13: default 848 (847 passed, 1 skipped, 141
+    deselected), 46 s; `integration` 72 (71 passed, 1 skipped), 68 s; the new files twice more, 106 passed each time (19 s, 18 s). `runregistrykit list`:
+    no runs; `var/` empty.
+12. **Ray.** After the suites, `ray_cluster.sh status`: lock free, no SI process, the four ports free; no
+    Ray process of this venv remains.
+
+**Deviation 22 accepted, and its cause opened.** Two default-selection modules start a local Ray in
+the pytest process and leave it up, so the agent's `no_ray_at_the_end` asserts "Ray as it was
+found". Confirmed by reading (`test_plot_extraction_golden.py:67-78`, `test_plot_adapters_golden.py:62-71`;
+neither is new). Run alone, as in the agent's three runs and the breakage replays, the new modules
+start with Ray down and the literal check is made. The cause is not 03's to fix, and it is more
+than the agent recorded: with no address, `ray.init()` takes `RAY_ADDRESS` from the environment, so
+a default run in a shell that names a cluster attaches to it. Opened as
+`[default-suite-starts-ray-in-process]` (§3; `OPEN-ISSUES.md` §6b).
+
+**Residue** (this follow-up commit): "this commit" becomes `16e1cc1` here, in the note and in
+`INDEX.md`; the board lists this note; `CLAUDE.md`'s line rewrapped; the issue opened, with
+`OPEN-ISSUES.md` at 58 open and `INDEX.md`'s column at §6b, 1. Prompt 03 is left as it ran: its
+acceptance 4 (§5.4, now §5.5), its cadence (W3, P7) and its prose item (the rules file) are
+corrections 1, 2 and 8 of the note.
+
+**For 04's note.** A `done` homogeneous run's stage will read `Skipping gradient branch (--targets
+excludes 'gradient')`, `main.py`'s last `** ` line (the note's observation 3); `build.sh` writes a
+second marker (observation 2); and the lock's contract (§5.3).
