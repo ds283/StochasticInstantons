@@ -91,6 +91,15 @@ use of Ray this repository plans is `rrk-adoption`'s 04; its 02 and 03 start no 
 - **The machine.** Neither lock location exists, and no Ray process runs (`pgrep -lf
   'gcs_server|raylet'` finds nothing). `./venv/bin/python -m runregistrykit list`: no runs.
 
+*Corrected 2026-10-25, at the review of 01 (from the orchestrator's note, §0, corrections 1 and 2;
+01's text is left as it ran):*
+- *the "other live lines" missed two that state the current pin: `.documents/INFRASTRUCTURE.md:455-456`
+  (§9, "pinned in `requirements.txt` at `v0.2.0`") and `.documents/architecture-summary.md:343-344`
+  (the same words, in "RayWorkPool"). 01 changed both;*
+- *`runregistrykit list` was measured on `rrk-adoption`. On this branch, cut from `main`, it exits
+  1 for want of `runregistrykit.toml`, which only `rrk-adoption` has; 01's Gate met the item by
+  `var/runs/` being empty, and no `runregistrykit.toml` was created.*
+
 ### 0.4 Baselines
 
 `CLAUDE.md`'s suites at `main` (`dk-and-rpk-migration`'s close): default **732** (731 passed, 1

@@ -2,7 +2,7 @@
 
 **Subject:** Pin `raypoolkit` `v0.3.0`, and replace the lock half of SI's `ray_cluster.sh` with the
 package's `raypoolkit.rehearsal_lock`
-**Commits:** `3d6328e1694a6878e69d2d8437502bf41c402b4a` (the pin alone, C6), then this commit, on the
+**Commits:** `3d6328e1694a6878e69d2d8437502bf41c402b4a` (the pin alone, C6), then `6c60b81`, on the
 branch `rpk-v030-adoption`, on top of `0f190c8`
 **Date:** 2026-10-25, by Claude Opus 5.5
 **Result:** **COMPLETE.** The venv holds `raypoolkit` 0.3.0 at
@@ -201,7 +201,7 @@ README §0.4's counts, before and after. `git diff --name-only 3d6328e -- '*.py'
 ## The deliberate-breakage record (`out/01-breakage.txt`)
 
 Each applied to the script, checked, and reverted (`cmp` with the clean script: identical). The
-diffs in `out/01-breakage.txt` apply with `git apply` from a clean tree at this commit.
+diffs in `out/01-breakage.txt` apply with `git apply` from a clean tree at `6c60b81`.
 
 | | Breakage | Check | Caught by |
 |---|---|---|---|
@@ -240,8 +240,9 @@ diffs in `out/01-breakage.txt` apply with `git apply` from a clean tree at this 
 For the user to record in RayPoolKit (C9); nothing here is committed there.
 
 > **StochasticInstantons (SI) — switched on 2026-10-25.** Branch `rpk-v030-adoption`, the pin at
-> `3d6328e1694a6878e69d2d8437502bf41c402b4a` and the switch at the commit after it (SI's
-> `rpk-v030-adoption` prompt 01), both on top of `0f190c8`, not yet merged into SI's `main`.
+> `3d6328e1694a6878e69d2d8437502bf41c402b4a` and the switch at
+> `6c60b81190416570b0ebf7d02d012749b4500041` (SI's `rpk-v030-adoption` prompt 01), both on top of
+> `0f190c8`, not yet merged into SI's `main`.
 > `requirements.txt` pins `raypoolkit @ git+https://github.com/ds283/RayPoolKit@v0.3.0`; SI's venv
 > holds `raypoolkit` 0.3.0 at `67a75b9` (`67a75b97a656accb98195a4bda93f64e6a5f3fb2`), not editable,
 > with `ray` 2.55.1, and nothing else in it moved.

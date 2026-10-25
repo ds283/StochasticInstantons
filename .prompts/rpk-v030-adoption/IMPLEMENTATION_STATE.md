@@ -1,7 +1,7 @@
 # rpk-v030-adoption campaign — implementation state
 
 **Last updated:** 2026-10-25 · **Status: LIVE — 01 landed, awaiting review.** The pin is
-`3d6328e`, the switch the commit after it; the gate **Switch** holds. No ruling is needed
+`3d6328e`, the switch `6c60b81`; the gate **Switch** holds. No ruling is needed
 (README §6.1); C1–C10 stand as proposed (README §6.2). The branch `rpk-v030-adoption` is cut from
 `main` at `1c223e8` (C1).
 The plan is [`README.md`](README.md), written on 2026-10-25 at `7071bb8` from RayPoolKit's `v0.3.0`
@@ -18,7 +18,7 @@ merges.
 **Checklist:** RayPoolKit's `docs/adoption/rehearsal-lock/stochasticinstantons.md` and
 `switch-over.md` (read, never edited) ·
 **Code:** `requirements.txt`, `.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh`,
-`CLAUDE.md`, `.documents/INFRASTRUCTURE.md` ·
+`CLAUDE.md`, `.documents/INFRASTRUCTURE.md`, `.documents/architecture-summary.md` ·
 **Results:** [`.documents/rpk-v030-adoption/`](../../.documents/rpk-v030-adoption/) ·
 **Index:** [`.documents/OPEN-ISSUES.md`](../../.documents/OPEN-ISSUES.md) (no section yet: no issue
 opened)
@@ -56,9 +56,12 @@ serially, so that only one uses Ray at a time.
 
 | # | Prompt | Model | Status |
 |---|---|---|---|
-| 01 | [`01-switch-to-the-raypoolkit-rehearsal-lock.md`](01-switch-to-the-raypoolkit-rehearsal-lock.md) | Opus | **landed** 2026-10-25 (`3d6328e`, the pin; then the switch), awaiting review. Results: [`01-switch-to-the-raypoolkit-rehearsal-lock.md`](../../.documents/rpk-v030-adoption/01-switch-to-the-raypoolkit-rehearsal-lock.md) |
+| 01 | [`01-switch-to-the-raypoolkit-rehearsal-lock.md`](01-switch-to-the-raypoolkit-rehearsal-lock.md) | Opus | **landed** 2026-10-25 (`3d6328e`, the pin; then the switch, `6c60b81`), awaiting review. Results: [`01-switch-to-the-raypoolkit-rehearsal-lock.md`](../../.documents/rpk-v030-adoption/01-switch-to-the-raypoolkit-rehearsal-lock.md) |
 
 The review of 01 closes the campaign; the merges of README §4 follow at the user's instruction.
+
+**Orchestrator notes** (`orchestrator/`), written before each dispatch:
+- [`prompt-01.md`](orchestrator/prompt-01.md) — used for 01 (`0f190c8`).
 
 ### 1.1 Items
 
@@ -115,7 +118,7 @@ None.
 - **Dispatched** by the orchestrator on 2026-10-25, at `0f190c8`, with a briefing whose five
   corrections the results note records as deviations 1–5.
 - **Commits.** The pin, `3d6328e1694a6878e69d2d8437502bf41c402b4a`: `requirements.txt:59` alone.
-  Then this commit: `ray_cluster.sh`, `CLAUDE.md`, `.documents/INFRASTRUCTURE.md`,
+  Then `6c60b81`: `ray_cluster.sh`, `CLAUDE.md`, `.documents/INFRASTRUCTURE.md`,
   `.documents/architecture-summary.md`, the results note and `out/`, this board and
   `.prompts/INDEX.md`. Nothing pushed.
 - **Results:** [`01-switch-to-the-raypoolkit-rehearsal-lock.md`](../../.documents/rpk-v030-adoption/01-switch-to-the-raypoolkit-rehearsal-lock.md).

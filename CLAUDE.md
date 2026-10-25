@@ -19,7 +19,11 @@ start PURPOSE`, then `--ray-address 127.0.0.1:6390`. The lock is the pinned
 package's `raypoolkit.rehearsal_lock` (`~/.raypoolkit/rehearsal-lock`, shared
 with ChamPBH and SecondaryGWKit; its contract is RayPoolKit's
 `docs/rehearsal-lock.md`), and a held lock, exit 3 (given too while the lock's
-old location exists), means stop and ask, never wait. Never run `ray stop`: it
+old location exists), means stop and ask, never wait. The lock lists every
+process whose command line names `/tmp/ray-si`, and that process's other
+descendants: so no `PURPOSE` names it, and a lock command typed by hand is the
+only process of its shell command, its output redirected, never piped (the
+contract, §6). Never run `ray stop`: it
 stops every Ray process on the machine, other projects' clusters included (see
 `.prompts/dk-and-rpk-migration/rehearsal-lock-brief.md`).
 
