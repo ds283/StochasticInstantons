@@ -1,8 +1,8 @@
 # rpk-v030-adoption campaign — implementation state
 
 **Last updated:** 2026-10-25 · **Status: CLOSED — 1 of 1 landed and reviewed (§5.2).** The pin
-is `3d6328e`, the switch `6c60b81`; the gate **Switch** holds. The merges of README §4 wait on the
-user's instruction. No ruling is needed
+is `3d6328e`, the switch `6c60b81`; the gate **Switch** holds. The merges of README §4 are made
+(§5.3). No ruling is needed
 (README §6.1); C1–C10 stand as proposed (README §6.2). The branch `rpk-v030-adoption` is cut from
 `main` at `1c223e8` (C1).
 The plan is [`README.md`](README.md), written on 2026-10-25 at `7071bb8` from RayPoolKit's `v0.3.0`
@@ -218,3 +218,16 @@ The orchestrator's review of 01 (`3d6328e`, `6c60b81`), by the nine checks of
   user's word: the review first said ChamPBH still took the old location.*
 
 **The campaign is closed.** No issue was opened, so `.documents/OPEN-ISSUES.md` is unchanged.
+
+### 5.3 The merges of README §4 (2026-10-25)
+
+At the user's instruction, after the close, by the orchestrator. Nothing pushed.
+- **`main` fast-forwarded** from `1c223e8` to `bb2d953`, this branch's tip after the close and the
+  correction of ChamPBH's switch. `main` now carries the pin at `v0.3.0` and the switched script.
+- **`main` merged into `rrk-adoption`**, before that campaign's 02 (README §4 item 3). As expected,
+  `requirements.txt` kept both lines (it merged without a conflict) and `.prompts/INDEX.md`
+  conflicted on its header and table: both campaigns' lines kept, the header recounted to 8, and
+  `rrk-adoption`'s fuller `dk-and-rpk-migration` line (it records P15) kept. `CLAUDE.md` merged
+  cleanly. The merge is recorded on `rrk-adoption`'s board, §5.3.
+- **ChamPBH** had already switched (its `95ad91d`; §5.2, corrected), so all three clients are on
+  the package's lock, and the cross-check of `switch-over.md` §3 is owed now.
