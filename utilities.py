@@ -170,8 +170,11 @@ def to_float(val) -> float:
 
 # The distributions whose installed release a driver records in its output (dk-and-rpk-migration
 # prompt 01; README P5): the two packages that campaign adopts. From the RayPoolKit swap on, a run
-# executes code that is not in this repository's tree, so its log says which release ran.
-RECORDED_DISTRIBUTIONS = ("datastorekit", "raypoolkit")
+# executes code that is not in this repository's tree, so its log says which release ran. The last
+# four were added at the user's request of 2026-10-25, with the ray-sqla-align campaign, so that a
+# log says which venv ran it, as SecondaryGWKit's manifests do. `runregistrykit.toml`'s
+# `distributions` must be the same list (tests/test_registry_config.py).
+RECORDED_DISTRIBUTIONS = ("datastorekit", "raypoolkit", "ray", "SQLAlchemy", "numpy", "scipy")
 
 
 def installed_package_provenance(names=RECORDED_DISTRIBUTIONS) -> dict:

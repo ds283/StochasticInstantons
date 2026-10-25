@@ -638,8 +638,9 @@ copy them.
 
 **What it records, and where.** `runregistrykit.toml` at the repository root
 sets `runs_root = "var/runs"`, `stores_root = "var/datastores"` and
-`distributions = ["datastorekit", "raypoolkit"]`, and `.gitignore` ignores
-`var/`. For each registered run:
+`distributions = ["datastorekit", "raypoolkit", "ray", "SQLAlchemy", "numpy",
+"scipy"]`, the drivers' `utilities.RECORDED_DISTRIBUTIONS` (a test holds the two
+lists equal), and `.gitignore` ignores `var/`. For each registered run:
 - `var/runs/<run id>/manifest.json`, written before the job starts: the
   arguments, the hash of the program (`main.py`), the store it makes
   (`results`), the git commit and whether the tree was dirty, the installed

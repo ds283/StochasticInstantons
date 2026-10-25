@@ -265,9 +265,11 @@ def test_several_names_in_order_and_nothing_imported(stand_in):
 
 
 def test_default_names():
-    """The default names are the two packages the campaign adopts, in this order."""
-    assert utilities.RECORDED_DISTRIBUTIONS == ("datastorekit", "raypoolkit")
-    assert list(installed_package_provenance()) == ["datastorekit", "raypoolkit"]
+    """The default names are the two packages the campaign adopts, then the four that say which
+    venv ran (added with ray-sqla-align), in this order."""
+    names = ("datastorekit", "raypoolkit", "ray", "SQLAlchemy", "numpy", "scipy")
+    assert utilities.RECORDED_DISTRIBUTIONS == names
+    assert list(installed_package_provenance()) == list(names)
 
 
 # ---------------------------------------------------------------------------

@@ -21,9 +21,10 @@ What this pins, and why:
   distributions every run's manifest records. They must be `utilities.RECORDED_DISTRIBUTIONS`,
   the ones each driver prints on its `>> packages:` line (R3), so that a run's log and its
   manifest name the same packages. The test compares the two lists rather than naming the
-  packages: a package added to one list and not the other fails here. The package rejects an unknown key, but a misspelt key it does know of cannot be told from a
-  deliberate one, so the test holds the exact set of keys: prompt 02 extends `EXPECTED_KEYS` with
-  `stores` and nothing else may be added unnoticed.
+  packages: a package added to one list and not the other fails here. The package rejects an
+  unknown key, but a misspelt key it does know of cannot be told from a deliberate one, so the
+  test holds the exact set of keys: prompt 02 extends `EXPECTED_KEYS` with `stores` and nothing
+  else may be added unnoticed.
 - `var/` is ignored by git, so that neither the runs nor the registered stores can be committed,
   and `git clean -x` is the only thing that can delete them (`.claude/rules/run-registry.md`).
 - RunRegistryKit is installed from its `v0.2.0` tag and not editable: the check
