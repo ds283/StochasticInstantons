@@ -211,8 +211,10 @@ The orchestrator's review of 01 (`3d6328e`, `6c60b81`), by the nine checks of
   `main` merged into `rrk-adoption` before its 02 (two expected conflicts, `requirements.txt` and
   `.prompts/INDEX.md`). Until then, a checkout of `main` or `rrk-adoption` still runs the old
   script, and README §0.2's check by hand applies there.
-- **G2:** the draft at the end of the results note is the user's to record in RayPoolKit. ChamPBH
-  alone still takes the old location; while it holds it, SGK's and SI's `acquire` exit 3. The
-  cross-check of `switch-over.md` §3 is owed once ChamPBH has switched.
+- **G2:** the draft at the end of the results note is the user's to record in RayPoolKit. With
+  SI's switch, all three clients are on the package's lock: ChamPBH had already switched (its
+  `95ad91d`, "Switch the cluster script to the raypoolkit v0.3.0 rehearsal lock", pinning
+  `v0.3.0`), so the cross-check of `switch-over.md` §3 is owed now. *Corrected 2026-10-25 at the
+  user's word: the review first said ChamPBH still took the old location.*
 
 **The campaign is closed.** No issue was opened, so `.documents/OPEN-ISSUES.md` is unchanged.

@@ -268,4 +268,8 @@ For the user to record in RayPoolKit (C9); nothing here is committed there.
 > `ray-processes` 0. Against a scratch `HOME`, every path of the script that starts no Ray gave the
 > planned exits, the old location's refusal (3) among them.
 >
-> Still owed: the cross-check of `switch-over.md` §3, once ChamPBH has switched.
+> Still owed: the cross-check of `switch-over.md` §3. ChamPBH has switched (its `95ad91d`), so
+> all three clients are on the package's lock and the cross-check can run.
+
+*The draft's last line was corrected by the orchestrator on 2026-10-25, after the review: 01 wrote
+it before ChamPBH's switch was known here.*
