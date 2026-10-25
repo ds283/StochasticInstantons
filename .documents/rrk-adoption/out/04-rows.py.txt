@@ -1,0 +1,80 @@
+"""Read a closed rehearsal store mode=ro (StochasticInstanton rrk-adoption prompt 04; the
+orchestrator's brief, corrections 9 to 11). dk-and-rpk-migration 11's rows.py, as its results note
+reproduces it, less the profile database (04 runs with no --profile-db), plus the newest
+efold_value timestamp on each shard (the last grid minted).
+
+    ./venv/bin/python rows.py STEM        # STEM is the primary's path without .sqlite
+
+Per shard: the parent rows of the four homogeneous tables with timestamp, validated and
+delta_Nstar, and their child-row counts; orphans; then counts by (table, validated); the
+efold_value rows and the newest efold_value timestamp per shard; any -journal, -wal or -shm file
+beside the primary or a shard; and the primary's replication_in_flight rows. Every file is opened
+through sqlite3 with a file:...?mode=ro URI, and nothing is written."""
+import glob
+import sqlite3
+import sys
+
+stem = sys.argv[1]
+
+
+def ro(path):
+    return sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+
+
+CHILD = {
+    "InflatonTrajectory": ("InflatonTrajectoryValue", "trajectory_serial"),
+    "FullInstanton": ("FullInstantonValue", "instanton_serial"),
+    "SlowRollInstanton": ("SlowRollInstantonValue", "instanton_serial"),
+    "CompactionFunction": ("CompactionFunctionSamples", "parent_serial"),
+}
+rows = []
+counts = {}
+efold = {}
+efold_last = {}
+for shard in sorted(glob.glob(f"{stem}-shard*.sqlite")):
+    sid = shard.rsplit("shard", 1)[1][:4]
+    c = ro(shard)
+    efold[sid] = c.execute("SELECT count(*) FROM efold_value").fetchone()[0]
+    efold_last[sid] = c.execute("SELECT max(timestamp) FROM efold_value").fetchone()[0]
+    for t, (child, fk) in CHILD.items():
+        cols = [r[1] for r in c.execute(f"PRAGMA table_info({t})")]
+        dn = "delta_Nstar_serial" in cols
+        q = "SELECT p.serial, p.timestamp, p.validated" + (", d.value" if dn else ", NULL")
+        q += f" FROM {t} p" + (" LEFT JOIN delta_Nstar d ON d.serial = p.delta_Nstar_serial" if dn else "")
+        for serial, ts, val, dval in c.execute(q):
+            nchild = c.execute(f"SELECT count(*) FROM {child} WHERE {fk} = ?", (serial,)).fetchone()[0]
+            rows.append((ts, t, sid, serial, val, dval, nchild))
+            k = (t, bool(val))
+            counts.setdefault(k, [0, 0])
+            counts[k][0] += 1
+            counts[k][1] += nchild
+        orphan = c.execute(
+            f"SELECT count(*) FROM {child} WHERE {fk} NOT IN (SELECT serial FROM {t})"
+        ).fetchone()[0]
+        if orphan:
+            print(f"!! shard {sid}: {orphan} orphan rows in {child}")
+    c.close()
+
+for r in sorted(rows):
+    ts, t, sid, serial, val, dval, nchild = r
+    print(f"{ts}  {t:20s} shard{sid} serial={serial} validated={val} dNstar={dval} children={nchild}")
+print("--- by table, validated: (rows, child rows)")
+for k in sorted(counts):
+    print(k, counts[k])
+print("--- efold_value rows per shard:", efold)
+print("--- newest efold_value timestamp per shard:", efold_last)
+for f in sorted(
+    glob.glob(f"{stem}*.sqlite-journal") + glob.glob(f"{stem}*-wal") + glob.glob(f"{stem}*-shm")
+):
+    print("journal/wal/shm:", f)
+
+c = ro(f"{stem}.sqlite")
+tabs = [r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+print("--- primary tables:", tabs)
+if "replication_in_flight" in tabs:
+    cols = [r[1] for r in c.execute("PRAGMA table_info(replication_in_flight)")]
+    rif = c.execute("SELECT * FROM replication_in_flight").fetchall()
+    print(f"--- replication_in_flight: {len(rif)} row(s); columns {cols}")
+    for r in rif:
+        print("   ", r)
+c.close()

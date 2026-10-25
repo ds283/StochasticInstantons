@@ -1,0 +1,1036 @@
+16:10:29
+$ ./venv/bin/python -m runregistrykit store create var/datastores/rrk-adoption-04-reference.sqlite --purpose "rrk-adoption 04 H1: the reference build of the rehearsal grid, kept for the user"
+>> create: var/datastores/rrk-adoption-04-reference.manifest.json
+{
+  "created": "2026-10-25T16:10:29+00:00",
+  "datastore": "rrk-adoption-04-reference.sqlite",
+  "history": [
+    {
+      "from": null,
+      "git_dirty": true,
+      "git_head": "535b7e7e21cdb7706d969003a9641913d246d93f",
+      "operation": "create",
+      "to": "var/datastores/rrk-adoption-04-reference.sqlite",
+      "when": "2026-10-25T16:10:29+00:00"
+    }
+  ],
+  "name": "rrk-adoption-04-reference",
+  "purpose": "rrk-adoption 04 H1: the reference build of the rehearsal grid, kept for the user",
+  "sidecar_format": 1,
+  "store_id": "503640899e96453a968de535c5b677a8"
+}
+[exit 0]
+$ ./venv/bin/python -m runregistrykit store fingerprint var/datastores/rrk-adoption-04-reference.sqlite --write
+store:    /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-reference.sqlite
+digest:   a9f716fb88cf8647327748e533e7402e6f406a59aba3826956e966b7f9081ea7
+format:   1
+classes:  (count, digest; then each tag set)
+  version                           1  e7d475b3a1b2
+                                    1  e7d475b3a1b2  []
+  store_tag                         0  e3b0c44298fc
+  redshift                          0  e3b0c44298fc
+  tolerance                         1  3de3f231f280
+                                    1  3de3f231f280  []
+  efold_value                    7521  baa3e812fd69
+                                 7521  baa3e812fd69  []
+  delta_Nstar                      10  dcce3850505d
+                                   10  dcce3850505d  []
+  N_init                            1  55d9d2c03617
+                                    1  55d9d2c03617  []
+  N_final                           1  ecfe1bb7b37b
+                                    1  ecfe1bb7b37b  []
+  n_collocation_points              1  68d163081099
+                                    1  68d163081099  []
+  alpha_regularization              1  5ca8671ce4dc
+                                    1  5ca8671ce4dc  []
+  inflaton_mass                     1  9f32dabe62d9
+                                    1  9f32dabe62d9  []
+  quartic_coupling                  0  e3b0c44298fc
+  phi_value                         1  6e04c0b5612b
+                                    1  6e04c0b5612b  []
+  pi_value                          1  237cd5e96169
+                                    1  237cd5e96169  []
+  MasslessDecoupledDiffusion        1  f2cdb0bc718f
+                                    1  f2cdb0bc718f  []
+  IntegrationSolver                 0  e3b0c44298fc
+  CosmologicalParams                1  66b0486a8db9
+                                    1  66b0486a8db9  []
+  QuadraticPotential                1  19fa0a01bc71
+                                    1  19fa0a01bc71  []
+  QuarticPotential                  0  e3b0c44298fc
+  InflatonTrajectory                1  ad1a423a846a
+                                    1  ad1a423a846a  []
+  FullInstanton                    10  7ce91c421ff1
+                                   10  7ce91c421ff1  []
+  GradientCoupledInstanton          0  e3b0c44298fc
+  SlowRollInstanton                10  7ce91c421ff1
+                                   10  7ce91c421ff1  []
+  CompactionFunction               10  5c795305351e
+                                   10  5c795305351e  []
+problems: none
+recorded: none recorded (the sidecar is registry)
+>> wrote the fingerprint into the sidecar; it replaced none
+[exit 0]
+$ ./venv/bin/python -m runregistrykit store show var/datastores/rrk-adoption-04-reference.sqlite
+sidecar:  /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-reference.manifest.json
+kind:     registry
+problems: none
+datastore: 'rrk-adoption-04-reference.sqlite'
+fields:
+  {
+    "created": "2026-10-25T16:10:29+00:00",
+    "datastore": "rrk-adoption-04-reference.sqlite",
+    "fingerprint": {
+      "classes": {
+        "CompactionFunction": {
+          "count": 10,
+          "digest": "5c795305351e2203f71f4507bca83d82b3a699030b91c3f6005477fcce37be25",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "5c795305351e2203f71f4507bca83d82b3a699030b91c3f6005477fcce37be25",
+              "tags": []
+            }
+          ]
+        },
+        "CosmologicalParams": {
+          "count": 1,
+          "digest": "66b0486a8db9e5c6c6b0a11c2854eb6e7bdef122b13e60b630f237940f8198cd",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "66b0486a8db9e5c6c6b0a11c2854eb6e7bdef122b13e60b630f237940f8198cd",
+              "tags": []
+            }
+          ]
+        },
+        "FullInstanton": {
+          "count": 10,
+          "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+              "tags": []
+            }
+          ]
+        },
+        "GradientCoupledInstanton": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "InflatonTrajectory": {
+          "count": 1,
+          "digest": "ad1a423a846a786bc92765683a23644dd00e5ecda06d923ae22895487f75c30c",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "ad1a423a846a786bc92765683a23644dd00e5ecda06d923ae22895487f75c30c",
+              "tags": []
+            }
+          ]
+        },
+        "IntegrationSolver": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "MasslessDecoupledDiffusion": {
+          "count": 1,
+          "digest": "f2cdb0bc718f31721d2aeeaf150a91570d98d382369d724068b1da5cde61c33f",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "f2cdb0bc718f31721d2aeeaf150a91570d98d382369d724068b1da5cde61c33f",
+              "tags": []
+            }
+          ]
+        },
+        "N_final": {
+          "count": 1,
+          "digest": "ecfe1bb7b37b6ba08a2c28efee8a6906ce91730a2dd9c2768054893733a8c6c8",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "ecfe1bb7b37b6ba08a2c28efee8a6906ce91730a2dd9c2768054893733a8c6c8",
+              "tags": []
+            }
+          ]
+        },
+        "N_init": {
+          "count": 1,
+          "digest": "55d9d2c036176f6de6a3af328bd33cb94738aa739df48d3d7c11ec5fb9f6c274",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "55d9d2c036176f6de6a3af328bd33cb94738aa739df48d3d7c11ec5fb9f6c274",
+              "tags": []
+            }
+          ]
+        },
+        "QuadraticPotential": {
+          "count": 1,
+          "digest": "19fa0a01bc710a1e9b514b38855807d183afa08a92d02a59bc495aa4efca4747",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "19fa0a01bc710a1e9b514b38855807d183afa08a92d02a59bc495aa4efca4747",
+              "tags": []
+            }
+          ]
+        },
+        "QuarticPotential": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "SlowRollInstanton": {
+          "count": 10,
+          "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+              "tags": []
+            }
+          ]
+        },
+        "alpha_regularization": {
+          "count": 1,
+          "digest": "5ca8671ce4dc38b3f20bd8a2a72c1b484eeafaa254a38975a488bc25c0482097",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "5ca8671ce4dc38b3f20bd8a2a72c1b484eeafaa254a38975a488bc25c0482097",
+              "tags": []
+            }
+          ]
+        },
+        "delta_Nstar": {
+          "count": 10,
+          "digest": "dcce3850505db3ba8f0dd00183e0a622e88487923a985b67aa39ec26c5aece27",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "dcce3850505db3ba8f0dd00183e0a622e88487923a985b67aa39ec26c5aece27",
+              "tags": []
+            }
+          ]
+        },
+        "efold_value": {
+          "count": 7521,
+          "digest": "baa3e812fd697b9efdda1c4301bd5b3be4a92f947abbf70375639e3252e3ee8e",
+          "tag_sets": [
+            {
+              "count": 7521,
+              "digest": "baa3e812fd697b9efdda1c4301bd5b3be4a92f947abbf70375639e3252e3ee8e",
+              "tags": []
+            }
+          ]
+        },
+        "inflaton_mass": {
+          "count": 1,
+          "digest": "9f32dabe62d9316a63d0537eb7f069d343b75eef1e781f35c363f5c6d9665d44",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "9f32dabe62d9316a63d0537eb7f069d343b75eef1e781f35c363f5c6d9665d44",
+              "tags": []
+            }
+          ]
+        },
+        "n_collocation_points": {
+          "count": 1,
+          "digest": "68d163081099fa1499355d6bfb4e03bec923258d58c995731f5c5fcf45b7bda9",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "68d163081099fa1499355d6bfb4e03bec923258d58c995731f5c5fcf45b7bda9",
+              "tags": []
+            }
+          ]
+        },
+        "phi_value": {
+          "count": 1,
+          "digest": "6e04c0b5612bd587c2758a005561045c4f436e48d5f98c760a6f31a0e5f613ce",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "6e04c0b5612bd587c2758a005561045c4f436e48d5f98c760a6f31a0e5f613ce",
+              "tags": []
+            }
+          ]
+        },
+        "pi_value": {
+          "count": 1,
+          "digest": "237cd5e9616925eae2215daa8eb602f9db5e521a4415d78f11056c39f8c74cc8",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "237cd5e9616925eae2215daa8eb602f9db5e521a4415d78f11056c39f8c74cc8",
+              "tags": []
+            }
+          ]
+        },
+        "quartic_coupling": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "redshift": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "store_tag": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "tolerance": {
+          "count": 1,
+          "digest": "3de3f231f28088daa55ff7828dd40a9a6b4aa189ecf6b1c7e23d94f2f4e80fba",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "3de3f231f28088daa55ff7828dd40a9a6b4aa189ecf6b1c7e23d94f2f4e80fba",
+              "tags": []
+            }
+          ]
+        },
+        "version": {
+          "count": 1,
+          "digest": "e7d475b3a1b2af16927546f66efb5ffa6eabb66f5c30321ae55ac060a94cb792",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "e7d475b3a1b2af16927546f66efb5ffa6eabb66f5c30321ae55ac060a94cb792",
+              "tags": []
+            }
+          ]
+        }
+      },
+      "digest": "a9f716fb88cf8647327748e533e7402e6f406a59aba3826956e966b7f9081ea7",
+      "encoding_format": 1,
+      "fingerprint_format": 1,
+      "problems": {},
+      "taken": {
+        "git_dirty": true,
+        "git_head": "535b7e7e21cdb7706d969003a9641913d246d93f",
+        "run_id": null,
+        "when": "2026-10-25T16:10:30+00:00"
+      }
+    },
+    "history": [
+      {
+        "from": null,
+        "git_dirty": true,
+        "git_head": "535b7e7e21cdb7706d969003a9641913d246d93f",
+        "operation": "create",
+        "to": "var/datastores/rrk-adoption-04-reference.sqlite",
+        "when": "2026-10-25T16:10:29+00:00"
+      }
+    ],
+    "name": "rrk-adoption-04-reference",
+    "purpose": "rrk-adoption 04 H1: the reference build of the rehearsal grid, kept for the user",
+    "sidecar_format": 1,
+    "store_id": "503640899e96453a968de535c5b677a8"
+  }
+runs naming this store, under /Users/ds283/Documents/Code/StochasticInstantons/var/runs:
+  rrk-adoption-04-reference-20261025T160704  done      finished  by results
+[exit 0]
+
+16:13:31
+$ ./venv/bin/python -m runregistrykit store create var/datastores/rrk-adoption-04-resumed.sqlite --purpose "rrk-adoption 04 H2-H4: the rehearsal grid built by resumes after SIGTERM and SIGKILL, kept for the user"
+>> create: var/datastores/rrk-adoption-04-resumed.manifest.json
+{
+  "created": "2026-10-25T16:13:31+00:00",
+  "datastore": "rrk-adoption-04-resumed.sqlite",
+  "history": [
+    {
+      "from": null,
+      "git_dirty": true,
+      "git_head": "535b7e7e21cdb7706d969003a9641913d246d93f",
+      "operation": "create",
+      "to": "var/datastores/rrk-adoption-04-resumed.sqlite",
+      "when": "2026-10-25T16:13:31+00:00"
+    }
+  ],
+  "name": "rrk-adoption-04-resumed",
+  "purpose": "rrk-adoption 04 H2-H4: the rehearsal grid built by resumes after SIGTERM and SIGKILL, kept for the user",
+  "sidecar_format": 1,
+  "store_id": "b7904d18f0d24466b255fb7c0224a805"
+}
+[exit 0]
+$ ./venv/bin/python -m runregistrykit store show var/datastores/rrk-adoption-04-resumed.sqlite
+sidecar:  /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.manifest.json
+kind:     registry
+problems: none
+datastore: 'rrk-adoption-04-resumed.sqlite'
+fields:
+  {
+    "created": "2026-10-25T16:13:31+00:00",
+    "datastore": "rrk-adoption-04-resumed.sqlite",
+    "history": [
+      {
+        "from": null,
+        "git_dirty": true,
+        "git_head": "535b7e7e21cdb7706d969003a9641913d246d93f",
+        "operation": "create",
+        "to": "var/datastores/rrk-adoption-04-resumed.sqlite",
+        "when": "2026-10-25T16:13:31+00:00"
+      }
+    ],
+    "name": "rrk-adoption-04-resumed",
+    "purpose": "rrk-adoption 04 H2-H4: the rehearsal grid built by resumes after SIGTERM and SIGKILL, kept for the user",
+    "sidecar_format": 1,
+    "store_id": "b7904d18f0d24466b255fb7c0224a805"
+  }
+runs naming this store, under /Users/ds283/Documents/Code/StochasticInstantons/var/runs:
+  rrk-adoption-04-resumed-a-20261025T161131  killed    finished  by results
+[exit 0]
+
+===== H5
+16:16:59
+$ ./venv/bin/python -m runregistrykit store fingerprint var/datastores/rrk-adoption-04-reference.sqlite
+store:    /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-reference.sqlite
+digest:   a9f716fb88cf8647327748e533e7402e6f406a59aba3826956e966b7f9081ea7
+format:   1
+classes:  (count, digest; then each tag set)
+  version                           1  e7d475b3a1b2
+                                    1  e7d475b3a1b2  []
+  store_tag                         0  e3b0c44298fc
+  redshift                          0  e3b0c44298fc
+  tolerance                         1  3de3f231f280
+                                    1  3de3f231f280  []
+  efold_value                    7521  baa3e812fd69
+                                 7521  baa3e812fd69  []
+  delta_Nstar                      10  dcce3850505d
+                                   10  dcce3850505d  []
+  N_init                            1  55d9d2c03617
+                                    1  55d9d2c03617  []
+  N_final                           1  ecfe1bb7b37b
+                                    1  ecfe1bb7b37b  []
+  n_collocation_points              1  68d163081099
+                                    1  68d163081099  []
+  alpha_regularization              1  5ca8671ce4dc
+                                    1  5ca8671ce4dc  []
+  inflaton_mass                     1  9f32dabe62d9
+                                    1  9f32dabe62d9  []
+  quartic_coupling                  0  e3b0c44298fc
+  phi_value                         1  6e04c0b5612b
+                                    1  6e04c0b5612b  []
+  pi_value                          1  237cd5e96169
+                                    1  237cd5e96169  []
+  MasslessDecoupledDiffusion        1  f2cdb0bc718f
+                                    1  f2cdb0bc718f  []
+  IntegrationSolver                 0  e3b0c44298fc
+  CosmologicalParams                1  66b0486a8db9
+                                    1  66b0486a8db9  []
+  QuadraticPotential                1  19fa0a01bc71
+                                    1  19fa0a01bc71  []
+  QuarticPotential                  0  e3b0c44298fc
+  InflatonTrajectory                1  ad1a423a846a
+                                    1  ad1a423a846a  []
+  FullInstanton                    10  7ce91c421ff1
+                                   10  7ce91c421ff1  []
+  GradientCoupledInstanton          0  e3b0c44298fc
+  SlowRollInstanton                10  7ce91c421ff1
+                                   10  7ce91c421ff1  []
+  CompactionFunction               10  5c795305351e
+                                   10  5c795305351e  []
+problems: none
+recorded: matches the fingerprint taken 2026-10-25T16:10:30+00:00 by a person, at 535b7e7e21cdb7706d969003a9641913d246d93f (dirty)
+[exit 0]
+16:17:03
+$ ./venv/bin/python -m runregistrykit store fingerprint var/datastores/rrk-adoption-04-resumed.sqlite
+store:    /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.sqlite
+digest:   a9f716fb88cf8647327748e533e7402e6f406a59aba3826956e966b7f9081ea7
+format:   1
+classes:  (count, digest; then each tag set)
+  version                           1  e7d475b3a1b2
+                                    1  e7d475b3a1b2  []
+  store_tag                         0  e3b0c44298fc
+  redshift                          0  e3b0c44298fc
+  tolerance                         1  3de3f231f280
+                                    1  3de3f231f280  []
+  efold_value                    7521  baa3e812fd69
+                                 7521  baa3e812fd69  []
+  delta_Nstar                      10  dcce3850505d
+                                   10  dcce3850505d  []
+  N_init                            1  55d9d2c03617
+                                    1  55d9d2c03617  []
+  N_final                           1  ecfe1bb7b37b
+                                    1  ecfe1bb7b37b  []
+  n_collocation_points              1  68d163081099
+                                    1  68d163081099  []
+  alpha_regularization              1  5ca8671ce4dc
+                                    1  5ca8671ce4dc  []
+  inflaton_mass                     1  9f32dabe62d9
+                                    1  9f32dabe62d9  []
+  quartic_coupling                  0  e3b0c44298fc
+  phi_value                         1  6e04c0b5612b
+                                    1  6e04c0b5612b  []
+  pi_value                          1  237cd5e96169
+                                    1  237cd5e96169  []
+  MasslessDecoupledDiffusion        1  f2cdb0bc718f
+                                    1  f2cdb0bc718f  []
+  IntegrationSolver                 0  e3b0c44298fc
+  CosmologicalParams                1  66b0486a8db9
+                                    1  66b0486a8db9  []
+  QuadraticPotential                1  19fa0a01bc71
+                                    1  19fa0a01bc71  []
+  QuarticPotential                  0  e3b0c44298fc
+  InflatonTrajectory                1  ad1a423a846a
+                                    1  ad1a423a846a  []
+  FullInstanton                    10  7ce91c421ff1
+                                   10  7ce91c421ff1  []
+  GradientCoupledInstanton          0  e3b0c44298fc
+  SlowRollInstanton                10  7ce91c421ff1
+                                   10  7ce91c421ff1  []
+  CompactionFunction               10  5c795305351e
+                                   10  5c795305351e  []
+problems: none
+recorded: matches the fingerprint taken 2026-10-25T16:15:58+00:00 by run rrk-adoption-04-resumed-c-20261025T161521, at 535b7e7e21cdb7706d969003a9641913d246d93f (dirty)
+[exit 0]
+$ ./venv/bin/python -m runregistrykit store show var/datastores/rrk-adoption-04-reference.sqlite
+sidecar:  /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-reference.manifest.json
+kind:     registry
+problems: none
+datastore: 'rrk-adoption-04-reference.sqlite'
+fields:
+  {
+    "created": "2026-10-25T16:10:29+00:00",
+    "datastore": "rrk-adoption-04-reference.sqlite",
+    "fingerprint": {
+      "classes": {
+        "CompactionFunction": {
+          "count": 10,
+          "digest": "5c795305351e2203f71f4507bca83d82b3a699030b91c3f6005477fcce37be25",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "5c795305351e2203f71f4507bca83d82b3a699030b91c3f6005477fcce37be25",
+              "tags": []
+            }
+          ]
+        },
+        "CosmologicalParams": {
+          "count": 1,
+          "digest": "66b0486a8db9e5c6c6b0a11c2854eb6e7bdef122b13e60b630f237940f8198cd",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "66b0486a8db9e5c6c6b0a11c2854eb6e7bdef122b13e60b630f237940f8198cd",
+              "tags": []
+            }
+          ]
+        },
+        "FullInstanton": {
+          "count": 10,
+          "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+              "tags": []
+            }
+          ]
+        },
+        "GradientCoupledInstanton": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "InflatonTrajectory": {
+          "count": 1,
+          "digest": "ad1a423a846a786bc92765683a23644dd00e5ecda06d923ae22895487f75c30c",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "ad1a423a846a786bc92765683a23644dd00e5ecda06d923ae22895487f75c30c",
+              "tags": []
+            }
+          ]
+        },
+        "IntegrationSolver": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "MasslessDecoupledDiffusion": {
+          "count": 1,
+          "digest": "f2cdb0bc718f31721d2aeeaf150a91570d98d382369d724068b1da5cde61c33f",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "f2cdb0bc718f31721d2aeeaf150a91570d98d382369d724068b1da5cde61c33f",
+              "tags": []
+            }
+          ]
+        },
+        "N_final": {
+          "count": 1,
+          "digest": "ecfe1bb7b37b6ba08a2c28efee8a6906ce91730a2dd9c2768054893733a8c6c8",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "ecfe1bb7b37b6ba08a2c28efee8a6906ce91730a2dd9c2768054893733a8c6c8",
+              "tags": []
+            }
+          ]
+        },
+        "N_init": {
+          "count": 1,
+          "digest": "55d9d2c036176f6de6a3af328bd33cb94738aa739df48d3d7c11ec5fb9f6c274",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "55d9d2c036176f6de6a3af328bd33cb94738aa739df48d3d7c11ec5fb9f6c274",
+              "tags": []
+            }
+          ]
+        },
+        "QuadraticPotential": {
+          "count": 1,
+          "digest": "19fa0a01bc710a1e9b514b38855807d183afa08a92d02a59bc495aa4efca4747",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "19fa0a01bc710a1e9b514b38855807d183afa08a92d02a59bc495aa4efca4747",
+              "tags": []
+            }
+          ]
+        },
+        "QuarticPotential": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "SlowRollInstanton": {
+          "count": 10,
+          "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+              "tags": []
+            }
+          ]
+        },
+        "alpha_regularization": {
+          "count": 1,
+          "digest": "5ca8671ce4dc38b3f20bd8a2a72c1b484eeafaa254a38975a488bc25c0482097",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "5ca8671ce4dc38b3f20bd8a2a72c1b484eeafaa254a38975a488bc25c0482097",
+              "tags": []
+            }
+          ]
+        },
+        "delta_Nstar": {
+          "count": 10,
+          "digest": "dcce3850505db3ba8f0dd00183e0a622e88487923a985b67aa39ec26c5aece27",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "dcce3850505db3ba8f0dd00183e0a622e88487923a985b67aa39ec26c5aece27",
+              "tags": []
+            }
+          ]
+        },
+        "efold_value": {
+          "count": 7521,
+          "digest": "baa3e812fd697b9efdda1c4301bd5b3be4a92f947abbf70375639e3252e3ee8e",
+          "tag_sets": [
+            {
+              "count": 7521,
+              "digest": "baa3e812fd697b9efdda1c4301bd5b3be4a92f947abbf70375639e3252e3ee8e",
+              "tags": []
+            }
+          ]
+        },
+        "inflaton_mass": {
+          "count": 1,
+          "digest": "9f32dabe62d9316a63d0537eb7f069d343b75eef1e781f35c363f5c6d9665d44",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "9f32dabe62d9316a63d0537eb7f069d343b75eef1e781f35c363f5c6d9665d44",
+              "tags": []
+            }
+          ]
+        },
+        "n_collocation_points": {
+          "count": 1,
+          "digest": "68d163081099fa1499355d6bfb4e03bec923258d58c995731f5c5fcf45b7bda9",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "68d163081099fa1499355d6bfb4e03bec923258d58c995731f5c5fcf45b7bda9",
+              "tags": []
+            }
+          ]
+        },
+        "phi_value": {
+          "count": 1,
+          "digest": "6e04c0b5612bd587c2758a005561045c4f436e48d5f98c760a6f31a0e5f613ce",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "6e04c0b5612bd587c2758a005561045c4f436e48d5f98c760a6f31a0e5f613ce",
+              "tags": []
+            }
+          ]
+        },
+        "pi_value": {
+          "count": 1,
+          "digest": "237cd5e9616925eae2215daa8eb602f9db5e521a4415d78f11056c39f8c74cc8",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "237cd5e9616925eae2215daa8eb602f9db5e521a4415d78f11056c39f8c74cc8",
+              "tags": []
+            }
+          ]
+        },
+        "quartic_coupling": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "redshift": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "store_tag": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "tolerance": {
+          "count": 1,
+          "digest": "3de3f231f28088daa55ff7828dd40a9a6b4aa189ecf6b1c7e23d94f2f4e80fba",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "3de3f231f28088daa55ff7828dd40a9a6b4aa189ecf6b1c7e23d94f2f4e80fba",
+              "tags": []
+            }
+          ]
+        },
+        "version": {
+          "count": 1,
+          "digest": "e7d475b3a1b2af16927546f66efb5ffa6eabb66f5c30321ae55ac060a94cb792",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "e7d475b3a1b2af16927546f66efb5ffa6eabb66f5c30321ae55ac060a94cb792",
+              "tags": []
+            }
+          ]
+        }
+      },
+      "digest": "a9f716fb88cf8647327748e533e7402e6f406a59aba3826956e966b7f9081ea7",
+      "encoding_format": 1,
+      "fingerprint_format": 1,
+      "problems": {},
+      "taken": {
+        "git_dirty": true,
+        "git_head": "535b7e7e21cdb7706d969003a9641913d246d93f",
+        "run_id": null,
+        "when": "2026-10-25T16:10:30+00:00"
+      }
+    },
+    "history": [
+      {
+        "from": null,
+        "git_dirty": true,
+        "git_head": "535b7e7e21cdb7706d969003a9641913d246d93f",
+        "operation": "create",
+        "to": "var/datastores/rrk-adoption-04-reference.sqlite",
+        "when": "2026-10-25T16:10:29+00:00"
+      }
+    ],
+    "name": "rrk-adoption-04-reference",
+    "purpose": "rrk-adoption 04 H1: the reference build of the rehearsal grid, kept for the user",
+    "sidecar_format": 1,
+    "store_id": "503640899e96453a968de535c5b677a8"
+  }
+runs naming this store, under /Users/ds283/Documents/Code/StochasticInstantons/var/runs:
+  rrk-adoption-04-reference-20261025T160704  done      finished  by results
+[exit 0]
+$ ./venv/bin/python -m runregistrykit store show var/datastores/rrk-adoption-04-resumed.sqlite
+sidecar:  /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.manifest.json
+kind:     registry
+problems: none
+datastore: 'rrk-adoption-04-resumed.sqlite'
+fields:
+  {
+    "created": "2026-10-25T16:13:31+00:00",
+    "datastore": "rrk-adoption-04-resumed.sqlite",
+    "fingerprint": {
+      "classes": {
+        "CompactionFunction": {
+          "count": 10,
+          "digest": "5c795305351e2203f71f4507bca83d82b3a699030b91c3f6005477fcce37be25",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "5c795305351e2203f71f4507bca83d82b3a699030b91c3f6005477fcce37be25",
+              "tags": []
+            }
+          ]
+        },
+        "CosmologicalParams": {
+          "count": 1,
+          "digest": "66b0486a8db9e5c6c6b0a11c2854eb6e7bdef122b13e60b630f237940f8198cd",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "66b0486a8db9e5c6c6b0a11c2854eb6e7bdef122b13e60b630f237940f8198cd",
+              "tags": []
+            }
+          ]
+        },
+        "FullInstanton": {
+          "count": 10,
+          "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+              "tags": []
+            }
+          ]
+        },
+        "GradientCoupledInstanton": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "InflatonTrajectory": {
+          "count": 1,
+          "digest": "ad1a423a846a786bc92765683a23644dd00e5ecda06d923ae22895487f75c30c",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "ad1a423a846a786bc92765683a23644dd00e5ecda06d923ae22895487f75c30c",
+              "tags": []
+            }
+          ]
+        },
+        "IntegrationSolver": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "MasslessDecoupledDiffusion": {
+          "count": 1,
+          "digest": "f2cdb0bc718f31721d2aeeaf150a91570d98d382369d724068b1da5cde61c33f",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "f2cdb0bc718f31721d2aeeaf150a91570d98d382369d724068b1da5cde61c33f",
+              "tags": []
+            }
+          ]
+        },
+        "N_final": {
+          "count": 1,
+          "digest": "ecfe1bb7b37b6ba08a2c28efee8a6906ce91730a2dd9c2768054893733a8c6c8",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "ecfe1bb7b37b6ba08a2c28efee8a6906ce91730a2dd9c2768054893733a8c6c8",
+              "tags": []
+            }
+          ]
+        },
+        "N_init": {
+          "count": 1,
+          "digest": "55d9d2c036176f6de6a3af328bd33cb94738aa739df48d3d7c11ec5fb9f6c274",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "55d9d2c036176f6de6a3af328bd33cb94738aa739df48d3d7c11ec5fb9f6c274",
+              "tags": []
+            }
+          ]
+        },
+        "QuadraticPotential": {
+          "count": 1,
+          "digest": "19fa0a01bc710a1e9b514b38855807d183afa08a92d02a59bc495aa4efca4747",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "19fa0a01bc710a1e9b514b38855807d183afa08a92d02a59bc495aa4efca4747",
+              "tags": []
+            }
+          ]
+        },
+        "QuarticPotential": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "SlowRollInstanton": {
+          "count": 10,
+          "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "7ce91c421ff1226ec1d0be4098d8e5fc56a52eb840c483eab3da2781ac85b63f",
+              "tags": []
+            }
+          ]
+        },
+        "alpha_regularization": {
+          "count": 1,
+          "digest": "5ca8671ce4dc38b3f20bd8a2a72c1b484eeafaa254a38975a488bc25c0482097",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "5ca8671ce4dc38b3f20bd8a2a72c1b484eeafaa254a38975a488bc25c0482097",
+              "tags": []
+            }
+          ]
+        },
+        "delta_Nstar": {
+          "count": 10,
+          "digest": "dcce3850505db3ba8f0dd00183e0a622e88487923a985b67aa39ec26c5aece27",
+          "tag_sets": [
+            {
+              "count": 10,
+              "digest": "dcce3850505db3ba8f0dd00183e0a622e88487923a985b67aa39ec26c5aece27",
+              "tags": []
+            }
+          ]
+        },
+        "efold_value": {
+          "count": 7521,
+          "digest": "baa3e812fd697b9efdda1c4301bd5b3be4a92f947abbf70375639e3252e3ee8e",
+          "tag_sets": [
+            {
+              "count": 7521,
+              "digest": "baa3e812fd697b9efdda1c4301bd5b3be4a92f947abbf70375639e3252e3ee8e",
+              "tags": []
+            }
+          ]
+        },
+        "inflaton_mass": {
+          "count": 1,
+          "digest": "9f32dabe62d9316a63d0537eb7f069d343b75eef1e781f35c363f5c6d9665d44",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "9f32dabe62d9316a63d0537eb7f069d343b75eef1e781f35c363f5c6d9665d44",
+              "tags": []
+            }
+          ]
+        },
+        "n_collocation_points": {
+          "count": 1,
+          "digest": "68d163081099fa1499355d6bfb4e03bec923258d58c995731f5c5fcf45b7bda9",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "68d163081099fa1499355d6bfb4e03bec923258d58c995731f5c5fcf45b7bda9",
+              "tags": []
+            }
+          ]
+        },
+        "phi_value": {
+          "count": 1,
+          "digest": "6e04c0b5612bd587c2758a005561045c4f436e48d5f98c760a6f31a0e5f613ce",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "6e04c0b5612bd587c2758a005561045c4f436e48d5f98c760a6f31a0e5f613ce",
+              "tags": []
+            }
+          ]
+        },
+        "pi_value": {
+          "count": 1,
+          "digest": "237cd5e9616925eae2215daa8eb602f9db5e521a4415d78f11056c39f8c74cc8",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "237cd5e9616925eae2215daa8eb602f9db5e521a4415d78f11056c39f8c74cc8",
+              "tags": []
+            }
+          ]
+        },
+        "quartic_coupling": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "redshift": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "store_tag": {
+          "count": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "tag_sets": []
+        },
+        "tolerance": {
+          "count": 1,
+          "digest": "3de3f231f28088daa55ff7828dd40a9a6b4aa189ecf6b1c7e23d94f2f4e80fba",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "3de3f231f28088daa55ff7828dd40a9a6b4aa189ecf6b1c7e23d94f2f4e80fba",
+              "tags": []
+            }
+          ]
+        },
+        "version": {
+          "count": 1,
+          "digest": "e7d475b3a1b2af16927546f66efb5ffa6eabb66f5c30321ae55ac060a94cb792",
+          "tag_sets": [
+            {
+              "count": 1,
+              "digest": "e7d475b3a1b2af16927546f66efb5ffa6eabb66f5c30321ae55ac060a94cb792",
+              "tags": []
+            }
+          ]
+        }
+      },
+      "digest": "a9f716fb88cf8647327748e533e7402e6f406a59aba3826956e966b7f9081ea7",
+      "encoding_format": 1,
+      "fingerprint_format": 1,
+      "problems": {},
+      "taken": {
+        "git_dirty": true,
+        "git_head": "535b7e7e21cdb7706d969003a9641913d246d93f",
+        "run_id": "rrk-adoption-04-resumed-c-20261025T161521",
+        "when": "2026-10-25T16:15:58+00:00"
+      }
+    },
+    "history": [
+      {
+        "from": null,
+        "git_dirty": true,
+        "git_head": "535b7e7e21cdb7706d969003a9641913d246d93f",
+        "operation": "create",
+        "to": "var/datastores/rrk-adoption-04-resumed.sqlite",
+        "when": "2026-10-25T16:13:31+00:00"
+      }
+    ],
+    "name": "rrk-adoption-04-resumed",
+    "purpose": "rrk-adoption 04 H2-H4: the rehearsal grid built by resumes after SIGTERM and SIGKILL, kept for the user",
+    "sidecar_format": 1,
+    "store_id": "b7904d18f0d24466b255fb7c0224a805"
+  }
+runs naming this store, under /Users/ds283/Documents/Code/StochasticInstantons/var/runs:
+  rrk-adoption-04-resumed-c-20261025T161521  done      finished  by results and results_store_id
+  rrk-adoption-04-resumed-b-20261025T161352  lost      finished  by results and results_store_id
+  rrk-adoption-04-resumed-a-20261025T161131  killed    finished  by results
+[exit 0]

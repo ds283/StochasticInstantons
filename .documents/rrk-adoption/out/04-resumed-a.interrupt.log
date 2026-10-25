@@ -1,0 +1,4 @@
+[2026-10-25T16:11:31+00:00] interrupt_when: waiting for "STAGE 2: FULL MSR INSTANTONS" in /Users/ds283/Documents/Code/StochasticInstantons/var/rrk-adoption-04/resumed-a.log; then 33 s; then SIGTERM
+[2026-10-25T16:11:31+00:00] interrupt_when: driver pid 26077 (from /Users/ds283/Documents/Code/StochasticInstantons/var/rrk-adoption-04/resumed-a.pid)
+[2026-10-25T16:12:00+00:00] interrupt_when: saw "STAGE 2: FULL MSR INSTANTONS"; waiting 33 s
+[2026-10-25T16:12:33+00:00] interrupt_when: sent SIGTERM to pid 26077

@@ -1,0 +1,451 @@
+===== the gate at 15:42 (the stop): ray_cluster.sh status
+lock: free (/Users/ds283/.raypoolkit/rehearsal-lock does not exist)
+Ray processes of /tmp/ray-si: none
+SI cluster (/tmp/ray-si), the processes stop signals: none
+port 6390: free
+port 6391: free
+port 8266: free
+port 52366: free
+===== the gate re-checked at 16:00: ray_cluster.sh status
+lock: free (/Users/ds283/.raypoolkit/rehearsal-lock does not exist)
+Ray processes of /tmp/ray-si: none
+SI cluster (/tmp/ray-si), the processes stop signals: none
+port 6390: free
+port 6391: free
+port 8266: free
+port 52366: free
+
+===== $ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start "rrk-adoption 04 (R)" > <scratch>/start.txt 2>&1    (16:05:41, exit 0)
+acquired the rehearsal lock (/Users/ds283/.raypoolkit/rehearsal-lock) for StochasticInstantons: rrk-adoption 04 (R)
+2026-10-25 16:05:44,192	INFO usage_lib.py:448 -- Usage stats collection is disabled.
+2026-10-25 16:05:44,193	INFO scripts.py:940 -- Local node IP: 127.0.0.1
+2026-10-25 16:05:54,475	SUCC scripts.py:979 -- --------------------
+2026-10-25 16:05:54,475	SUCC scripts.py:980 -- Ray runtime started.
+2026-10-25 16:05:54,475	SUCC scripts.py:981 -- --------------------
+2026-10-25 16:05:54,475	INFO scripts.py:983 -- Next steps
+2026-10-25 16:05:54,475	INFO scripts.py:1000 -- To connect to this Ray cluster:
+2026-10-25 16:05:54,475	INFO scripts.py:1002 -- import ray
+2026-10-25 16:05:54,475	INFO scripts.py:1003 -- ray.init()
+2026-10-25 16:05:54,475	INFO scripts.py:1017 -- To submit a Ray job using the Ray Jobs CLI:
+2026-10-25 16:05:54,476	INFO scripts.py:1018 --   RAY_API_SERVER_ADDRESS='http://127.0.0.1:8266' ray job submit --working-dir . -- python my_script.py
+2026-10-25 16:05:54,476	INFO scripts.py:1027 -- See https://docs.ray.io/en/latest/cluster/running-applications/job-submission/index.html 
+2026-10-25 16:05:54,476	INFO scripts.py:1031 -- for more information on submitting Ray jobs to the Ray cluster.
+2026-10-25 16:05:54,476	INFO scripts.py:1036 -- To terminate the Ray runtime, run
+2026-10-25 16:05:54,476	INFO scripts.py:1037 --   ray stop
+2026-10-25 16:05:54,476	INFO scripts.py:1040 -- To view the status of the cluster, use
+2026-10-25 16:05:54,476	INFO scripts.py:1041 --   ray status
+2026-10-25 16:05:54,476	INFO scripts.py:1045 -- To monitor and debug Ray, view the dashboard at 
+2026-10-25 16:05:54,476	INFO scripts.py:1046 --   127.0.0.1:8266
+2026-10-25 16:05:54,476	INFO scripts.py:1053 -- If connection to the dashboard fails, check your firewall settings and network configuration.
+recorded pid 24439 in /Users/ds283/.raypoolkit/rehearsal-lock/owner
+>> ray_cluster: address 127.0.0.1:6390
+>> ray_cluster: dashboard http://127.0.0.1:8266
+>> ray_cluster: actors: ./venv/bin/ray list actors --address 127.0.0.1:6390
+>> ray_cluster: started in 13s; gcs_server pid 24439
+--- the lock's owner file, read after start
+project: StochasticInstantons
+purpose: rrk-adoption 04 (R)
+acquired: 2026-10-25T16:05:41+00:00
+host: mps026088
+ray_temp_dir: /tmp/ray-si
+ray_address: 127.0.0.1:6390
+pid: 24439
+
+===== point 1, the baseline (after start): ray_cluster.sh status (exit 0)
+lock: HELD (/Users/ds283/.raypoolkit/rehearsal-lock)
+    project: StochasticInstantons
+    purpose: rrk-adoption 04 (R)
+    acquired: 2026-10-25T16:05:41+00:00
+    host: mps026088
+    ray_temp_dir: /tmp/ray-si
+    ray_address: 127.0.0.1:6390
+    pid: 24439
+owner pid 24439: alive
+Ray processes of /tmp/ray-si: 18
+    24439 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/session_2026-
+    24448 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+    24449 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --address=127.0.0.1:
+    24450 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/StochasticInstanto
+    24475 24450 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resource_tracker im
+    24476 24450 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multi
+    24477 24450 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipro
+    24478 24450 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24479 24450 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multiproc
+    24480 24450 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipro
+    24481 24450 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multip
+    24482 24450 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24483 24450 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24484 24450 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24517 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+    24518 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tmp/ray-si/ses
+    24519 24518 ray::DashboardAgent                     
+    24520 24518 ray::RuntimeEnvAgent               
+SI cluster (/tmp/ray-si), the processes stop signals: 18
+    24439     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/s
+    24448     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    24449     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --addres
+    24450     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/Stocha
+    24475 24450 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resourc
+    24476 24450 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c
+    24477 24450 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    24478 24450 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24479 24450 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "fr
+    24480 24450 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    24481 24450 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c 
+    24482 24450 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24483 24450 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24484 24450 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24517     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    24518     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tm
+    24519 24518 ray::DashboardAgent                     
+    24520 24518 ray::RuntimeEnvAgent               
+port 6390: held
+port 6391: held
+port 8266: held
+port 52366: held
+===== $ ./venv/bin/ray status --address 127.0.0.1:6390   (exit 0)
+======== Autoscaler status: 2026-10-25 16:06:30.969540 ========
+Node status
+---------------------------------------------------------------
+Active:
+ 1 node_744ff28047ab6a0711ec564bee51485d64872113afd26257a3fb47af
+Pending:
+ (no pending nodes)
+Recent failures:
+ (no failures)
+
+Resources
+---------------------------------------------------------------
+Total Usage:
+ 0.0/4.0 CPU
+ 0B/7.16GiB memory
+ 0B/2.00GiB object_store_memory
+
+From request_resources:
+ (none)
+Pending Demands:
+ (no resource demands)
+== ray state: 1 baseline, after start, at 2026-10-25 16:06:31 GMT
+$ ./venv/bin/ray list workers --address 127.0.0.1:6390 --filter "is_alive=True" --limit 500
+No resource in the cluster
+[exit 0]
+$ ./venv/bin/ray list actors --address 127.0.0.1:6390 --filter "state=ALIVE"
+No resource in the cluster
+[exit 0]
+$ ./venv/bin/ray list jobs --address 127.0.0.1:6390
+No resource in the cluster
+[exit 0]
+
+===== point 2, after H1: ray_cluster.sh status (pids: diff against the baseline empty)
+lock: HELD (/Users/ds283/.raypoolkit/rehearsal-lock)
+    project: StochasticInstantons
+    purpose: rrk-adoption 04 (R)
+    acquired: 2026-10-25T16:05:41+00:00
+    host: mps026088
+    ray_temp_dir: /tmp/ray-si
+    ray_address: 127.0.0.1:6390
+    pid: 24439
+owner pid 24439: alive
+Ray processes of /tmp/ray-si: 18
+    24439 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/session_2026-
+    24448 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+    24449 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --address=127.0.0.1:
+    24450 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/StochasticInstanto
+    24475 24450 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resource_tracker im
+    24476 24450 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multi
+    24477 24450 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipro
+    24478 24450 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24479 24450 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multiproc
+    24480 24450 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipro
+    24481 24450 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multip
+    24482 24450 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24483 24450 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24484 24450 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24517 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+    24518 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tmp/ray-si/ses
+    24519 24518 ray::DashboardAgent                     
+    24520 24518 ray::RuntimeEnvAgent               
+SI cluster (/tmp/ray-si), the processes stop signals: 18
+    24439     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/s
+    24448     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    24449     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --addres
+    24450     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/Stocha
+    24475 24450 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resourc
+    24476 24450 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c
+    24477 24450 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    24478 24450 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24479 24450 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "fr
+    24480 24450 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    24481 24450 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c 
+    24482 24450 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24483 24450 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24484 24450 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24517     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    24518     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tm
+    24519 24518 ray::DashboardAgent                     
+    24520 24518 ray::RuntimeEnvAgent               
+port 6390: held
+port 6391: held
+port 8266: held
+port 52366: held
+== ray state: 2 after H1, at 2026-10-25 16:10:16 GMT
+$ ./venv/bin/ray list workers --address 127.0.0.1:6390 --filter "is_alive=True" --limit 500
+/Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/util/state/api.py:385: UserWarning: The returned data may contain incomplete result. 0 (17 total from the cluster) workers are retrieved from the data source. 17 entries have been truncated. Max of 0 entries are retrieved from data source to prevent over-sized payloads.
+  warnings.warn(
+No resource in the cluster
+[exit 0]
+$ ./venv/bin/ray list actors --address 127.0.0.1:6390 --filter "state=ALIVE"
+No resource in the cluster
+[exit 0]
+$ ./venv/bin/ray list jobs --address 127.0.0.1:6390
+
+======== List: 2026-10-25 16:10:20.820189 ========
+Stats:
+------------------------------
+Total: 2
+
+Table:
+------------------------------
+      JOB_ID  SUBMISSION_ID    ENTRYPOINT                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             TYPE            STATUS     MESSAGE    ERROR_TYPE    DRIVER_INFO
+ 0  01000000                   /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -c "import signal, ray; a = signal.getsignal(signal.SIGTERM); ray.init(address=\"127.0.0.1:6390\"); b = signal.getsignal(signal.SIGTERM); print(\"before\", a); print(\"after\", b, getattr(b, \"__module__\", None), getattr(b, \"__qualname__\", None)); ray.shutdown()"                                                                                                                                                                                                     JobType.DRIVER  SUCCEEDED                           id: '01000000'
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          node_ip_address: 127.0.0.1
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          pid: '24927'
+ 1  02000000                   /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u RunDrivers/registered_run.py --campaign rrk-adoption --prompt 04 --register reference --purpose "rrk-adoption 04 H1: the rehearsal grid straight through, the reference store" -- --config quadratic-minimal.yaml --database /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-reference.sqlite --job-name rrk-adoption-04-reference --targets homogeneous --n-collocation-points 5 --alpha-regularization 0.01 --ray-address 127.0.0.1:6390  JobType.DRIVER  SUCCEEDED                           id: '02000000'
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          node_ip_address: 127.0.0.1
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          pid: '24979'
+
+[exit 0]
+
+===== point 3, after H2: ray_cluster.sh status (pids: diff against the baseline empty)
+lock: HELD (/Users/ds283/.raypoolkit/rehearsal-lock)
+    project: StochasticInstantons
+    purpose: rrk-adoption 04 (R)
+    acquired: 2026-10-25T16:05:41+00:00
+    host: mps026088
+    ray_temp_dir: /tmp/ray-si
+    ray_address: 127.0.0.1:6390
+    pid: 24439
+owner pid 24439: alive
+Ray processes of /tmp/ray-si: 18
+    24439 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/session_2026-
+    24448 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+    24449 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --address=127.0.0.1:
+    24450 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/StochasticInstanto
+    24475 24450 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resource_tracker im
+    24476 24450 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multi
+    24477 24450 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipro
+    24478 24450 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24479 24450 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multiproc
+    24480 24450 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipro
+    24481 24450 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multip
+    24482 24450 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24483 24450 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24484 24450 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24517 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+    24518 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tmp/ray-si/ses
+    24519 24518 ray::DashboardAgent                     
+    24520 24518 ray::RuntimeEnvAgent               
+SI cluster (/tmp/ray-si), the processes stop signals: 18
+    24439     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/s
+    24448     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    24449     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --addres
+    24450     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/Stocha
+    24475 24450 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resourc
+    24476 24450 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c
+    24477 24450 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    24478 24450 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24479 24450 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "fr
+    24480 24450 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    24481 24450 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c 
+    24482 24450 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24483 24450 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24484 24450 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24517     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    24518     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tm
+    24519 24518 ray::DashboardAgent                     
+    24520 24518 ray::RuntimeEnvAgent               
+port 6390: held
+port 6391: held
+port 8266: held
+port 52366: held
+== ray state: 3 after H2, at 2026-10-25 16:13:13 GMT
+$ ./venv/bin/ray list workers --address 127.0.0.1:6390 --filter "is_alive=True" --limit 500
+/Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/util/state/api.py:385: UserWarning: The returned data may contain incomplete result. 0 (33 total from the cluster) workers are retrieved from the data source. 33 entries have been truncated. Max of 0 entries are retrieved from data source to prevent over-sized payloads.
+  warnings.warn(
+No resource in the cluster
+[exit 0]
+$ ./venv/bin/ray list actors --address 127.0.0.1:6390 --filter "state=ALIVE"
+No resource in the cluster
+[exit 0]
+$ ./venv/bin/ray list jobs --address 127.0.0.1:6390
+
+======== List: 2026-10-25 16:13:15.431607 ========
+Stats:
+------------------------------
+Total: 3
+
+Table:
+------------------------------
+      JOB_ID  SUBMISSION_ID    ENTRYPOINT                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 TYPE            STATUS     MESSAGE    ERROR_TYPE    DRIVER_INFO
+ 0  01000000                   /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -c "import signal, ray; a = signal.getsignal(signal.SIGTERM); ray.init(address=\"127.0.0.1:6390\"); b = signal.getsignal(signal.SIGTERM); print(\"before\", a); print(\"after\", b, getattr(b, \"__module__\", None), getattr(b, \"__qualname__\", None)); ray.shutdown()"                                                                                                                                                                                                                         JobType.DRIVER  SUCCEEDED                           id: '01000000'
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              node_ip_address: 127.0.0.1
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              pid: '24927'
+ 1  02000000                   /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u RunDrivers/registered_run.py --campaign rrk-adoption --prompt 04 --register reference --purpose "rrk-adoption 04 H1: the rehearsal grid straight through, the reference store" -- --config quadratic-minimal.yaml --database /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-reference.sqlite --job-name rrk-adoption-04-reference --targets homogeneous --n-collocation-points 5 --alpha-regularization 0.01 --ray-address 127.0.0.1:6390                      JobType.DRIVER  SUCCEEDED                           id: '02000000'
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              node_ip_address: 127.0.0.1
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              pid: '24979'
+ 2  03000000                   /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u RunDrivers/registered_run.py --campaign rrk-adoption --prompt 04 --register resumed-a --purpose "rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2" -- --config quadratic-minimal.yaml --database /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.sqlite --job-name rrk-adoption-04-resumed-a --targets homogeneous --n-collocation-points 5 --alpha-regularization 0.01 --ray-address 127.0.0.1:6390  JobType.DRIVER  SUCCEEDED                           id: '03000000'
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              node_ip_address: 127.0.0.1
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              pid: '26077'
+
+[exit 0]
+
+===== point 4, straight after H3's SIGKILL (16:14:32): ray_cluster.sh status (pids: diff against the baseline empty)
+lock: HELD (/Users/ds283/.raypoolkit/rehearsal-lock)
+    project: StochasticInstantons
+    purpose: rrk-adoption 04 (R)
+    acquired: 2026-10-25T16:05:41+00:00
+    host: mps026088
+    ray_temp_dir: /tmp/ray-si
+    ray_address: 127.0.0.1:6390
+    pid: 24439
+owner pid 24439: alive
+Ray processes of /tmp/ray-si: 18
+    24439 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/session_2026-
+    24448 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+    24449 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --address=127.0.0.1:
+    24450 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/StochasticInstanto
+    24475 24450 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resource_tracker im
+    24476 24450 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multi
+    24477 24450 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipro
+    24478 24450 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24479 24450 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multiproc
+    24480 24450 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipro
+    24481 24450 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multip
+    24482 24450 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24483 24450 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24484 24450 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    24517 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+    24518 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tmp/ray-si/ses
+    24519 24518 ray::DashboardAgent                     
+    24520 24518 ray::RuntimeEnvAgent               
+SI cluster (/tmp/ray-si), the processes stop signals: 18
+    24439     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/s
+    24448     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    24449     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --addres
+    24450     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/Stocha
+    24475 24450 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resourc
+    24476 24450 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c
+    24477 24450 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    24478 24450 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24479 24450 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "fr
+    24480 24450 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    24481 24450 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c 
+    24482 24450 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24483 24450 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24484 24450 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24517     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    24518     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tm
+    24519 24518 ray::DashboardAgent                     
+    24520 24518 ray::RuntimeEnvAgent               
+port 6390: held
+port 6391: held
+port 8266: held
+port 52366: held
+== ray state: 4 straight after H3's SIGKILL, at 2026-10-25 16:14:32 GMT
+$ ./venv/bin/ray list workers --address 127.0.0.1:6390 --filter "is_alive=True" --limit 500
+/Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/util/state/api.py:385: UserWarning: The returned data may contain incomplete result. 0 (49 total from the cluster) workers are retrieved from the data source. 49 entries have been truncated. Max of 0 entries are retrieved from data source to prevent over-sized payloads.
+  warnings.warn(
+No resource in the cluster
+[exit 0]
+$ ./venv/bin/ray list actors --address 127.0.0.1:6390 --filter "state=ALIVE"
+No resource in the cluster
+[exit 0]
+$ ./venv/bin/ray list jobs --address 127.0.0.1:6390
+
+======== List: 2026-10-25 16:14:38.770176 ========
+Stats:
+------------------------------
+Total: 4
+
+Table:
+------------------------------
+      JOB_ID  SUBMISSION_ID    ENTRYPOINT                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 TYPE            STATUS     MESSAGE    ERROR_TYPE    DRIVER_INFO
+ 0  01000000                   /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -c "import signal, ray; a = signal.getsignal(signal.SIGTERM); ray.init(address=\"127.0.0.1:6390\"); b = signal.getsignal(signal.SIGTERM); print(\"before\", a); print(\"after\", b, getattr(b, \"__module__\", None), getattr(b, \"__qualname__\", None)); ray.shutdown()"                                                                                                                                                                                                                         JobType.DRIVER  SUCCEEDED                           id: '01000000'
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              node_ip_address: 127.0.0.1
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              pid: '24927'
+ 1  02000000                   /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u RunDrivers/registered_run.py --campaign rrk-adoption --prompt 04 --register reference --purpose "rrk-adoption 04 H1: the rehearsal grid straight through, the reference store" -- --config quadratic-minimal.yaml --database /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-reference.sqlite --job-name rrk-adoption-04-reference --targets homogeneous --n-collocation-points 5 --alpha-regularization 0.01 --ray-address 127.0.0.1:6390                      JobType.DRIVER  SUCCEEDED                           id: '02000000'
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              node_ip_address: 127.0.0.1
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              pid: '24979'
+ 2  03000000                   /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u RunDrivers/registered_run.py --campaign rrk-adoption --prompt 04 --register resumed-a --purpose "rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2" -- --config quadratic-minimal.yaml --database /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.sqlite --job-name rrk-adoption-04-resumed-a --targets homogeneous --n-collocation-points 5 --alpha-regularization 0.01 --ray-address 127.0.0.1:6390  JobType.DRIVER  SUCCEEDED                           id: '03000000'
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              node_ip_address: 127.0.0.1
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              pid: '26077'
+ 3  04000000                   /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u RunDrivers/registered_run.py --campaign rrk-adoption --prompt 04 --register resumed-b --purpose "rrk-adoption 04 H3: a resume of the resumed store, killed with SIGKILL in STAGE 3" -- --config quadratic-minimal.yaml --database /Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.sqlite --job-name rrk-adoption-04-resumed-b --targets homogeneous --n-collocation-points 5 --alpha-regularization 0.01 --ray-address 127.0.0.1:6390                   JobType.DRIVER  SUCCEEDED                           id: '04000000'
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              node_ip_address: 127.0.0.1
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              pid: '26796'
+
+[exit 0]
+--- $ kill -0 26796: 'kill 26796 failed: no such process', exit 1 (16:14:32 and 16:15:15)
+--- jobs and actors at 16:14:32 (ray list jobs / actors --format json, summarised by job, class and state):
+01000000 SUCCEEDED 24927
+02000000 SUCCEEDED 24979
+03000000 SUCCEEDED 26077
+04000000 SUCCEEDED 26796
+('02000000', 'Datastore', 'DEAD') 10
+('02000000', 'SerialPoolBroker', 'DEAD') 1
+('03000000', 'Datastore', 'DEAD') 10
+('03000000', 'SerialPoolBroker', 'DEAD') 1
+('04000000', 'Datastore', 'DEAD') 10
+('04000000', 'SerialPoolBroker', 'DEAD') 1
+total 33
+
+===== before the stop
+16:17:16 GMT
+16:17  up 20 days, 15:02, 1 user, load averages: 12.19 26.24 24.00
+01000000 SUCCEEDED driver pid 24927
+02000000 SUCCEEDED driver pid 24979
+03000000 SUCCEEDED driver pid 26077
+04000000 SUCCEEDED driver pid 26796
+05000000 SUCCEEDED driver pid 27449
+('02000000', 'Datastore', 'DEAD') 10
+('02000000', 'SerialPoolBroker', 'DEAD') 1
+('03000000', 'Datastore', 'DEAD') 10
+('03000000', 'SerialPoolBroker', 'DEAD') 1
+('04000000', 'Datastore', 'DEAD') 10
+('04000000', 'SerialPoolBroker', 'DEAD') 1
+('05000000', 'Datastore', 'DEAD') 10
+('05000000', 'SerialPoolBroker', 'DEAD') 1
+actors recorded 44 alive 0
+workers recorded 65 alive 0
+
+===== $ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh stop > <scratch>/stop.txt 2>&1    (16:17:30, exit 0)
+>> ray_cluster: SIGTERM to 18 process(es) naming /tmp/ray-si, and their descendants: 24439 24448 24449 24450 24475 24476 24477 24478 24479 24480 24481 24482 24483 24484 24517 24518 24519 24520
+    24439     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/s
+    24448     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    24449     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --addres
+    24450     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/Stocha
+    24475 24450 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resourc
+    24476 24450 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c
+    24477 24450 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    24478 24450 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24479 24450 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "fr
+    24480 24450 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    24481 24450 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c 
+    24482 24450 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24483 24450 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24484 24450 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    24517     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    24518     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tm
+    24519 24518 ray::DashboardAgent                     
+    24520 24518 ray::RuntimeEnvAgent               
+>> ray_cluster: grace period of 15s over; SIGKILL to: 24439 24448
+>> ray_cluster: no process names /tmp/ray-si; ports 6390 6391 8266 52366 are free
+released the rehearsal lock (/Users/ds283/.raypoolkit/rehearsal-lock)
+>> ray_cluster: stopped in 20s
+===== ray_cluster.sh status after the stop (exit 0)
+lock: free (/Users/ds283/.raypoolkit/rehearsal-lock does not exist)
+Ray processes of /tmp/ray-si: none
+SI cluster (/tmp/ray-si), the processes stop signals: none
+port 6390: free
+port 6391: free
+port 8266: free
+port 52366: free

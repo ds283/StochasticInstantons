@@ -1,6 +1,6 @@
 # rrk-adoption campaign — implementation state
 
-**Last updated:** 2026-10-25 · **Status: READY — 3 of 5 prompts landed; 01–05 written (§5.1); `main` merged in
+**Last updated:** 2026-10-25 · **Status: READY — 4 of 5 prompts landed; 01–05 written (§5.1); `main` merged in
 with `rpk-v030-adoption` (§5.3). R1–R7,
 U1 and U2 ruled by the user; P1–P14 stand as proposed (README §6). The branch `rrk-adoption` is cut
 from `main` at `1c223e8`, after `dk-and-rpk-migration` was merged into `main` (R7).**
@@ -56,7 +56,7 @@ any of them.
 | 01 | [`01-pin-config-and-rules.md`](01-pin-config-and-rules.md) | Sonnet | **landed** 2026-10-23 (`60687f0` and `7071bb8`) |
 | 02 | [`02-the-fingerprinter.md`](02-the-fingerprinter.md) | Sonnet | **landed** 2026-10-25 (`0fcaf7c`), reviewed |
 | 03 | [`03-the-wrapper.md`](03-the-wrapper.md) | Opus | **landed** 2026-10-25 (`16e1cc1`), reviewed |
-| 04 | [`04-rehearse-registered-runs.md`](04-rehearse-registered-runs.md) | Opus | written |
+| 04 | [`04-rehearse-registered-runs.md`](04-rehearse-registered-runs.md) | Opus | **landed** 2026-10-25 (this commit) |
 | 05 | [`05-close.md`](05-close.md) | Sonnet | written |
 
 01 comes first; 02 and 03 each need only 01; 04 needs 02 and 03; 05 needs 04 (README §2.1).
@@ -80,10 +80,10 @@ any of them.
 | **W4** | 03 | Ray and the signals (P9) | done |
 | **W5** | 03 | running `main.py`, finishing with the fingerprint, the exit marker | done |
 | **W6** | 03 | `tests/test_registered_run*.py` | done |
-| **H0** | 04 | the launcher `build_registered.sh` (P8) | — |
-| **H1**–**H4** | 04 | `reference`; `resumed-a` (`SIGTERM`); `resumed-b` (`SIGKILL`, `end`); `resumed-c` | — |
-| **H5** | 04 | the stores compared, with each other and with RH2's `11-reference` (P10) | — |
-| **H6** | 04 | `.documents/rrk-adoption/verification.md` §1 | — |
+| **H0** | 04 | the launcher `build_registered.sh` (P8) | done |
+| **H1**–**H4** | 04 | `reference`; `resumed-a` (`SIGTERM`); `resumed-b` (`SIGKILL`, `end`); `resumed-c` | done |
+| **H5** | 04 | the stores compared, with each other and with RH2's `11-reference` (P10) | done |
+| **H6** | 04 | `.documents/rrk-adoption/verification.md` §1 | done |
 | **Z1** | 05 | the descriptive documents | — |
 | **Z2** | 05 | `CLAUDE.md`, the rules, the test counts | — |
 | **Z3** | 05 | the stale prose (P12), `utilities.py`'s docstring among it | — |
@@ -97,7 +97,7 @@ any of them.
 | **Pin** | 01's acceptance: `runregistrykit` 0.2.0 installed from the tag, not editable; the package's suite passes on it; the config, `var/`, the rules and the hook in place | **held** 2026-10-23 |
 | **Fingerprint** | 02's acceptance: `SPEC_DIGESTS[1]` pinned and guarded; the golden fingerprint reproduced | **held** 2026-10-25 |
 | **Wrapper** | 03's acceptance: the wrapper's tests pass; `main.py` unchanged and importing nothing of the package | **held** 2026-10-25 |
-| **R** | 04's acceptance: the four registered builds recorded as planned; the resumed store and RH2's reference equal to `reference` | not yet |
+| **R** | 04's acceptance: the four registered builds recorded as planned; the resumed store and RH2's reference equal to `reference` | **held** 2026-10-25 |
 | RunRegistryKit `extraction` **G4**, `interrupted-runs` **G3** | drafted by 05, committed in RunRegistryKit by the user (P13) | not yet |
 
 ## 3. Active and unresolved issues
@@ -325,3 +325,49 @@ corrections 1, 2 and 8 of the note.
 **For 04's note.** A `done` homogeneous run's stage will read `Skipping gradient branch (--targets
 excludes 'gradient')`, `main.py`'s last `** ` line (the note's observation 3); `build.sh` writes a
 second marker (observation 2); and the lock's contract (§5.3).
+
+### 5.6 After prompt 04 (2026-10-25)
+
+- **Landed** in one commit on `rrk-adoption`, this commit. Results:
+  [`.documents/rrk-adoption/04-rehearse-registered-runs.md`](../../.documents/rrk-adoption/04-rehearse-registered-runs.md);
+  the record, [`.documents/rrk-adoption/verification.md`](../../.documents/rrk-adoption/verification.md) §1,
+  with its outputs under `.documents/rrk-adoption/out/04-*`.
+- **A stop at the gate, lifted.** At 15:42 the gate found `~/ScienceData` absent, and with it RH2's
+  `11-reference`; the agent stopped before anything ran. The user restored it from a backup. The
+  orchestrator checked it at 15:59 (the store and its ten shards back, mtime 22 Oct 21:29; its schema
+  agrees with RH2's recorded snapshot), and 04 ran from step 1 at 16:00.
+- **Gate R holds.** On SI's isolated cluster (`start` 16:05:41 and `stop` about 16:17:30, both exit
+  0, under the lock), four builds ran through the wrapper, launched by H0's launcher
+  (`.documents/rrk-adoption/rehearsal/build_registered.sh`, which detaches itself):
+  - `reference`: `done`/0;
+  - `resumed-a`: `killed`/143, after a `SIGTERM` 33 s after the STAGE 2 banner. It fell inside the
+    wide window, a narrow miss (all ten `FullInstanton` rows stored), and was recorded, not retuned;
+  - `resumed-b`: `SIGKILL`ed 10 s into STAGE 3, then `stale` with `!!`. A launch on its store was
+    refused, exit 2, with nothing created. `end` recorded it `lost`, verified;
+  - `resumed-c`: `done`/0, computing only the 20 rows missing.
+
+  Every manifest was written before `main.py`'s first line. `results_store_id` is `null`, `null`
+  and the resumed store's id twice.
+- **The stores and P9.**
+  - `compare_stores`: the reference against the resumed store, and the reference against RH2's
+    `11-reference`, each `RESULT: equal`, timestamps and timing keys aside.
+  - Both `var/` stores fingerprint to `a9f716fb…1ea7`.
+  - P9: Ray 2.55.1, attached to the cluster, installs its Python `SIGTERM` handler (the probe), and
+    the wrapper's replaces it. The driver exited 143 (RH2's 15), with no absl banner and no alarm
+    line. Nothing was left in Ray after the `SIGKILL`.
+- **Suites:** before and after, default 848 (847 passed, 1 skipped) and `integration` 72 (71 passed,
+  1 skipped), the baselines; `pip freeze` unchanged.
+- **Deviations:** 26, classed in the note. They are the brief's 18 corrections, and eight of the
+  agent's:
+  - the gate's stop, `NOTED`;
+  - `--poll 0.2`;
+  - the waits and check in one call;
+  - three scratch scripts;
+  - no prune report, since nothing was unvalidated;
+  - three `ALL WORK ITEMS COMPLETE` lines for `resumed-c`;
+  - RH2's mtimes listed;
+  - and one harmless slip: a command line naming the cluster's temp dir, run after the stop.
+- **Observed:** the package's repair of a replicated write in flight ran at both resumes. That
+  was the benign case, a `get`, so nothing was repaired. No issue opened; `OPEN-ISSUES.md` needs no
+  change.
+- **Next:** 05 (needs 04).

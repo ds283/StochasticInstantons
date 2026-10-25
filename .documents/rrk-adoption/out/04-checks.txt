@@ -1,0 +1,160 @@
+===== reference: the one check (./venv/bin/python <scratch>/check.py reference), straight after the registration wait
+check at 2026-10-25T16:07:14.127+00:00
+manifest (from the log): /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-reference-20261025T160704/manifest.json; exists: True
+run id: rrk-adoption-04-reference-20261025T160704; manifest created: 2026-10-25T16:07:04+00:00; results var/datastores/rrk-adoption-04-reference.sqlite; results_store_id None
+status: state running; pid 24979; heartbeat 2026-10-25T16:07:04+00:00; heartbeat age at the check 10.1 s; stage None
+pid file: 24979; equals status.json's pid: True
+born 2026-10-25 16:07:03: var/rrk-adoption-04/reference.log
+born 2026-10-25 16:07:04: /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-reference-20261025T160704/manifest.json
+--- the log's first lines
+  1| >> registered_run: registered as rrk-adoption-04-reference-20261025T160704
+  2| >>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-reference-20261025T160704/manifest.json
+  3| >>   list it with: ./venv/bin/python -m runregistrykit list
+  4| >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0)
+  5| 2026-10-25 16:07:07,649	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+  6| 2026-10-25 16:07:07,732	INFO worker.py:2003 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+  7| /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  8|   warnings.warn(
+--- runregistrykit list
+   RUN                                        STATE      PROGRESS      AGE  PURPOSE · STAGE
+   rrk-adoption-04-reference-20261025T160704  running           -      11s  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store
+
+1 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 1 alive; 0 with no host recorded.
+[list exit 0]
+check exit 0
+
+===== resumed-a: the one check (./venv/bin/python <scratch>/check.py resumed-a), straight after the registration wait
+check at 2026-10-25T16:11:39.951+00:00
+manifest (from the log): /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-resumed-a-20261025T161131/manifest.json; exists: True
+run id: rrk-adoption-04-resumed-a-20261025T161131; manifest created: 2026-10-25T16:11:31+00:00; results var/datastores/rrk-adoption-04-resumed.sqlite; results_store_id None
+status: state running; pid 26077; heartbeat 2026-10-25T16:11:31+00:00; heartbeat age at the check 9.0 s; stage None
+pid file: 26077; equals status.json's pid: True
+born 2026-10-25 16:11:30: var/rrk-adoption-04/resumed-a.log
+born 2026-10-25 16:11:31: /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-resumed-a-20261025T161131/manifest.json
+--- the log's first lines
+  1| >> registered_run: registered as rrk-adoption-04-resumed-a-20261025T161131
+  2| >>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-resumed-a-20261025T161131/manifest.json
+  3| >>   list it with: ./venv/bin/python -m runregistrykit list
+  4| >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0)
+  5| 2026-10-25 16:11:33,493	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+  6| 2026-10-25 16:11:33,625	INFO worker.py:2003 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+  7| /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  8|   warnings.warn(
+--- runregistrykit list
+   RUN                                        STATE      PROGRESS      AGE  PURPOSE · STAGE
+   rrk-adoption-04-resumed-a-20261025T161131  running           -      10s  rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2
+   rrk-adoption-04-reference-20261025T160704  done              -       5m  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+
+2 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 1 alive, 1 finished; 0 with no host recorded.
+[list exit 0]
+check exit 0
+
+===== resumed-b: the one check (./venv/bin/python <scratch>/check.py resumed-b), straight after the registration wait
+check at 2026-10-25T16:14:00.495+00:00
+manifest (from the log): /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-resumed-b-20261025T161352/manifest.json; exists: True
+run id: rrk-adoption-04-resumed-b-20261025T161352; manifest created: 2026-10-25T16:13:52+00:00; results var/datastores/rrk-adoption-04-resumed.sqlite; results_store_id b7904d18f0d24466b255fb7c0224a805
+status: state running; pid 26796; heartbeat 2026-10-25T16:13:52+00:00; heartbeat age at the check 8.5 s; stage None
+pid file: 26796; equals status.json's pid: True
+born 2026-10-25 16:13:52: var/rrk-adoption-04/resumed-b.log
+born 2026-10-25 16:13:52: /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-resumed-b-20261025T161352/manifest.json
+--- the log's first lines
+  1| >> registered_run: registered as rrk-adoption-04-resumed-b-20261025T161352
+  2| >>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-resumed-b-20261025T161352/manifest.json
+  3| >>   list it with: ./venv/bin/python -m runregistrykit list
+  4| >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0)
+  5| 2026-10-25 16:13:53,894	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+  6| 2026-10-25 16:13:53,940	INFO worker.py:2003 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+  7| /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  8|   warnings.warn(
+--- runregistrykit list
+   RUN                                        STATE      PROGRESS      AGE  PURPOSE · STAGE
+   rrk-adoption-04-resumed-b-20261025T161352  running           -       9s  rrk-adoption 04 H3: a resume of the resumed store, killed with SIGKILL in STAGE 3
+   rrk-adoption-04-resumed-a-20261025T161131  killed            -       3m  rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-reference-20261025T160704  done              -       7m  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+
+3 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 1 alive, 2 finished; 0 with no host recorded.
+[list exit 0]
+check exit 0
+
+===== resumed-c: the one check (./venv/bin/python <scratch>/check.py resumed-c), straight after the registration wait
+check at 2026-10-25T16:15:32.331+00:00
+manifest (from the log): /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-resumed-c-20261025T161521/manifest.json; exists: True
+run id: rrk-adoption-04-resumed-c-20261025T161521; manifest created: 2026-10-25T16:15:21+00:00; results var/datastores/rrk-adoption-04-resumed.sqlite; results_store_id b7904d18f0d24466b255fb7c0224a805
+status: state running; pid 27449; heartbeat 2026-10-25T16:15:32+00:00; heartbeat age at the check 0.3 s; stage 'STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES, all work items complete'
+pid file: 27449; equals status.json's pid: True
+born 2026-10-25 16:15:20: var/rrk-adoption-04/resumed-c.log
+born 2026-10-25 16:15:21: /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-resumed-c-20261025T161521/manifest.json
+--- the log's first lines
+  1| >> registered_run: registered as rrk-adoption-04-resumed-c-20261025T161521
+  2| >>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-resumed-c-20261025T161521/manifest.json
+  3| >>   list it with: ./venv/bin/python -m runregistrykit list
+  4| >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0)
+  5| 2026-10-25 16:15:23,178	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+  6| 2026-10-25 16:15:23,243	INFO worker.py:2003 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+  7| /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  8|   warnings.warn(
+--- runregistrykit list
+   RUN                                        STATE      PROGRESS      AGE  PURPOSE · STAGE
+   rrk-adoption-04-resumed-c-20261025T161521  running           -      12s  rrk-adoption 04 H4: the last resume of the resumed store, straight through  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-resumed-b-20261025T161352  lost              -       2m  rrk-adoption 04 H3: a resume of the resumed store, killed with SIGKILL in STAGE 3  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-resumed-a-20261025T161131  killed            -       4m  rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-reference-20261025T160704  done              -       8m  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+
+4 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 1 alive, 3 finished; 0 with no host recorded.
+[list exit 0]
+check exit 0
+
+===== list after H1 ended
+   RUN                                        STATE      PROGRESS      AGE  PURPOSE · STAGE
+   rrk-adoption-04-reference-20261025T160704  done              -       3m  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+
+1 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 1 finished; 0 with no host recorded.
+
+===== after H3's SIGKILL: status.json left behind, list (stdout, then stderr)
+$ cat var/runs/rrk-adoption-04-resumed-b-20261025T161352/status.json   (at 16:14:50, before end; 04-resumed-b.status.json is the status after end)
+{
+  "exit_code": null,
+  "heartbeat": "2026-10-25T16:14:02+00:00",
+  "host": {
+    "boot": "376461AF-4985-4F42-8E41-F4E914F5E3E6",
+    "id": "8d2b247824882486"
+  },
+  "pid": 26796,
+  "stage": "STAGE 3: SLOW-ROLL INSTANTONS",
+  "state": "running",
+  "units_done": 0,
+  "units_total": null
+}
+   RUN                                        STATE      PROGRESS      AGE  PURPOSE · STAGE
+!! rrk-adoption-04-resumed-b-20261025T161352  running           -      59s  rrk-adoption 04 H3: a resume of the resumed store, killed with SIGKILL in STAGE 3  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-resumed-a-20261025T161131  killed            -       3m  rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-reference-20261025T160704  done              -       8m  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+
+3 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 2 finished, 1 stale; 0 with no host recorded.
+[stderr]
+!! 1 run(s) say they are running and are not: the pid does not answer kill -0, the heartbeat is older than 900 s, or this machine has rebooted since. Nothing here has killed or cleaned anything — go and look. Once you know one is over, end it with `python -m runregistrykit end RUN_ID --reason TEXT`.
+
+===== end, then list
+16:15:15
+(eval):kill:1: kill 26796 failed: no such process
+kill -0 26796 exit 1
+$ ./venv/bin/python -m runregistrykit end rrk-adoption-04-resumed-b-20261025T161352 --reason "SIGKILLed on purpose by rrk-adoption 04 to rehearse the hard-kill route"
+>> end: rrk-adoption-04-resumed-b-20261025T161352 is now lost, verified: its pid 26796 does not answer kill -0 on this host
+[end exit 0]
+$ ./venv/bin/python -m runregistrykit list
+   RUN                                        STATE      PROGRESS      AGE  PURPOSE · STAGE
+   rrk-adoption-04-resumed-b-20261025T161352  lost              -       1m  rrk-adoption 04 H3: a resume of the resumed store, killed with SIGKILL in STAGE 3  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-resumed-a-20261025T161131  killed            -       4m  rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-reference-20261025T160704  done              -       8m  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+
+3 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 3 finished; 0 with no host recorded.
+[list exit 0]
+
+===== list after H4 ended
+   RUN                                        STATE      PROGRESS      AGE  PURPOSE · STAGE
+   rrk-adoption-04-resumed-c-20261025T161521  done              -      57s  rrk-adoption 04 H4: the last resume of the resumed store, straight through  · Skipping gradient branch (--targets excludes 'gradient')
+   rrk-adoption-04-resumed-b-20261025T161352  lost              -       2m  rrk-adoption 04 H3: a resume of the resumed store, killed with SIGKILL in STAGE 3  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-resumed-a-20261025T161131  killed            -       5m  rrk-adoption 04 H2: the rehearsal grid into the resumed store, interrupted with SIGTERM in STAGE 2  · STAGE 3: SLOW-ROLL INSTANTONS
+   rrk-adoption-04-reference-20261025T160704  done              -       9m  rrk-adoption 04 H1: the rehearsal grid straight through, the reference store  · Skipping gradient branch (--targets excludes 'gradient')
+
+4 run(s) under /Users/ds283/Documents/Code/StochasticInstantons/var/runs: 4 finished; 0 with no host recorded.

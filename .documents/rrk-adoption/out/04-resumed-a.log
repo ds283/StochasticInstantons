@@ -1,0 +1,47 @@
+>> registered_run: registered as rrk-adoption-04-resumed-a-20261025T161131
+>>   manifest /Users/ds283/Documents/Code/StochasticInstantons/var/runs/rrk-adoption-04-resumed-a-20261025T161131/manifest.json
+>>   list it with: ./venv/bin/python -m runregistrykit list
+>> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0)
+2026-10-25 16:11:33,493	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+2026-10-25 16:11:33,625	INFO worker.py:2003 -- Connected to Ray cluster. View the dashboard at http://127.0.0.1:8266 
+/Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+>> Created sharded datastore "/Users/ds283/Documents/Code/StochasticInstantons/var/datastores/rrk-adoption-04-resumed.sqlite" with 10 shards
+
+** BUILDING PARAMETER SAMPLING GRIDS
+   -- using potential type "Quadratic"
+   -- N_init: 1 value = [ 20 ]
+   -- N_final: 1 value = [ 5 ]
+   -- delta_Nstar: 10 values = [ 0.1, 0.42222, 0.74444, 1.0667, 1.3889, 1.7111, 2.0333, 2.3556, 2.6778, 3 ]
+   -- n_collocation_points: 1 value = [ 5 ]
+   -- alpha_regularization: 1 value = [ 0.01 ]
+   -- Quadratic m: 1 value = [ 1e-05 Mp ]
+   -- time sampling: 100 samples per e-fold
+
+   >> 1 model and 1 x 1 x 10 N_init/N_final/delta_Nstar grid = 10 parameter combinations per model = 10 instanton combinations
+
+** COSMOLOGICAL PARAMETERS: Planck2018 68% central values TT+TE+EE+lowP+lensing+BAO (store_id=1)
+
+** DIFFUSION MODEL: MasslessDecoupledDiffusion (store_id=1)
+
+** STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES
+(_compute_inflaton_trajectory pid=26135) [InflatonTrajectory] integrating background trajectory: phi0=15, pi0=0
+(_compute_inflaton_trajectory pid=26135) [InflatonTrajectory] N_end = 57.122
+   -- ALL WORK ITEMS COMPLETE in time 16.2s
+      Queue summary: 1 lookup (avg 222.2/hr), 1 compute (avg 222.2/hr), 1 store (avg 222.2/hr), 1 validation (avg 222.2/hr)
+
+** STAGE 2: FULL MSR INSTANTONS LOOKUP:
+   -- 0 already computed, 10 to compute
+
+** STAGE 2: FULL MSR INSTANTONS
+   -- ALL WORK ITEMS COMPLETE in time 31.3s
+      Queue summary: 10 lookup (avg 19.14/min), 10 compute (avg 19.14/min), 10 store (avg 19.14/min), 10 validation (avg 19.14/min)
+
+** STAGE 3: SLOW-ROLL INSTANTONS LOOKUP:
+   -- 0 already computed, 10 to compute
+
+** STAGE 3: SLOW-ROLL INSTANTONS
+** SIGTERM at 2026-10-25 16:12:33 +0000: recorded killed, exit code 143; stopping main.py; the process will exit with status 143
+** SIGTERM: main.py ended with SystemExit(1); recording killed, exit code 143
+** driver exit status 143
+** launcher saw exit status 143

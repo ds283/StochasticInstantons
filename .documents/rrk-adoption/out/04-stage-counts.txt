@@ -1,0 +1,50 @@
+$ ./venv/bin/python .documents/dk-and-rpk-migration/rehearsal/stage_counts.py var/rrk-adoption-04/reference.log
+LOG var/rrk-adoption-04/reference.log
+  >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0)
+  STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES: complete; lookup 1, compute 1, store 1, validation 1
+  STAGE 2: FULL MSR INSTANTONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 2: FULL MSR INSTANTONS: complete; lookup 10, compute 10, store 10, validation 10
+  STAGE 3: SLOW-ROLL INSTANTONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 3: SLOW-ROLL INSTANTONS: complete; lookup 10, compute 10, store 10, validation 10
+  STAGE 4: COMPACTION FUNCTIONS (section)
+  COMPACTION FUNCTIONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 4: COMPACTION FUNCTIONS AND MASSES: complete; lookup 10, compute 10, store 10, validation 10
+  Skipping gradient branch (--targets excludes 'gradient')
+  ALL WORK ITEMS COMPLETE lines: 4
+  driver exit status: 0
+
+$ ./venv/bin/python .documents/dk-and-rpk-migration/rehearsal/stage_counts.py var/rrk-adoption-04/resumed-a.log
+LOG var/rrk-adoption-04/resumed-a.log
+  >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0)
+  STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES: complete; lookup 1, compute 1, store 1, validation 1
+  STAGE 2: FULL MSR INSTANTONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 2: FULL MSR INSTANTONS: complete; lookup 10, compute 10, store 10, validation 10
+  STAGE 3: SLOW-ROLL INSTANTONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 3: SLOW-ROLL INSTANTONS: INCOMPLETE; no queue summary
+  ALL WORK ITEMS COMPLETE lines: 2
+  driver exit status: 143
+
+$ ./venv/bin/python .documents/dk-and-rpk-migration/rehearsal/stage_counts.py var/rrk-adoption-04/resumed-b.log
+LOG var/rrk-adoption-04/resumed-b.log
+  >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0)
+  STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES: complete; lookup 1, compute 0, store 0, validation 0; no compute items evaluated
+  STAGE 2: FULL MSR INSTANTONS LOOKUP: 10 already computed, 0 to compute, 0 skipped
+  STAGE 3: SLOW-ROLL INSTANTONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 3: SLOW-ROLL INSTANTONS: INCOMPLETE; no queue summary
+  ALL WORK ITEMS COMPLETE lines: 1
+  driver exit status: not recorded
+
+$ ./venv/bin/python .documents/dk-and-rpk-migration/rehearsal/stage_counts.py var/rrk-adoption-04/resumed-c.log
+LOG var/rrk-adoption-04/resumed-c.log
+  >> packages: datastorekit 0.5.0 (https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31, requested v0.5.0); raypoolkit 0.3.0 (https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2, requested v0.3.0)
+  STAGE 1: BACKGROUND INFLATIONARY TRAJECTORIES: complete; lookup 1, compute 0, store 0, validation 0; no compute items evaluated
+  STAGE 2: FULL MSR INSTANTONS LOOKUP: 10 already computed, 0 to compute, 0 skipped
+  STAGE 3: SLOW-ROLL INSTANTONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 3: SLOW-ROLL INSTANTONS: complete; lookup 10, compute 10, store 10, validation 10
+  STAGE 4: COMPACTION FUNCTIONS (section)
+  COMPACTION FUNCTIONS LOOKUP: 0 already computed, 10 to compute, 0 skipped
+  STAGE 4: COMPACTION FUNCTIONS AND MASSES: complete; lookup 10, compute 10, store 10, validation 10
+  Skipping gradient branch (--targets excludes 'gradient')
+  ALL WORK ITEMS COMPLETE lines: 3
+  driver exit status: 0
+

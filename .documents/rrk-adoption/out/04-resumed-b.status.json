@@ -1,0 +1,36 @@
+{
+  "ended": {
+    "at": "2026-10-25T16:15:16+00:00",
+    "by": "ds283",
+    "evidence": {
+      "boot": "this",
+      "heartbeat": "2026-10-25T16:14:02+00:00",
+      "heartbeat_age": 74.100194,
+      "host": "this",
+      "pid": 26796,
+      "pid_answers": false,
+      "state": "running",
+      "status_readable": true
+    },
+    "git_head": "535b7e7e21cdb7706d969003a9641913d246d93f",
+    "host": {
+      "boot": "376461AF-4985-4F42-8E41-F4E914F5E3E6",
+      "id": "8d2b247824882486",
+      "name": "mps026088.phys.susx.ac.uk"
+    },
+    "not_verified_because": null,
+    "reason": "SIGKILLed on purpose by rrk-adoption 04 to rehearse the hard-kill route",
+    "verified": true
+  },
+  "exit_code": null,
+  "heartbeat": "2026-10-25T16:15:16+00:00",
+  "host": {
+    "boot": "376461AF-4985-4F42-8E41-F4E914F5E3E6",
+    "id": "8d2b247824882486"
+  },
+  "pid": 26796,
+  "stage": "STAGE 3: SLOW-ROLL INSTANTONS",
+  "state": "lost",
+  "units_done": 0,
+  "units_total": null
+}
