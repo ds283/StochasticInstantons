@@ -15,7 +15,15 @@ python -c "..."   # used for acceptance-criteria checks in prompts
 `auto` default. Pass `local` for a private in-process Ray instance, or a
 cluster's GCS address. Rehearsals and long builds run on SI's isolated cluster
 under the shared rehearsal lock: `.documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh
-start PURPOSE`, then `--ray-address 127.0.0.1:6390`. Never run `ray stop`: it
+start PURPOSE`, then `--ray-address 127.0.0.1:6390`. The lock is the pinned
+package's `raypoolkit.rehearsal_lock` (`~/.raypoolkit/rehearsal-lock`, shared
+with ChamPBH and SecondaryGWKit; its contract is RayPoolKit's
+`docs/rehearsal-lock.md`), and a held lock, exit 3 (given too while the lock's
+old location exists), means stop and ask, never wait. The lock lists every
+process whose command line names `/tmp/ray-si`, and that process's other
+descendants: so no `PURPOSE` names it, and a lock command typed by hand is the
+only process of its shell command, its output redirected, never piped (the
+contract, §6). Never run `ray stop`: it
 stops every Ray process on the machine, other projects' clusters included (see
 `.prompts/dk-and-rpk-migration/rehearsal-lock-brief.md`).
 
@@ -140,7 +148,7 @@ None of the list is a file of either package. The datastore layer (`ShardedPool`
 the `Datastore` actor, `ClientPool`, `SerialPoolBroker`, `ProfileAgent`,
 `DatastoreObject` and `SQLAFactoryBase`) is the `datastorekit` package, and
 `RayWorkPool` is the `raypoolkit` package. Each is pinned to a tag in
-`requirements.txt` (`datastorekit` `v0.5.0`, `raypoolkit` `v0.2.0`), installed
+`requirements.txt` (`datastorekit` `v0.5.0`, `raypoolkit` `v0.3.0`), installed
 from it and never editable; SI has no copy of either. What a client supplies to
 the first is DatastoreKit's `docs/client-contract.md` at the tag; how the second
 is called is RayPoolKit's `README.md` at its tag, "Using it".

@@ -1,6 +1,7 @@
 # rrk-adoption campaign — implementation state
 
-**Last updated:** 2026-10-23 · **Status: READY — 1 of 5 prompts landed; 01–05 written (§5.1). R1–R7,
+**Last updated:** 2026-10-25 · **Status: READY — 1 of 5 prompts landed; 01–05 written (§5.1); `main` merged in
+with `rpk-v030-adoption` (§5.3). R1–R7,
 U1 and U2 ruled by the user; P1–P14 stand as proposed (README §6). The branch `rrk-adoption` is cut
 from `main` at `1c223e8`, after `dk-and-rpk-migration` was merged into `main` (R7).**
 The plan is [`README.md`](README.md), written on 2026-10-23 at `8b4f615`. Prompts 01–05 were written
@@ -154,3 +155,28 @@ None.
 - **One deviation:** `git check-ignore -q` takes a single path, so C5 item 3 is parametrized over the two (6 tests, not 5).
 - No issue opened; `OPEN-ISSUES.md` and `INDEX.md` need no change beyond the INDEX line's status (updated).
 - **Next:** 02 and 03, each needing only 01.
+
+### 5.3 `main` merged in, with `rpk-v030-adoption` (2026-10-25)
+
+At the user's instruction, by the orchestrator of `rpk-v030-adoption` (that campaign's README §4,
+item 3), before 02 is dispatched. Nothing pushed.
+- **What came in.** `main` at `bb2d953`, fast-forwarded to the closed `rpk-v030-adoption`: the
+  `raypoolkit` pin at `v0.3.0`; `ray_cluster.sh` taking the shared lock through
+  `raypoolkit.rehearsal_lock` at `~/.raypoolkit/rehearsal-lock` (its `start`, `stop` and `status`
+  keep their names and arguments); `CLAUDE.md`'s lock sentence and pin; `INFRASTRUCTURE.md` and
+  `architecture-summary.md`'s pin statements; that campaign's prompts and results. No `.py` file.
+- **Conflicts.** `requirements.txt` merged without one: the `raypoolkit` line at `v0.3.0` and this
+  campaign's `runregistrykit[stores]` line both kept. `.prompts/INDEX.md` conflicted on its header
+  and table: both campaigns' lines kept, the header recounted to 8 campaigns (0 ready, 1 live, 1
+  halted, 6 complete), and this branch's `dk-and-rpk-migration` line kept, since it records P15.
+  `CLAUDE.md` merged cleanly.
+- **Checked on the merged tree.** No live line names the old lock location or pins `raypoolkit`
+  at `v0.2.0`. `pip install --dry-run -r requirements.txt` installs nothing: the venv already holds
+  `raypoolkit` 0.3.0 (since `rpk-v030-adoption` 01) and `runregistrykit` 0.2.0. `runregistrykit
+  list`: no runs. Default suite 738 (737 passed, 1 skipped), as after 01.
+- **For 02–05.** Nothing in them changes. README §0.3's "`raypoolkit` 0.2.0" in the venv is a
+  record of 2026-10-23 and stays. 04's "Read first" 3 names the brief, whose §2 (the lock) is now
+  replaced by RayPoolKit's `docs/rehearsal-lock.md` at `v0.3.0`; 04's orchestrator note should
+  point the agent at the contract for the lock, and at `CLAUDE.md`'s rule that no `PURPOSE` names
+  `/tmp/ray-si` and that a lock command typed by hand is the only process of its shell command.
+  A held lock is still exit 3 from `start`, and `status` still reads `lock: free (…)` when free.

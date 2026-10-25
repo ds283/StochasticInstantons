@@ -1,0 +1,240 @@
+# 2.6 The live check, real HOME, 2026-10-25 08:29:59 +0000. Script at the working tree (3d6328e + the edits).
+## step 1
+$ ./venv/bin/python -m raypoolkit.rehearsal_lock status
+lock: free (/Users/ds283/.raypoolkit/rehearsal-lock does not exist)
+Ray processes: no temp dir given
+exit 0
+## step 2
+$ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start "rpk-v030-adoption 01 (live check)"
+acquired the rehearsal lock (/Users/ds283/.raypoolkit/rehearsal-lock) for StochasticInstantons: rpk-v030-adoption 01 (live check)
+2026-10-25 08:30:07,587	INFO usage_lib.py:448 -- Usage stats collection is disabled.
+2026-10-25 08:30:07,588	INFO scripts.py:940 -- [37mLocal node IP[39m: [1m127.0.0.1[22m
+2026-10-25 08:30:12,441	SUCC scripts.py:979 -- [32m--------------------[39m
+2026-10-25 08:30:12,441	SUCC scripts.py:980 -- [32mRay runtime started.[39m
+2026-10-25 08:30:12,442	SUCC scripts.py:981 -- [32m--------------------[39m
+2026-10-25 08:30:12,442	INFO scripts.py:983 -- [36mNext steps[39m
+2026-10-25 08:30:12,442	INFO scripts.py:1000 -- To connect to this Ray cluster:
+2026-10-25 08:30:12,442	INFO scripts.py:1002 -- [35mimport[39m[26m ray
+2026-10-25 08:30:12,442	INFO scripts.py:1003 -- ray[35m.[39m[26minit()
+2026-10-25 08:30:12,442	INFO scripts.py:1017 -- To submit a Ray job using the Ray Jobs CLI:
+2026-10-25 08:30:12,442	INFO scripts.py:1018 -- [1m  RAY_API_SERVER_ADDRESS='http://127.0.0.1:8266' ray job submit --working-dir . -- python my_script.py[22m
+2026-10-25 08:30:12,442	INFO scripts.py:1027 -- See https://docs.ray.io/en/latest/cluster/running-applications/job-submission/index.html 
+2026-10-25 08:30:12,442	INFO scripts.py:1031 -- for more information on submitting Ray jobs to the Ray cluster.
+2026-10-25 08:30:12,442	INFO scripts.py:1036 -- To terminate the Ray runtime, run
+2026-10-25 08:30:12,442	INFO scripts.py:1037 -- [1m  ray stop[22m
+2026-10-25 08:30:12,442	INFO scripts.py:1040 -- To view the status of the cluster, use
+2026-10-25 08:30:12,442	INFO scripts.py:1041 --   [1mray status[22m[26m
+2026-10-25 08:30:12,442	INFO scripts.py:1045 -- To monitor and debug Ray, view the dashboard at 
+2026-10-25 08:30:12,442	INFO scripts.py:1046 --   [1m127.0.0.1:8266[22m[26m
+2026-10-25 08:30:12,442	INFO scripts.py:1053 -- [4mIf connection to the dashboard fails, check your firewall settings and network configuration.[24m
+recorded pid 17315 in /Users/ds283/.raypoolkit/rehearsal-lock/owner
+>> ray_cluster: address 127.0.0.1:6390
+>> ray_cluster: dashboard http://127.0.0.1:8266
+>> ray_cluster: actors: ./venv/bin/ray list actors --address 127.0.0.1:6390
+>> ray_cluster: started in 7s; gcs_server pid 17315
+exit 0
+## step 3
+$ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh status
+lock: HELD (/Users/ds283/.raypoolkit/rehearsal-lock)
+    project: StochasticInstantons
+    purpose: rpk-v030-adoption 01 (live check)
+    acquired: 2026-10-25T08:30:06+00:00
+    host: mps026088
+    ray_temp_dir: /tmp/ray-si
+    ray_address: 127.0.0.1:6390
+    pid: 17315
+owner pid 17315: alive
+Ray processes of /tmp/ray-si: 18
+    17315 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/session_2026-
+    17316 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+    17317 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --address=127.0.0.1:
+    17318 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/StochasticInstanto
+    17319 17318 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resource_tracker im
+    17320 17318 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multi
+    17321 17318 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipro
+    17322 17318 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    17323 17318 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multiproc
+    17324 17318 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipro
+    17325 17318 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multip
+    17326 17318 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    17327 17318 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    17328 17318 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    17331 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+    17332 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tmp/ray-si/ses
+    17333 17332 ray::DashboardAgent                     
+    17334 17332 ray::RuntimeEnvAgent               
+SI cluster (/tmp/ray-si), the processes stop signals: 18
+    17315     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/s
+    17316     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    17317     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --addres
+    17318     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/Stocha
+    17319 17318 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resourc
+    17320 17318 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c
+    17321 17318 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    17322 17318 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    17323 17318 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "fr
+    17324 17318 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    17325 17318 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c 
+    17326 17318 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    17327 17318 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    17328 17318 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    17331     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    17332     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tm
+    17333 17332 ray::DashboardAgent                     
+    17334 17332 ray::RuntimeEnvAgent               
+port 6390: held
+port 6391: held
+port 8266: held
+port 52366: held
+exit 0
+## step 4
+$ ./venv/bin/python -m raypoolkit.rehearsal_lock ray-processes --ray-temp-dir /tmp/ray-si --ray-address 127.0.0.1:6390
+17315 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/session_2026-
+17316 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+17317 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --address=127.0.0.1:
+17318 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/StochasticInstanto
+17319 17318 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resource_tracker im
+17320 17318 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multi
+17321 17318 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipro
+17322 17318 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+17323 17318 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multiproc
+17324 17318 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipro
+17325 17318 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multip
+17326 17318 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+17327 17318 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+17328 17318 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+17331 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+17332 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tmp/ray-si/ses
+17333 17332 ray::DashboardAgent                     
+17334 17332 ray::RuntimeEnvAgent               
+exit 1
+## step 5
+$ ./venv/bin/python -c 'import ray; ray.init(address="127.0.0.1:6390"); print(ray.cluster_resources()); ray.shutdown()'
+2026-10-25 08:30:37,200	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 127.0.0.1:6390...
+2026-10-25 08:30:37,253	INFO worker.py:2003 -- Connected to Ray cluster. View the dashboard at [1m[32mhttp://127.0.0.1:8266 [39m[22m
+/Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+{'node:__internal_head__': 1.0, 'memory': 7819362304.0, 'node:127.0.0.1': 1.0, 'object_store_memory': 2147483648.0, 'CPU': 4.0}
+exit 0
+## step 6
+$ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh start "rpk-v030-adoption 01 (second start)"
+the rehearsal lock is held (/Users/ds283/.raypoolkit/rehearsal-lock); its owner file:
+    project: StochasticInstantons
+    purpose: rpk-v030-adoption 01 (live check)
+    acquired: 2026-10-25T08:30:06+00:00
+    host: mps026088
+    ray_temp_dir: /tmp/ray-si
+    ray_address: 127.0.0.1:6390
+    pid: 17315
+stop and ask the user; nothing here waits on, retries or breaks the lock
+exit 3
+$ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh status
+lock: HELD (/Users/ds283/.raypoolkit/rehearsal-lock)
+    project: StochasticInstantons
+    purpose: rpk-v030-adoption 01 (live check)
+    acquired: 2026-10-25T08:30:06+00:00
+    host: mps026088
+    ray_temp_dir: /tmp/ray-si
+    ray_address: 127.0.0.1:6390
+    pid: 17315
+owner pid 17315: alive
+Ray processes of /tmp/ray-si: 22
+    17315 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/session_2026-
+    17316 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+    17317 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --address=127.0.0.1:
+    17318 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/StochasticInstanto
+    17319 17318 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resource_tracker im
+    17320 17318 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multi
+    17321 17318 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipro
+    17322 17318 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    17323 17318 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multiproc
+    17324 17318 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipro
+    17325 17318 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multip
+    17326 17318 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    17327 17318 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    17328 17318 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "from multipr
+    17331 1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/StochasticInsta
+    17332 1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tmp/ray-si/ses
+    17333 17332 ray::DashboardAgent                     
+    17334 17332 ray::RuntimeEnvAgent               
+    17588 17332 ray::IDLE                   
+    17589 17332 ray::IDLE                   
+    17590 17332 ray::IDLE                   
+    17591 17332 ray::IDLE                   
+SI cluster (/tmp/ray-si), the processes stop signals: 22
+    17315     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/s
+    17316     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    17317     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --addres
+    17318     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/Stocha
+    17319 17318 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resourc
+    17320 17318 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c
+    17321 17318 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    17322 17318 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    17323 17318 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "fr
+    17324 17318 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    17325 17318 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c 
+    17326 17318 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    17327 17318 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    17328 17318 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    17331     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    17332     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tm
+    17333 17332 ray::DashboardAgent                     
+    17334 17332 ray::RuntimeEnvAgent               
+    17588 17332 ray::IDLE                   
+    17589 17332 ray::IDLE                   
+    17590 17332 ray::IDLE                   
+    17591 17332 ray::IDLE                   
+port 6390: held
+port 6391: held
+port 8266: held
+port 52366: held
+exit 0
+## step 7
+$ ./venv/bin/python -m raypoolkit.rehearsal_lock release --project StochasticInstantons --ray-temp-dir /tmp/ray-si
+release: the recorded pid 17315 is alive; not releasing
+exit 1
+$ ls -A ~/.raypoolkit/rehearsal-lock   (the lock still held)
+owner
+exit 0
+## step 8
+$ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh stop
+>> ray_cluster: SIGTERM to 22 process(es) naming /tmp/ray-si, and their descendants: 17315 17316 17317 17318 17319 17320 17321 17322 17323 17324 17325 17326 17327 17328 17331 17332 17333 17334 17588 17589 17590 17591
+    17315     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/gcs/gcs_server --log_dir=/tmp/ray-si/s
+    17316     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    17317     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m ray.util.client.server --addres
+    17318     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /Users/ds283/Documents/Code/Stocha
+    17319 17318 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c from multiprocessing.resourc
+    17320 17318 ray-dashboard-MetricsHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c
+    17321 17318 ray-dashboard-DataHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    17322 17318 ray-dashboard-EventHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    17323 17318 ray-dashboard-JobHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "fr
+    17324 17318 ray-dashboard-NodeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "f
+    17325 17318 ray-dashboard-ReportHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c 
+    17326 17318 ray-dashboard-ServeHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    17327 17318 ray-dashboard-StateHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    17328 17318 ray-dashboard-TrainHead-0 (/opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -c "
+    17331     1 /opt/local/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/ds283/Documents/Code/Sto
+    17332     1 /Users/ds283/Documents/Code/StochasticInstantons/venv/lib/python3.13/site-packages/ray/core/src/ray/raylet/raylet --raylet_socket_name=/tm
+    17333 17332 ray::DashboardAgent                     
+    17334 17332 ray::RuntimeEnvAgent               
+    17588 17332 ray::IDLE                   
+    17589 17332 ray::IDLE                   
+    17590 17332 ray::IDLE                   
+    17591 17332 ray::IDLE                   
+>> ray_cluster: grace period of 15s over; SIGKILL to: 17315 17316
+>> ray_cluster: no process names /tmp/ray-si; ports 6390 6391 8266 52366 are free
+released the rehearsal lock (/Users/ds283/.raypoolkit/rehearsal-lock)
+>> ray_cluster: stopped in 20s
+exit 0
+## step 9
+$ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh status
+lock: free (/Users/ds283/.raypoolkit/rehearsal-lock does not exist)
+Ray processes of /tmp/ray-si: none
+SI cluster (/tmp/ray-si), the processes stop signals: none
+port 6390: free
+port 6391: free
+port 8266: free
+port 52366: free
+exit 0
+$ ./venv/bin/python -m raypoolkit.rehearsal_lock ray-processes --ray-temp-dir /tmp/ray-si --ray-address 127.0.0.1:6390
+exit 0

@@ -1,0 +1,194 @@
+# 2.1 Baseline, 2026-10-25 08:23:23 +0000, at 0f190c8
+$ ./venv/bin/pip freeze
+aiohappyeyeballs==2.6.2
+aiohttp==3.14.1
+aiohttp-cors==0.8.1
+aiosignal==1.4.0
+annotated-types==0.7.0
+attrs==26.1.0
+certifi==2026.5.20
+cffi==2.0.0
+charset-normalizer==3.4.7
+click==8.4.1
+colorful==0.5.8
+ConfigArgParse==1.7.5
+contourpy==1.3.3
+cryptography==49.0.0
+cycler==0.12.1
+datastorekit @ git+https://github.com/ds283/DatastoreKit@f47b9a255e9ad58e0d0eaf85644f53b575884d31
+distlib==0.4.3
+filelock==3.29.4
+fonttools==4.63.0
+frozenlist==1.8.0
+google-api-core==2.31.0
+google-auth==2.54.0
+googleapis-common-protos==1.75.0
+grpcio==1.81.1
+idna==3.18
+iniconfig==2.3.0
+joblib==1.5.3
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+kiwisolver==1.5.0
+matplotlib==3.11.0
+msgpack==1.2.0
+multidict==6.7.1
+narwhals==2.22.1
+numpy==2.4.6
+opencensus==0.11.4
+opencensus-context==0.1.3
+opentelemetry-api==1.42.1
+opentelemetry-exporter-prometheus==0.63b1
+opentelemetry-proto==1.42.1
+opentelemetry-sdk==1.42.1
+opentelemetry-semantic-conventions==0.63b1
+packaging==26.2
+pandas==3.0.3
+pillow==12.2.0
+platformdirs==4.10.0
+pluggy==1.6.0
+prometheus_client==0.25.0
+propcache==0.5.2
+proto-plus==1.28.0
+protobuf==6.33.6
+py-spy==0.4.2
+pyasn1==0.6.3
+pyasn1_modules==0.4.2
+pycparser==3.0
+pydantic==2.13.4
+pydantic_core==2.46.4
+pyflakes==3.4.0
+Pygments==2.20.0
+pyparsing==3.3.2
+pytest==9.1.1
+python-dateutil==2.9.0.post0
+python-discovery==1.4.2
+PyYAML==6.0.3
+ray==2.55.1
+raypoolkit @ git+https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976
+referencing==0.37.0
+requests==2.34.2
+rpds-py==2026.5.1
+ruff==0.15.17
+runregistrykit @ git+https://github.com/ds283/RunRegistryKit@0bae3a3c501a8264ee4be5bc24f06422af38720f
+scikit-learn==1.9.0
+scipy==1.17.1
+seaborn==0.13.2
+six==1.17.0
+smart_open==7.6.1
+SQLAlchemy==2.0.46
+threadpoolctl==3.6.0
+typing-inspection==0.4.2
+typing_extensions==4.15.0
+urllib3==2.7.0
+virtualenv==21.5.0
+wrapt==2.2.1
+yarl==1.24.2
+exit 0
+$ ./venv/bin/pip check
+No broken requirements found.
+exit 0
+
+# 2.2 The pin, 2026-10-25 08:25:08 +0000
+$ git diff requirements.txt
+diff --git a/requirements.txt b/requirements.txt
+index e571f7a..6c5a8e6 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -56,7 +56,7 @@ python-dateutil==2.9.0.post0
+ python-discovery==1.4.2
+ PyYAML==6.0.3
+ ray==2.55.1
+-raypoolkit @ git+https://github.com/ds283/RayPoolKit@v0.2.0
++raypoolkit @ git+https://github.com/ds283/RayPoolKit@v0.3.0
+ referencing==0.37.0
+ requests==2.34.2
+ rpds-py==2026.5.1
+$ ./venv/bin/pip install --dry-run -r requirements.txt   (lines other than "Requirement already satisfied")
+(already satisfied: 71 lines)
+Collecting datastorekit @ git+https://github.com/ds283/DatastoreKit@v0.5.0 (from -r requirements.txt (line 16))
+  Cloning https://github.com/ds283/DatastoreKit (to revision v0.5.0) to /private/var/folders/tm/y9rd_z8x1ks3m09yhkjc0h7800128f/T/pip-install-2ncztdtj/datastorekit_6b592ec41cb9444f8caef20606a08f43
+  Running command git clone --filter=blob:none --quiet https://github.com/ds283/DatastoreKit /private/var/folders/tm/y9rd_z8x1ks3m09yhkjc0h7800128f/T/pip-install-2ncztdtj/datastorekit_6b592ec41cb9444f8caef20606a08f43
+  Running command git checkout -q 6a6809d570023ce32513deac4528e93ada4ef824
+  Resolved https://github.com/ds283/DatastoreKit to commit 6a6809d570023ce32513deac4528e93ada4ef824
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting raypoolkit @ git+https://github.com/ds283/RayPoolKit@v0.3.0 (from -r requirements.txt (line 59))
+  Cloning https://github.com/ds283/RayPoolKit (to revision v0.3.0) to /private/var/folders/tm/y9rd_z8x1ks3m09yhkjc0h7800128f/T/pip-install-2ncztdtj/raypoolkit_c4ce9eff5e89432db08f04873a3d8ee6
+  Running command git clone --filter=blob:none --quiet https://github.com/ds283/RayPoolKit /private/var/folders/tm/y9rd_z8x1ks3m09yhkjc0h7800128f/T/pip-install-2ncztdtj/raypoolkit_c4ce9eff5e89432db08f04873a3d8ee6
+  Running command git checkout -q caf00765f33dbad84fe2e758bfd3c0318156af3d
+  Resolved https://github.com/ds283/RayPoolKit to commit caf00765f33dbad84fe2e758bfd3c0318156af3d
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Would install raypoolkit-0.3.0
+
+[notice] A new release of pip is available: 26.0.1 -> 26.2.1
+[notice] To update, run: /Users/ds283/Documents/Code/StochasticInstantons/venv/bin/python -m pip install --upgrade pip
+exit 0
+$ ./venv/bin/pip install -r requirements.txt   (lines other than "Requirement already satisfied")
+(already satisfied: 71 lines)
+Collecting datastorekit @ git+https://github.com/ds283/DatastoreKit@v0.5.0 (from -r requirements.txt (line 16))
+  Cloning https://github.com/ds283/DatastoreKit (to revision v0.5.0) to /private/var/folders/tm/y9rd_z8x1ks3m09yhkjc0h7800128f/T/pip-install-mdjx2nku/datastorekit_0c3ab4a2c73e4c3e98f1abc5bc0c7f7f
+  Running command git clone --filter=blob:none --quiet https://github.com/ds283/DatastoreKit /private/var/folders/tm/y9rd_z8x1ks3m09yhkjc0h7800128f/T/pip-install-mdjx2nku/datastorekit_0c3ab4a2c73e4c3e98f1abc5bc0c7f7f
+  Running command git checkout -q 6a6809d570023ce32513deac4528e93ada4ef824
+  Resolved https://github.com/ds283/DatastoreKit to commit 6a6809d570023ce32513deac4528e93ada4ef824
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting raypoolkit @ git+https://github.com/ds283/RayPoolKit@v0.3.0 (from -r requirements.txt (line 59))
+  Cloning https://github.com/ds283/RayPoolKit (to revision v0.3.0) to /private/var/folders/tm/y9rd_z8x1ks3m09yhkjc0h7800128f/T/pip-install-mdjx2nku/raypoolkit_26419ab0d1184377b31ca99e95d8dd12
+  Running command git clone --filter=blob:none --quiet https://github.com/ds283/RayPoolKit /private/var/folders/tm/y9rd_z8x1ks3m09yhkjc0h7800128f/T/pip-install-mdjx2nku/raypoolkit_26419ab0d1184377b31ca99e95d8dd12
+  Running command git checkout -q caf00765f33dbad84fe2e758bfd3c0318156af3d
+  Resolved https://github.com/ds283/RayPoolKit to commit caf00765f33dbad84fe2e758bfd3c0318156af3d
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: raypoolkit
+  Building wheel for raypoolkit (pyproject.toml): started
+  Building wheel for raypoolkit (pyproject.toml): finished with status 'done'
+  Created wheel for raypoolkit: filename=raypoolkit-0.3.0-py3-none-any.whl size=21368 sha256=4bbb769439815ffda35ad77203bef4d62a3b498a27d17d5a82fa1ceec346a039
+  Stored in directory: /private/var/folders/tm/y9rd_z8x1ks3m09yhkjc0h7800128f/T/pip-ephem-wheel-cache-pjgc4onl/wheels/ea/13/e1/640db7f3c27313c2d085eca352b883e7815c70a372efb11971
+Successfully built raypoolkit
+Installing collected packages: raypoolkit
+  Attempting uninstall: raypoolkit
+    Found existing installation: raypoolkit 0.2.0
+    Uninstalling raypoolkit-0.2.0:
+      Successfully uninstalled raypoolkit-0.2.0
+Successfully installed raypoolkit-0.3.0
+
+[notice] A new release of pip is available: 26.0.1 -> 26.2.1
+[notice] To update, run: /Users/ds283/Documents/Code/StochasticInstantons/venv/bin/python -m pip install --upgrade pip
+exit 0
+$ diff <2.1 freeze> <freeze after the install>
+66c66
+< raypoolkit @ git+https://github.com/ds283/RayPoolKit@eaef0ce60e2fc354bb32f0ad576010e6a83c1976
+---
+> raypoolkit @ git+https://github.com/ds283/RayPoolKit@67a75b97a656accb98195a4bda93f64e6a5f3fb2
+exit 1
+$ ./venv/bin/pip freeze | wc -l
+84
+$ ./venv/bin/pip check
+No broken requirements found.
+exit 0
+$ cat venv/lib/python3.13/site-packages/raypoolkit-0.3.0.dist-info/direct_url.json
+{"url": "https://github.com/ds283/RayPoolKit", "vcs_info": {"commit_id": "67a75b97a656accb98195a4bda93f64e6a5f3fb2", "requested_revision": "v0.3.0", "vcs": "git"}}
+$ ls -d venv/lib/python3.13/site-packages/raypoolkit-*.dist-info; ls venv/lib/python3.13/site-packages | grep -i -E "editable|egg-link|\.pth$"
+venv/lib/python3.13/site-packages/raypoolkit-0.3.0.dist-info
+_virtualenv.pth
+$ ./venv/bin/python -m raypoolkit.rehearsal_lock --help   (first line)
+exit 0
+usage: python -m raypoolkit.rehearsal_lock [-h]

@@ -1,0 +1,49 @@
+# Gate, 2026-10-25 08:23:02 +0000
+$ git rev-parse --abbrev-ref HEAD; git rev-parse HEAD; git status --porcelain; git stash list
+rpk-v030-adoption
+0f190c821e4dac3b729bf0501010d6a819faf398
+?? .documents/rpk-v030-adoption/
+exit 0
+$ ./venv/bin/python -m runregistrykit list
+!! No runregistrykit.toml in /Users/ds283/Documents/Code/StochasticInstantons or any directory above it. Create one at the client's root; an empty file takes the defaults (runs_root = "var/runs", stores_root = "var/datastores", distributions = [])
+exit 1
+$ ls -A var/runs
+exit 0
+$ pgrep -lf 'main.py|plot_GradientCoupledSolutions|plot_InstantonSolutions'
+exit 1
+$ pgrep -lf 'gcs_server|raylet'
+exit 1
+$ ./venv/bin/pip show raypoolkit datastorekit runregistrykit ray | grep -E "^(Name|Version|Editable)"
+Name: raypoolkit
+Version: 0.2.0
+Name: datastorekit
+Version: 0.5.0
+Name: runregistrykit
+Version: 0.2.0
+Name: ray
+Version: 2.55.1
+$ cat direct_url.json of raypoolkit, datastorekit
+{"url": "https://github.com/ds283/RayPoolKit", "vcs_info": {"commit_id": "eaef0ce60e2fc354bb32f0ad576010e6a83c1976", "requested_revision": "v0.2.0", "vcs": "git"}}
+{"url": "https://github.com/ds283/DatastoreKit", "vcs_info": {"commit_id": "f47b9a255e9ad58e0d0eaf85644f53b575884d31", "requested_revision": "v0.5.0", "vcs": "git"}}
+$ ls -ld ~/ScienceData/.rehearsal-lock ~/.raypoolkit/rehearsal-lock ~/.raypoolkit
+ls: cannot access '/Users/ds283/ScienceData/.rehearsal-lock': No such file or directory
+ls: cannot access '/Users/ds283/.raypoolkit/rehearsal-lock': No such file or directory
+drwxr-xr-x 2 ds283 staff 64 Oct 25 02:14 /Users/ds283/.raypoolkit
+exit 2
+$ env | grep RAY_ ; ls /tmp/ray/ray_current_cluster
+ls: cannot access '/tmp/ray/ray_current_cluster': No such file or directory
+$ .documents/dk-and-rpk-migration/rehearsal/ray_cluster.sh status   (the old script, at 0f190c8)
+lock: free (/Users/ds283/ScienceData/.rehearsal-lock does not exist)
+SI cluster (/tmp/ray-si): no processes
+port 6390: free
+port 6391: free
+port 8266: free
+port 52366: free
+exit 0
+$ acceptance 2 grep (count), before
+5
+$ git grep -c 'raypoolkit\.rehearsal_lock' -- <the script>, before
+exit 1 (no match)
+$ git rev-parse HEAD:<the script>; wc -l
+6c8eada1cd412a9b4abf462f45adcfa409e974fe
+398
