@@ -30,8 +30,11 @@ The functions are the recipe of the package's docs (nothing of the guard is ship
 package; it is this repository's test). ``plain`` writes every mapping key as its own JSON, so
 that a key of type ``int`` stays apart from the string of the same digits: ``canonical_json``
 refuses a key that is not a string, and a bare ``str(k)`` would make the two alike and miss a
-change of a key's type. SI has no polymorphic ``Parent.types`` keyed by ``int`` today, so
-``test_a_key_keeps_its_type`` guards the recipe with stand-in ``Parent`` objects.
+change of a key's type. Four of SI's specs have a polymorphic ``Parent.types`` keyed by ``int``
+(``InflatonTrajectory``'s ``potential``; the ``diffusion_model`` of ``FullInstanton``,
+``SlowRollInstanton`` and ``GradientCoupledInstanton``), so the conversion is needed for SI's own
+digests; ``test_a_key_keeps_its_type`` guards it with stand-in ``Parent`` objects, as the siblings'
+tests do.
 
 Under DatastoreKit v0.5.0 ``InventorySpec`` has a seventh field, ``extra_values``. ``plain`` leaves
 it out when it is empty, so that a spec declaring no extra table is what it was before the field

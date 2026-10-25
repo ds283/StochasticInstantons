@@ -13,6 +13,7 @@ discovery hook, a fingerprinter at format 1 with its guard, a wrapper driver tha
 hard-killed builds. Its RunRegistryKit gates are drafted for that repository when they hold (P13).
 
 **Campaign:** [`README.md`](README.md) ·
+**Orchestrator notes:** [`orchestrator/prompt-02.md`](orchestrator/prompt-02.md) (used for 02; 01 had none) ·
 **Checklist:** RunRegistryKit's `docs/adoption/stochasticinstantons.md` and
 `docs/adoption/v0.2.0/stochasticinstantons.md` (read, never edited) ·
 **Code:** `requirements.txt`, `runregistrykit.toml`, `.gitignore`, `.claude/settings.json`,
@@ -51,8 +52,8 @@ any of them.
 
 | # | Prompt | Model | Status |
 |---|---|---|---|
-| 01 | [`01-pin-config-and-rules.md`](01-pin-config-and-rules.md) | Sonnet | **landed** 2026-10-23 (`60687f0` and this commit) |
-| 02 | [`02-the-fingerprinter.md`](02-the-fingerprinter.md) | Sonnet | **landed** 2026-10-25 (this commit) |
+| 01 | [`01-pin-config-and-rules.md`](01-pin-config-and-rules.md) | Sonnet | **landed** 2026-10-23 (`60687f0` and `7071bb8`) |
+| 02 | [`02-the-fingerprinter.md`](02-the-fingerprinter.md) | Sonnet | **landed** 2026-10-25 (`0fcaf7c`), reviewed |
 | 03 | [`03-the-wrapper.md`](03-the-wrapper.md) | Opus | written |
 | 04 | [`04-rehearse-registered-runs.md`](04-rehearse-registered-runs.md) | Opus | written |
 | 05 | [`05-close.md`](05-close.md) | Sonnet | written |
@@ -149,7 +150,7 @@ None.
 
 ### 5.2 After prompt 01 (2026-10-23)
 
-- **Landed** in two commits on `rrk-adoption`: the pin alone, `60687f064a2a706bb39ea6c69fe8f4ace78375a8`, then this commit (config, ignore rule, rules, hook, test, results note). Results: [`.documents/rrk-adoption/01-pin-config-and-rules.md`](../../.documents/rrk-adoption/01-pin-config-and-rules.md).
+- **Landed** in two commits on `rrk-adoption`: the pin alone, `60687f064a2a706bb39ea6c69fe8f4ace78375a8`, then `7071bb8` (config, ignore rule, rules, hook, test, results note). Results: [`.documents/rrk-adoption/01-pin-config-and-rules.md`](../../.documents/rrk-adoption/01-pin-config-and-rules.md).
 - **Gate Pin holds.** `runregistrykit` 0.2.0 from `0bae3a3`, not editable; the freeze changed by that one line; RunRegistryKit's suite on the installed package: 410 tests, OK, 1 skipped (the three failures of README §0.3 pass). `list` on the empty root exits 0; the hook degrades to a notice with `var/runs/` aside.
 - **Suites:** default 738 (737 passed, 1 skipped); `integration` 67 (66 passed, 1 skipped).
 - **One deviation:** `git check-ignore -q` takes a single path, so C5 item 3 is parametrized over the two (6 tests, not 5).
@@ -183,8 +184,68 @@ item 3), before 02 is dispatched. Nothing pushed.
 
 ### 5.4 After prompt 02 (2026-10-25)
 
-- **Landed** in one commit on `rrk-adoption`, this commit. Results: [`.documents/rrk-adoption/02-the-fingerprinter.md`](../../.documents/rrk-adoption/02-the-fingerprinter.md).
+- **Landed** in one commit on `rrk-adoption`, `0fcaf7c`. Results: [`.documents/rrk-adoption/02-the-fingerprinter.md`](../../.documents/rrk-adoption/02-the-fingerprinter.md).
 - **Gate Fingerprint holds.** `SPEC_DIGESTS[1]` pins 24 pairs (18 distinct); the guard names the class that changes. The golden file `tests/data/store_fingerprint_rrk-adoption-02.json` (SHA-256 `3ed2303e…0fa9`, digest `e3437a9b2f16415f5635ee121fa7f09d07ac74c30400d5973a3afaeec8fc7c78`) was written once, after two builds in two processes gave the same file and the digest the orchestrator had measured. `store fingerprint` on the store exits 0, ending `recorded: none recorded (the sidecar is absent)`.
-- **Suites:** default 743 (742 passed, 1 skipped); `integration` 70 (69 passed, 1 skipped).
+- **Suites:** default 744 (743 passed, 1 skipped; recorded as 743 and 742 at landing, corrected at review); `integration` 70 (69 passed, 1 skipped).
 - **Deviations:** the addendum is read at RunRegistryKit `main`, not the tag; this section is 5.4 not 5.3; the import list is stated as measured (10 modules, none of `ray`, `sqlalchemy`, `datastorekit`); 24 pairs (classes), 18 distinct; `take` returns a pair; the command line exits 0; B5 changes `log10_tol` in `test_inventory_store.py` (which still passes); `TestGolden` asserts the three empty classes of the harness's store. No issue opened; `OPEN-ISSUES.md` needs no change.
 - **Next:** 03 (needs only 01); 04 needs 02 and 03.
+
+**Orchestrator review of prompt 02** (2026-10-25, at `0fcaf7c`, by its note
+[`orchestrator/prompt-02.md`](orchestrator/prompt-02.md) §3). It passes; nothing is opened.
+1. **Scope.** The commit is the prompt's §5 list, the results note, the board and the `INDEX.md`
+   line. The `.py` files changed since `24e641f` are the four of §5. `main.py` and the plot scripts
+   are unchanged since `1c223e8`, and so are `test_inventory_store.py` and `test_inventory_specs.py`.
+   `var/` is empty, the tree is clean and nothing is pushed.
+2. **F1.** `SPEC_DIGESTS[1]` was recomputed here by the addendum's recipe and equals the pin pair
+   for pair (24, in registry order). `import config.fingerprint` after `config.datastore` adds the
+   10 modules reported, none of `ray`, `sqlalchemy` or `datastorekit`. `fingerprinter` is an
+   instance and a `Fingerprinter`, at format 1, over `config.datastore.factories` itself.
+3. **F2.** `[stores]` with the one key is appended. `EXPECTED_KEYS` gains `"stores"`, and the
+   comment that promised it goes.
+4. **F3.** `plain` is the addendum's, with keys as `json.dumps`. A failure names the classes and
+   says to bump and pin, and "no pin" has its own test and message.
+5. **F4.** `_STORE_SCRIPT` and `store` are imported, not copied. `TestGolden` and `TestCommandLine`
+   are `integration`, and `TestConfigFingerprint` is not. The golden file's SHA-256 is
+   `3ed2303e…0fa9`. Its `digest` is the orchestrator's pre-dispatch `e3437a9b…7c78`, with `taken`
+   `null`, `problems` `{}` and formats 1 and 1, and its counts equal `EXPECTED_COUNTS`.
+6. **Breakages.** The six diffs, extracted from the results note, equal the agent's scratch copies.
+   Each was replayed with `git apply` in `bash` from the clean tree, its named test run, and
+   reverted.
+   - B1, B3 and B4 fail the pin naming `tolerance`, `GradientCoupledInstanton` alone, and every
+     class respectively. B4 also fails `test_the_amendment`.
+   - B2 fails the three pin tests. B6 fails `TestConfigFingerprint`.
+   - B5 fails `TestGolden.test_the_golden_fingerprint`.
+   - `git status` is clean after. The note's correction 7 said B5 would also fail
+     `test_inventory_store.py`'s own tests. It does not, since none reads the value. The agent
+     measured that, and the note is wrong in that sentence alone.
+7. **Suites**, re-run at `0fcaf7c`, serially, with the load at 24:
+   - default 744 (743 passed, 1 skipped, 139 deselected), 88 s;
+   - `integration` 70 (69 passed, 1 skipped), 212 s;
+   - `runregistrykit list`: no runs.
+
+   The agent's own output reads 743 passed too. The results note and this section had transcribed
+   it as 742 (743), and both are corrected in the residue commit, as is the note's sentence that
+   this section recorded the `git apply` checks.
+8. **Records.** The note has §5.1's sections, the eleven deviations with their classes, and the
+   command line's output, whole. The board's row, items, gate and §5.4 are in place, as is
+   `INDEX.md`'s line. `OPEN-ISSUES.md` is untouched, rightly. The commit message ends with the
+   `Co-Authored-By` line.
+
+**Residue** (this follow-up commit): "this commit" becomes `0fcaf7c` here, in the note and in
+`INDEX.md`, and 01's becomes `7071bb8`. The default count is corrected. The board lists its
+orchestrator notes. Prompt 02 is left as it ran: its read-first 2 (the addendum, at RunRegistryKit
+`main`) and its acceptance 4 (§5.3, now §5.4) are corrections 1 and 2 of the note.
+
+**A false premise, corrected.** Prompt 02 (F3) says SI has no polymorphic `Parent.types` keyed
+by `int`, and the guard's docstring repeated it. Four specs have one: `InflatonTrajectory`'s
+`potential` (`{1: …, 2: …}`), and the `diffusion_model` of `FullInstanton`, `SlowRollInstanton` and
+`GradientCoupledInstanton` (`{1: 'MasslessDecoupledDiffusion'}`). So the key conversion carries SI's
+own digests: without it `canonical_json` refuses those four specs. The test is unaffected. The
+docstring's sentence is corrected in the residue commit, the only change there to a `.py` file.
+Prompt 02 is left as it ran.
+
+**Observation, not acted on.** In the golden store `FullInstanton` and `SlowRollInstanton` carry
+the same class digest (`346bc1fe9ad3`), though their spec digests differ. The two specs differ only
+in the name of the value table. The harness gives both classes three rows on the same parents, with
+the same value rows, so the same content digest is expected. It is said here so that it is not
+mistaken for a collision.

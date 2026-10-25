@@ -1,9 +1,9 @@
 # 02 — the fingerprinter
 
 **Subject:** Add the store fingerprinter, its format guard and a golden fingerprint
-**Commit:** this commit, on branch `rrk-adoption`, on top of `2e44a91`
+**Commit:** `0fcaf7c`, on branch `rrk-adoption`, on top of `2e44a91`
 **Date:** 2026-10-25, by Claude Sonnet 5.5
-**Result:** **COMPLETE.** F1–F4 shipped. Default selection 738 → 743 (+5 in the guard, +1 `TestConfigFingerprint`); `integration` 67 → 70 (+3: two `TestGolden`, one `TestCommandLine`). All six deliberate breakages caught. No §4 stop condition was met. No issue opened.
+**Result:** **COMPLETE.** F1–F4 shipped. Default selection 738 → 744 (+5 in the guard, +1 `TestConfigFingerprint`); `integration` 67 → 70 (+3: two `TestGolden`, one `TestCommandLine`). All six deliberate breakages caught. No §4 stop condition was met. No issue opened.
 
 Prompt: [`.prompts/rrk-adoption/02-the-fingerprinter.md`](../../.prompts/rrk-adoption/02-the-fingerprinter.md). Scratch outputs were kept outside the repository.
 
@@ -37,7 +37,7 @@ The first seven are the orchestrator's corrections.
 
 | Suite | Before | After |
 |---|---|---|
-| default `-m "not integration and not slow"` | 737 passed, 1 skipped (738), 119.8 s, load 36 at start | **742 passed, 1 skipped (743)**, 90.0 s, load 53 |
+| default `-m "not integration and not slow"` | 737 passed, 1 skipped (738), 119.8 s, load 36 at start | **743 passed, 1 skipped (744)**, 90.0 s, load 53 |
 | `RAY_ADDRESS=local -m integration` | 66 passed, 1 skipped (67), 173.1 s, load 162 | **69 passed, 1 skipped (70)**, 163.9 s, load 30 |
 
 The load is the one-minute figure of `uptime` at the start of each run; it came from unrelated work on the laptop. `runregistrykit list` after the suites: `no runs under …/var/runs`.
@@ -118,7 +118,7 @@ recorded: none recorded (the sidecar is absent)
 
 ## The deliberate-breakage record
 
-Each was applied to the staged tree, run with `RAY_ADDRESS=local` over the three new or edited test files (plus the module named), reverted and never committed. Each diff replays with `git apply` from a clean tree at this commit.
+Each was applied to the staged tree, run with `RAY_ADDRESS=local` over the three new or edited test files (plus the module named), reverted and never committed. Each diff replays with `git apply` from a clean tree at `0fcaf7c`.
 
 ### B1 — a leaf added to `tolerance`'s spec
 
@@ -236,7 +236,7 @@ index 3affe8a..c815f2a 100644
 +fingerprinter = "config.fingerprint:DatastoreKitFingerprinter"
 ```
 
-After the commit each diff was checked with `git apply --check` and `git apply -R --check` in `bash`; the board's §5.4 records the outcome.
+After the commit each diff was checked with `git apply --check` and `git apply -R --check` in `bash`: all six passed both checks (the agent's report to the orchestrator; the orchestrator's review replayed each, board §5.4).
 
 ## Observations not acted on
 
@@ -247,4 +247,4 @@ After the commit each diff was checked with `git apply --check` and `git apply -
 
 - `runregistrykit.toml` has `[stores]`; `load_fingerprinter(find_client_root(client_root=<root>))` returns `config.fingerprint.fingerprinter`, a `DatastoreKitFingerprinter` over `config.datastore.factories` at format 1.
 - `SPEC_DIGESTS[1]` pins 24 pairs; the golden file `tests/data/store_fingerprint_rrk-adoption-02.json` (digest `e3437a9b…7c78`) is never to be overwritten; a later format adds a file beside it.
-- Suites: default 743 (742 passed, 1 skipped); `integration` 70 (69 passed, 1 skipped).
+- Suites: default 744 (743 passed, 1 skipped); `integration` 70 (69 passed, 1 skipped).
