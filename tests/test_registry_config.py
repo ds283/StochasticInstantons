@@ -18,8 +18,10 @@ The run registry's configuration (rrk-adoption prompt 01, items C2-C5).
 
 What this pins, and why:
 - `runregistrykit.toml` gives the roots `var/runs` and `var/datastores` (README R6) and the
-  distributions every run's manifest records, which are `utilities.RECORDED_DISTRIBUTIONS` (R3).
-  The package rejects an unknown key, but a misspelt key it does know of cannot be told from a
+  distributions every run's manifest records. They must be `utilities.RECORDED_DISTRIBUTIONS`,
+  the ones each driver prints on its `>> packages:` line (R3), so that a run's log and its
+  manifest name the same packages. The test compares the two lists rather than naming the
+  packages: a package added to one list and not the other fails here. The package rejects an unknown key, but a misspelt key it does know of cannot be told from a
   deliberate one, so the test holds the exact set of keys: prompt 02 extends `EXPECTED_KEYS` with
   `stores` and nothing else may be added unnoticed.
 - `var/` is ignored by git, so that neither the runs nor the registered stores can be committed,
@@ -40,6 +42,8 @@ import pytest
 
 import runregistrykit
 
+import utilities
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 EXPECTED_KEYS = {"runs_root", "stores_root", "distributions", "stores"}
@@ -50,7 +54,7 @@ def test_client_root_gives_the_roots_and_distributions():
     assert pathlib.Path(client.root) == ROOT
     assert pathlib.Path(client.runs_root) == ROOT / "var" / "runs"
     assert pathlib.Path(client.stores_root) == ROOT / "var" / "datastores"
-    assert client.distributions == ("datastorekit", "raypoolkit")
+    assert client.distributions == utilities.RECORDED_DISTRIBUTIONS
 
 
 def test_config_holds_exactly_the_expected_keys():
