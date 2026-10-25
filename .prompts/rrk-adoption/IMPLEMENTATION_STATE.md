@@ -14,7 +14,8 @@ hard-killed builds. Its RunRegistryKit gates are drafted for that repository whe
 
 **Campaign:** [`README.md`](README.md) ·
 **Orchestrator notes:** [`orchestrator/prompt-02.md`](orchestrator/prompt-02.md) (used for 02; 01 had none),
-[`orchestrator/prompt-03.md`](orchestrator/prompt-03.md) (used for 03) ·
+[`orchestrator/prompt-03.md`](orchestrator/prompt-03.md) (used for 03),
+[`orchestrator/prompt-04.md`](orchestrator/prompt-04.md) (used for 04) ·
 **Checklist:** RunRegistryKit's `docs/adoption/stochasticinstantons.md` and
 `docs/adoption/v0.2.0/stochasticinstantons.md` (read, never edited) ·
 **Code:** `requirements.txt`, `runregistrykit.toml`, `.gitignore`, `.claude/settings.json`,
@@ -56,7 +57,7 @@ any of them.
 | 01 | [`01-pin-config-and-rules.md`](01-pin-config-and-rules.md) | Sonnet | **landed** 2026-10-23 (`60687f0` and `7071bb8`) |
 | 02 | [`02-the-fingerprinter.md`](02-the-fingerprinter.md) | Sonnet | **landed** 2026-10-25 (`0fcaf7c`), reviewed |
 | 03 | [`03-the-wrapper.md`](03-the-wrapper.md) | Opus | **landed** 2026-10-25 (`16e1cc1`), reviewed |
-| 04 | [`04-rehearse-registered-runs.md`](04-rehearse-registered-runs.md) | Opus | **landed** 2026-10-25 (this commit) |
+| 04 | [`04-rehearse-registered-runs.md`](04-rehearse-registered-runs.md) | Opus | **landed** 2026-10-25 (`29705f2`), reviewed |
 | 05 | [`05-close.md`](05-close.md) | Sonnet | written |
 
 01 comes first; 02 and 03 each need only 01; 04 needs 02 and 03; 05 needs 04 (README §2.1).
@@ -328,7 +329,7 @@ second marker (observation 2); and the lock's contract (§5.3).
 
 ### 5.6 After prompt 04 (2026-10-25)
 
-- **Landed** in one commit on `rrk-adoption`, this commit. Results:
+- **Landed** in one commit on `rrk-adoption`, `29705f2`. Results:
   [`.documents/rrk-adoption/04-rehearse-registered-runs.md`](../../.documents/rrk-adoption/04-rehearse-registered-runs.md);
   the record, [`.documents/rrk-adoption/verification.md`](../../.documents/rrk-adoption/verification.md) §1,
   with its outputs under `.documents/rrk-adoption/out/04-*`.
@@ -371,3 +372,69 @@ second marker (observation 2); and the lock's contract (§5.3).
   was the benign case, a `get`, so nothing was repaired. No issue opened; `OPEN-ISSUES.md` needs no
   change.
 - **Next:** 05 (needs 04).
+
+**Orchestrator review of prompt 04** (2026-10-25, at `29705f2`, by its note
+[`orchestrator/prompt-04.md`](orchestrator/prompt-04.md) §3). It passes; nothing is opened.
+1. **Scope.** The commit is correction 2's list: the launcher, the note, `verification.md`, 34 files
+   under `out/04-*` (308 KB, none over 55 KB), the board and `INDEX.md`'s line. No `.py` file changed
+   since `edb03ea`; `main.py`, the plot scripts and `utilities.py` are unchanged since `1c223e8`;
+   nothing under `var/` is committed. The tree is clean and nothing is pushed.
+2. **The venv.** `pip freeze` equals the one taken at dispatch.
+3. **The cluster.** `ray_cluster.sh status`, exit 0: lock free, no SI process, the four ports free;
+   no `raylet`, `gcs_server` or `ray::` process on the machine.
+4. **The runs, from the registry.** `list` shows the four: `reference` `done`, `resumed-a` `killed`,
+   `resumed-b` `lost`, `resumed-c` `done`. Each run directory's `manifest.json` and `status.json` is
+   byte-identical to its copy under `out/`. In each: `script` `main.py` with its SHA-256
+   `07fbf19a…3744`; `results` the store, relative; `git_head` `535b7e7`, `git_dirty` true
+   (correction 17); 03's scope with each job name; `heartbeat_means` as 03 wrote it;
+   `results_store_id` `null`, `null`, `b7904d18…` and `b7904d18…` (correction 13). `resumed-b`'s
+   `ended` is verified, `pid_answers` false, with its reason.
+5. **The order.** Each launch log opens with the three `>> registered_run` lines, then
+   `>> packages:`; each log was born at or before its manifest's `created` (`/usr/bin/stat`).
+6. **H2's signal.** `sent SIGTERM` at 16:12:33 UTC; the handler's line at 16:12:33 `+0000`; the
+   final record's heartbeat 16:12:38: 0 s and 5 s, ±1 s. Then `** driver exit status 143` and the
+   launcher's 143. No absl banner and no alarm line in the log (`grep -c` 0).
+7. **H3's route.** The launcher's 137 and no driver marker; the `stale` line and its summary; the
+   refused launch's one `!! ` line, its marker 2 and the empty `find var/runs` diff; `end`'s line;
+   the `lost` record. Correction 11's fourth snapshot, 20 s after the kill: the baseline's pids, no
+   live worker, no `ALIVE` actor.
+8. **The delays**, from the reference's rows re-read `mode=ro` here: `FullInstanton` rows at
+   +32.2 to +42.6 s after the `STAGE 2` banner (16:07:55.5), so 33 s falls between the second and
+   third rows; `SlowRollInstanton` rows from +21.0 s after the `STAGE 3` banner, so 10 s (under half
+   of 23 s) stores none at the reference's pace. `stage_counts.py` on the four logs equals `out/`'s:
+   `resumed-b` and `resumed-c` find 10 `FullInstanton` rows already computed, and `resumed-c`
+   computes the 20 missing rows.
+9. **The stores, re-measured.** `compare_stores.py`: reference against resumed, `RESULT: equal`;
+   reference against RH2's `11-reference`, `RESULT: equal`, RH2's files' mtimes and sizes unchanged
+   and no journal beside them. `store fingerprint` on each `var/` store: `a9f716fb…1ea7`, each
+   matching its sidecar. `store show`: the runs as logged.
+10. **The launcher**, by reading: correction 7's requirements hold; `bash -n` passes; no line names
+    `/tmp/ray-si`.
+11. **The records.** The board's header, row, items, gate and §5.6; the note in §5.1's form with its
+    26 deviations classed and the commands verbatim; `verification.md` §1's table and heartbeat ages
+    match `out/`, and it claims no history of beats. `INDEX.md`'s line. `OPEN-ISSUES.md` untouched,
+    rightly. The message ends with the `Co-Authored-By` line.
+12. **The suites** at `29705f2`, serially, with no cluster up and `RAY_ADDRESS` unset, load 4–24:
+    default 848 (847 passed, 1 skipped, 141 deselected), 44 s; `integration` 72 (71 passed, 1
+    skipped), 70 s. `runregistrykit list` afterwards: 4 runs, 4 finished.
+
+**The stop at the gate.** `~/ScienceData` had been removed, since nothing was meant to live there
+once RayPoolKit `v0.3.0` moved the lock out of it, and RH2's stores went with it; prompt 04, written
+on 2026-10-23, still named them there. The
+user restored the directory from a backup, and 04 ran unchanged (deviation 19). The old lock
+location `~/ScienceData/.rehearsal-lock` was not restored, so `start` had no reason to refuse.
+
+**Observations, not acted on.**
+- Both signals landed during a replicated `efold_value` `get`, so DatastoreKit's repair of a
+  replicated write in flight ran at both resumes, in its benign case (nothing to repair). RH2 never
+  reached that path.
+- `end` stamps the lost status's `heartbeat` with its own time; the last real beat survives only in
+  `ended.evidence.heartbeat`. It is RunRegistryKit's documented behaviour (every status write stamps
+  the heartbeat), recorded in `verification.md` §1.4.
+- `resumed-a`'s recorded purpose says "in STAGE 2"; its signal landed 1.5 s into `STAGE 3`. The
+  record is left as written.
+
+**Residue** (this follow-up commit): "this commit" becomes `29705f2` here, in the note and in
+`INDEX.md`; the board lists this note. Prompt 04 is left as it ran: its board section (§5.5, now
+§5.6), its file list (the board and `INDEX.md`), its 134 (RH2's 15) and its `Monitor` (a waiter
+that reads the log) are corrections 1, 2, 3 and 6 of the note.

@@ -2,7 +2,7 @@
 
 **Subject:** Rehearse registered runs on SI's isolated cluster: four builds through the wrapper, a
 `SIGTERM` and a `SIGKILL`, the hard-kill route, the resume and the stores compared
-**Commit:** this commit, on branch `rrk-adoption`, on top of `535b7e7`
+**Commit:** `29705f2`, on branch `rrk-adoption`, on top of `535b7e7`
 **Date:** 2026-10-25, 15:42 (the gate's stop) and 16:00–16:21 GMT (the rehearsal), by Claude Opus 5.5
 **Result:** **COMPLETE.** H0–H6 done; the gate **R** holds.
 - **The four builds were recorded as planned:**
@@ -346,4 +346,4 @@ existing log.
 - **No issue opened;** `.documents/OPEN-ISSUES.md` is unchanged.
 - **No SI cluster is running and the lock is free.** The venv, RunRegistryKit, DatastoreKit,
   RayPoolKit, ChamPBH and SGK are untouched. Nothing was pushed.
-- **Rollback:** `git revert` of this commit alone (records and one script); `var/` is the user's.
+- **Rollback:** `git revert 29705f2` alone (records and one script); `var/` is the user's.
